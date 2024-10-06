@@ -1,4 +1,4 @@
-from ..updates_ssm_ops.mamba_mixer import slow_forward_for_ssm_materializing
+from ..updates_ssm_ops.mamba_mixer_listener import slow_forward_for_ssm_materializing
 from ..metrics.ssm.ssm_metric import SSMMetric
 from torch import nn, Tensor
 from typing import Optional
@@ -16,6 +16,6 @@ class SSMListenerHook():
         self.counter += 1
 
         curr_out = slow_forward_for_ssm_materializing(module, inp[0])
-        state, A, B, C = curr_out
+        state, A, B, C, discrete_time_step = curr_out
 
         self.metric_values = self.metric.calc(A, B, C)

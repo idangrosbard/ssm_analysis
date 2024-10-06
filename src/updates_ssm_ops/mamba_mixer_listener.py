@@ -87,5 +87,5 @@ def slow_forward_for_ssm_materializing(module, input_states, cache_params: Optio
 
     # 4. Final linear projection
     contextualized_states = module.out_proj(scan_output.transpose(1, 2))  # [batch, seq_len, hidden_size]
-    return contextualized_states, discrete_A, discrete_B, C
+    return contextualized_states, discrete_A, discrete_B, C, discrete_time_step
 # fmt: on
