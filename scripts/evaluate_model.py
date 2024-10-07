@@ -4,10 +4,20 @@ from transformers import AutoTokenizer, MambaForCausalLM
 import torch
 from tqdm import tqdm
 from pathlib import Path
+from argparse import ArgumentParser
+
+
+def get_args():
+    parser = ArgumentParser()
+    parser.add_argument("--model_size", type=str, choices={'130M', '2.8B'}, default="130M")
+    parser.add_argument("--drop_subject", action='store_true')
+    
+    return parser.parse_args()
 
 
 
-def main(model_size: str = "2.8B"):
+def main(model_size: str = "2.8B", drop_subject: bool = False):
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     if not Path("known_1000.json").exists():
         wget.download("https://rome.baulab.info/data/dsets/known_1000.json")
     knowns_df = pd.read_json("known_1000.json").set_index('known_id')
@@ -15,7 +25,7 @@ def main(model_size: str = "2.8B"):
 
     tokenizer = AutoTokenizer.from_pretrained(f"state-spaces/mamba-{model_size}-hf")
     model = MambaForCausalLM.from_pretrained(f"state-spaces/mamba-{model_size}-hf")
-    model.cuda()
+    model.to(device)
 
     model.eval()
 
@@ -29,7 +39,10 @@ def main(model_size: str = "2.8B"):
             input = knowns_df.loc[idx, "prompt"]
             target = knowns_df.loc[idx, "attribute"]
 
-            input_ids = tokenizer(input, return_tensors="pt")["input_ids"].cuda()
+            if drop_subject:
+                input = input.replace(knowns_df.loc[idx, "subject"], '')
+
+            input_ids = tokenizer(input, return_tensors="pt")["input_ids"].to(device)
             # print the id of subj_tokens
             
             out = model(input_ids)
@@ -44,4 +57,5 @@ def main(model_size: str = "2.8B"):
     knowns_df.to_csv(f'known_1000_{model_size}_correct.csv')
 
 if __name__ == "__main__":
-    main()
+    args = get_args()
+    main(args.model_size, args.drop_subject)
