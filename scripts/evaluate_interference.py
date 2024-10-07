@@ -60,7 +60,7 @@ def main(model_size: str = "2.8B", interefere_mode: KnockoutMode = KnockoutMode.
             
             handle = moi.register_forward_hook(hook)
 
-            pbar = tqdm(knowns_df.index, total=len(knowns_df))
+            pbar = tqdm(knowns_df.index, total=len(knowns_df), silent=True)
             for idx in pbar:
                 # Get relevant data
                 input = knowns_df.loc[idx, "prompt"]
