@@ -10,6 +10,13 @@ from pathlib import Path
 from src.hooks import SSMInterfereHook
 from src.updates_ssm_ops import KnockoutMode
 import plotly.express as px
+from argparse import ArgumentParser
+
+def get_args():
+    parser = ArgumentParser()
+    parser.add_argument("--model_size", type=str, choices={'130M', '2.8B'}, default="130M")
+    parser.add_argument("--interfere_mode", type=str, choices={'ZERO_ATTENTION', 'ZERO_DELTA'}, default="ZERO_ATTENTION")
+    return parser.parse_args()
 
 
 def get_subj_idx(input: str, subj: str, tokenizer: AutoTokenizer, last: bool = True):
@@ -22,7 +29,7 @@ def get_subj_idx(input: str, subj: str, tokenizer: AutoTokenizer, last: bool = T
     return len(sent2subj_tokens) - 1
 
 
-def main(model_size: str = "2.8B"):
+def main(model_size: str = "2.8B", interefere_mode: KnockoutMode = KnockoutMode.ZERO_ATTENTION):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     if not Path("known_1000.json").exists():
         wget.download("https://rome.baulab.info/data/dsets/known_1000.json")
@@ -42,13 +49,14 @@ def main(model_size: str = "2.8B"):
 
 
     with torch.no_grad():
-        for i in range(len(model.backbone.layers)):
+        layers_pbar = tqdm(range(len(model.backbone.layers)))
+        for i in layers_pbar:
             performance['acc'].append(0)
             performance['layer'].append(i)
 
             moi = model.backbone.layers[i].mixer
 
-            hook = SSMInterfereHook(i, KnockoutMode.ZERO_ATTENTION, -1)
+            hook = SSMInterfereHook(i, interefere_mode, -1)
             
             handle = moi.register_forward_hook(hook)
 
@@ -73,6 +81,7 @@ def main(model_size: str = "2.8B"):
                 # Update performance
                 performance['acc'][-1] += float(last_word == target[:len(last_word)]) / len(knowns_df)
 
+            print(performance['acc'][-1], i)
             handle.remove()
     
     df = pd.DataFrame(performance)
@@ -81,4 +90,5 @@ def main(model_size: str = "2.8B"):
 
 
 if __name__ == "__main__":
-    main('130M')
+    args = get_args()
+    main(args.model_size, KnockoutMode[args.interfere_mode])
