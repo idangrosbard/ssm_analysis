@@ -3,9 +3,10 @@ from torch import nn
 import torch
 
 from transformers.cache_utils import MambaCache
+from .knockout_mode import KnockoutMode
 
 # fmt: off
-def slow_forward_for_ssm_materializing_listener(module, input_states, cache_params: Optional[MambaCache]=None, cache_position:Optional[torch.LongTensor]=None, attention_mask: Optional[torch.LongTensor] = None):
+def slow_forward_for_ssm_materializing_knockout(module, input_states, cache_params: Optional[MambaCache]=None, cache_position:Optional[torch.LongTensor]=None, attention_mask: Optional[torch.LongTensor] = None, knockout_idx: Optional[int] = None, knockout_mode: Optional[KnockoutMode] = None):
     """
     The implementation of MambaMixer's forward pass, updated to return the calculated SSM parameters (A, B, C) for analysis.
     """
@@ -44,6 +45,14 @@ def slow_forward_for_ssm_materializing_listener(module, input_states, cache_para
             (batch_size, module.intermediate_size, module.ssm_state_size),
             device=hidden_states.device, dtype=dtype
         )
+        # knockout_input_state = torch.zeros(
+        #     (batch_size, module.intermediate_size, module.ssm_state_size),
+        #     device=hidden_states.device, dtype=dtype
+        # )
+        final_state = torch.zeros(
+            (batch_size, module.intermediate_size, module.ssm_state_size),
+            device=hidden_states.device, dtype=dtype
+        )
         hidden_states = module.act(module.conv1d(hidden_states)[..., :seq_len])         # [batch, intermediate_size, seq_len]
 
     if attention_mask is not None:
@@ -76,8 +85,24 @@ def slow_forward_for_ssm_materializing_listener(module, input_states, cache_para
         scan_outputs = []
         for i in range(seq_len):
             ssm_state = discrete_A[:, :, i, :] * ssm_state + deltaB_u[:, :, i, :]      # [batch, intermediade_size, ssm_state]
+            if i != knockout_idx:
+                final_state = discrete_A[:, :, i, :] * final_state + deltaB_u[:, :, i, :]      # [batch, intermediade_size, ssm_state]
+                # final_state = torch.matmul(final_state.to(dtype), C[:, i, :].unsqueeze(-1))  # [batch, intermediade_size, 1]
+            else:
+                if knockout_mode == KnockoutMode.ZERO_ATTENTION:
+                    final_state = discrete_A[:, :, i, :] * final_state
+                elif knockout_mode == KnockoutMode.ZERO_DELTA:
+                    final_state = final_state
             scan_output = torch.matmul(ssm_state.to(dtype), C[:, i, :].unsqueeze(-1))  # [batch, intermediade_size, 1]
             scan_outputs.append(scan_output[:, :, 0])
+
+            # Calculate the knockout input state (C_T * A_(T:t) * B_(t) * x_t)
+            # if knockout_idx is not None:
+            #     if i >= knockout_idx:
+            #         knockout_input_state = discrete_A[:, :, i, :] * knockout_input_state + deltaB_u[:, :, i, :]
+        
+        final_state = torch.matmul(final_state.to(dtype), C[:, i, :].unsqueeze(-1))  # [batch, intermediade_size, 1]
+        scan_output[-1] = final_state
         scan_output = torch.stack(scan_outputs, dim=-1)                                # [batch, seq_len, intermediade_size]
         scan_output = scan_output + (hidden_states * module.D[None, :, None])
         scan_output = (scan_output * module.act(gate))
@@ -87,5 +112,5 @@ def slow_forward_for_ssm_materializing_listener(module, input_states, cache_para
 
     # 4. Final linear projection
     contextualized_states = module.out_proj(scan_output.transpose(1, 2))  # [batch, seq_len, hidden_size]
-    return contextualized_states, discrete_A, discrete_B, C, discrete_time_step
+    return contextualized_states
 # fmt: on
