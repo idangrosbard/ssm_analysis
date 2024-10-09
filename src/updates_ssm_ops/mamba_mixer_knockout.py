@@ -6,7 +6,7 @@ from transformers.cache_utils import MambaCache
 from .knockout_mode import KnockoutMode
 
 # fmt: off
-def slow_forward_for_ssm_materializing_knockout(module, input_states, cache_params: Optional[MambaCache]=None, cache_position:Optional[torch.LongTensor]=None, attention_mask: Optional[torch.LongTensor] = None, knockout_idx: Optional[int] = None, knockout_mode: Optional[KnockoutMode] = None):
+def slow_forward_for_ssm_materializing_knockout(module, input_states, cache_params: Optional[MambaCache]=None, cache_position:Optional[torch.LongTensor]=None, attention_mask: Optional[torch.LongTensor] = None, knockout_start_idx: Optional[int] = None, knockout_end_idx: Optional[int] = None, knockout_mode: Optional[KnockoutMode] = None):
     """
     The implementation of MambaMixer's forward pass, updated to return the calculated SSM parameters (A, B, C) for analysis.
     """
@@ -85,10 +85,10 @@ def slow_forward_for_ssm_materializing_knockout(module, input_states, cache_para
         scan_outputs = []
         for i in range(seq_len):
             ssm_state = discrete_A[:, :, i, :] * ssm_state + deltaB_u[:, :, i, :]      # [batch, intermediade_size, ssm_state]
-            if i != knockout_idx:
+            # TODO: Test this to see if it works, (prime numbers)
+            if (i < knockout_start_idx) or (i >= knockout_end_idx):
                 final_state = discrete_A[:, :, i, :] * final_state + deltaB_u[:, :, i, :]      # [batch, intermediade_size, ssm_state]
-                # final_state = torch.matmul(final_state.to(dtype), C[:, i, :].unsqueeze(-1))  # [batch, intermediade_size, 1]
-            else:
+            elif (i >= knockout_start_idx) and (i < knockout_end_idx):
                 if knockout_mode == KnockoutMode.ZERO_ATTENTION:
                     final_state = discrete_A[:, :, i, :] * final_state
                 elif knockout_mode == KnockoutMode.ZERO_DELTA:
@@ -96,11 +96,6 @@ def slow_forward_for_ssm_materializing_knockout(module, input_states, cache_para
             scan_output = torch.matmul(ssm_state.to(dtype), C[:, i, :].unsqueeze(-1))  # [batch, intermediade_size, 1]
             scan_outputs.append(scan_output[:, :, 0])
 
-            # Calculate the knockout input state (C_T * A_(T:t) * B_(t) * x_t)
-            # if knockout_idx is not None:
-            #     if i >= knockout_idx:
-            #         knockout_input_state = discrete_A[:, :, i, :] * knockout_input_state + deltaB_u[:, :, i, :]
-        
         final_state = torch.matmul(final_state.to(dtype), C[:, i, :].unsqueeze(-1))  # [batch, intermediade_size, 1]
         scan_output[-1] = final_state
         scan_output = torch.stack(scan_outputs, dim=-1)                                # [batch, seq_len, intermediade_size]

@@ -6,14 +6,15 @@ from typing import Optional, Callable
 
 
 class SSMInterfereHook(Callable):
-    def __init__(self, layer: int | str | nn.Module, knockout_type: KnockoutMode, knockout_idx: int):
+    def __init__(self, layer: int | str | nn.Module, knockout_type: KnockoutMode):
         self.counter = 0
         self.layer = layer
         self.knockout_type = knockout_type
-        self.knockout_idx = knockout_idx
+        self.knockout_start_idx = -1
+        self.knockout_end_idx = -1
 
     def hook(self, module: nn.Module, inp: Tensor, out: Tensor) -> Optional[Tensor]:
-        curr_out = slow_forward_for_ssm_materializing_knockout(module, inp[0], knockout_idx=self.knockout_idx, knockout_mode=self.knockout_type)
+        curr_out = slow_forward_for_ssm_materializing_knockout(module, inp[0], knockout_start_idx=self.knockout_start_idx, knockout_end_idx=self.knockout_end_idx, knockout_mode=self.knockout_type)
         return curr_out
         
     def __call__(self, module: nn.Module, inp: Tensor, out: Tensor) -> Optional[Tensor]:

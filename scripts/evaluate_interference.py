@@ -11,22 +11,28 @@ from src.hooks import SSMInterfereHook
 from src.updates_ssm_ops import KnockoutMode
 import plotly.express as px
 from argparse import ArgumentParser
+from typing import Tuple
+
 
 def get_args():
     parser = ArgumentParser()
     parser.add_argument("--model_size", type=str, choices={'130M', '2.8B'}, default="130M")
-    parser.add_argument("--interfere_mode", type=str, choices={'ZERO_ATTENTION', 'ZERO_DELTA'}, default="ZERO_ATTENTION")
+    parser.add_argument("--interfere_mode", type=str, choices={'ZERO_ATTENTION', 'ZERO_DELTA', 'DROP_TOKEN'}, default="ZERO_ATTENTION")
     return parser.parse_args()
 
 
-def get_subj_idx(input: str, subj: str, tokenizer: AutoTokenizer, last: bool = True):
+def get_subj_idx(input: str, subj: str, tokenizer: AutoTokenizer) -> Tuple[int,int]:
     prefix = input.split(subj)[0]
     sent2subj = prefix
-    if last:
-        sent2subj = prefix + subj
-        
+    
+    if prefix == "":
+        sent2subj = subj
+    else:
+        sent2subj = prefix + ' ' + subj
+
     sent2subj_tokens = tokenizer(sent2subj)["input_ids"]
-    return len(sent2subj_tokens) - 1
+    prefix_tokens = tokenizer(prefix)["input_ids"]
+    return (len(prefix_tokens) - 1, len(sent2subj_tokens) - 1)
 
 
 def main(model_size: str = "2.8B", interefere_mode: KnockoutMode = KnockoutMode.ZERO_ATTENTION):
@@ -56,7 +62,7 @@ def main(model_size: str = "2.8B", interefere_mode: KnockoutMode = KnockoutMode.
 
             moi = model.backbone.layers[i].mixer
 
-            hook = SSMInterfereHook(i, interefere_mode, -1)
+            hook = SSMInterfereHook(i, interefere_mode)
             
             handle = moi.register_forward_hook(hook)
 
@@ -67,9 +73,12 @@ def main(model_size: str = "2.8B", interefere_mode: KnockoutMode = KnockoutMode.
                 target = knowns_df.loc[idx, "attribute"]
                 subj = knowns_df.loc[idx, "subject"]
 
+
                 # set subject token as knockout idx
-                subj_token = get_subj_idx(input, subj, tokenizer)
-                hook.knockout_idx = subj_token
+                out = get_subj_idx(input, subj, tokenizer)
+                start_idx, end_idx = out
+                hook.knockout_start_idx = start_idx
+                hook.knockout_end_idx = end_idx
 
                 input_ids = tokenizer(input, return_tensors="pt")["input_ids"].to(device)
                 out = model(input_ids)
@@ -92,3 +101,4 @@ def main(model_size: str = "2.8B", interefere_mode: KnockoutMode = KnockoutMode.
 if __name__ == "__main__":
     args = get_args()
     main(args.model_size, KnockoutMode[args.interfere_mode])
+    

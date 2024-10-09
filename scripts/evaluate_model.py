@@ -11,12 +11,22 @@ def get_args():
     parser = ArgumentParser()
     parser.add_argument("--model_size", type=str, choices={'130M', '2.8B'}, default="130M")
     parser.add_argument("--drop_subject", action='store_true')
+    parser.add_argument("--drop_subject_last_token", action='store_true')
     
     return parser.parse_args()
 
 
+def get_subj_idx(input: str, subj: str, tokenizer: AutoTokenizer, last: bool = True):
+    prefix = input.split(subj)[0]
+    sent2subj = prefix
+    if last:
+        sent2subj = prefix + subj
+        
+    sent2subj_tokens = tokenizer(sent2subj)["input_ids"]
+    return len(sent2subj_tokens) - 1
 
-def main(model_size: str = "2.8B", drop_subject: bool = False):
+
+def main(model_size: str = "2.8B", drop_subject: bool = False, drop_subj_last_token: bool = False):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     if not Path("known_1000.json").exists():
         wget.download("https://rome.baulab.info/data/dsets/known_1000.json")
@@ -41,8 +51,16 @@ def main(model_size: str = "2.8B", drop_subject: bool = False):
 
             if drop_subject:
                 input = input.replace(knowns_df.loc[idx, "subject"], '')
+            elif drop_subj_last_token:
+                subj_idx = get_subj_idx(input, knowns_df.loc[idx, "subject"], tokenizer)
 
-            input_ids = tokenizer(input, return_tensors="pt")["input_ids"].to(device)
+            input_ids = tokenizer(input)["input_ids"]
+
+            if drop_subj_last_token:
+                input_ids = input_ids[:subj_idx] + input_ids[subj_idx+1:]
+
+            input_ids = torch.Tensor([input_ids]).long().to(device)
+
             # print the id of subj_tokens
             
             out = model(input_ids)
@@ -58,4 +76,5 @@ def main(model_size: str = "2.8B", drop_subject: bool = False):
 
 if __name__ == "__main__":
     args = get_args()
+    assert not (args.drop_subject and args.drop_subject_last_token)
     main(args.model_size, args.drop_subject)
