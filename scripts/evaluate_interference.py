@@ -35,6 +35,52 @@ def get_subj_idx(input: str, subj: str, tokenizer: AutoTokenizer) -> Tuple[int,i
     return (len(prefix_tokens) - 1, len(sent2subj_tokens) - 1)
 
 
+
+def knockout_eval(model, tokenizer, knowns_df, device, interefere_mode: KnockoutMode, layer_indices):
+    acc = 0
+    hooks = []
+    handles = []
+
+    # set up hooks
+    for i in range(len(model.backbone.layers)):
+        moi = model.backbone.layers[i].mixer
+
+        hooks.append(SSMInterfereHook(i, interefere_mode))
+        
+        handles.append(moi.register_forward_hook(hooks[-1]))
+
+    # Evaluate model
+    pbar = tqdm(knowns_df.index, total=len(knowns_df), disable=True)
+    for idx in pbar:
+        # Get relevant data
+        input = knowns_df.loc[idx, "prompt"]
+        target = knowns_df.loc[idx, "attribute"]
+        subj = knowns_df.loc[idx, "subject"]
+
+        # set subject token as knockout idx
+        out = get_subj_idx(input, subj, tokenizer)
+        start_idx, end_idx = out
+        for hook in hooks:
+            hook.knockout_start_idx = start_idx
+            hook.knockout_end_idx = end_idx
+
+        input_ids = tokenizer(input, return_tensors="pt")["input_ids"].to(device)
+        out = model(input_ids)
+
+        # get last decoded word
+        decoded = tokenizer.decode(out.logits.argmax(dim=-1).squeeze())
+        last_word = decoded.split(' ')[-1]
+
+        # Update performance
+        acc += float(last_word == target[:len(last_word)]) / len(knowns_df)
+    
+    # remove hooks
+    for handle in handles:
+        handle.remove()
+
+    return acc
+
+
 def main(model_size: str = "2.8B", interefere_mode: KnockoutMode = KnockoutMode.ZERO_ATTENTION):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     if not Path("known_1000.json").exists():
@@ -52,46 +98,19 @@ def main(model_size: str = "2.8B", interefere_mode: KnockoutMode = KnockoutMode.
 
     knowns_df['model_correct'] = False
 
-
-
     with torch.no_grad():
-        layers_pbar = tqdm(range(len(model.backbone.layers)))
-        for i in layers_pbar:
-            performance['acc'].append(0)
+        # evaluate every single layer
+        for i in tqdm(range(len(model.backbone.layers)), desc="Iterating layers for knockout..."):
+            continue
+            acc = knockout_eval(model, tokenizer, knowns_df, device, interefere_mode, [i])
             performance['layer'].append(i)
+            performance['acc'].append(acc)
+        
+        # evaluate all layers at once
+        acc = knockout_eval(model, tokenizer, knowns_df, device, interefere_mode, list(range(len(model.backbone.layers))))
+        performance['layer'].append(len(model.backbone.layers))
+        performance['acc'].append(acc)
 
-            moi = model.backbone.layers[i].mixer
-
-            hook = SSMInterfereHook(i, interefere_mode)
-            
-            handle = moi.register_forward_hook(hook)
-
-            pbar = tqdm(knowns_df.index, total=len(knowns_df), disable=True)
-            for idx in pbar:
-                # Get relevant data
-                input = knowns_df.loc[idx, "prompt"]
-                target = knowns_df.loc[idx, "attribute"]
-                subj = knowns_df.loc[idx, "subject"]
-
-
-                # set subject token as knockout idx
-                out = get_subj_idx(input, subj, tokenizer)
-                start_idx, end_idx = out
-                hook.knockout_start_idx = start_idx
-                hook.knockout_end_idx = end_idx
-
-                input_ids = tokenizer(input, return_tensors="pt")["input_ids"].to(device)
-                out = model(input_ids)
-
-                # get last decoded word
-                decoded = tokenizer.decode(out.logits.argmax(dim=-1).squeeze())
-                last_word = decoded.split(' ')[-1]
-
-                # Update performance
-                performance['acc'][-1] += float(last_word == target[:len(last_word)]) / len(knowns_df)
-
-            print(performance['acc'][-1], i)
-            handle.remove()
     
     df = pd.DataFrame(performance)
     px.line(data_frame=df, x='layer', y='acc', title='Accuracy per layer').write_html("ssm_interference_subject.html")
