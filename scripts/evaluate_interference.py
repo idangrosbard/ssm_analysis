@@ -35,7 +35,7 @@ def get_subj_idx(input: str, subj: str, tokenizer: AutoTokenizer) -> Tuple[int,i
 
     sent2subj_tokens = tokenizer(sent2subj)["input_ids"]
     prefix_tokens = tokenizer(prefix)["input_ids"]
-    return (len(prefix_tokens) - 1, len(sent2subj_tokens) - 1)
+    return (len(prefix_tokens), len(sent2subj_tokens))
 
 
 def choose_knockout_target(input: str, subj: str, tokenizer: AutoTokenizer, target: str) -> Tuple[int,int]:
@@ -45,15 +45,15 @@ def choose_knockout_target(input: str, subj: str, tokenizer: AutoTokenizer, targ
         first, last = get_subj_idx(input, subj, tokenizer)
         return last
     elif target == 'FIRST':
-        return (0, 0)
+        return (0, 1)
     elif target == 'LAST':
-        return (len(tokenizer(input)["input_ids"]) - 1, len(tokenizer(input)["input_ids"]) - 1)
+        return (len(tokenizer(input)["input_ids"]) - 1, len(tokenizer(input)["input_ids"]))
     elif target == 'RANDOM':
-        first = random.randint(0, len(tokenizer(input)["input_ids"]) - 1)
+        first = random.randint(0, len(tokenizer(input)["input_ids"]))
         return (first, first)
     elif target == 'RANDOM_SPAN':
-        first = random.randint(0, len(tokenizer(input)["input_ids"]) - 1)
-        last = random.randint(0, len(tokenizer(input)["input_ids"]) - 1)
+        first = random.randint(0, len(tokenizer(input)["input_ids"]))
+        last = random.randint(0, len(tokenizer(input)["input_ids"]))
         return min(first, last), max(first, last)
 
 
@@ -72,7 +72,7 @@ def knockout_eval(model, tokenizer, knowns_df, device, interefere_mode: Knockout
             handles.append(moi.register_forward_hook(hooks[-1]))
 
     # Evaluate model
-    pbar = tqdm(knowns_df.index, total=len(knowns_df))
+    pbar = tqdm(knowns_df.index, total=len(knowns_df), disable=True)
     for idx in pbar:
         # Get relevant data
         input = knowns_df.loc[idx, "prompt"]
@@ -142,7 +142,7 @@ def main_binary_search(model_size: str = "2.8B", interefere_mode: KnockoutMode =
             performance['layer'].append(str(late))
             performance['acc'].append(acc_late)
             
-            if acc_early > acc_late:
+            if acc_early < acc_late:
                 knockout_target_layers = early
             else:
                 knockout_target_layers = late
