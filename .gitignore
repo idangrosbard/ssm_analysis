@@ -163,3 +163,12 @@ cython_debug/
 
 **/*.html
 **/*.json
+/.idea/inspectionProfiles/profiles_settings.xml
+/.idea/inspectionProfiles/Project_Default.xml
+/.idea/.gitignore
+/.idea/git_toolbox_blame.xml
+/.idea/jupyter-settings.xml
+/.idea/misc.xml
+/.idea/modules.xml
+/.idea/ssm_analysis.iml
+/.idea/vcs.xml
