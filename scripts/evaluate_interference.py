@@ -15,13 +15,14 @@ from typing import Tuple
 import random
 import numpy as np
 import plotly.graph_objects as go
+from src.updates_ssm_ops import KnockoutMode, KnockoutTarget
 
 
 def get_args():
     parser = ArgumentParser()
     parser.add_argument("--model_size", type=str, choices={'130M', '2.8B'}, default="130M")
-    parser.add_argument("--interfere_mode", type=str, choices={'ZERO_ATTENTION', 'ZERO_DELTA', 'DROP_TOKEN'}, default="ZERO_ATTENTION")
-    parser.add_argument("--interfere_target", type=str, choices={'ENTIRE_SUBJ', 'SUBJ_LAST', 'FIRST', 'LAST', 'RANDOM', 'RANDOM_SPAN'}, default="ENTIRE_SUBJ")
+    parser.add_argument("--interfere_mode", type=str, choices={str(mode) for mode in KnockoutMode}, default="ZERO_ATTENTION")
+    parser.add_argument("--interfere_target", type=str, choices={str(target) for target in KnockoutTarget}, default="ENTIRE_SUBJ")
     return parser.parse_args()
 
 
@@ -39,24 +40,35 @@ def get_subj_idx(input: str, subj: str, tokenizer: AutoTokenizer) -> Tuple[int,i
     return (len(prefix_tokens), len(sent2subj_tokens))
 
 
-def choose_knockout_target(input: str, subj: str, tokenizer: AutoTokenizer, target: str) -> Tuple[int,int]:
-    if target == 'ENTIRE_SUBJ':
+def choose_knockout_target(input: str, subj: str, tokenizer: AutoTokenizer, target: KnockoutTarget) -> Tuple[int,int]:
+    if target == KnockoutTarget.ENTIRE_SUBJ:
         return get_subj_idx(input, subj, tokenizer)
-    elif target == 'SUBJ_LAST':
+    elif target == KnockoutTarget.SUBJ_LAST:
         first, last = get_subj_idx(input, subj, tokenizer)
         return (last, last + 1)
-    elif target == 'FIRST':
+    elif target == KnockoutTarget.FIRST:
         return (0, 1)
-    elif target == 'LAST':
+    elif target == KnockoutTarget.LAST:
         return (len(tokenizer(input)["input_ids"]) - 1, len(tokenizer(input)["input_ids"]))
-    elif target == 'RANDOM':
+    elif target == KnockoutTarget.RANDOM:
         # TODO remove the subject from the possible choices
         first = random.randint(0, len(tokenizer(input)["input_ids"]))
         return (first, first + 1)
-    elif target == 'RANDOM_SPAN':
+    elif target == KnockoutTarget.RANDOM_SPAN:
         first = random.randint(0, len(tokenizer(input)["input_ids"]))
         last = random.randint(0, len(tokenizer(input)["input_ids"]))
         return min(first, last), max(first, last) + 1
+    
+
+def plot_performance(performance: pd.DataFrame):
+    
+    fig = go.Figure()
+    color = {KnockoutTarget.ENTIRE_SUBJ: 'red', KnockoutTarget.SUBJ_LAST: 'blue', KnockoutTarget.FIRST: 'green', KnockoutTarget.LAST: 'yellow', KnockoutTarget.RANDOM: 'purple', KnockoutTarget.RANDOM_SPAN: 'orange'}
+    for target in performance['target'].unique():
+        curr = performance[performance['target'] == target]
+        fig.add_trace(go.Scatter(x=curr['layer'], y=curr['acc'], mode='lines+markers', color=color[target], name=str(target)))
+    
+    fig.write_html("ssm_interference_subject.html")
 
 
 def knockout_eval(model, tokenizer, knowns_df, device, interefere_mode: KnockoutMode, layer_indices, interfere_target):
@@ -106,7 +118,7 @@ def knockout_eval(model, tokenizer, knowns_df, device, interefere_mode: Knockout
     return acc
 
 
-def main_binary_search(model_size: str = "2.8B", interefere_mode: KnockoutMode = KnockoutMode.ZERO_ATTENTION, interefere_target: str = 'ENTIRE_SUBJ'):
+def main_binary_search(model_size: str = "2.8B", interefere_mode: KnockoutMode = KnockoutMode.ZERO_ATTENTION, interefere_target: KnockoutTarget = KnockoutTarget.ENTIRE_SUBJ):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     if not Path("known_1000.json").exists():
         wget.download("https://rome.baulab.info/data/dsets/known_1000.json")
@@ -156,13 +168,11 @@ def main_binary_search(model_size: str = "2.8B", interefere_mode: KnockoutMode =
                 knockout_target_layers = late
     
     df = pd.DataFrame(performance)
-    print(df)
-    df.to_csv("ssm_interference_subject.csv")
-    fig = go.Figure()
-    fig.add_trace(go.Scatter(x=df['layer'], y=df['acc'], mode='lines+markers', color='red'))
+    
+    return df
 
 
-def main(model_size: str = "2.8B", interefere_mode: KnockoutMode = KnockoutMode.ZERO_ATTENTION, interefere_target: str = 'ENTIRE_SUBJ'):
+def main(model_size: str = "2.8B", interefere_mode: KnockoutMode = KnockoutMode.ZERO_ATTENTION, interefere_target: KnockoutTarget = KnockoutTarget.ENTIRE_SUBJ):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     if not Path("known_1000.json").exists():
         wget.download("https://rome.baulab.info/data/dsets/known_1000.json")
@@ -202,8 +212,16 @@ def main(model_size: str = "2.8B", interefere_mode: KnockoutMode = KnockoutMode.
         fig.add_trace(go.Scatter(x=curr['x'], y=curr['acc'], mode='lines+markers', name=f'Layer {layer}', color='red'))
     fig.write_html("ssm_interference_subject.html")
 
+
 if __name__ == "__main__":
     args = get_args()
-    main_binary_search(args.model_size, KnockoutMode[args.interfere_mode], args.interfere_target)
-    main(args.model_size, KnockoutMode[args.interfere_mode], args.interfere_target)
+    dfs = []
+    for target in KnockoutTarget:
+        dfs.append(main_binary_search(args.model_size, KnockoutMode[args.interfere_mode], target))
+        dfs[-1]['target'] = str(target)
+    
+    df = pd.concat(dfs)
+    df.to_csv("ssm_interference_subject.csv")
+
+    # main(args.model_size, KnockoutMode[args.interfere_mode], KnockoutTarget[args.interfere_target])
     
