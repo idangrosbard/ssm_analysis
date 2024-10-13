@@ -21,8 +21,8 @@ from src.updates_ssm_ops import KnockoutMode, KnockoutTarget
 def get_args():
     parser = ArgumentParser()
     parser.add_argument("--model_size", type=str, choices={'130M', '2.8B'}, default="130M")
-    parser.add_argument("--interfere_mode", type=str, choices={str(mode) for mode in KnockoutMode}, default="ZERO_ATTENTION")
-    parser.add_argument("--interfere_target", type=str, choices={str(target) for target in KnockoutTarget}, default="ENTIRE_SUBJ")
+    parser.add_argument("--interfere_mode", type=str, choices={str(mode).split('.')[1] for mode in KnockoutMode}, default="ZERO_ATTENTION")
+    parser.add_argument("--interfere_target", type=str, choices={str(target).split('.')[1] for target in KnockoutTarget}, default="ENTIRE_SUBJ")
     return parser.parse_args()
 
 
