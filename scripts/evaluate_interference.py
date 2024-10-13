@@ -14,6 +14,7 @@ from argparse import ArgumentParser
 from typing import Tuple
 import random
 import numpy as np
+import plotly.graph_objects as go
 
 
 def get_args():
@@ -43,18 +44,19 @@ def choose_knockout_target(input: str, subj: str, tokenizer: AutoTokenizer, targ
         return get_subj_idx(input, subj, tokenizer)
     elif target == 'SUBJ_LAST':
         first, last = get_subj_idx(input, subj, tokenizer)
-        return last
+        return (last, last + 1)
     elif target == 'FIRST':
         return (0, 1)
     elif target == 'LAST':
         return (len(tokenizer(input)["input_ids"]) - 1, len(tokenizer(input)["input_ids"]))
     elif target == 'RANDOM':
+        # TODO remove the subject from the possible choices
         first = random.randint(0, len(tokenizer(input)["input_ids"]))
-        return (first, first)
+        return (first, first + 1)
     elif target == 'RANDOM_SPAN':
         first = random.randint(0, len(tokenizer(input)["input_ids"]))
         last = random.randint(0, len(tokenizer(input)["input_ids"]))
-        return min(first, last), max(first, last)
+        return min(first, last), max(first, last) + 1
 
 
 def knockout_eval(model, tokenizer, knowns_df, device, interefere_mode: KnockoutMode, layer_indices, interfere_target):
@@ -117,7 +119,7 @@ def main_binary_search(model_size: str = "2.8B", interefere_mode: KnockoutMode =
 
     model.eval()
 
-    performance = {'acc': [], 'layer': []}
+    performance = {'acc': [], 'layer': [], 'start_layer': [], 'end_layer': []}
 
     knowns_df['model_correct'] = False
 
@@ -125,6 +127,8 @@ def main_binary_search(model_size: str = "2.8B", interefere_mode: KnockoutMode =
     
     acc = knockout_eval(model, tokenizer, knowns_df, device, interefere_mode, knockout_target_layers, interefere_target)
     performance['layer'].append(str(knockout_target_layers))
+    performance['start_layer'].append(min(knockout_target_layers))
+    performance['end_layer'].append(max(knockout_target_layers))
     performance['acc'].append(acc)
 
     # log(n) binary search
@@ -138,9 +142,13 @@ def main_binary_search(model_size: str = "2.8B", interefere_mode: KnockoutMode =
             acc_early = knockout_eval(model, tokenizer, knowns_df, device, interefere_mode, early, interefere_target)
             performance['layer'].append(str(early))
             performance['acc'].append(acc_early)
+            performance['start_layer'].append(min(early))
+            performance['end_layer'].append(max(early))
             acc_late = knockout_eval(model, tokenizer, knowns_df, device, interefere_mode, late, interefere_target)
             performance['layer'].append(str(late))
             performance['acc'].append(acc_late)
+            performance['start_layer'].append(min(late))
+            performance['end_layer'].append(max(late))
             
             if acc_early < acc_late:
                 knockout_target_layers = early
@@ -150,6 +158,8 @@ def main_binary_search(model_size: str = "2.8B", interefere_mode: KnockoutMode =
     df = pd.DataFrame(performance)
     print(df)
     df.to_csv("ssm_interference_subject.csv")
+    fig = go.Figure()
+    fig.add_trace(go.Shape(x=df['layer'], y=df['acc'], mode='lines+markers'))
 
 
 def main(model_size: str = "2.8B", interefere_mode: KnockoutMode = KnockoutMode.ZERO_ATTENTION, interefere_target: str = 'ENTIRE_SUBJ'):
@@ -184,9 +194,13 @@ def main(model_size: str = "2.8B", interefere_mode: KnockoutMode = KnockoutMode.
 
     
     df = pd.DataFrame(performance)
-    px.line(data_frame=df, x='layer', y='acc', title='Accuracy per layer').write_html("ssm_interference_subject.html")
-
-
+    df.to_csv("ssm_interference_subject.csv")
+    long = df.melt(id_vars=['layer', 'acc'], var_name='mode', value_name='x')
+    fig = go.Figure()
+    for layer in long['layer'].unique():
+        curr = long[long['layer'] == layer]
+        fig.add_trace(go.Scatter(x=curr['x'], y=curr['acc'], mode='lines+markers', name=f'Layer {layer}', color='red'))
+    fig.write_html("ssm_interference_subject.html")
 
 if __name__ == "__main__":
     args = get_args()
