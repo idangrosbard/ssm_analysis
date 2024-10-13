@@ -159,7 +159,7 @@ def main_binary_search(model_size: str = "2.8B", interefere_mode: KnockoutMode =
     print(df)
     df.to_csv("ssm_interference_subject.csv")
     fig = go.Figure()
-    fig.add_trace(go.Shape(x=df['layer'], y=df['acc'], mode='lines+markers'))
+    fig.add_trace(go.Scatter(x=df['layer'], y=df['acc'], mode='lines+markers', color='red'))
 
 
 def main(model_size: str = "2.8B", interefere_mode: KnockoutMode = KnockoutMode.ZERO_ATTENTION, interefere_target: str = 'ENTIRE_SUBJ'):
