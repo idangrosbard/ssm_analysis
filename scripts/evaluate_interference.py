@@ -221,6 +221,7 @@ if __name__ == "__main__":
         dfs[-1]['target'] = str(target)
     
     df = pd.concat(dfs)
+    plot_performance(df)
     df.to_csv("ssm_interference_subject.csv")
 
     # main(args.model_size, KnockoutMode[args.interfere_mode], KnockoutTarget[args.interfere_target])
