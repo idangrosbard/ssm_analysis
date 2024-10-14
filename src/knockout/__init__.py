@@ -2,3 +2,4 @@ from .knockout_mode import KnockoutMode
 from .knockout_target import KnockoutTarget
 from .mamba_mixer_knockout import slow_forward_for_ssm_materializing_knockout
 from .ssm_interfere import SSMInterfereHook
+from .knockout_target_calc import choose_knockout_target, is_last_token_subj
