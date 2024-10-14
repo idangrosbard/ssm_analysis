@@ -172,3 +172,5 @@ cython_debug/
 /.idea/modules.xml
 /.idea/ssm_analysis.iml
 /.idea/vcs.xml
+*.csv
+**/*.csv

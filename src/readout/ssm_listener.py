@@ -1,4 +1,4 @@
-from ..updates_ssm_ops import slow_forward_for_ssm_materializing_listener
+from .mamba_mixer_listener import slow_forward_for_ssm_materializing_listener
 from ..metrics.ssm.ssm_metric import SSMMetric
 from torch import nn, Tensor
 from typing import Optional

@@ -2,7 +2,7 @@ import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from transformers import AutoTokenizer, MambaModel
-from src.hooks import SSMListenerHook, summarized_hooks2df, values_hooks2df
+from src.readout import SSMListenerHook, summarized_hooks2df, values_hooks2df
 from src.metrics import SSMOperatorVariances, SSMOperatorEntropy, AllSSMMatricesMetrics, SSMOperatorValueMap
 import torch
 import plotly.express as px
@@ -17,11 +17,9 @@ def get_args():
 
 
 def _plot_summarized(df: pd.DataFrame):
-    print(df)
     return px.line(data_frame=df, x='layer', y='entropy', color='matrix_type', title='Entropy per layer')
 
 def _plot_values(df: pd.DataFrame):
-    print(df)
     for mat_type in df['matrix_type'].unique():
         yield (mat_type, px.scatter_3d(data_frame=df[df['matrix_type'] == mat_type], x='T_1', y='T_2', z='value', color='DN', title='matrix_value'))
 

@@ -7,15 +7,13 @@ from transformers import AutoTokenizer, MambaForCausalLM
 import torch
 from tqdm import tqdm
 from pathlib import Path
-from src.hooks import SSMInterfereHook
-from src.updates_ssm_ops import KnockoutMode
+from src.knockout import KnockoutMode, KnockoutTarget, SSMInterfereHook
 import plotly.express as px
 from argparse import ArgumentParser
 from typing import Tuple
 import random
 import numpy as np
 import plotly.graph_objects as go
-from src.updates_ssm_ops import KnockoutMode, KnockoutTarget
 
 
 def get_args():
@@ -79,6 +77,7 @@ def knockout_eval(model, tokenizer, knowns_df, device, interefere_mode: Knockout
     # set up hooks
     for i in range(len(model.backbone.layers)):
         if i in layer_indices:
+            # "mixer of interest" - moi
             moi = model.backbone.layers[i].mixer
 
             hooks.append(SSMInterfereHook(i, interefere_mode))
@@ -94,7 +93,6 @@ def knockout_eval(model, tokenizer, knowns_df, device, interefere_mode: Knockout
         subj = knowns_df.loc[idx, "subject"]
 
         # set subject token as knockout idx
-        out = get_subj_idx(input, subj, tokenizer)
         out = choose_knockout_target(input, subj, tokenizer, interfere_target)
         start_idx, end_idx = out
         for hook in hooks:
@@ -123,7 +121,6 @@ def main_binary_search(model_size: str = "2.8B", interefere_mode: KnockoutMode =
     if not Path("known_1000.json").exists():
         wget.download("https://rome.baulab.info/data/dsets/known_1000.json")
     knowns_df = pd.read_json("known_1000.json").set_index('known_id')
-    print(knowns_df)
 
     tokenizer = AutoTokenizer.from_pretrained(f"state-spaces/mamba-{model_size}-hf")
     model = MambaForCausalLM.from_pretrained(f"state-spaces/mamba-{model_size}-hf")
@@ -145,17 +142,24 @@ def main_binary_search(model_size: str = "2.8B", interefere_mode: KnockoutMode =
 
     # log(n) binary search
     n = len(knockout_target_layers)
-    log_n = np.log2(n)
+    log_n = np.ceil(np.log2(n))
+    
 
     with torch.no_grad():
         for _ in tqdm(range(int(log_n)), desc='Binary search for optimal layer'):
-            early = knockout_target_layers[:len(knockout_target_layers) // 2]
-            late = knockout_target_layers[len(knockout_target_layers) // 2:]
+            if (len(knockout_target_layers) // 2) < (len(knockout_target_layers) / 2):
+                early = knockout_target_layers[:len(knockout_target_layers) // 2 + 1]
+                late = knockout_target_layers[len(knockout_target_layers) // 2:]
+            else:
+                early = knockout_target_layers[:len(knockout_target_layers) // 2]
+                late = knockout_target_layers[len(knockout_target_layers) // 2:]
+
             acc_early = knockout_eval(model, tokenizer, knowns_df, device, interefere_mode, early, interefere_target)
             performance['layer'].append(str(early))
             performance['acc'].append(acc_early)
             performance['start_layer'].append(min(early))
             performance['end_layer'].append(max(early))
+
             acc_late = knockout_eval(model, tokenizer, knowns_df, device, interefere_mode, late, interefere_target)
             performance['layer'].append(str(late))
             performance['acc'].append(acc_late)
@@ -177,7 +181,6 @@ def main(model_size: str = "2.8B", interefere_mode: KnockoutMode = KnockoutMode.
     if not Path("known_1000.json").exists():
         wget.download("https://rome.baulab.info/data/dsets/known_1000.json")
     knowns_df = pd.read_json("known_1000.json").set_index('known_id')
-    print(knowns_df)
 
     tokenizer = AutoTokenizer.from_pretrained(f"state-spaces/mamba-{model_size}-hf")
     model = MambaForCausalLM.from_pretrained(f"state-spaces/mamba-{model_size}-hf")
@@ -218,11 +221,10 @@ if __name__ == "__main__":
     dfs = []
     for target in KnockoutTarget:
         dfs.append(main_binary_search(args.model_size, KnockoutMode[args.interfere_mode], target))
-        dfs[-1]['target'] = str(target)
+        dfs[-1]['target'] = target
     
     df = pd.concat(dfs)
-    plot_performance(df)
     df.to_csv("ssm_interference_subject.csv")
-
+    plot_performance(df)
     # main(args.model_size, KnockoutMode[args.interfere_mode], KnockoutTarget[args.interfere_target])
     

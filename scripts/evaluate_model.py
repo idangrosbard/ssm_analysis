@@ -31,7 +31,6 @@ def main(model_size: str = "2.8B", drop_subject: bool = False, drop_subj_last_to
     if not Path("known_1000.json").exists():
         wget.download("https://rome.baulab.info/data/dsets/known_1000.json")
     knowns_df = pd.read_json("known_1000.json").set_index('known_id')
-    print(knowns_df)
 
     tokenizer = AutoTokenizer.from_pretrained(f"state-spaces/mamba-{model_size}-hf")
     model = MambaForCausalLM.from_pretrained(f"state-spaces/mamba-{model_size}-hf")

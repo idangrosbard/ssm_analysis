@@ -3,7 +3,7 @@ from ..matrix.matrix_metric import MatrixMetric
 import numpy as np
 from typing import Dict
 from torch import Tensor
-from ...ssm_materialization import materialize_ssm_attention, materialize_ssm_transition, materialize_ssm_bc
+from .materialize import materialize_ssm_attention, materialize_ssm_transition, materialize_ssm_bc
 
 
 class AllSSMMatricesMetrics(SSMMetric):
