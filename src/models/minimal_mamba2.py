@@ -122,7 +122,8 @@ class Mamba2LMHeadModel(nn.Module):
         return model
 
     def forward(
-            self, input_ids: LongTensor, h: list[InferenceCache] | list[None] | None = None
+            self, input_ids: LongTensor, h: list[InferenceCache] | list[None] | None = None,
+            with_chunk_handling: bool = False
     ) -> tuple[LongTensor, list[InferenceCache]]:
         """
         Arguments
@@ -136,6 +137,19 @@ class Mamba2LMHeadModel(nn.Module):
             logits: (batch, seqlen, vocab_size)
             h: updated inference cache after processing `input_ids`
         """
+        if with_chunk_handling:
+            prefix, input_ids = input_ids[:-1], input_ids[-1:].unsqueeze(0)
+            n_chunked = (prefix.shape[0] // self.args.chunk_size) * self.args.chunk_size
+            if n_chunked > 0:
+                _, h = self(prefix[:n_chunked].unsqueeze(0), None)
+            else:
+                h = [
+                    InferenceCache.alloc(1, self.args, device=self.device)
+                    for _ in range(self.args.n_layer)
+                ]
+            for i in range(n_chunked, prefix.shape[0]):
+                _, h = self(prefix[i: i + 1].unsqueeze(0), h)
+
         seqlen = input_ids.shape[1]
 
         if h is None:
