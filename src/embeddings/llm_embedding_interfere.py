@@ -13,20 +13,24 @@ class LLMEmbeddingInterefere(Callable):
     def hook(self, module: nn.Module, inp: Tensor, out: Tensor) -> Optional[Tensor]:
         # project to token space
         token_logits = out @ self.E.T
-        # print(token_logits.shape)
 
         # gather top k closest tokens
         top_k_logits = torch.topk(token_logits, self.k_closest, dim=-1).values
-        thresholds = torch.min(top_k_logits[:, -1], dim=-1).values
+        thresholds = torch.min(top_k_logits, dim=-1, keepdim=True).values
 
-        token_logits[token_logits < thresholds] = 0
+        use_softmax = False
+        if use_softmax:
+          token_logits[token_logits < thresholds] = -float('inf')
 
-        # normalize to get a distribution
-        distribution = torch.softmax(token_logits, dim=-1)
-        # print(distribution.shape)
+          # normalize to get a distribution
+          distribution = torch.softmax(token_logits, dim=-1)
+        else:
+          token_logits[token_logits < thresholds] = 0
+          distribution = token_logits
 
         # project back to embedding space
-        return distribution @ self.E
+        new_out = distribution @ self.E
+        return new_out
 
         
     def __call__(self, module: nn.Module, inp: Tensor, out: Tensor) -> Optional[Tensor]:

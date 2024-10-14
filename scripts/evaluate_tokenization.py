@@ -18,6 +18,7 @@ from typing import Iterable
 def get_args():
     parser = ArgumentParser()
     parser.add_argument("--model_size", type=str, choices={'130M', '2.8B'}, default="130M")
+    parser.add_argument("--power", type=int, default=10)
     return parser.parse_args()
 
 
@@ -30,7 +31,7 @@ def tokenize_eval(model: MambaForCausalLM, tokenizer: AutoTokenizer, knowns_df: 
     E = model.backbone.embeddings.weight
     for i in range(len(model.backbone.layers)):
         if i in layer_indices:
-            # "mixer of interest" - moi
+            # "module of interest" - moi (mixer or layer?)
             moi = model.backbone.layers[i].mixer
 
             hooks.append(LLMEmbeddingInterefere(i, E, n_tokens))
@@ -89,9 +90,9 @@ def log_scale_k_closest_search(model_size: str, k: int):
             performance['acc'].append(acc)
             performance['k'].append(k)
 
-            k = k // 2
-
             pbar.set_description(f'k: {k}, acc: {acc}')
+
+            k = k // 2
             
     df = pd.DataFrame(performance)
     
@@ -201,7 +202,7 @@ def main(model_size: str = "2.8B"):
 if __name__ == "__main__":
     args = get_args()
 
-    df = log_scale_k_closest_search(args.model_size, 2 ** 10)
+    df = log_scale_k_closest_search(args.model_size, 2 ** args.power)
     
     df.to_csv("ssm_tokenize.csv")
     # main(args.model_size, KnockoutMode[args.interfere_mode], KnockoutTarget[args.interfere_target])
