@@ -72,6 +72,8 @@ def choose_knockout_target(input: str, subj: str, tokenizer: AutoTokenizer, targ
         return random_non_subj(input, subj, tokenizer, single_token=True)
     elif target == KnockoutTarget.RANDOM_SPAN:
         return random_non_subj(input, subj, tokenizer, single_token=False)
+    elif target == KnockoutTarget.ALL_CONTEXT:
+        return (0, len(tokenizer(input)["input_ids"]) - 1)
 
 
 def is_last_token_subj(input: str, subj: str, tokenizer: AutoTokenizer) -> Tuple[int,int]:

@@ -74,36 +74,40 @@ def slow_forward_for_ssm_materializing_knockout(module, input_states, cache_para
     deltaB_u = discrete_B * hidden_states[:, :, :, None].float()
 
     # 3.c perform the recurrence y ← SSM(A, B, C)(x)
-    if False and (module.use_mambapy and module.training and cache_params is None):
+    # if False and (module.use_mambapy and module.training and cache_params is None):
         # hs = pscan(discrete_A.transpose(1, 2), deltaB_u.transpose(1, 2)) # [batch, seq_len, intermediate_size, ssm_state_size]
 
         # scan_output = (hs @ C.unsqueeze(-1)).squeeze(3).transpose(1, 2) # [batch, intermediate_size, seq_len]
         # scan_output = scan_output + hidden_states * module.D[None, :, None]
         # scan_output = scan_output * module.act(gate)
-        return
-    else:
-        scan_outputs = []
-        for i in range(seq_len):
-            ssm_state = discrete_A[:, :, i, :] * ssm_state + deltaB_u[:, :, i, :]      # [batch, intermediade_size, ssm_state]
-            # TODO: Test this to see if it works, (prime numbers)
-            if (i < knockout_start_idx) or (i >= knockout_end_idx):
-                final_state = discrete_A[:, :, i, :] * final_state + deltaB_u[:, :, i, :]      # [batch, intermediade_size, ssm_state]
-            elif (i >= knockout_start_idx) and (i < knockout_end_idx):
-                if knockout_mode == KnockoutMode.ZERO_ATTENTION:
-                    final_state = discrete_A[:, :, i, :] * final_state
-                elif knockout_mode == KnockoutMode.ZERO_DELTA:
-                    final_state = final_state
-            scan_output = torch.matmul(ssm_state.to(dtype), C[:, i, :].unsqueeze(-1))  # [batch, intermediade_size, 1]
-            scan_outputs.append(scan_output[:, :, 0])
+    # else:
+    scan_outputs = []
+    for i in range(seq_len):
+        ssm_state = discrete_A[:, :, i, :] * ssm_state + deltaB_u[:, :, i, :]      # [batch, intermediade_size, ssm_state]
+        
+        # TODO: Test this to see if it works, (prime numbers)
+        if (i < knockout_start_idx) or (i >= knockout_end_idx):
+            # No knockout
+            final_state = discrete_A[:, :, i, :] * final_state + deltaB_u[:, :, i, :]      # [batch, intermediade_size, ssm_state]
+        elif (i >= knockout_start_idx) and (i < knockout_end_idx):
+            # Knockout by zeroing attention
+            if knockout_mode == KnockoutMode.ZERO_ATTENTION:
+                final_state = discrete_A[:, :, i, :] * final_state
+            # Knockout by zeroing delta
+            elif knockout_mode == KnockoutMode.ZERO_DELTA:
+                final_state = final_state
+        scan_output = torch.matmul(ssm_state.to(dtype), C[:, i, :].unsqueeze(-1))  # [batch, intermediade_size, 1]
+        scan_outputs.append(scan_output[:, :, 0])
 
-        final_state = torch.matmul(final_state.to(dtype), C[:, i, :].unsqueeze(-1))  # [batch, intermediade_size, 1]
-        scan_output[-1] = final_state
-        scan_output = torch.stack(scan_outputs, dim=-1)                                # [batch, seq_len, intermediade_size]
-        scan_output = scan_output + (hidden_states * module.D[None, :, None])
-        scan_output = (scan_output * module.act(gate))
 
-        if cache_params is not None:
-            cache_params.ssm_states[module.layer_idx].copy_(ssm_state)
+    final_state = torch.matmul(final_state.to(dtype), C[:, i, :].unsqueeze(-1))  # [batch, intermediade_size, 1]
+    scan_output[-1] = final_state
+    scan_output = torch.stack(scan_outputs, dim=-1)                                # [batch, seq_len, intermediade_size]
+    scan_output = scan_output + (hidden_states * module.D[None, :, None])
+    scan_output = (scan_output * module.act(gate))
+
+    if cache_params is not None:
+        cache_params.ssm_states[module.layer_idx].copy_(ssm_state)
 
     # 4. Final linear projection
     contextualized_states = module.out_proj(scan_output.transpose(1, 2))  # [batch, seq_len, hidden_size]

@@ -100,7 +100,6 @@ def main_binary_search(model_size: str = "2.8B", interefere_mode: KnockoutMode =
     # log(n) binary search
     n = len(knockout_target_layers)
     log_n = np.ceil(np.log2(n))
-    
 
     with torch.no_grad():
         for _ in tqdm(range(int(log_n)), desc='Binary search for optimal layer'):
@@ -152,25 +151,19 @@ def main(model_size: str = "2.8B", interefere_mode: KnockoutMode = KnockoutMode.
     with torch.no_grad():
         # evaluate every single layer
         for i in tqdm(range(len(model.backbone.layers)), desc="Iterating layers for knockout..."):
-            continue
             acc = knockout_eval(model, tokenizer, knowns_df, device, interefere_mode, [i], interefere_target, drop_subj_last)
             performance['layer'].append(i)
             performance['acc'].append(acc)
         
-        # evaluate all layers at once
-        acc = knockout_eval(model, tokenizer, knowns_df, device, interefere_mode, list(range(len(model.backbone.layers))), interefere_target)
-        performance['layer'].append(len(model.backbone.layers))
-        performance['acc'].append(acc)
-
-    
     df = pd.DataFrame(performance)
-    df.to_csv("ssm_interference_subject.csv")
-    long = df.melt(id_vars=['layer', 'acc'], var_name='mode', value_name='x')
-    fig = go.Figure()
-    for layer in long['layer'].unique():
-        curr = long[long['layer'] == layer]
-        fig.add_trace(go.Scatter(x=curr['x'], y=curr['acc'], mode='lines+markers', name=f'Layer {layer}', color='red'))
-    fig.write_html("ssm_interference_subject.html")
+    
+    return df
+    # long = df.melt(id_vars=['layer', 'acc'], var_name='mode', value_name='x')
+    # fig = go.Figure()
+    # for layer in long['layer'].unique():
+    #     curr = long[long['layer'] == layer]
+    #     fig.add_trace(go.Scatter(x=curr['x'], y=curr['acc'], mode='lines+markers', name=f'Layer {layer}', color='red'))
+    # fig.write_html("ssm_interference_subject.html")
 
 
 def get_last_token_stats(model_size: str = '130M'):
@@ -201,12 +194,18 @@ if __name__ == "__main__":
     get_last_token_stats(args.model_size)
 
     exit()
-    dfs = []
+    bin_search_dfs = []
+    layer_dfs = []
     for target in KnockoutTarget:
-        dfs.append(main_binary_search(args.model_size, KnockoutMode[args.interfere_mode], target, args.drop_subj_last))
-        dfs[-1]['target'] = target
+        bin_search_dfs.append(main_binary_search(args.model_size, KnockoutMode[args.interfere_mode], target, args.drop_subj_last))
+        bin_search_dfs[-1]['target'] = target
+
+        layer_dfs.append(main(args.model_size, KnockoutMode[args.interfere_mode], KnockoutTarget[args.interfere_target]))
+        layer_dfs[-1]['target'] = target
     
-    df = pd.concat(dfs)
-    df.to_csv("ssm_interference_subject.csv")
-    # main(args.model_size, KnockoutMode[args.interfere_mode], KnockoutTarget[args.interfere_target])
+    df = pd.concat(bin_search_dfs)
+    df.to_csv("ssm_interference_bin_search.csv")
+    
+    df = pd.concat(layer_dfs)
+    df.to_csv("ssm_interference_layer_by_layer.csv")
     
