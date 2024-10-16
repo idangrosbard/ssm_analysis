@@ -17,12 +17,13 @@ def get_args():
     parser = ArgumentParser()
     parser.add_argument("--model_size", type=str, choices={'130M', '2.8B'}, default="130M")
     parser.add_argument("--interfere_mode", type=str, choices={str(mode).split('.')[1] for mode in KnockoutMode}, default="ZERO_ATTENTION")
-    parser.add_argument("--interfere_target", type=str, choices={str(target).split('.')[1] for target in KnockoutTarget}, default="ENTIRE_SUBJ")
+    parser.add_argument("--interfere_target", type=str, choices=[str(target).split('.')[1] for target in KnockoutTarget] + [None], default=None)
     parser.add_argument("--drop_subj_last", action='store_true')
+    parser.add_argument("--show_eval_progress", action='store_true')
     return parser.parse_args()
 
 
-def knockout_eval(model, tokenizer, knowns_df, device, interefere_mode: KnockoutMode, layer_indices, interfere_target, drop_subj_last):
+def knockout_eval(model, tokenizer, knowns_df, device, interefere_mode: KnockoutMode, layer_indices, interfere_target, drop_subj_last, show_progress: bool = False):
     acc = 0
     hooks = []
     handles = []
@@ -38,7 +39,7 @@ def knockout_eval(model, tokenizer, knowns_df, device, interefere_mode: Knockout
             handles.append(moi.register_forward_hook(hooks[-1]))
 
     # Evaluate model
-    pbar = tqdm(knowns_df.index, total=len(knowns_df), disable=True)
+    pbar = tqdm(knowns_df.index, total=len(knowns_df), disable=not show_progress)
     for idx in pbar:
         # Get relevant data
         input = knowns_df.loc[idx, "prompt"]
@@ -73,7 +74,7 @@ def knockout_eval(model, tokenizer, knowns_df, device, interefere_mode: Knockout
     return acc
 
 
-def main_binary_search(model_size: str = "2.8B", interefere_mode: KnockoutMode = KnockoutMode.ZERO_ATTENTION, interefere_target: KnockoutTarget = KnockoutTarget.ENTIRE_SUBJ, drop_subj_last: bool = False):
+def main_binary_search(model_size: str = "2.8B", interefere_mode: KnockoutMode = KnockoutMode.ZERO_ATTENTION, interefere_target: KnockoutTarget = KnockoutTarget.ENTIRE_SUBJ, drop_subj_last: bool = False, show_eval_progress: bool = False):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     if not Path("known_1000.json").exists():
         wget.download("https://rome.baulab.info/data/dsets/known_1000.json")
@@ -91,7 +92,7 @@ def main_binary_search(model_size: str = "2.8B", interefere_mode: KnockoutMode =
 
     knockout_target_layers = list(range(len(model.backbone.layers)))
     
-    acc = knockout_eval(model, tokenizer, knowns_df, device, interefere_mode, knockout_target_layers, interefere_target, drop_subj_last)
+    acc = knockout_eval(model, tokenizer, knowns_df, device, interefere_mode, knockout_target_layers, interefere_target, drop_subj_last, show_eval_progress)
     performance['layer'].append(str(knockout_target_layers))
     performance['start_layer'].append(min(knockout_target_layers))
     performance['end_layer'].append(max(knockout_target_layers))
@@ -110,13 +111,13 @@ def main_binary_search(model_size: str = "2.8B", interefere_mode: KnockoutMode =
                 early = knockout_target_layers[:len(knockout_target_layers) // 2]
                 late = knockout_target_layers[len(knockout_target_layers) // 2:]
 
-            acc_early = knockout_eval(model, tokenizer, knowns_df, device, interefere_mode, early, interefere_target, drop_subj_last)
+            acc_early = knockout_eval(model, tokenizer, knowns_df, device, interefere_mode, early, interefere_target, drop_subj_last, show_eval_progress)
             performance['layer'].append(str(early))
             performance['acc'].append(acc_early)
             performance['start_layer'].append(min(early))
             performance['end_layer'].append(max(early))
 
-            acc_late = knockout_eval(model, tokenizer, knowns_df, device, interefere_mode, late, interefere_target, drop_subj_last)
+            acc_late = knockout_eval(model, tokenizer, knowns_df, device, interefere_mode, late, interefere_target, drop_subj_last, show_eval_progress)
             performance['layer'].append(str(late))
             performance['acc'].append(acc_late)
             performance['start_layer'].append(min(late))
@@ -132,7 +133,7 @@ def main_binary_search(model_size: str = "2.8B", interefere_mode: KnockoutMode =
     return df
 
 
-def main(model_size: str = "2.8B", interefere_mode: KnockoutMode = KnockoutMode.ZERO_ATTENTION, interefere_target: KnockoutTarget = KnockoutTarget.ENTIRE_SUBJ, drop_subj_last: bool = False):
+def main(model_size: str = "2.8B", interefere_mode: KnockoutMode = KnockoutMode.ZERO_ATTENTION, interefere_target: KnockoutTarget = KnockoutTarget.ENTIRE_SUBJ, drop_subj_last: bool = False, show_eval_progress: bool = False):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     if not Path("known_1000.json").exists():
         wget.download("https://rome.baulab.info/data/dsets/known_1000.json")
@@ -151,7 +152,7 @@ def main(model_size: str = "2.8B", interefere_mode: KnockoutMode = KnockoutMode.
     with torch.no_grad():
         # evaluate every single layer
         for i in tqdm(range(len(model.backbone.layers)), desc="Iterating layers for knockout..."):
-            acc = knockout_eval(model, tokenizer, knowns_df, device, interefere_mode, [i], interefere_target, drop_subj_last)
+            acc = knockout_eval(model, tokenizer, knowns_df, device, interefere_mode, [i], interefere_target, drop_subj_last, show_eval_progress)
             performance['layer'].append(i)
             performance['acc'].append(acc)
         
@@ -188,19 +189,22 @@ def get_last_token_stats(model_size: str = '130M'):
     print(stat)
 
 
-
 if __name__ == "__main__":
     args = get_args()
     get_last_token_stats(args.model_size)
 
-    exit()
     bin_search_dfs = []
     layer_dfs = []
-    for target in KnockoutTarget:
-        bin_search_dfs.append(main_binary_search(args.model_size, KnockoutMode[args.interfere_mode], target, args.drop_subj_last))
+    if args.interfere_target is not None:
+        targets = [KnockoutTarget[args.interfere_target]]
+    else:
+        targets = KnockoutTarget
+
+    for target in targets:
+        bin_search_dfs.append(main_binary_search(args.model_size, KnockoutMode[args.interfere_mode], target, args.drop_subj_last, args.show_eval_progress))
         bin_search_dfs[-1]['target'] = target
 
-        layer_dfs.append(main(args.model_size, KnockoutMode[args.interfere_mode], KnockoutTarget[args.interfere_target]))
+        layer_dfs.append(main(args.model_size, KnockoutMode[args.interfere_mode], target, args.show_eval_progress))
         layer_dfs[-1]['target'] = target
     
     df = pd.concat(bin_search_dfs)
