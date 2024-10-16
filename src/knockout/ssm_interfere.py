@@ -9,8 +9,8 @@ class SSMInterfereHook(Callable):
         self.counter = 0
         self.layer = layer
         self.knockout_type = knockout_type
-        self.knockout_start_idx = -1
-        self.knockout_end_idx = -1
+        self.knockout_indices = {}
+        self.affected_outputs = {}
 
     def hook(self, module: nn.Module, inp: Tensor, out: Tensor) -> Optional[Tensor]:
         '''
@@ -19,7 +19,7 @@ class SSMInterfereHook(Callable):
         out - the current layer output ssm state (in mamba 1 \ 2 - this is Y)
         '''
         # TODO make the knockout more efficient - maybe replace the module.forward with a custom forward
-        curr_out = slow_forward_for_ssm_materializing_knockout(module, inp[0], knockout_start_idx=self.knockout_start_idx, knockout_end_idx=self.knockout_end_idx, knockout_mode=self.knockout_type)
+        curr_out = slow_forward_for_ssm_materializing_knockout(module, inp[0], knockout_indices=self.knockout_indices, affected_outputs=self.affected_outputs, knockout_mode=self.knockout_type)
         return curr_out
         
     def __call__(self, module: nn.Module, inp: Tensor, out: Tensor) -> Optional[Tensor]:

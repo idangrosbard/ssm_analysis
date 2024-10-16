@@ -9,4 +9,4 @@ class KnockoutTarget(Enum):
     RANDOM = 4
     RANDOM_SPAN = 5
     ALL_CONTEXT = 6
-    
+    SUBJ_CONTEXT = 7

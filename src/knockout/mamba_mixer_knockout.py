@@ -1,13 +1,13 @@
-from typing import Optional
+from typing import Optional, Iterable
 from torch import nn
 import torch
 
 from transformers.cache_utils import MambaCache
 from .knockout_mode import KnockoutMode
-from .knockout_scan import terminal_token_knockout_scan, ignore_context_knockout_scan
+from .knockout_scan import knockout_scan
 
 # fmt: off
-def slow_forward_for_ssm_materializing_knockout(module, input_states, cache_params: Optional[MambaCache]=None, cache_position:Optional[torch.LongTensor]=None, attention_mask: Optional[torch.LongTensor] = None, knockout_start_idx: Optional[int] = None, knockout_end_idx: Optional[int] = None, knockout_mode: Optional[KnockoutMode] = None):
+def slow_forward_for_ssm_materializing_knockout(module, input_states, cache_params: Optional[MambaCache]=None, cache_position:Optional[torch.LongTensor]=None, attention_mask: Optional[torch.LongTensor] = None, knockout_indices: Optional[Iterable[int]] = None, affected_outputs: Optional[Iterable[int]] = None, knockout_mode: Optional[KnockoutMode] = None):
     """
     The implementation of MambaMixer's forward pass, updated to return the calculated SSM parameters (A, B, C) for analysis.
     """
@@ -75,21 +75,8 @@ def slow_forward_for_ssm_materializing_knockout(module, input_states, cache_para
     deltaB_u = discrete_B * hidden_states[:, :, :, None].float()
 
     # 3.c perform the recurrence y ← SSM(A, B, C)(x)
-    # if False and (module.use_mambapy and module.training and cache_params is None):
-        # hs = pscan(discrete_A.transpose(1, 2), deltaB_u.transpose(1, 2)) # [batch, seq_len, intermediate_size, ssm_state_size]
-
-        # scan_output = (hs @ C.unsqueeze(-1)).squeeze(3).transpose(1, 2) # [batch, intermediate_size, seq_len]
-        # scan_output = scan_output + hidden_states * module.D[None, :, None]
-        # scan_output = scan_output * module.act(gate)
-    # else:
-
     # Here is the call to the knockout_scan functions
-    if knockout_mode == KnockoutMode.IGNORE_CONTEXT:
-        scan_outputs = ignore_context_knockout_scan(
-            seq_len, ssm_state, discrete_A, deltaB_u, C, knockout_start_idx, knockout_end_idx, dtype)
-    else:
-        scan_outputs = terminal_token_knockout_scan(
-            seq_len, ssm_state, discrete_A, deltaB_u, C, knockout_start_idx, knockout_end_idx, knockout_mode, dtype)
+    scan_outputs = knockout_scan(seq_len, ssm_state, discrete_A, deltaB_u, C, knockout_indices, affected_outputs, knockout_mode, dtype)
     
     scan_output = torch.stack(scan_outputs, dim=-1)                                # [batch, seq_len, intermediade_size]
     scan_output = scan_output + (hidden_states * module.D[None, :, None])

@@ -1,5 +1,5 @@
 from transformers import AutoTokenizer
-from typing import Tuple
+from typing import Tuple, Iterable
 from .knockout_target import KnockoutTarget
 import random
 
@@ -39,7 +39,7 @@ def random_non_subj(input: str, subj: str, tokenizer: AutoTokenizer, single_toke
         if single_token:
             # if we want a single token, we can just pick a random token
             start = random.randint(0, len(tokenizer(input)["input_ids"]))
-            target_idx = (start, start + 1)
+            target_idx = (start, start)
         else:
             # otherwise, we need to pick a span
             a = random.randint(0, len(tokenizer(input)["input_ids"]))
@@ -47,8 +47,6 @@ def random_non_subj(input: str, subj: str, tokenizer: AutoTokenizer, single_toke
             start, end = min(a, b), max(a, b)
 
             # end is non-inclusive, so if they're the same we need to increment `end`
-            if start == end:
-                end += 1
             target_idx = (start, end)
         
         # If the two don't intersect, we're good
@@ -58,22 +56,29 @@ def random_non_subj(input: str, subj: str, tokenizer: AutoTokenizer, single_toke
     return target_idx
 
 
-def choose_knockout_target(input: str, subj: str, tokenizer: AutoTokenizer, target: KnockoutTarget) -> Tuple[int,int]:
+def choose_knockout_target(input: str, subj: str, tokenizer: AutoTokenizer, target: KnockoutTarget) -> Iterable[int]:
     if target == KnockoutTarget.ENTIRE_SUBJ:
         return get_subj_idx(input, subj, tokenizer)
     elif target == KnockoutTarget.SUBJ_LAST:
         first, last = get_subj_idx(input, subj, tokenizer)
-        return (last, last + 1)
     elif target == KnockoutTarget.FIRST:
-        return (0, 1)
+        first = 0
+        last = first
     elif target == KnockoutTarget.LAST:
-        return (len(tokenizer(input)["input_ids"]) - 1, len(tokenizer(input)["input_ids"]))
+        first = len(tokenizer(input)["input_ids"]) - 1
+        last = first
     elif target == KnockoutTarget.RANDOM:
-        return random_non_subj(input, subj, tokenizer, single_token=True)
+        first, last = random_non_subj(input, subj, tokenizer, single_token=True)
     elif target == KnockoutTarget.RANDOM_SPAN:
-        return random_non_subj(input, subj, tokenizer, single_token=False)
+        first, last = random_non_subj(input, subj, tokenizer, single_token=False)
     elif target == KnockoutTarget.ALL_CONTEXT:
-        return (0, len(tokenizer(input)["input_ids"]) - 1)
+        first = 0
+        last = len(tokenizer(input)["input_ids"]) - 1
+    elif target == KnockoutTarget.SUBJ_CONTEXT:
+        first, last = get_subj_idx(input, subj, tokenizer)
+        last = first - 1
+        first = 0
+    return {i for i in range(first, last + 1)}
 
 
 def is_last_token_subj(input: str, subj: str, tokenizer: AutoTokenizer) -> Tuple[int,int]:

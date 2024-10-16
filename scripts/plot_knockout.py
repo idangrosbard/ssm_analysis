@@ -19,7 +19,7 @@ def get_args() -> Namespace:
 
 def plot_performance(performance: pd.DataFrame) -> go.Figure:
     fig = go.Figure()
-    color = {KnockoutTarget.ENTIRE_SUBJ: 'red', KnockoutTarget.SUBJ_LAST: 'blue', KnockoutTarget.FIRST: 'green', KnockoutTarget.LAST: 'yellow', KnockoutTarget.RANDOM: 'purple', KnockoutTarget.RANDOM_SPAN: 'orange'}
+    color = {KnockoutTarget.ENTIRE_SUBJ: 'red', KnockoutTarget.SUBJ_LAST: 'blue', KnockoutTarget.FIRST: 'green', KnockoutTarget.LAST: 'yellow', KnockoutTarget.RANDOM: 'purple', KnockoutTarget.RANDOM_SPAN: 'orange', KnockoutTarget.ALL_CONTEXT: 'black'}
     color = {str(key): color[key] for key in color}
     for target in tqdm(performance['target'].unique()):
         curr = performance[performance['target'] == target]
