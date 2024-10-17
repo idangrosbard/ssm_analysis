@@ -113,13 +113,13 @@ def main_binary_search(model_size: str = "2.8B", interefere_mode: KnockoutMode =
                 early = knockout_target_layers[:len(knockout_target_layers) // 2]
                 late = knockout_target_layers[len(knockout_target_layers) // 2:]
 
-            acc_early = knockout_eval(model, tokenizer, knowns_df, device, interefere_mode, early, interefere_target, drop_subj_last, show_eval_progress)
+            acc_early = knockout_eval(model, tokenizer, knowns_df, device, interefere_mode, early, interefere_target, affected_outputs, drop_subj_last, show_eval_progress)
             performance['layer'].append(str(early))
             performance['acc'].append(acc_early)
             performance['start_layer'].append(min(early))
             performance['end_layer'].append(max(early))
 
-            acc_late = knockout_eval(model, tokenizer, knowns_df, device, interefere_mode, late, interefere_target, drop_subj_last, show_eval_progress)
+            acc_late = knockout_eval(model, tokenizer, knowns_df, device, interefere_mode, late, interefere_target, affected_outputs, drop_subj_last, show_eval_progress)
             performance['layer'].append(str(late))
             performance['acc'].append(acc_late)
             performance['start_layer'].append(min(late))
