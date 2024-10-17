@@ -20,6 +20,7 @@ def get_args():
     parser.add_argument("--interfere_target", type=str, choices=[str(target).split('.')[1] for target in KnockoutTarget] + [None], default=None)
     parser.add_argument("--drop_subj_last", action='store_true')
     parser.add_argument("--show_eval_progress", action='store_true')
+    parser.add_argument("--output_dir", type=Path, default=Path("resources"))
     return parser.parse_args()
 
 
@@ -209,9 +210,10 @@ if __name__ == "__main__":
             layer_dfs[-1]['knockout_inputs'] = target
             layer_dfs[-1]['affected_outputs'] = output
     
+    args.output_dir.mkdir(parents=True, exist_ok=True)
     df = pd.concat(bin_search_dfs)
-    df.to_csv("ssm_interference_bin_search.csv")
+    df.to_csv(args.output_dir / f"{args.interfere_mode}_bin_search.csv")
     
     df = pd.concat(layer_dfs)
-    df.to_csv("ssm_interference_layer_by_layer.csv")
+    df.to_csv(args.output_dir / f"{args.interfere_mode}_layer_by_layer.csv")
     
