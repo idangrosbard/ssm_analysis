@@ -19,8 +19,8 @@ def get_subj_idx(input: str, subj: str, tokenizer: AutoTokenizer) -> Tuple[int,i
 
 
 def check_intersect(a: Tuple[int,int], b: Tuple[int,int]) -> bool:
-    assert a[0] < a[1]
-    assert b[0] < b[1]
+    assert a[0] <= a[1]
+    assert b[0] <= b[1]
 
     if a[0] < b[0] < a[1]:
         return True
