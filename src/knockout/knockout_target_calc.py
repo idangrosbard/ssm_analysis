@@ -58,9 +58,12 @@ def random_non_subj(input: str, subj: str, tokenizer: AutoTokenizer, single_toke
 
 def choose_knockout_target(input: str, subj: str, tokenizer: AutoTokenizer, target: KnockoutTarget) -> Iterable[int]:
     if target == KnockoutTarget.ENTIRE_SUBJ:
-        return get_subj_idx(input, subj, tokenizer)
+        first, last = get_subj_idx(input, subj, tokenizer)
+        last = last - 1
     elif target == KnockoutTarget.SUBJ_LAST:
         first, last = get_subj_idx(input, subj, tokenizer)
+        last = last - 1
+        first = last
     elif target == KnockoutTarget.FIRST:
         first = 0
         last = first
