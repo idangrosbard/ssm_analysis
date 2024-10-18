@@ -1,0 +1,51 @@
+import wget
+import pandas as pd
+from transformers import AutoTokenizer, MambaForCausalLM
+import torch
+from tqdm import tqdm
+from pathlib import Path
+from argparse import ArgumentParser
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from src.evaluate import evaluate_model
+from src.utils import load_knowns
+from src.weight_analysis import get_low_rank_model
+
+
+
+def get_args():
+    parser = ArgumentParser()
+    parser.add_argument("--model_size", type=str, choices={'130M', '2.8B'}, default="130M")
+    parser.add_argument("--rank", type=int, default=768)
+    parser.add_argument("--output_dir", type=Path, default=Path("resources"))
+    parser.add_argument("--use_min_vals", action='store_true')
+    
+    return parser.parse_args()
+
+
+def main(model_size: str = "2.8B", rank: int = 768, use_min_vals: bool = False):
+    tokenizer = AutoTokenizer.from_pretrained(f"state-spaces/mamba-{model_size}-hf")
+    model = MambaForCausalLM.from_pretrained(f"state-spaces/mamba-{model_size}-hf")
+
+    knowns_df = load_knowns()
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    model.to(device)
+
+    model.eval()
+
+    approx_backbone = get_low_rank_model(model.backbone, rank, not use_min_vals)
+    approx_backbone.to(device)
+    approx_backbone.eval()
+    model.backbone = approx_backbone
+
+    acc = evaluate_model(model, tokenizer, knowns_df, device)
+
+    print(acc, rank)
+
+
+if __name__ == "__main__":
+    args = get_args()
+    main(args.model_size, args.rank, args.use_min_vals)
+    

@@ -2,12 +2,13 @@ import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from transformers import AutoTokenizer, MambaModel
-from src.weight_analysis import decode, get_singular_values, get_topk_singular_vectors, plot
+from src.weight_analysis import decode, get_singular_values, get_topk_singular_vectors, plot, low_rank_approx_error_df
 import pandas as pd
 from argparse import ArgumentParser
 from pathlib import Path
 from tqdm import tqdm
 import torch
+import plotly.express as px
 
 
 def get_args():
@@ -31,8 +32,7 @@ def main():
     for i, layer in tqdm(enumerate(model.layers), total=len(model.layers)):
         w = layer.mixer.out_proj.weight.T
         if args.svd:
-            w = get_topk_singular_vectors(w, args.k_components)
-        print(w.shape)
+            w = get_topk_singular_vectors(w, args.k_components, False)
 
         df = decode(w, E, args.k, tokenizer, None)
         df['layer'] = i
@@ -71,6 +71,24 @@ def plot_singular_values():
     plot(df).write_html(fname)
 
 
+def plot_low_rank_approx_err():
+    args = get_args()
+    model = MambaModel.from_pretrained(f"state-spaces/mamba-{args.model_size}-hf")
+    model.eval()
+    dfs = []
+    
+    for i, layer in tqdm(enumerate(model.layers), total=len(model.layers)):
+        w = layer.mixer.out_proj.weight.detach().cpu()
+        df = low_rank_approx_error_df(get_singular_values(w))
+        df['layer'] = i
+        dfs.append(df)
+    
+    dfs = pd.concat(dfs)
+    args.output_dir.mkdir(parents=True, exist_ok=True)
+    px.line(dfs, x='rank', y='spectral_error', color='layer').write_html(args.output_dir / f"low_rank_approx_{args.model_size}.html")
+    
+
 if __name__ == "__main__":
+    plot_low_rank_approx_err()
     plot_singular_values()
     main()
