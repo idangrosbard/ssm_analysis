@@ -6,7 +6,7 @@ def get_singular_values(w: torch.Tensor) -> torch.Tensor:
     return s
 
 
-def get_topk_singular_vectors(w: torch.Tensor, k: int, top: bool = False) -> torch.Tensor:
+def get_topk_singular_vectors(w: torch.Tensor, k: int, top: bool = True) -> torch.Tensor:
     u, s, v = torch.svd(w)
     if top:
         return v[:k]
@@ -30,3 +30,10 @@ def create_low_rank_approx(w: torch.Tensor, k: int, use_max_vals: bool = True) -
     else:
         s[:-k] = 0
     return u @ torch.diag(s) @ v.T
+
+
+# def greatest_diff_vecs(w: torch.Tensor, w_tag: torch.Tensor, k: int, top: bool = True) -> torch.Tensor:
+#     w_diff = w - w_tag
+#     norm = torch.norm(w_diff, dim=-1)
+#     indices = torch.topk(norm, k, dim=-1, largest=top).indices
+#     return w[indices]

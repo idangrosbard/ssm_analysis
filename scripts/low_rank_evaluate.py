@@ -24,7 +24,7 @@ def get_args():
     return parser.parse_args()
 
 
-def main(model_size: str = "2.8B", rank: int = 768, use_min_vals: bool = False):
+def main(output_dir: Path, model_size: str = "2.8B", rank: int = 768, use_min_vals: bool = False):
     tokenizer = AutoTokenizer.from_pretrained(f"state-spaces/mamba-{model_size}-hf")
     model = MambaForCausalLM.from_pretrained(f"state-spaces/mamba-{model_size}-hf")
 
@@ -40,12 +40,15 @@ def main(model_size: str = "2.8B", rank: int = 768, use_min_vals: bool = False):
     approx_backbone.eval()
     model.backbone = approx_backbone
 
-    acc = evaluate_model(model, tokenizer, knowns_df, device)
+    results, acc = evaluate_model(model, tokenizer, knowns_df, device)
 
     print(acc, rank)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    results.to_csv(output_dir / f"low_rank_eval_{model_size}_{rank}.csv")
 
 
 if __name__ == "__main__":
     args = get_args()
-    main(args.model_size, args.rank, args.use_min_vals)
+    main(args.output_dir, args.model_size, args.rank, args.use_min_vals)
+
     
