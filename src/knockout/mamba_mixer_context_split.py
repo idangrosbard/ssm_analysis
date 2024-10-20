@@ -70,7 +70,7 @@ def slow_forward_for_context_indep_split(module, input_states, cache_params: Opt
     
     for i in range(seq_len):
         ssm_state = discrete_A[:, :, i, :] * ssm_state + deltaB_u[:, :, i, :]      # [batch, intermediade_size, ssm_state]
-        indep_state = torch.matmul(deltaB_u.to(dtype), C[:, i, :].unsqueeze(-1))  # [batch, intermediade_size, 1]
+        indep_state = torch.matmul(deltaB_u[:, :, i, :].to(dtype), C[:, i, :].unsqueeze(-1))  # [batch, intermediade_size, 1]
         scan_output = torch.matmul(ssm_state.to(dtype), C[:, i, :].unsqueeze(-1))  # [batch, intermediade_size, 1]
         context_state = scan_output - indep_state
         
@@ -84,6 +84,7 @@ def slow_forward_for_context_indep_split(module, input_states, cache_params: Opt
         if add_resid:
             states = states + (hidden_states * module.D[None, :, None])
         states = (states * module.act(gate))
+        return states
 
     scan_output = finalize_states(scan_outputs)
     indep_states = finalize_states(indep_states)
@@ -94,5 +95,7 @@ def slow_forward_for_context_indep_split(module, input_states, cache_params: Opt
 
     # 4. Final linear projection
     contextualized_states = module.out_proj(scan_output.transpose(1, 2))  # [batch, seq_len, hidden_size]
+    context_states = module.out_proj(context_states.transpose(1, 2))
+    indep_states = module.out_proj(indep_states.transpose(1, 2))
     return contextualized_states, indep_states, context_states
 # fmt: on

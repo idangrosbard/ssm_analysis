@@ -109,7 +109,7 @@ def main() -> None:
     args = get_args()
     get_last_token_stats(args.model_size)
 
-    tokenizer, model, device = setup_model(args.model_size)
+    model, tokenizer, device = setup_model(args.model_size)
     knowns_df = load_knowns()
 
     
