@@ -118,6 +118,7 @@ def main(
             last_word = decoded.split(' ')[-1]
 
             knowns_df.loc[idx, 'model_correct'] = last_word == target[:len(last_word)]
+            knowns_df.loc[idx, 'model_output'] = last_word
 
             acc += float(last_word == target[:len(last_word)]) / len(knowns_df)
 
