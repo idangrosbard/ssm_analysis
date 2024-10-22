@@ -1,8 +1,8 @@
 #! /bin/bash
 
-#SBATCH --job-name=mamba_2.8B # Job name
-#SBATCH --output=/home/yandex/DL20232024a/nirendy/repos/ssm_analysis/output/mamba_2.8B/evaluate/mamba_2.8B/out.log # redirect stdout
-#SBATCH --error=/home/yandex/DL20232024a/nirendy/repos/ssm_analysis/output/mamba_2.8B/evaluate/mamba_2.8B/err.log # redirect stderr
+#SBATCH --job-name=llama3.2_3B # Job name
+#SBATCH --output=/home/yandex/DL20232024a/nirendy/repos/ssm_analysis/output/llama3.2_3B/evaluate/llama3.2_3B/out.log # redirect stdout
+#SBATCH --error=/home/yandex/DL20232024a/nirendy/repos/ssm_analysis/output/llama3.2_3B/evaluate/llama3.2_3B/err.log # redirect stderr
 #SBATCH --partition=gpu-a100-killable # (see resources section)
 #SBATCH --time=1200 # max time (minutes)
 #SBATCH --signal=USR1@120 # how to end job when time’s up
@@ -31,7 +31,7 @@ cd /home/yandex/DL20232024a/nirendy/repos/ssm_analysis/scripts
 # Export environment variables
 export PYTHONUNBUFFERED=1
 
-python evaluate_model.py --model_arch "mamba" --model_size "2.8B" --output_file "/home/yandex/DL20232024a/nirendy/repos/ssm_analysis/output/mamba_2.8B/evaluate/known_1000_correct.csv"
+python evaluate_model.py --model_arch "llama3.2" --model_size "3B" --with_3_dots "0" --output_file "/home/yandex/DL20232024a/nirendy/repos/ssm_analysis/output/llama3.2_3B/evaluate/known_1000_correct.csv"
 
 # Trap keyboard interrupt (Ctrl+C) to end the job
 trap 'echo "Keyboard interrupt received. Ending job."; exit' INT
