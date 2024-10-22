@@ -37,12 +37,12 @@ class AttentionKnockoutEvaluator(KnockoutEvaluator):
                 handles.append(moi.register_forward_hook(hooks[-1]))
 
         # Evaluate model
-        pbar = tqdm(self.dataset.index, total=len(self.dataset), disable=not self.show_progress)
+        pbar = tqdm(dataset.index, total=len(dataset), disable=not self.show_progress)
         for idx in pbar:
             # Get relevant data
-            input = self.dataset.loc[idx, "prompt"]
-            target = self.dataset.loc[idx, "attribute"]
-            subj = self.dataset.loc[idx, "subject"]
+            input = dataset.loc[idx, "prompt"]
+            target = dataset.loc[idx, "attribute"]
+            subj = dataset.loc[idx, "subject"]
 
             if self.drop_subj_last:
                 if is_last_token_subj(input, subj, self.tokenizer):
@@ -65,7 +65,7 @@ class AttentionKnockoutEvaluator(KnockoutEvaluator):
 
             correct = last_word == target[:len(last_word)]
             # Update performance
-            acc += float(correct) / len(self.dataset)
+            acc += float(correct) / len(dataset)
             dataset.loc[idx, 'correct'] = correct
         
         # remove hooks

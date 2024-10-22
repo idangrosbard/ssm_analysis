@@ -24,3 +24,6 @@ class SSMInterfereHook(Callable):
         
     def __call__(self, module: nn.Module, inp: Tensor, out: Tensor) -> Optional[Tensor]:
         return self.hook(module, inp, out)
+    
+    def __str__(self):
+        return f"SSMInterfereHook for layer {self.layer} with knockout type {self.knockout_type}, knockout indices {self.knockout_indices}, affected outputs {self.affected_outputs}"

@@ -2,7 +2,7 @@ import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import pandas as pd
-from transformers import AutoTokenizer
+from transformers import AutoTokenizer, MambaModel
 import torch
 from tqdm import tqdm
 from pathlib import Path
@@ -16,7 +16,7 @@ def get_args():
     parser = ArgumentParser()
     parser.add_argument("--model_size", type=str, choices={'130M', '2.8B'}, default="130M")
     parser.add_argument("--interfere_mode", type=str, choices={str(mode).split('.')[1] for mode in KnockoutMode}, default="ZERO_ATTENTION")
-    parser.add_argument("--interfere_target", type=str, choices=[str(target).split('.')[1] for target in KnockoutTarget] + [None], default=None)
+    parser.add_argument("--interfere_target", type=str, choices=[str(target).split('.')[1] for target in KnockoutTarget] + [None], default='LAST')
     parser.add_argument("--drop_subj_last", action='store_true')
     parser.add_argument("--show_eval_progress", action='store_true')
     parser.add_argument("--output_dir", type=Path, default=Path("resources"))
@@ -34,6 +34,7 @@ def binary_search(evaluator: KnockoutEvaluator, dataset: pd.DataFrame, knockout_
     performance['start_layer'].append(min(knockout_target_layers))
     performance['end_layer'].append(max(knockout_target_layers))
     performance['acc'].append(acc)
+    print(acc)
 
     # log(n) binary search
     n = len(knockout_target_layers)
@@ -115,7 +116,7 @@ def main() -> None:
     
     # If we do attention knockout:
     if KnockoutMode[args.interfere_mode] in {KnockoutMode.ZERO_ATTENTION, KnockoutMode.ZERO_DELTA}:
-        evaluator = AttentionKnockoutEvaluator(model, tokenizer, device, KnockoutTarget[args.interfere_target], KnockoutTarget[args.affected_outputs], args.drop_subj_last, args.show_eval_progress)
+        evaluator = AttentionKnockoutEvaluator(model, tokenizer, device, -1, -1, args.drop_subj_last, args.show_eval_progress)
 
         bin_search_dfs = []
         layer_dfs = []
@@ -128,6 +129,8 @@ def main() -> None:
         
         for target in targets:
             for output in affected_outputs:
+                evaluator.knockout_target = target
+                evaluator.affected_target = output
                 bin_search_dfs.append(binary_search(evaluator, knowns_df, KnockoutMode[args.interfere_mode]))
                 bin_search_dfs[-1]['knockout_inputs'] = target
                 bin_search_dfs[-1]['affected_outputs'] = output

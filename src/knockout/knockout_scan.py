@@ -6,7 +6,6 @@ from typing import List, Iterable
 def knockout_scan(seq_len: int, ssm_state: Tensor, discrete_A: Tensor, deltaB_u: Tensor, C: Tensor, knocked_out_inputs: Iterable[int], affected_outputs: Iterable[int], knockout_mode: KnockoutMode, dtype) -> List[Tensor]:
     knockout_state = zeros_like(ssm_state)
     scan_outputs = []
-    affected_outputs = []
     for i in range(seq_len):
         ssm_state = discrete_A[:, :, i, :] * ssm_state + deltaB_u[:, :, i, :]      # [batch, intermediade_size, ssm_state]
         # TODO: Test this to see if it works, (prime numbers)
