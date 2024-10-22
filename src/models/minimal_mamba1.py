@@ -19,11 +19,13 @@ Glossary:
     dt_rank: rank of Δ                  (See [1] Section 3.6 "Parameterization of ∆")
 
 """
+
 from __future__ import annotations
 
 import json
 import math
 from dataclasses import dataclass
+from typing import Optional, cast
 
 import torch
 import torch.nn as nn
@@ -40,7 +42,7 @@ class ModelArgs:
     vocab_size: int
     d_state: int = 16
     expand: int = 2
-    dt_rank: Union[int, str] = 'auto'
+    dt_rank: Union[int, str] = "auto"
     d_conv: int = 4
     pad_vocab_size_multiple: int = 8
     conv_bias: bool = True
@@ -49,12 +51,14 @@ class ModelArgs:
     def __post_init__(self):
         self.d_inner = int(self.expand * self.d_model)
 
-        if self.dt_rank == 'auto':
+        if self.dt_rank == "auto":
             self.dt_rank = math.ceil(self.d_model / 16)
 
         if self.vocab_size % self.pad_vocab_size_multiple != 0:
-            self.vocab_size += (self.pad_vocab_size_multiple
-                                - self.vocab_size % self.pad_vocab_size_multiple)
+            self.vocab_size += (
+                self.pad_vocab_size_multiple
+                - self.vocab_size % self.pad_vocab_size_multiple
+            )
 
 
 class Mamba(nn.Module):
@@ -68,7 +72,9 @@ class Mamba(nn.Module):
         self.norm_f = RMSNorm(args.d_model)
 
         self.lm_head = nn.Linear(args.d_model, args.vocab_size, bias=False)
-        self.lm_head.weight = self.embedding.weight  # Tie output projection to embedding weights.
+        self.lm_head.weight = (
+            self.embedding.weight
+        )  # Tie output projection to embedding weights.
         # See "Weight Tying" paper
 
     def forward(self, input_ids):
@@ -91,7 +97,7 @@ class Mamba(nn.Module):
         x = self.norm_f(x)
         logits = self.lm_head(x)
 
-        return logits
+        return logits, None
 
     @staticmethod
     def from_pretrained(pretrained_model_name: str):
@@ -114,31 +120,84 @@ class Mamba(nn.Module):
         from transformers.utils.hub import cached_file
 
         def load_config_hf(model_name):
-            resolved_archive_file = cached_file(model_name, CONFIG_NAME,
-                                                _raise_exceptions_for_missing_entries=False)
+            resolved_archive_file = cached_file(
+                model_name, CONFIG_NAME, _raise_exceptions_for_missing_entries=False
+            )
             return json.load(open(resolved_archive_file))
 
         def load_state_dict_hf(model_name, device=None, dtype=None):
-            resolved_archive_file = cached_file(model_name, WEIGHTS_NAME,
-                                                _raise_exceptions_for_missing_entries=False)
-            return torch.load(resolved_archive_file, weights_only=True, map_location='cpu', mmap=True)
+            resolved_archive_file = cached_file(
+                model_name, WEIGHTS_NAME, _raise_exceptions_for_missing_entries=False
+            )
+            return torch.load(
+                resolved_archive_file, weights_only=True, map_location="cpu", mmap=True
+            )
 
         config_data = load_config_hf(pretrained_model_name)
         args = ModelArgs(
-            d_model=config_data['d_model'],
-            n_layer=config_data['n_layer'],
-            vocab_size=config_data['vocab_size']
+            d_model=config_data["d_model"],
+            n_layer=config_data["n_layer"],
+            vocab_size=config_data["vocab_size"],
         )
         model = Mamba(args)
 
         state_dict = load_state_dict_hf(pretrained_model_name)
         new_state_dict = {}
         for key in state_dict:
-            new_key = key.replace('backbone.', '')
+            new_key = key.replace("backbone.", "")
             new_state_dict[new_key] = state_dict[key]
         model.load_state_dict(new_state_dict)
 
         return model
+
+    def generate(
+        self,
+        input_ids: torch.LongTensor,
+        max_new_length: int = 20,
+        temperature: float = 1.0,
+        top_k: int = 50,
+        top_p: float = 1.0,
+        eos_token_id: int = 0,
+        max_length: Optional[int] = None,
+        num_return_sequences: int = 1,
+    ):
+        if num_return_sequences != 1:
+            raise ValueError("num_return_sequences > 1 is not supported")
+        if max_length is not None:
+            max_new_length = max(0, max_length - input_ids.shape[0])
+
+        assert len(input_ids.shape) in (1, 2), "input_ids should have shape (seqlen,) or (1, seqlen)"
+        assert input_ids.shape[0] == 1, "Only one prompt can be processed at a time"
+        
+        if len(input_ids.shape) == 1:
+            input_ids = input_ids.unsqueeze(0)
+                    
+        tokens = input_ids
+        
+        for _ in range(max_new_length):
+            with torch.no_grad():
+                out, _ = self(tokens)
+            logits = out[0, -1]
+            if temperature != 1.0:
+                logits = logits / temperature
+            if top_k > 0:
+                indices_to_remove = logits < torch.topk(logits, k=top_k)[0][-1]
+                logits[indices_to_remove] = -torch.inf
+            if top_p < 1.0:
+                sorted_logits, sorted_indices = torch.sort(logits, descending=True)
+                cum_probs = torch.cumsum(F.softmax(sorted_logits, dim=-1), dim=-1)
+                sorted_indices_to_remove = cum_probs > 0.5
+                sorted_indices_to_remove[1:] = sorted_indices_to_remove[:-1].clone()
+                sorted_indices_to_remove[0] = False
+                indices_to_remove = sorted_indices[sorted_indices_to_remove]
+                logits[indices_to_remove] = -torch.inf
+            probs = F.softmax(logits, dim=-1)
+            next_token = torch.multinomial(probs, num_samples=1)
+            if next_token.item() == eos_token_id:
+                return
+            tokens = torch.cat([tokens, next_token.unsqueeze(0)], dim=1)
+            
+            yield cast(int, next_token.item())
 
 
 class ResidualBlock(nn.Module):
@@ -192,12 +251,14 @@ class MambaBlock(nn.Module):
         )
 
         # x_proj takes in `x` and outputs the input-specific Δ, B, C
-        self.x_proj = nn.Linear(args.d_inner, args.dt_rank + args.d_state * 2, bias=False)
+        self.x_proj = nn.Linear(
+            args.d_inner, args.dt_rank + args.d_state * 2, bias=False
+        )
 
         # dt_proj projects Δ from dt_rank to d_in
         self.dt_proj = nn.Linear(args.dt_rank, args.d_inner, bias=True)
 
-        A = repeat(torch.arange(1, args.d_state + 1), 'n -> d n', d=args.d_inner)
+        A = repeat(torch.arange(1, args.d_state + 1), "n -> d n", d=args.d_inner)
         self.A_log = nn.Parameter(torch.log(A))
         self.D = nn.Parameter(torch.ones(args.d_inner))
         self.out_proj = nn.Linear(args.d_inner, args.d_model, bias=args.bias)
@@ -219,11 +280,13 @@ class MambaBlock(nn.Module):
         (b, l, d) = x.shape
 
         x_and_res = self.in_proj(x)  # shape (b, l, 2 * d_in)
-        (x, res) = x_and_res.split(split_size=[self.args.d_inner, self.args.d_inner], dim=-1)
+        (x, res) = x_and_res.split(
+            split_size=[self.args.d_inner, self.args.d_inner], dim=-1
+        )
 
-        x = rearrange(x, 'b l d_in -> b d_in l')
+        x = rearrange(x, "b l d_in -> b d_in l")
         x = self.conv1d(x)[:, :, :l]
-        x = rearrange(x, 'b d_in l -> b l d_in')
+        x = rearrange(x, "b d_in l -> b l d_in")
 
         x = F.silu(x)
 
@@ -262,11 +325,14 @@ class MambaBlock(nn.Module):
 
         x_dbl = self.x_proj(x)  # (b, l, dt_rank + 2*n)
 
-        (delta, B, C) = x_dbl.split(split_size=[self.args.dt_rank, n, n],
-                                    dim=-1)  # delta: (b, l, dt_rank). B, C: (b, l, n)
+        (delta, B, C) = x_dbl.split(
+            split_size=[self.args.dt_rank, n, n], dim=-1
+        )  # delta: (b, l, dt_rank). B, C: (b, l, n)
         delta = F.softplus(self.dt_proj(delta))  # (b, l, d_in)
 
-        y = self.selective_scan(x, delta, A, B, C, D)  # This is similar to run_SSM(A, B, C, u) in The Annotated S4 [2]
+        y = self.selective_scan(
+            x, delta, A, B, C, D
+        )  # This is similar to run_SSM(A, B, C, u) in The Annotated S4 [2]
 
         return y
 
@@ -304,8 +370,8 @@ class MambaBlock(nn.Module):
         # - A is discretized using zero-order hold (ZOH) discretization (see Section 2 Equation 4 in the Mamba paper [1])
         # - B is discretized using a simplified Euler discretization instead of ZOH. From a discussion with authors:
         #   "A is the more important term and the performance doesn't change much with the simplification on B"
-        deltaA = torch.exp(einsum(delta, A, 'b l d_in, d_in n -> b l d_in n'))
-        deltaB_u = einsum(delta, B, u, 'b l d_in, b l n, b l d_in -> b l d_in n')
+        deltaA = torch.exp(einsum(delta, A, "b l d_in, d_in n -> b l d_in n"))
+        deltaB_u = einsum(delta, B, u, "b l d_in, b l n, b l d_in -> b l d_in n")
 
         # Perform selective scan (see scan_SSM() in The Annotated S4 [2])
         # Note that the below is sequential, while the official implementation does a much faster parallel scan that
@@ -314,7 +380,7 @@ class MambaBlock(nn.Module):
         ys = []
         for i in range(l):
             x = deltaA[:, i] * x + deltaB_u[:, i]
-            y = einsum(x, C[:, i, :], 'b d_in n, b n -> b d_in')
+            y = einsum(x, C[:, i, :], "b d_in n, b n -> b d_in")
             ys.append(y)
         y = torch.stack(ys, dim=1)  # shape (b, l, d_in)
 
@@ -324,14 +390,14 @@ class MambaBlock(nn.Module):
 
 
 class RMSNorm(nn.Module):
-    def __init__(self,
-                 d_model: int,
-                 eps: float = 1e-5):
+    def __init__(self, d_model: int, eps: float = 1e-5):
         super().__init__()
         self.eps = eps
         self.weight = nn.Parameter(torch.ones(d_model))
 
     def forward(self, x):
-        output = x * torch.rsqrt(x.pow(2).mean(-1, keepdim=True) + self.eps) * self.weight
+        output = (
+            x * torch.rsqrt(x.pow(2).mean(-1, keepdim=True) + self.eps) * self.weight
+        )
 
         return output

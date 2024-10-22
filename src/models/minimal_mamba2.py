@@ -11,7 +11,7 @@ A minimal, single-file implementation of the Mamba-2 model in PyTorch.
 
 import json
 from dataclasses import dataclass
-from typing import Iterable
+from typing import Iterable, Optional
 from typing import NamedTuple
 from typing import TypeAlias
 from typing import cast
@@ -122,8 +122,7 @@ class Mamba2LMHeadModel(nn.Module):
         return model
 
     def forward(
-            self, input_ids: LongTensor, h: list[InferenceCache] | list[None] | None = None,
-            with_chunk_handling: bool = False
+            self, input_ids: LongTensor, h: list[InferenceCache] | list[None] | None = None
     ) -> tuple[LongTensor, list[InferenceCache]]:
         """
         Arguments
@@ -137,11 +136,20 @@ class Mamba2LMHeadModel(nn.Module):
             logits: (batch, seqlen, vocab_size)
             h: updated inference cache after processing `input_ids`
         """
-        if with_chunk_handling:
+        assert len(input_ids.shape) == 2, "input_ids should have shape (batch, seqlen)"
+        assert input_ids.shape[0] == 1, "Only one prompt can be processed at a time"
+        seqlen = input_ids.shape[1]
+        if h is None:
+            # Process prompt
+            # The input sequence to forward (non-inference path) must have length multiple that of chunk_size.
+            # We split out excess tokens so that n_chunked tokens can be processed by one forward call and
+            # process the rest in multiple inference steps.
+            input_ids = input_ids.squeeze(0)
             prefix, input_ids = input_ids[:-1], input_ids[-1:].unsqueeze(0)
             n_chunked = (prefix.shape[0] // self.args.chunk_size) * self.args.chunk_size
             if n_chunked > 0:
-                _, h = self(prefix[:n_chunked].unsqueeze(0), None)
+                h = [None for _ in range(self.args.n_layer)]
+                _, h = self(prefix[:n_chunked].unsqueeze(0), h)
             else:
                 h = [
                     InferenceCache.alloc(1, self.args, device=self.device)
@@ -149,11 +157,6 @@ class Mamba2LMHeadModel(nn.Module):
                 ]
             for i in range(n_chunked, prefix.shape[0]):
                 _, h = self(prefix[i: i + 1].unsqueeze(0), h)
-
-        seqlen = input_ids.shape[1]
-
-        if h is None:
-            h = [None for _ in range(self.args.n_layer)]
 
         x = self.backbone.embedding(input_ids)
         for i, layer in enumerate(self.backbone.layers):
@@ -172,24 +175,24 @@ class Mamba2LMHeadModel(nn.Module):
             top_k: int = 50,
             top_p: float = 1.0,
             eos_token_id: int = 0,
+            max_length: Optional[int] = None,
+            num_return_sequences: int = 1,
+            return_inference_cache: bool = False,
     ) -> Iterable[tuple[int, list[InferenceCache]]]:
-        prefix, tokens = input_ids[:-1], input_ids[-1:].unsqueeze(0)
+        assert len(input_ids.shape) in (1, 2), "input_ids should have shape (seqlen,) or (1, seqlen)"
+        assert input_ids.shape[0] == 1, "Only one prompt can be processed at a time"
+        
+        if num_return_sequences != 1:
+            raise ValueError("num_return_sequences > 1 is not supported")
+        if max_length is not None:
+            max_new_length = max(0, max_length - input_ids.shape[0])
 
-        # Process prompt
-        # The input sequence to forward (non-inference path) must have length multiple that of chunk_size.
-        # We split out excess tokens so that n_chunked tokens can be processed by one forward call and
-        # process the rest in multiple inference steps.
-        n_chunked = (prefix.shape[0] // self.args.chunk_size) * self.args.chunk_size
-        if n_chunked > 0:
-            _, h = self(prefix[:n_chunked].unsqueeze(0), None)
-        else:
-            h = [
-                InferenceCache.alloc(1, self.args, device=self.device)
-                for _ in range(self.args.n_layer)
-            ]
-        for i in range(n_chunked, prefix.shape[0]):
-            _, h = self(prefix[i: i + 1].unsqueeze(0), h)
-
+        if len(input_ids.shape) == 1:
+            input_ids = input_ids.unsqueeze(0)
+        
+            
+        tokens = input_ids
+        h = None
         # Generate
         for _ in range(max_new_length):
             with torch.no_grad():
@@ -213,7 +216,10 @@ class Mamba2LMHeadModel(nn.Module):
             if next_token.item() == eos_token_id:
                 return
             tokens = next_token.unsqueeze(0)
-            yield cast(int, next_token.item()), h
+            if return_inference_cache:
+                yield cast(int, next_token.item()), h
+            else:
+                yield cast(int, next_token.item())
 
 
 class Mamba2(nn.Module):
