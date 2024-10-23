@@ -138,7 +138,7 @@ def main() -> None:
                 bin_search_df = pd.concat(bin_search_df)
                 
                 # save to csv
-                out_fname = args.output_dir / f"{args.interfere_mode}_bin_search.csv"
+                out_fname = args.output_dir / f"{args.interfere_mode}_{args.model_size}_bin_search.csv"
                 if out_fname:
                     os.remove(out_fname)
                 bin_search_df.to_csv(out_fname)
@@ -150,7 +150,7 @@ def main() -> None:
                 layer_df = pd.concat(layer_df)
                 
                 # save to csv
-                out_fname = args.output_dir / f"{args.interfere_mode}_layer_by_layer.csv"
+                out_fname = args.output_dir / f"{args.interfere_mode}_{args.model_size}_layer_by_layer.csv"
                 if out_fname:
                     os.remove(out_fname)
                 layer_df.to_csv(out_fname)
@@ -165,8 +165,8 @@ def main() -> None:
         raise ValueError(f"Unknown knockout mode: {args.interfere_mode}")
     
     
-    bin_search_df.to_csv(args.output_dir / f"{args.interfere_mode}_bin_search.csv")
-    layer_df.to_csv(args.output_dir / f"{args.interfere_mode}_layer_by_layer.csv")
+    bin_search_df.to_csv(args.output_dir / f"{args.interfere_mode}_{args.model_size}_bin_search.csv")
+    layer_df.to_csv(args.output_dir / f"{args.interfere_mode}_{args.model_size}_layer_by_layer.csv")
     
 
 if __name__ == "__main__":
