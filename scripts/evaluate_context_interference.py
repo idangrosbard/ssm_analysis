@@ -16,10 +16,10 @@ def get_args():
     parser = ArgumentParser()
     parser.add_argument("--model_size", type=str, choices={'130M', '2.8B'}, default="130M")
     parser.add_argument("--interfere_mode", type=str, choices={str(mode).split('.')[1] for mode in KnockoutMode}, default="ZERO_ATTENTION")
-    parser.add_argument("--interfere_target", type=str, choices=[str(target).split('.')[1] for target in KnockoutTarget] + [None], default='LAST')
     parser.add_argument("--drop_subj_last", action='store_true')
     parser.add_argument("--show_eval_progress", action='store_true')
     parser.add_argument("--output_dir", type=Path, default=Path("resources"))
+    # parser.add_argument("--affected_outputs", type=str, default="LAST", options=['LAST', 'ENTIRE_SUBJ'])
     return parser.parse_args()
 
 
@@ -112,35 +112,49 @@ def main() -> None:
 
     model, tokenizer, device = setup_model(args.model_size)
     knowns_df = load_knowns()
-
+    args.output_dir.mkdir(parents=True, exist_ok=True)
     
     # If we do attention knockout:
     if KnockoutMode[args.interfere_mode] in {KnockoutMode.ZERO_ATTENTION, KnockoutMode.ZERO_DELTA}:
         evaluator = AttentionKnockoutEvaluator(model, tokenizer, device, -1, -1, args.drop_subj_last, args.show_eval_progress)
 
-        bin_search_dfs = []
-        layer_dfs = []
+        bin_search_df = None
+        layer_df = None
 
-        if args.interfere_target is not None:
-            targets = [KnockoutTarget[args.interfere_target]]
-        else:
-            targets = KnockoutTarget
+        targets = KnockoutTarget
         affected_outputs = [KnockoutTarget.LAST, KnockoutTarget.ENTIRE_SUBJ]
+
+        specific_targets = {KnockoutTarget.LAST: KnockoutTarget, KnockoutTarget.ENTIRE_SUBJ: [KnockoutTarget.ENTIRE_SUBJ, KnockoutTarget.SUBJ_LAST, KnockoutTarget.SUBJ_CONTEXT]}
         
-        for target in targets:
-            for output in affected_outputs:
+        for output in affected_outputs:
+            for target in specific_targets[output]:
                 evaluator.knockout_target = target
                 evaluator.affected_target = output
-                bin_search_dfs.append(binary_search(evaluator, knowns_df, KnockoutMode[args.interfere_mode]))
-                bin_search_dfs[-1]['knockout_inputs'] = target
-                bin_search_dfs[-1]['affected_outputs'] = output
-
-                layer_dfs.append(layer_by_layer(evaluator, knowns_df, KnockoutMode[args.interfere_mode]))
-                layer_dfs[-1]['knockout_inputs'] = target
-                layer_dfs[-1]['affected_outputs'] = output
-
-        bin_search_df = pd.concat(bin_search_dfs)
-        layer_df = pd.concat(layer_dfs)
+                
+                curr_df = binary_search(evaluator, knowns_df, KnockoutMode[args.interfere_mode])
+                curr_df['knockout_inputs'] = target
+                curr_df['affected_outputs'] = output
+                bin_search_df = [bin_search_df, curr_df]
+                bin_search_df = pd.concat(bin_search_df)
+                
+                # save to csv
+                out_fname = args.output_dir / f"{args.interfere_mode}_bin_search.csv"
+                if out_fname:
+                    os.remove(out_fname)
+                bin_search_df.to_csv(out_fname)
+                
+                curr_df = layer_by_layer(evaluator, knowns_df, KnockoutMode[args.interfere_mode])
+                curr_df['knockout_inputs'] = target
+                curr_df['affected_outputs'] = output
+                layer_df = [layer_df, curr_df]
+                layer_df = pd.concat(layer_df)
+                
+                # save to csv
+                out_fname = args.output_dir / f"{args.interfere_mode}_layer_by_layer.csv"
+                if out_fname:
+                    os.remove(out_fname)
+                layer_df.to_csv(out_fname)
+        
 
     # If we skip entire layer \ component
     elif KnockoutMode[args.interfere_mode] in {KnockoutMode.IGNORE_CONTEXT, KnockoutMode.IGNORE_LAYER, KnockoutMode.ONLY_CONTEXT}:
@@ -150,7 +164,7 @@ def main() -> None:
     else:
         raise ValueError(f"Unknown knockout mode: {args.interfere_mode}")
     
-    args.output_dir.mkdir(parents=True, exist_ok=True)
+    
     bin_search_df.to_csv(args.output_dir / f"{args.interfere_mode}_bin_search.csv")
     layer_df.to_csv(args.output_dir / f"{args.interfere_mode}_layer_by_layer.csv")
     
