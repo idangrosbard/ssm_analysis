@@ -28,7 +28,7 @@ def binary_search(evaluator: KnockoutEvaluator, dataset: pd.DataFrame, knockout_
 
     knockout_target_layers = list(range(len(evaluator.model.backbone.layers)))
     
-    acc = evaluator.knockout_eval(dataset, knockout_target_layers, knockout_mode)
+    _, acc = evaluator.knockout_eval(dataset, knockout_target_layers, knockout_mode)
     
     performance['layer'].append(str(knockout_target_layers))
     performance['start_layer'].append(min(knockout_target_layers))
