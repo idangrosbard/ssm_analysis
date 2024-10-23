@@ -10,19 +10,21 @@ from pathlib import Path
 from src.knockout import KnockoutMode, KnockoutTarget, SSMInterfereHook, choose_knockout_target, is_last_token_subj
 from argparse import ArgumentParser
 import numpy as np
-import plotly.graph_objects as go
+from typing import Iterable
 
 
 def get_args():
     parser = ArgumentParser()
     parser.add_argument("--model_size", type=str, choices={'130M', '2.8B'}, default="130M")
     parser.add_argument("--interfere_mode", type=str, choices={str(mode).split('.')[1] for mode in KnockoutMode}, default="ZERO_ATTENTION")
-    parser.add_argument("--interfere_target", type=str, choices={str(target).split('.')[1] for target in KnockoutTarget}, default="ENTIRE_SUBJ")
+    parser.add_argument("--interfere_target", type=str, choices=[str(target).split('.')[1] for target in KnockoutTarget] + [None], default=None)
     parser.add_argument("--drop_subj_last", action='store_true')
+    parser.add_argument("--show_eval_progress", action='store_true')
+    parser.add_argument("--output_dir", type=Path, default=Path("resources"))
     return parser.parse_args()
 
 
-def knockout_eval(model, tokenizer, knowns_df, device, interefere_mode: KnockoutMode, layer_indices, interfere_target, drop_subj_last):
+def knockout_eval(model: MambaForCausalLM, tokenizer: AutoTokenizer, knowns_df: pd.DataFrame, device: torch.device, interefere_mode: KnockoutMode, layer_indices: Iterable[int], knockout_target: KnockoutTarget, affected_target: KnockoutTarget, drop_subj_last: bool, show_progress: bool = False):
     acc = 0
     hooks = []
     handles = []
@@ -38,7 +40,7 @@ def knockout_eval(model, tokenizer, knowns_df, device, interefere_mode: Knockout
             handles.append(moi.register_forward_hook(hooks[-1]))
 
     # Evaluate model
-    pbar = tqdm(knowns_df.index, total=len(knowns_df), disable=True)
+    pbar = tqdm(knowns_df.index, total=len(knowns_df), disable=not show_progress)
     for idx in pbar:
         # Get relevant data
         input = knowns_df.loc[idx, "prompt"]
@@ -50,11 +52,12 @@ def knockout_eval(model, tokenizer, knowns_df, device, interefere_mode: Knockout
                 continue
 
         # set subject token as knockout idx
-        out = choose_knockout_target(input, subj, tokenizer, interfere_target)
-        start_idx, end_idx = out
+        knockout_indices = choose_knockout_target(input, subj, tokenizer, knockout_target)
+        affected_target_indices = choose_knockout_target(input, subj, tokenizer, affected_target)
+        
         for hook in hooks:
-            hook.knockout_start_idx = start_idx
-            hook.knockout_end_idx = end_idx
+            hook.knockout_indices = knockout_indices
+            hook.affected_outputs = affected_target_indices
 
         input_ids = tokenizer(input, return_tensors="pt")["input_ids"].to(device)
         out = model(input_ids)
@@ -73,7 +76,7 @@ def knockout_eval(model, tokenizer, knowns_df, device, interefere_mode: Knockout
     return acc
 
 
-def main_binary_search(model_size: str = "2.8B", interefere_mode: KnockoutMode = KnockoutMode.ZERO_ATTENTION, interefere_target: KnockoutTarget = KnockoutTarget.ENTIRE_SUBJ, drop_subj_last: bool = False):
+def main_binary_search(model_size: str = "2.8B", interefere_mode: KnockoutMode = KnockoutMode.ZERO_ATTENTION, interefere_target: KnockoutTarget = KnockoutTarget.ENTIRE_SUBJ, affected_outputs: KnockoutTarget = KnockoutTarget.LAST, drop_subj_last: bool = False, show_eval_progress: bool = False):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     if not Path("known_1000.json").exists():
         wget.download("https://rome.baulab.info/data/dsets/known_1000.json")
@@ -91,7 +94,7 @@ def main_binary_search(model_size: str = "2.8B", interefere_mode: KnockoutMode =
 
     knockout_target_layers = list(range(len(model.backbone.layers)))
     
-    acc = knockout_eval(model, tokenizer, knowns_df, device, interefere_mode, knockout_target_layers, interefere_target, drop_subj_last)
+    acc = knockout_eval(model, tokenizer, knowns_df, device, interefere_mode, knockout_target_layers, interefere_target, affected_outputs, drop_subj_last, show_eval_progress)
     performance['layer'].append(str(knockout_target_layers))
     performance['start_layer'].append(min(knockout_target_layers))
     performance['end_layer'].append(max(knockout_target_layers))
@@ -100,7 +103,6 @@ def main_binary_search(model_size: str = "2.8B", interefere_mode: KnockoutMode =
     # log(n) binary search
     n = len(knockout_target_layers)
     log_n = np.ceil(np.log2(n))
-    
 
     with torch.no_grad():
         for _ in tqdm(range(int(log_n)), desc='Binary search for optimal layer'):
@@ -111,13 +113,13 @@ def main_binary_search(model_size: str = "2.8B", interefere_mode: KnockoutMode =
                 early = knockout_target_layers[:len(knockout_target_layers) // 2]
                 late = knockout_target_layers[len(knockout_target_layers) // 2:]
 
-            acc_early = knockout_eval(model, tokenizer, knowns_df, device, interefere_mode, early, interefere_target, drop_subj_last)
+            acc_early = knockout_eval(model, tokenizer, knowns_df, device, interefere_mode, early, interefere_target, affected_outputs, drop_subj_last, show_eval_progress)
             performance['layer'].append(str(early))
             performance['acc'].append(acc_early)
             performance['start_layer'].append(min(early))
             performance['end_layer'].append(max(early))
 
-            acc_late = knockout_eval(model, tokenizer, knowns_df, device, interefere_mode, late, interefere_target, drop_subj_last)
+            acc_late = knockout_eval(model, tokenizer, knowns_df, device, interefere_mode, late, interefere_target, affected_outputs, drop_subj_last, show_eval_progress)
             performance['layer'].append(str(late))
             performance['acc'].append(acc_late)
             performance['start_layer'].append(min(late))
@@ -133,7 +135,7 @@ def main_binary_search(model_size: str = "2.8B", interefere_mode: KnockoutMode =
     return df
 
 
-def main(model_size: str = "2.8B", interefere_mode: KnockoutMode = KnockoutMode.ZERO_ATTENTION, interefere_target: KnockoutTarget = KnockoutTarget.ENTIRE_SUBJ, drop_subj_last: bool = False):
+def main(model_size: str = "2.8B", interefere_mode: KnockoutMode = KnockoutMode.ZERO_ATTENTION, interefere_target: KnockoutTarget = KnockoutTarget.ENTIRE_SUBJ, affected_outputs: KnockoutTarget = KnockoutTarget.LAST, drop_subj_last: bool = False, show_eval_progress: bool = False):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     if not Path("known_1000.json").exists():
         wget.download("https://rome.baulab.info/data/dsets/known_1000.json")
@@ -152,25 +154,13 @@ def main(model_size: str = "2.8B", interefere_mode: KnockoutMode = KnockoutMode.
     with torch.no_grad():
         # evaluate every single layer
         for i in tqdm(range(len(model.backbone.layers)), desc="Iterating layers for knockout..."):
-            continue
-            acc = knockout_eval(model, tokenizer, knowns_df, device, interefere_mode, [i], interefere_target, drop_subj_last)
+            acc = knockout_eval(model, tokenizer, knowns_df, device, interefere_mode, [i], interefere_target, affected_outputs, drop_subj_last, show_eval_progress)
             performance['layer'].append(i)
             performance['acc'].append(acc)
         
-        # evaluate all layers at once
-        acc = knockout_eval(model, tokenizer, knowns_df, device, interefere_mode, list(range(len(model.backbone.layers))), interefere_target)
-        performance['layer'].append(len(model.backbone.layers))
-        performance['acc'].append(acc)
-
-    
     df = pd.DataFrame(performance)
-    df.to_csv("ssm_interference_subject.csv")
-    long = df.melt(id_vars=['layer', 'acc'], var_name='mode', value_name='x')
-    fig = go.Figure()
-    for layer in long['layer'].unique():
-        curr = long[long['layer'] == layer]
-        fig.add_trace(go.Scatter(x=curr['x'], y=curr['acc'], mode='lines+markers', name=f'Layer {layer}', color='red'))
-    fig.write_html("ssm_interference_subject.html")
+    
+    return df
 
 
 def get_last_token_stats(model_size: str = '130M'):
@@ -195,18 +185,35 @@ def get_last_token_stats(model_size: str = '130M'):
     print(stat)
 
 
-
 if __name__ == "__main__":
     args = get_args()
     get_last_token_stats(args.model_size)
 
-    exit()
-    dfs = []
-    for target in KnockoutTarget:
-        dfs.append(main_binary_search(args.model_size, KnockoutMode[args.interfere_mode], target, args.drop_subj_last))
-        dfs[-1]['target'] = target
+    bin_search_dfs = []
+    layer_dfs = []
+    if args.interfere_target is not None:
+        targets = [KnockoutTarget[args.interfere_target]]
+    else:
+        targets = KnockoutTarget
+
+    affected_outputs = [KnockoutTarget.LAST, KnockoutTarget.ENTIRE_SUBJ]
+    # targets = [KnockoutTarget.SUBJ_CONTEXT]
+    # affected_outputs = [KnockoutTarget.ENTIRE_SUBJ]
+
+    for target in targets:
+        for output in affected_outputs:
+            bin_search_dfs.append(main_binary_search(args.model_size, KnockoutMode[args.interfere_mode], target, output, args.drop_subj_last, args.show_eval_progress))
+            bin_search_dfs[-1]['knockout_inputs'] = target
+            bin_search_dfs[-1]['affected_outputs'] = output
+
+            layer_dfs.append(main(args.model_size, KnockoutMode[args.interfere_mode], target, output, args.show_eval_progress))
+            layer_dfs[-1]['knockout_inputs'] = target
+            layer_dfs[-1]['affected_outputs'] = output
     
-    df = pd.concat(dfs)
-    df.to_csv("ssm_interference_subject.csv")
-    # main(args.model_size, KnockoutMode[args.interfere_mode], KnockoutTarget[args.interfere_target])
+    args.output_dir.mkdir(parents=True, exist_ok=True)
+    df = pd.concat(bin_search_dfs)
+    df.to_csv(args.output_dir / f"{args.interfere_mode}_bin_search.csv")
+    
+    df = pd.concat(layer_dfs)
+    df.to_csv(args.output_dir / f"{args.interfere_mode}_layer_by_layer.csv")
     

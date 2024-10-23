@@ -1,13 +1,11 @@
-from typing import Optional, Iterable
+from typing import Optional
 from torch import nn
 import torch
 
 from transformers.cache_utils import MambaCache
-from .knockout_mode import KnockoutMode
-from .knockout_scan import knockout_scan
 
 # fmt: off
-def slow_forward_for_ssm_materializing_knockout(module, input_states, cache_params: Optional[MambaCache]=None, cache_position:Optional[torch.LongTensor]=None, attention_mask: Optional[torch.LongTensor] = None, knockout_indices: Optional[Iterable[int]] = None, affected_outputs: Optional[Iterable[int]] = None, knockout_mode: Optional[KnockoutMode] = None):
+def slow_forward_for_ssm_materializing_listener(module, input_states, cache_params: Optional[MambaCache]=None, cache_position:Optional[torch.LongTensor]=None, attention_mask: Optional[torch.LongTensor] = None):
     """
     The implementation of MambaMixer's forward pass, updated to return the calculated SSM parameters (A, B, C) for analysis.
     """
@@ -46,14 +44,6 @@ def slow_forward_for_ssm_materializing_knockout(module, input_states, cache_para
             (batch_size, module.intermediate_size, module.ssm_state_size),
             device=hidden_states.device, dtype=dtype
         )
-        # knockout_input_state = torch.zeros(
-        #     (batch_size, module.intermediate_size, module.ssm_state_size),
-        #     device=hidden_states.device, dtype=dtype
-        # )
-        final_state = torch.zeros(
-            (batch_size, module.intermediate_size, module.ssm_state_size),
-            device=hidden_states.device, dtype=dtype
-        )
         hidden_states = module.act(module.conv1d(hidden_states)[..., :seq_len])         # [batch, intermediate_size, seq_len]
 
     if attention_mask is not None:
@@ -74,18 +64,35 @@ def slow_forward_for_ssm_materializing_knockout(module, input_states, cache_para
     discrete_B = discrete_time_step[:, :, :, None] * B[:, None, :, :].float()       # [batch, intermediate_size, seq_len, ssm_state_size]
     deltaB_u = discrete_B * hidden_states[:, :, :, None].float()
 
-    # 3.c perform the recurrence y ← SSM(A, B, C)(x)
-    # Here is the call to the knockout_scan functions
-    scan_outputs = knockout_scan(seq_len, ssm_state, discrete_A, deltaB_u, C, knockout_indices, affected_outputs, knockout_mode, dtype)
+    scan_outputs = []
+    context_states = []
+    indep_states = []
     
-    scan_output = torch.stack(scan_outputs, dim=-1)                                # [batch, seq_len, intermediade_size]
-    scan_output = scan_output + (hidden_states * module.D[None, :, None])
-    scan_output = (scan_output * module.act(gate))
+    for i in range(seq_len):
+        ssm_state = discrete_A[:, :, i, :] * ssm_state + deltaB_u[:, :, i, :]      # [batch, intermediade_size, ssm_state]
+        indep_state = torch.matmul(deltaB_u.to(dtype), C[:, i, :].unsqueeze(-1))  # [batch, intermediade_size, 1]
+        scan_output = torch.matmul(ssm_state.to(dtype), C[:, i, :].unsqueeze(-1))  # [batch, intermediade_size, 1]
+        context_state = scan_output - indep_state
+        
+        scan_outputs.append(scan_output[:, :, 0])
+        indep_states.append(indep_state[:, :, 0])
+        context_states.append(context_state[:, :, 0])
+
+
+    def finalize_states(states, add_resid: bool = True):
+        states = torch.stack(states, dim=-1)
+        if add_resid:
+            states = states + (hidden_states * module.D[None, :, None])
+        states = (states * module.act(gate))
+
+    scan_output = finalize_states(scan_outputs)
+    scan_output = finalize_states(indep_states)
+    scan_output = finalize_states(context_states, False)
 
     if cache_params is not None:
         cache_params.ssm_states[module.layer_idx].copy_(ssm_state)
 
     # 4. Final linear projection
     contextualized_states = module.out_proj(scan_output.transpose(1, 2))  # [batch, seq_len, hidden_size]
-    return contextualized_states
+    return contextualized_states, indep_states, context_states
 # fmt: on
