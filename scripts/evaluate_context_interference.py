@@ -139,7 +139,7 @@ def main() -> None:
                 
                 # save to csv
                 out_fname = args.output_dir / f"{args.interfere_mode}_{args.model_size}_bin_search.csv"
-                if out_fname:
+                if out_fname.exists():
                     os.remove(out_fname)
                 bin_search_df.to_csv(out_fname)
                 
@@ -151,7 +151,7 @@ def main() -> None:
                 
                 # save to csv
                 out_fname = args.output_dir / f"{args.interfere_mode}_{args.model_size}_layer_by_layer.csv"
-                if out_fname:
+                if out_fname.exists():
                     os.remove(out_fname)
                 layer_df.to_csv(out_fname)
         
@@ -171,3 +171,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+    #
