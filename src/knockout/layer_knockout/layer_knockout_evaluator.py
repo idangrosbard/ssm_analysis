@@ -1,12 +1,11 @@
-from .knockout_evaluator import KnockoutEvaluator
-from .knockout_mode import KnockoutMode
+from ..knockout_evaluator import KnockoutEvaluator
+from ..knockout_mode import KnockoutMode
 from typing import Iterable, Tuple
 import pandas as pd
-from tqdm import tqdm
 from .component_knockout_hook import ComponentKnockoutHook
 from transformers import AutoTokenizer, MambaForCausalLM
 import torch
-from ..evaluate import evaluate_model
+from ...evaluate import evaluate_model
 
 
 class LayerKnockoutEvaluator(KnockoutEvaluator):

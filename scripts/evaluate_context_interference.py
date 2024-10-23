@@ -2,12 +2,15 @@ import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import pandas as pd
-from transformers import AutoTokenizer, MambaModel
+from transformers import AutoTokenizer, MambaForCausalLM
 import torch
 from tqdm import tqdm
 from pathlib import Path
-from src.knockout import KnockoutMode, KnockoutTarget, AttentionKnockoutEvaluator, LayerKnockoutEvaluator, KnockoutEvaluator, is_last_token_subj
-from argparse import ArgumentParser
+from src.knockout import KnockoutMode, KnockoutEvaluator
+from src.knockout.attention_knockout import KnockoutTarget, AttentionKnockoutEvaluator, is_last_token_subj
+from src.knockout.layer_knockout import LayerKnockoutEvaluator
+from src.knockout.ssm_knockout import SSMKnockoutEvaluator
+from argparse import ArgumentParser, Namespace
 import numpy as np
 from src.utils import load_knowns, setup_model
 
@@ -106,6 +109,86 @@ def get_last_token_stats(model_size: str = '130M'):
     print(stat)
 
 
+def attention_knockout_evaluate(args: Namespace, model: MambaForCausalLM, tokenizer: AutoTokenizer, device: torch.device, knowns_df: pd.DataFrame):
+    evaluator = AttentionKnockoutEvaluator(model, tokenizer, device, -1, -1, args.drop_subj_last, args.show_eval_progress)
+
+    bin_search_df = None
+    layer_df = None
+
+    affected_outputs = [KnockoutTarget.LAST, KnockoutTarget.ENTIRE_SUBJ]
+
+    specific_targets = {KnockoutTarget.LAST: KnockoutTarget, KnockoutTarget.ENTIRE_SUBJ: [KnockoutTarget.ENTIRE_SUBJ, KnockoutTarget.SUBJ_LAST, KnockoutTarget.SUBJ_CONTEXT]}
+    
+    for output in affected_outputs:
+        for target in specific_targets[output]:
+            evaluator.knockout_target = target
+            evaluator.affected_target = output
+            
+            curr_df = binary_search(evaluator, knowns_df, KnockoutMode[args.interfere_mode])
+            curr_df['knockout_inputs'] = target
+            curr_df['affected_outputs'] = output
+            bin_search_df = [bin_search_df, curr_df]
+            bin_search_df = pd.concat(bin_search_df)
+            
+            # save to csv
+            out_fname = args.output_dir / f"{args.interfere_mode}_{args.model_size}_bin_search.csv"
+            if out_fname.exists():
+                os.remove(out_fname)
+            bin_search_df.to_csv(out_fname)
+            
+            curr_df = layer_by_layer(evaluator, knowns_df, KnockoutMode[args.interfere_mode])
+            curr_df['knockout_inputs'] = target
+            curr_df['affected_outputs'] = output
+            layer_df = [layer_df, curr_df]
+            layer_df = pd.concat(layer_df)
+            
+            # save to csv
+            out_fname = args.output_dir / f"{args.interfere_mode}_{args.model_size}_layer_by_layer.csv"
+            if out_fname.exists():
+                os.remove(out_fname)
+            layer_df.to_csv(out_fname)
+
+
+def layer_knockout_evaluate(args: Namespace, model: MambaForCausalLM, tokenizer: AutoTokenizer, device: torch.device, knowns_df: pd.DataFrame):
+    evaluator = LayerKnockoutEvaluator(model, tokenizer, device, args.show_eval_progress)
+    bin_search_df = binary_search(evaluator, knowns_df, KnockoutMode[args.interfere_mode])
+    layer_df = layer_by_layer(evaluator, knowns_df, KnockoutMode[args.interfere_mode])
+
+    bin_search_df.to_csv(args.output_dir / f"{args.interfere_mode}_{args.model_size}_bin_search.csv")
+    layer_df.to_csv(args.output_dir / f"{args.interfere_mode}_{args.model_size}_layer_by_layer.csv")
+
+
+def ssm_knockout_evaluate(args: Namespace, model: MambaForCausalLM, tokenizer: AutoTokenizer, device: torch.device, knowns_df: pd.DataFrame):
+    bin_search_df = None
+    layer_df = None
+    for norm in ['l_1','l_infty']:
+        categorized_As = {'category_A':[[1,2,3]] * 24, 'category_B': [[4,5,6]]  * 24}
+        for category in categorized_As:
+            evaluator = SSMKnockoutEvaluator(model, tokenizer, device, categorized_As[category], False)
+            curr = binary_search(evaluator, knowns_df, KnockoutMode[args.interfere_mode])
+            curr['category'] = category
+            curr['norm'] = norm
+            bin_search_df = pd.concat([bin_search_df, curr])
+
+            out_fname = args.output_dir / f"{args.interfere_mode}_{args.model_size}_bin_search.csv"
+            if out_fname.exists():
+                os.remove(out_fname)
+            bin_search_df.to_csv(out_fname)
+
+            curr = layer_by_layer(evaluator, knowns_df, KnockoutMode[args.interfere_mode])
+            curr['category'] = category
+            curr['norm'] = norm
+            layer_df = pd.concat([layer_df, curr])
+
+            out_fname = args.output_dir / f"{args.interfere_mode}_{args.model_size}_layer_by_layer.csv"
+            if out_fname.exists():
+                os.remove(out_fname)
+            layer_df.to_csv(out_fname)
+
+    bin_search_df.to_csv(args.output_dir / f"{args.interfere_mode}_{args.model_size}_bin_search.csv")
+    layer_df.to_csv(args.output_dir / f"{args.interfere_mode}_{args.model_size}_layer_by_layer.csv")
+
+
 def main() -> None:
     args = get_args()
     get_last_token_stats(args.model_size)
@@ -116,59 +199,17 @@ def main() -> None:
     
     # If we do attention knockout:
     if KnockoutMode[args.interfere_mode] in {KnockoutMode.ZERO_ATTENTION, KnockoutMode.ZERO_DELTA}:
-        evaluator = AttentionKnockoutEvaluator(model, tokenizer, device, -1, -1, args.drop_subj_last, args.show_eval_progress)
-
-        bin_search_df = None
-        layer_df = None
-
-        targets = KnockoutTarget
-        affected_outputs = [KnockoutTarget.LAST, KnockoutTarget.ENTIRE_SUBJ]
-
-        specific_targets = {KnockoutTarget.LAST: KnockoutTarget, KnockoutTarget.ENTIRE_SUBJ: [KnockoutTarget.ENTIRE_SUBJ, KnockoutTarget.SUBJ_LAST, KnockoutTarget.SUBJ_CONTEXT]}
+        attention_knockout_evaluate(args, model, tokenizer, device, knowns_df)
         
-        for output in affected_outputs:
-            for target in specific_targets[output]:
-                evaluator.knockout_target = target
-                evaluator.affected_target = output
-                
-                curr_df = binary_search(evaluator, knowns_df, KnockoutMode[args.interfere_mode])
-                curr_df['knockout_inputs'] = target
-                curr_df['affected_outputs'] = output
-                bin_search_df = [bin_search_df, curr_df]
-                bin_search_df = pd.concat(bin_search_df)
-                
-                # save to csv
-                out_fname = args.output_dir / f"{args.interfere_mode}_{args.model_size}_bin_search.csv"
-                if out_fname.exists():
-                    os.remove(out_fname)
-                bin_search_df.to_csv(out_fname)
-                
-                curr_df = layer_by_layer(evaluator, knowns_df, KnockoutMode[args.interfere_mode])
-                curr_df['knockout_inputs'] = target
-                curr_df['affected_outputs'] = output
-                layer_df = [layer_df, curr_df]
-                layer_df = pd.concat(layer_df)
-                
-                # save to csv
-                out_fname = args.output_dir / f"{args.interfere_mode}_{args.model_size}_layer_by_layer.csv"
-                if out_fname.exists():
-                    os.remove(out_fname)
-                layer_df.to_csv(out_fname)
-        
-
     # If we skip entire layer \ component
     elif KnockoutMode[args.interfere_mode] in {KnockoutMode.IGNORE_CONTEXT, KnockoutMode.IGNORE_LAYER, KnockoutMode.ONLY_CONTEXT}:
-        evaluator = LayerKnockoutEvaluator(model, tokenizer, device, args.show_eval_progress)
-        bin_search_df = binary_search(evaluator, knowns_df, KnockoutMode[args.interfere_mode])
-        layer_df = layer_by_layer(evaluator, knowns_df, KnockoutMode[args.interfere_mode])
+        layer_knockout_evaluate(args, model, tokenizer, device, knowns_df)
+    elif KnockoutMode[args.interfere_mode] == KnockoutMode.IGNORE_SSM:
+        ssm_knockout_evaluate(args, model, tokenizer, device, knowns_df)
+        
     else:
         raise ValueError(f"Unknown knockout mode: {args.interfere_mode}")
-    
-    
-    bin_search_df.to_csv(args.output_dir / f"{args.interfere_mode}_{args.model_size}_bin_search.csv")
-    layer_df.to_csv(args.output_dir / f"{args.interfere_mode}_{args.model_size}_layer_by_layer.csv")
     
 
 if __name__ == "__main__":
     main()
-    #

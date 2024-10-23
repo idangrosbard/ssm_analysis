@@ -7,3 +7,4 @@ class KnockoutMode(Enum):
     IGNORE_CONTEXT = 2
     ONLY_CONTEXT = 3
     IGNORE_LAYER = 4
+    IGNORE_SSM = 5
