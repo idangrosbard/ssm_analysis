@@ -186,7 +186,7 @@ def ssm_knockout_evaluate(args: Namespace, model: MambaForCausalLM, tokenizer: A
         curr['norm'] = norm
         bin_search_df = pd.concat([bin_search_df, curr])
 
-        out_fname = args.output_dir / f"{args.interfere_mode}_{args.model_size}_bin_search.csv"
+        out_fname = args.output_dir / f"{args.interfere_mode}_{args.model_size}_norm_{norm}_bin_search.csv"
         if out_fname.exists():
             os.remove(out_fname)
         bin_search_df.to_csv(out_fname)
@@ -197,7 +197,7 @@ def ssm_knockout_evaluate(args: Namespace, model: MambaForCausalLM, tokenizer: A
             curr['norm'] = norm
             layer_df = pd.concat([layer_df, curr])
 
-            out_fname = args.output_dir / f"{args.interfere_mode}_{args.model_size}_layer_by_layer.csv"
+            out_fname = args.output_dir / f"{args.interfere_mode}_{args.model_size}_norm_{norm}_layer_by_layer.csv"
             if out_fname.exists():
                 os.remove(out_fname)
             layer_df.to_csv(out_fname)
