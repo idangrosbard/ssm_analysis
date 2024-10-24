@@ -26,7 +26,8 @@ def get_args():
     parser.add_argument("--output_dir", type=Path, default=Path("resources"))
     parser.add_argument("--layer_checkpoint", type=Path, default=None)
     parser.add_argument("--bin_search_checkpoint", type=Path, default=None)
-    # parser.add_argument("--affected_outputs", type=str, default="LAST", options=['LAST', 'ENTIRE_SUBJ'])
+    parser.add_argument("--ignore_layer_by_layer", action='store_true')
+    parser.add_argument('--norm', type=str, default='1', choices=['1', 'inf'])
     return parser.parse_args()
 
 
@@ -171,26 +172,26 @@ def layer_knockout_evaluate(args: Namespace, model: MambaForCausalLM, tokenizer:
     layer_df.to_csv(args.output_dir / f"{args.interfere_mode}_{args.model_size}_layer_by_layer.csv")
 
 
-def ssm_knockout_evaluate(args: Namespace, model: MambaForCausalLM, tokenizer: AutoTokenizer, device: torch.device, knowns_df: pd.DataFrame):
+def ssm_knockout_evaluate(args: Namespace, model: MambaForCausalLM, tokenizer: AutoTokenizer, device: torch.device, knowns_df: pd.DataFrame, norm: int | float, ignore_layer_by_layer: bool = False):
     ssm_classifier = DecayNormClassifier()
     bin_search_df = None
     layer_df = None
-    for norm in [1, float('inf')]:
-        ssm_classifier.norm = norm
+    ssm_classifier.norm = norm
 
-        categorized_ssms = ssm_classifier.classify_model(model.backbone)
-        for category in categorized_ssms:
-            evaluator = SSMKnockoutEvaluator(model, tokenizer, device, categorized_ssms[category], False)
-            curr = binary_search(evaluator, knowns_df, KnockoutMode[args.interfere_mode])
-            curr['category'] = category
-            curr['norm'] = norm
-            bin_search_df = pd.concat([bin_search_df, curr])
+    categorized_ssms = ssm_classifier.classify_model(model.backbone)
+    for category in categorized_ssms:
+        evaluator = SSMKnockoutEvaluator(model, tokenizer, device, categorized_ssms[category], False)
+        curr = binary_search(evaluator, knowns_df, KnockoutMode[args.interfere_mode])
+        curr['category'] = category
+        curr['norm'] = norm
+        bin_search_df = pd.concat([bin_search_df, curr])
 
-            out_fname = args.output_dir / f"{args.interfere_mode}_{args.model_size}_bin_search.csv"
-            if out_fname.exists():
-                os.remove(out_fname)
-            bin_search_df.to_csv(out_fname)
+        out_fname = args.output_dir / f"{args.interfere_mode}_{args.model_size}_bin_search.csv"
+        if out_fname.exists():
+            os.remove(out_fname)
+        bin_search_df.to_csv(out_fname)
 
+        if not ignore_layer_by_layer:
             curr = layer_by_layer(evaluator, knowns_df, KnockoutMode[args.interfere_mode])
             curr['category'] = category
             curr['norm'] = norm
@@ -201,8 +202,9 @@ def ssm_knockout_evaluate(args: Namespace, model: MambaForCausalLM, tokenizer: A
                 os.remove(out_fname)
             layer_df.to_csv(out_fname)
 
-    bin_search_df.to_csv(args.output_dir / f"{args.interfere_mode}_{args.model_size}_bin_search.csv")
-    layer_df.to_csv(args.output_dir / f"{args.interfere_mode}_{args.model_size}_layer_by_layer.csv")
+    bin_search_df.to_csv(args.output_dir / f"{args.interfere_mode}_{args.model_size}_norm_{norm}_bin_search.csv")
+    if not ignore_layer_by_layer:
+        layer_df.to_csv(args.output_dir / f"{args.interfere_mode}_{args.model_size}_norm_{norm}_layer_by_layer.csv")
 
 
 def get_checkpoint(pth: Optional[Path]) -> Optional[pd.DataFrame]:
@@ -234,7 +236,11 @@ def main() -> None:
 
     # If we do SSM knockout
     elif KnockoutMode[args.interfere_mode] == KnockoutMode.IGNORE_SSM:
-        ssm_knockout_evaluate(args, model, tokenizer, device, knowns_df)
+        if args.norm == 'inf':
+            norm = float('int')
+        else:
+            norm = int(args.norm)
+        ssm_knockout_evaluate(args, model, tokenizer, device, knowns_df, norm=norm, ignore_layer_by_layer=args.ignore_layer_by_layer)
     else:
         raise ValueError(f"Unknown knockout mode: {args.interfere_mode}")
     
