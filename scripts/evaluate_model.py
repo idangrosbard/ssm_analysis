@@ -1,27 +1,17 @@
 import json
-from typing import NamedTuple
+from argparse import ArgumentParser
+from pathlib import Path
 from typing import Optional
-from typing import assert_never
 
-import wget
-import pandas as pd
-from transformers import (
-    AutoTokenizer,
-    MambaForCausalLM,
-    LlamaForCausalLM,
-    PreTrainedTokenizer,
-    PreTrainedTokenizerFast,
-    PreTrainedModel,
-)
 import torch
 from tqdm import tqdm
-from pathlib import Path
-from argparse import ArgumentParser
+from transformers import (
+    AutoTokenizer,
+)
 
 from scripts.create_slurm_file import run_slurm
-from src.models.minimal_mamba1 import Mamba
-from src.models.minimal_mamba2 import Mamba2LMHeadModel
-
+from src.datasets.known_1000.download_dataset import load_knowns
+from src.utils.setup_model import get_tokenizer_and_model
 
 NEW_MAX_TOKENS = 5
 
@@ -57,51 +47,13 @@ def get_subj_idx(input: str, subj: str, tokenizer: AutoTokenizer, last: bool = T
     return len(sent2subj_tokens) - 1
 
 
-def get_tokenizer_and_model(model_arch: str, model_size: str, device: Optional[torch.device] = None) -> tuple[
-    PreTrainedTokenizer | PreTrainedTokenizerFast,
-    PreTrainedModel | MambaForCausalLM | Mamba | Mamba2LMHeadModel | LlamaForCausalLM,
-]:
-    if model_arch == "mamba":
-        tokenizer = AutoTokenizer.from_pretrained(f"state-spaces/mamba-{model_size}-hf")
-        model = MambaForCausalLM.from_pretrained(
-            f"state-spaces/mamba-{model_size}-hf"
-        )  # 130M, 2.8B
-    elif model_arch == "minimal_mamba1":
-        tokenizer = AutoTokenizer.from_pretrained("EleutherAI/gpt-neox-20b")
-        tokenizer.pad_token_id = tokenizer.eos_token_id
-        model = Mamba.from_pretrained(f"state-spaces/mamba-{model_size}")
-    elif model_arch == "minimal_mamba2":
-        tokenizer = AutoTokenizer.from_pretrained("EleutherAI/gpt-neox-20b")
-        tokenizer.pad_token_id = tokenizer.eos_token_id
-        model = Mamba2LMHeadModel.from_pretrained(
-            f"state-spaces/mamba2-{model_size}", device=device  # 130M, 2.7B
-        )
-    elif model_arch == "llama2":
-        model_name = f"meta-llama/Llama2-{model_size}-hf"  # 7b
-        tokenizer = AutoTokenizer.from_pretrained(f"meta-llama/Llama2-{model_size}-hf")
-        model = LlamaForCausalLM.from_pretrained(
-            f"meta-llama/Llama-{model_size}-hf"
-        )  # 7
-    elif model_arch == "llama3.2":
-        model_name = f"meta-llama/Llama-3.2-{model_size}"  # 1B, 3B
-        tokenizer = AutoTokenizer.from_pretrained(model_name)
-        model = LlamaForCausalLM.from_pretrained(model_name)
-    else:
-        assert False, f"model_arch {model_arch} not supported"
-
-    if device:
-        model.to(device)
-        
-    return tokenizer, model
-
-
 def main(
-    model_arch: str,
-    model_size: str = "2.8B",
-    drop_subject: bool = False,
-    drop_subj_last_token: bool = False,
-    with_3_dots: bool = False,
-    output_file: Optional[Path] = None,
+        model_arch: str,
+        model_size: str = "2.8B",
+        drop_subject: bool = False,
+        drop_subj_last_token: bool = False,
+        with_3_dots: bool = False,
+        output_file: Optional[Path] = None,
 ):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     knowns_df = load_knowns()
@@ -134,7 +86,7 @@ def main(
             input_ids = tokenizer(input_prompt)["input_ids"]
 
             if drop_subj_last_token:
-                input_ids = input_ids[:subj_idx] + input_ids[subj_idx + 1 :]
+                input_ids = input_ids[:subj_idx] + input_ids[subj_idx + 1:]
 
             input_ids = torch.Tensor([input_ids]).long().to(device)
 
@@ -145,9 +97,9 @@ def main(
                 logits, _ = model(input_ids)
 
             elif (
-                model_arch == "mamba"
-                or model_arch == "llama2"
-                or model_arch == "llama3.2"
+                    model_arch == "mamba"
+                    or model_arch == "llama2"
+                    or model_arch == "llama3.2"
             ):
                 logits = out.logits
             else:
@@ -206,11 +158,11 @@ def main(
 
 
 def run_with_slurm(
-    model_arch: str,
-    model_size: str,
-    drop_subject: bool,
-    drop_subj_last_token: bool,
-    with_3_dots: bool,
+        model_arch: str,
+        model_size: str,
+        drop_subject: bool,
+        drop_subj_last_token: bool,
+        with_3_dots: bool,
 ):
     project_dir = Path(__file__).parent.parent
     experiment_name = f"{model_arch}_{model_size}"

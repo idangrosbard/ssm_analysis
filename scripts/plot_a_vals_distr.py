@@ -4,7 +4,7 @@ import plotly.express as px
 
 from tqdm import tqdm
 
-from scripts.evaluate_model import get_tokenizer_and_model
+from src.utils.setup_model import get_tokenizer_and_model
 import numpy as np
 
 def collect_and_stack_A_logs(model):
