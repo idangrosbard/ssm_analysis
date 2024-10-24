@@ -102,10 +102,7 @@ def main(
     output_file: Optional[Path] = None,
 ):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    if not Path("known_1000.json").exists():
-        wget.download("https://rome.baulab.info/data/dsets/known_1000.json")
-    knowns_df = pd.read_json("known_1000.json").set_index("known_id")
-    print(knowns_df)
+    knowns_df = load_knowns()
 
     tokenizer, model = get_tokenizer_and_model(model_arch, model_size, device)
     model.eval()
