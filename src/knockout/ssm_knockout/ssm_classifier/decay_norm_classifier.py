@@ -20,7 +20,7 @@ class DecayNormClassifier(SSMClassifier):
 
         # get the norms
         if self.norm == float('inf'):
-            norms = torch.max(decay_matrices, dim=1)
+            norms = torch.max(decay_matrices, dim=1).values
         else:
             norms = torch.norm(decay_matrices, p=self.norm, dim=1)
         
