@@ -73,6 +73,7 @@ def slow_forward_for_ssm_manipulation(module, input_states, cache_params: Option
 
     # Increase by a factor specific timesteps
     mask = get_factored_mask(feature_mask, factor, factored_tokens)
+    mask = mask.to(discrete_time_step.device)
     discrete_time_step = discrete_time_step * mask.transpose(1, 2)
 
     discrete_time_step = nn.functional.softplus(discrete_time_step).transpose(1, 2) # [batch, intermediate_size, seq_len]
