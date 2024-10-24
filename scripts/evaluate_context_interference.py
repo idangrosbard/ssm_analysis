@@ -10,13 +10,12 @@ from src.knockout import KnockoutMode, KnockoutEvaluator
 from src.knockout.attention_knockout import KnockoutTarget, AttentionKnockoutEvaluator, is_last_token_subj
 from src.knockout.layer_knockout import LayerKnockoutEvaluator
 from src.knockout.ssm_knockout import SSMKnockoutEvaluator
-from src.knockout.ssm_knockout.ssm_classifier import SSMClassifier, DecayNormClassifier, SSMClassifierStub
+from src.knockout.ssm_knockout.ssm_classifier import SSMClassifier, DecayNormClassifier
 from src.knockout.increase_delta import IncreaseDeltaEvaluator
 from argparse import ArgumentParser, Namespace
 import numpy as np
 from src.utils import load_knowns, setup_model
-
-from typing import Optional
+from typing import Optional, Iterable
 
 
 def get_args():
@@ -30,16 +29,20 @@ def get_args():
     parser.add_argument("--bin_search_checkpoint", type=Path, default=None)
     parser.add_argument("--ignore_layer_by_layer", action='store_true')
     parser.add_argument('--norm', type=str, default='1', choices=['1', 'inf'])
+    parser.add_argument('--early_layers_ssm_knockout', action='store_true')
+    parser.add_argument('--affected_output', type=str, choices={'last', 'subj', 'all'}, default='all')
     return parser.parse_args()
 
 
-def binary_search(evaluator: KnockoutEvaluator, dataset: pd.DataFrame, knockout_mode: KnockoutMode) -> pd.DataFrame:
-    performance = {'acc': [], 'layer': [], 'start_layer': [], 'end_layer': []}
-
-    knockout_target_layers = list(range(len(evaluator.model.backbone.layers)))
+def binary_search(evaluator: KnockoutEvaluator, dataset: pd.DataFrame, knockout_mode: KnockoutMode, start_layers: Optional[Iterable[int]] = None) -> pd.DataFrame:
+    if start_layers is None:
+        knockout_target_layers = list(range(len(evaluator.model.backbone.layers)))
+    else:
+        knockout_target_layers = start_layers
     
     _, acc = evaluator.knockout_eval(dataset, knockout_target_layers, knockout_mode)
     
+    performance = {'acc': [], 'layer': [], 'start_layer': [], 'end_layer': []}
     performance['layer'].append(str(knockout_target_layers))
     performance['start_layer'].append(min(knockout_target_layers))
     performance['end_layer'].append(max(knockout_target_layers))
@@ -116,13 +119,18 @@ def get_last_token_stats(model_size: str = '130M'):
     print(stat)
 
 
-def attention_knockout_evaluate(args: Namespace, model: MambaForCausalLM, tokenizer: AutoTokenizer, device: torch.device, knowns_df: pd.DataFrame, layer_checkpoint: Optional[pd.DataFrame] = None, bin_search_checkpoint: Optional[pd.DataFrame] = None):
+def attention_knockout_evaluate(args: Namespace, model: MambaForCausalLM, tokenizer: AutoTokenizer, device: torch.device, knowns_df: pd.DataFrame, layer_checkpoint: Optional[pd.DataFrame] = None, bin_search_checkpoint: Optional[pd.DataFrame] = None, affected_output: str = 'all'):
     evaluator = AttentionKnockoutEvaluator(model, tokenizer, device, -1, -1, args.drop_subj_last, args.show_eval_progress)
 
     bin_search_df = bin_search_checkpoint
     layer_df = layer_checkpoint
-
-    affected_outputs = [KnockoutTarget.LAST, KnockoutTarget.ENTIRE_SUBJ]
+    
+    if affected_output == 'all':
+        affected_outputs = [KnockoutTarget.LAST, KnockoutTarget.ENTIRE_SUBJ]
+    elif affected_output == 'last':
+        affected_outputs = [KnockoutTarget.LAST]
+    elif affected_output == 'subj':
+        affected_outputs = [KnockoutTarget.ENTIRE_SUBJ]
 
     specific_targets = {KnockoutTarget.LAST: KnockoutTarget, KnockoutTarget.ENTIRE_SUBJ: [KnockoutTarget.ENTIRE_SUBJ, KnockoutTarget.SUBJ_LAST, KnockoutTarget.SUBJ_CONTEXT]}
     
@@ -131,8 +139,11 @@ def attention_knockout_evaluate(args: Namespace, model: MambaForCausalLM, tokeni
             
             evaluator.knockout_target = target
             evaluator.affected_target = output
+            cond = (bin_search_df is None)
+            if not cond:
+                cond = (len(bin_search_df[(bin_search_df['knockout_inputs'] == str(target)) & (bin_search_df['affected_outputs'] == str(output))]) == 0)
             
-            if len(bin_search_df[(bin_search_df['knockout_inputs'] == str(target)) & (bin_search_df['affected_outputs'] == str(output))]) == 0:
+            if cond:
                 print('Binary search for', target, output)
                 curr_df = binary_search(evaluator, knowns_df, KnockoutMode[args.interfere_mode])
                 curr_df['knockout_inputs'] = target
@@ -148,7 +159,11 @@ def attention_knockout_evaluate(args: Namespace, model: MambaForCausalLM, tokeni
             else:
                 print(f"Skipping {target} {output} for binary search")
             
-            if len(layer_df[(layer_df['knockout_inputs'] == str(target)) & (layer_df['affected_outputs'] == str(output))]) == 0:
+            cond = (layer_df is None)
+            if not cond:
+                cond = (len(layer_df[(layer_df['knockout_inputs'] == str(target)) & (layer_df['affected_outputs'] == str(output))]) == 0)
+            
+            if cond:
                 print('Layer iteration for', target, output)
                 curr_df = layer_by_layer(evaluator, knowns_df, KnockoutMode[args.interfere_mode])
                 curr_df['knockout_inputs'] = target
@@ -172,6 +187,27 @@ def layer_knockout_evaluate(args: Namespace, model: MambaForCausalLM, tokenizer:
 
     bin_search_df.to_csv(args.output_dir / f"{args.interfere_mode}_{args.model_size}_bin_search.csv")
     layer_df.to_csv(args.output_dir / f"{args.interfere_mode}_{args.model_size}_layer_by_layer.csv")
+
+
+def ssm_knockout_evaluate_early_layers(args: Namespace, model: MambaForCausalLM, tokenizer: AutoTokenizer, device: torch.device, knowns_df: pd.DataFrame, norm: int | float):
+    ssm_classifier = DecayNormClassifier()
+    bin_search_df = None
+    ssm_classifier.norm = norm
+
+    categorized_ssms = ssm_classifier.classify_model(model.backbone)
+    for category in categorized_ssms:
+        evaluator = SSMKnockoutEvaluator(model, tokenizer, device, categorized_ssms[category], False)
+        curr = binary_search(evaluator, knowns_df, KnockoutMode[args.interfere_mode], start_layers=list(range(len(model.backbone.layers) // 2)))
+        curr['category'] = category
+        curr['norm'] = norm
+        bin_search_df = pd.concat([bin_search_df, curr])
+
+        out_fname = args.output_dir / f"{args.interfere_mode}_{args.model_size}_norm_{norm}_bin_search_early_layers_focus.csv"
+        if out_fname.exists():
+            os.remove(out_fname)
+        bin_search_df.to_csv(out_fname)
+
+    bin_search_df.to_csv(args.output_dir / f"{args.interfere_mode}_{args.model_size}_norm_{norm}_bin_search_early_layers_focus.csv")
 
 
 def ssm_knockout_evaluate(args: Namespace, model: MambaForCausalLM, tokenizer: AutoTokenizer, device: torch.device, knowns_df: pd.DataFrame, norm: int | float, ignore_layer_by_layer: bool = False):
@@ -215,39 +251,40 @@ def get_checkpoint(pth: Optional[Path]) -> Optional[pd.DataFrame]:
     return None
 
 
-def increase_delta_evaluate(args: Namespace, model: MambaForCausalLM, tokenizer: AutoTokenizer, device: torch.device, knowns_df: pd.DataFrame, layer_checkpoint: Optional[pd.DataFrame] = None, bin_search_checkpoint: Optional[pd.DataFrame] = None):
-    layer_classification = SSMClassifierStub().classify_model(model.backbone)
+def increase_delta_evaluate(args: Namespace, model: MambaForCausalLM, tokenizer: AutoTokenizer, device: torch.device, knowns_df: pd.DataFrame):
+    if args.model_size == '130M':
+        layers_of_interest = [18, 19, 20, 21]
+    else:
+        layers_of_interest = [40, 41, 42, 43, 44, 45, 46, 47]
+    layer_classification = DecayNormClassifier(norm=1).classify_model(model.backbone)
 
+    performance = {'acc': [], 'layers': [], 'factor': [], 'category': []}
+
+    for factor in [1.25 ** (i + 1) for i in range(5)]:
+        for category in layer_classification:
+            evaluator = IncreaseDeltaEvaluator(model, tokenizer, device, KnockoutTarget.ENTIRE_SUBJ, layer_classification[category], factor, args.show_eval_progress)
+
+            _, acc = evaluator.knockout_eval(knowns_df, layers_of_interest, KnockoutMode.INCREASE_DELTA)
+            
+            performance['layers'].append(str(layers_of_interest))
+            performance['factor'].append(factor)
+            performance['category'].append(category)
+            performance['acc'].append(acc)
+
+            # save to csv
+            df = pd.DataFrame(performance)
+            print(df)
+            out_fname = args.output_dir / f"{args.interfere_mode}_{args.model_size}_bin_search.csv"
+            if out_fname.exists():
+                os.remove(out_fname)
+            df.to_csv(out_fname)
     
+    df = pd.DataFrame(performance)
+    out_fname = args.output_dir / f"{args.interfere_mode}_{args.model_size}_bin_search.csv"
+    if out_fname.exists():
+        os.remove(out_fname)
+    df.to_csv(out_fname)
 
-    for category in layer_classification:
-        evaluator = IncreaseDeltaEvaluator(model, tokenizer, device, KnockoutTarget.ENTIRE_SUBJ, layer_classification[category], 1.5, args.show_eval_progress)
-    
-        bin_search_df = bin_search_checkpoint
-        layer_df = layer_checkpoint
-
-        curr_df = binary_search(evaluator, knowns_df, KnockoutMode[args.interfere_mode])
-        curr_df['affected_inputs'] = KnockoutTarget.ENTIRE_SUBJ
-        curr_df['affected_features_category'] = category
-        bin_search_df = [bin_search_df, curr_df]
-        bin_search_df = pd.concat(bin_search_df)
-
-        # save to csv
-        out_fname = args.output_dir / f"{args.interfere_mode}_{args.model_size}_bin_search.csv"
-        if out_fname.exists():
-            os.remove(out_fname)
-        bin_search_df.to_csv(out_fname)
-
-
-        # curr_df = layer_by_layer(evaluator, knowns_df, KnockoutMode[args.interfere_mode])
-        # layer_df = [layer_df, curr_df]
-        # layer_df = pd.concat(layer_df)
-        
-        # # save to csv
-        # out_fname = args.output_dir / f"{args.interfere_mode}_{args.model_size}_layer_by_layer.csv"
-        # if out_fname.exists():
-        #     os.remove(out_fname)
-        # layer_df.to_csv(out_fname)
 
 
 def main() -> None:
@@ -265,7 +302,7 @@ def main() -> None:
     
     # If we do attention knockout:
     if KnockoutMode[args.interfere_mode] in {KnockoutMode.ZERO_ATTENTION, KnockoutMode.ZERO_DELTA}:
-        attention_knockout_evaluate(args, model, tokenizer, device, knowns_df, layer_checkpoint=layer_checkpoint, bin_search_checkpoint=bin_search_checkpoint)
+        attention_knockout_evaluate(args, model, tokenizer, device, knowns_df, layer_checkpoint=layer_checkpoint, bin_search_checkpoint=bin_search_checkpoint, affected_output=args.affected_output)
 
     # If we skip entire layer \ component
     elif KnockoutMode[args.interfere_mode] in {KnockoutMode.IGNORE_CONTEXT, KnockoutMode.IGNORE_LAYER, KnockoutMode.ONLY_CONTEXT}:
@@ -277,9 +314,12 @@ def main() -> None:
             norm = float('inf')
         else:
             norm = int(args.norm)
-        ssm_knockout_evaluate(args, model, tokenizer, device, knowns_df, norm=norm, ignore_layer_by_layer=args.ignore_layer_by_layer)
+        if args.early_layers_ssm_knockout:
+            ssm_knockout_evaluate_early_layers(args, model, tokenizer, device, knowns_df, norm=norm)
+        else:
+            ssm_knockout_evaluate(args, model, tokenizer, device, knowns_df, norm=norm, ignore_layer_by_layer=args.ignore_layer_by_layer)
     elif KnockoutMode[args.interfere_mode] == KnockoutMode.INCREASE_DELTA:
-        increase_delta_evaluate(args, model, tokenizer, device, knowns_df, layer_checkpoint=layer_checkpoint, bin_search_checkpoint=bin_search_checkpoint)
+        increase_delta_evaluate(args, model, tokenizer, device, knowns_df)
     else:
         raise ValueError(f"Unknown knockout mode: {args.interfere_mode}")
     
