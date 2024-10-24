@@ -10,6 +10,9 @@ def get_factored_mask(mask: torch.Tensor, factor: float, factored_tokens: torch.
     """
     Increase the mask by a factor for specific tokens.
     """
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    mask = mask.to(device)
+    factored_tokens = factored_tokens.to(device)
     mask = mask[None, :, None] * factored_tokens[None, None, :]
     mask = mask * factor + (1 - mask)
     return mask
