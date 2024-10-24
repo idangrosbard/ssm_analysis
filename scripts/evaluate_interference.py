@@ -78,9 +78,7 @@ def knockout_eval(model: MambaForCausalLM, tokenizer: AutoTokenizer, knowns_df: 
 
 def main_binary_search(model_size: str = "2.8B", interefere_mode: KnockoutMode = KnockoutMode.ZERO_ATTENTION, interefere_target: KnockoutTarget = KnockoutTarget.ENTIRE_SUBJ, affected_outputs: KnockoutTarget = KnockoutTarget.LAST, drop_subj_last: bool = False, show_eval_progress: bool = False):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    if not Path("known_1000.json").exists():
-        wget.download("https://rome.baulab.info/data/dsets/known_1000.json")
-    knowns_df = pd.read_json("known_1000.json").set_index('known_id')
+    knowns_df = load_knowns()
 
     tokenizer = AutoTokenizer.from_pretrained(f"state-spaces/mamba-{model_size}-hf")
     model = MambaForCausalLM.from_pretrained(f"state-spaces/mamba-{model_size}-hf")
@@ -137,9 +135,7 @@ def main_binary_search(model_size: str = "2.8B", interefere_mode: KnockoutMode =
 
 def main(model_size: str = "2.8B", interefere_mode: KnockoutMode = KnockoutMode.ZERO_ATTENTION, interefere_target: KnockoutTarget = KnockoutTarget.ENTIRE_SUBJ, affected_outputs: KnockoutTarget = KnockoutTarget.LAST, drop_subj_last: bool = False, show_eval_progress: bool = False):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    if not Path("known_1000.json").exists():
-        wget.download("https://rome.baulab.info/data/dsets/known_1000.json")
-    knowns_df = pd.read_json("known_1000.json").set_index('known_id')
+    knowns_df = load_knowns()
 
     tokenizer = AutoTokenizer.from_pretrained(f"state-spaces/mamba-{model_size}-hf")
     model = MambaForCausalLM.from_pretrained(f"state-spaces/mamba-{model_size}-hf")
@@ -164,9 +160,7 @@ def main(model_size: str = "2.8B", interefere_mode: KnockoutMode = KnockoutMode.
 
 
 def get_last_token_stats(model_size: str = '130M'):
-    if not Path("known_1000.json").exists():
-        wget.download("https://rome.baulab.info/data/dsets/known_1000.json")
-    knowns_df = pd.read_json("known_1000.json").set_index('known_id')
+    knowns_df = load_knowns()
 
     tokenizer = AutoTokenizer.from_pretrained(f"state-spaces/mamba-{model_size}-hf")
 
