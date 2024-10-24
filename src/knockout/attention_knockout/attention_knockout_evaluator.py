@@ -1,5 +1,5 @@
-from .knockout_evaluator import KnockoutEvaluator
-from .knockout_mode import KnockoutMode
+from .. import KnockoutEvaluator
+from .. import KnockoutMode
 from .knockout_target import KnockoutTarget
 from typing import Iterable, Tuple
 import pandas as pd

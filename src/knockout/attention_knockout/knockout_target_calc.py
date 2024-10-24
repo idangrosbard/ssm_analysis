@@ -4,7 +4,7 @@ from .knockout_target import KnockoutTarget
 import random
 
 
-def get_subj_idx(input: str, subj: str, tokenizer: AutoTokenizer) -> Tuple[int,int]:
+def get_subj_idx_old(input: str, subj: str, tokenizer: AutoTokenizer) -> Tuple[int,int]:
     prefix = input.split(subj)[0]
     sent2subj = prefix
     
@@ -14,8 +14,32 @@ def get_subj_idx(input: str, subj: str, tokenizer: AutoTokenizer) -> Tuple[int,i
         sent2subj = prefix + ' ' + subj
 
     sent2subj_tokens = tokenizer(sent2subj)["input_ids"]
+    print(sent2subj, sent2subj_tokens)
+    for id in sent2subj_tokens:
+        print(id, tokenizer.decode(id))
     prefix_tokens = tokenizer(prefix)["input_ids"]
+    print(prefix, prefix_tokens)
     return (len(prefix_tokens), len(sent2subj_tokens))
+
+
+def get_subj_idx(input: str, subj: str, tokenizer: AutoTokenizer) -> Tuple[int,int]:
+    input_encoded = tokenizer(input)["input_ids"]
+    start_idx = 0
+    end_idx = len(input_encoded)
+    decoded = input
+    
+    while subj in decoded:
+        start_idx += 1
+        decoded = tokenizer.decode(input_encoded[start_idx:end_idx])
+    start_idx -= 1
+
+    decoded = tokenizer.decode(input_encoded[start_idx:end_idx])
+    while subj in decoded:
+        end_idx -= 1
+        decoded = tokenizer.decode(input_encoded[start_idx:end_idx])
+    end_idx += 1
+
+    return (start_idx, end_idx)
 
 
 def check_intersect(a: Tuple[int,int], b: Tuple[int,int]) -> bool:

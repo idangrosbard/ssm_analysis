@@ -27,7 +27,7 @@ def evaluate_model(model: nn.Module, tokenizer: AutoTokenizer, knowns_df: pd.Dat
     knowns_df['model_correct'] = False
 
     with torch.no_grad():
-        pbar = tqdm(knowns_df.index, total=len(knowns_df))
+        pbar = tqdm(knowns_df.index, total=len(knowns_df), disable=True)
         for idx in pbar:
             input = knowns_df.loc[idx, "prompt"]
             target = knowns_df.loc[idx, "attribute"]

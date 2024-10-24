@@ -1,5 +1,5 @@
 from torch import Tensor, matmul, zeros_like
-from .knockout_mode import KnockoutMode
+from .. import KnockoutMode
 from typing import List, Iterable
 
 
