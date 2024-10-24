@@ -11,7 +11,6 @@ def indices2khot(indices: Iterable[int], len: int, flip: bool = True) -> torch.T
     k_hot = one_hots.sum(dim=0)
     if flip:
         k_hot = 1 - k_hot
-    print(k_hot.sum() / k_hot.shape[0])
     return k_hot
 
 
