@@ -124,7 +124,7 @@ def attention_knockout_evaluate(args: Namespace, model: MambaForCausalLM, tokeni
 
     bin_search_df = bin_search_checkpoint
     layer_df = layer_checkpoint
-
+    
     if affected_output == 'all':
         affected_outputs = [KnockoutTarget.LAST, KnockoutTarget.ENTIRE_SUBJ]
     elif affected_output == 'last':
@@ -139,8 +139,11 @@ def attention_knockout_evaluate(args: Namespace, model: MambaForCausalLM, tokeni
             
             evaluator.knockout_target = target
             evaluator.affected_target = output
+            cond = (bin_search_df is None)
+            if not cond:
+                cond = (len(bin_search_df[(bin_search_df['knockout_inputs'] == str(target)) & (bin_search_df['affected_outputs'] == str(output))]) == 0)
             
-            if len(bin_search_df[(bin_search_df['knockout_inputs'] == str(target)) & (bin_search_df['affected_outputs'] == str(output))]) == 0:
+            if cond:
                 print('Binary search for', target, output)
                 curr_df = binary_search(evaluator, knowns_df, KnockoutMode[args.interfere_mode])
                 curr_df['knockout_inputs'] = target
@@ -156,7 +159,11 @@ def attention_knockout_evaluate(args: Namespace, model: MambaForCausalLM, tokeni
             else:
                 print(f"Skipping {target} {output} for binary search")
             
-            if len(layer_df[(layer_df['knockout_inputs'] == str(target)) & (layer_df['affected_outputs'] == str(output))]) == 0:
+            cond = (layer_df is None)
+            if not cond:
+                cond = (len(layer_df[(layer_df['knockout_inputs'] == str(target)) & (layer_df['affected_outputs'] == str(output))]) == 0)
+            
+            if cond:
                 print('Layer iteration for', target, output)
                 curr_df = layer_by_layer(evaluator, knowns_df, KnockoutMode[args.interfere_mode])
                 curr_df['knockout_inputs'] = target
