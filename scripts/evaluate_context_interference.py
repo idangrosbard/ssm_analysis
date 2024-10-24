@@ -130,6 +130,7 @@ def attention_knockout_evaluate(args: Namespace, model: MambaForCausalLM, tokeni
             evaluator.affected_target = output
             
             if not ((target in bin_search_df['knockout_inputs'].unique()) & (output in bin_search_df['affected_outputs'].unique())):
+                print('Binary search for', target, output)
                 curr_df = binary_search(evaluator, knowns_df, KnockoutMode[args.interfere_mode])
                 curr_df['knockout_inputs'] = target
                 curr_df['affected_outputs'] = output
@@ -145,6 +146,7 @@ def attention_knockout_evaluate(args: Namespace, model: MambaForCausalLM, tokeni
                 print(f"Skipping {target} {output} for binary search")
             
             if not ((target in layer_df['knockout_inputs'].unique()) & (output in layer_df['affected_outputs'].unique())):
+                print('Layer iteration for', target, output)
                 curr_df = layer_by_layer(evaluator, knowns_df, KnockoutMode[args.interfere_mode])
                 curr_df['knockout_inputs'] = target
                 curr_df['affected_outputs'] = output
