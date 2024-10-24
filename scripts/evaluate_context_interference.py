@@ -219,6 +219,8 @@ def main() -> None:
 
     bin_search_checkpoint = get_checkpoint(args.bin_search_checkpoint)
     layer_checkpoint = get_checkpoint(args.layer_checkpoint)
+    print(bin_search_checkpoint)
+    print(layer_checkpoint)
     
     # If we do attention knockout:
     if KnockoutMode[args.interfere_mode] in {KnockoutMode.ZERO_ATTENTION, KnockoutMode.ZERO_DELTA}:
