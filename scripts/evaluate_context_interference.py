@@ -237,7 +237,7 @@ def main() -> None:
     # If we do SSM knockout
     elif KnockoutMode[args.interfere_mode] == KnockoutMode.IGNORE_SSM:
         if args.norm == 'inf':
-            norm = float('int')
+            norm = float('inf')
         else:
             norm = int(args.norm)
         ssm_knockout_evaluate(args, model, tokenizer, device, knowns_df, norm=norm, ignore_layer_by_layer=args.ignore_layer_by_layer)
