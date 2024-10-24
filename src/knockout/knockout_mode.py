@@ -8,3 +8,4 @@ class KnockoutMode(Enum):
     ONLY_CONTEXT = 3
     IGNORE_LAYER = 4
     IGNORE_SSM = 5
+    INCREASE_DELTA = 6

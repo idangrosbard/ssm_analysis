@@ -10,10 +10,12 @@ from src.knockout import KnockoutMode, KnockoutEvaluator
 from src.knockout.attention_knockout import KnockoutTarget, AttentionKnockoutEvaluator, is_last_token_subj
 from src.knockout.layer_knockout import LayerKnockoutEvaluator
 from src.knockout.ssm_knockout import SSMKnockoutEvaluator
+from src.knockout.ssm_knockout.ssm_classifier import SSMClassifier, DecayNormClassifier, SSMClassifierStub
+from src.knockout.increase_delta import IncreaseDeltaEvaluator
 from argparse import ArgumentParser, Namespace
 import numpy as np
 from src.utils import load_knowns, setup_model
-from src.knockout.ssm_knockout.ssm_classifier import SSMClassifier, DecayNormClassifier
+
 from typing import Optional
 
 
@@ -213,6 +215,41 @@ def get_checkpoint(pth: Optional[Path]) -> Optional[pd.DataFrame]:
     return None
 
 
+def increase_delta_evaluate(args: Namespace, model: MambaForCausalLM, tokenizer: AutoTokenizer, device: torch.device, knowns_df: pd.DataFrame, layer_checkpoint: Optional[pd.DataFrame] = None, bin_search_checkpoint: Optional[pd.DataFrame] = None):
+    layer_classification = SSMClassifierStub().classify_model(model.backbone)
+
+    
+
+    for category in layer_classification:
+        evaluator = IncreaseDeltaEvaluator(model, tokenizer, device, KnockoutTarget.ENTIRE_SUBJ, layer_classification[category], 1.5, args.show_eval_progress)
+    
+        bin_search_df = bin_search_checkpoint
+        layer_df = layer_checkpoint
+
+        curr_df = binary_search(evaluator, knowns_df, KnockoutMode[args.interfere_mode])
+        curr_df['affected_inputs'] = KnockoutTarget.ENTIRE_SUBJ
+        curr_df['affected_features_category'] = category
+        bin_search_df = [bin_search_df, curr_df]
+        bin_search_df = pd.concat(bin_search_df)
+
+        # save to csv
+        out_fname = args.output_dir / f"{args.interfere_mode}_{args.model_size}_bin_search.csv"
+        if out_fname.exists():
+            os.remove(out_fname)
+        bin_search_df.to_csv(out_fname)
+
+
+        # curr_df = layer_by_layer(evaluator, knowns_df, KnockoutMode[args.interfere_mode])
+        # layer_df = [layer_df, curr_df]
+        # layer_df = pd.concat(layer_df)
+        
+        # # save to csv
+        # out_fname = args.output_dir / f"{args.interfere_mode}_{args.model_size}_layer_by_layer.csv"
+        # if out_fname.exists():
+        #     os.remove(out_fname)
+        # layer_df.to_csv(out_fname)
+
+
 def main() -> None:
     args = get_args()
     get_last_token_stats(args.model_size)
@@ -241,6 +278,8 @@ def main() -> None:
         else:
             norm = int(args.norm)
         ssm_knockout_evaluate(args, model, tokenizer, device, knowns_df, norm=norm, ignore_layer_by_layer=args.ignore_layer_by_layer)
+    elif KnockoutMode[args.interfere_mode] == KnockoutMode.INCREASE_DELTA:
+        increase_delta_evaluate(args, model, tokenizer, device, knowns_df, layer_checkpoint=layer_checkpoint, bin_search_checkpoint=bin_search_checkpoint)
     else:
         raise ValueError(f"Unknown knockout mode: {args.interfere_mode}")
     
