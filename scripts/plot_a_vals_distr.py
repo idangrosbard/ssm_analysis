@@ -4,11 +4,25 @@ import plotly.express as px
 
 from tqdm import tqdm
 
+from scripts.evaluate_model import get_tokenizer_and_model
+import numpy as np
+
+def collect_and_stack_A_logs(model):
+    A_logs = [model.backbone.layers[i].mixer.A_log.detach().numpy() for i in range(len(model.backbone.layers))]
+    stacked_A_logs = np.vstack(A_logs)
+    layer_size = A_logs[0].shape[0]
+    num_layers = len(A_logs)
+    layer_indices = np.repeat(np.arange(num_layers), layer_size)
+    position_indices = np.tile(np.arange(layer_size), num_layers)
+    return stacked_A_logs, layer_indices, position_indices
+
 
 if __name__ == '__main__':
-    model_size = '2.8B' # 130M
-    model = MambaForCausalLM.from_pretrained(f"state-spaces/mamba-{model_size}-hf")
+    model_size = '2.8B'
+    model_arch = 'mamba'
+    _, model = get_tokenizer_and_model(model_arch, model_size)
     model.eval()
+    
     vals = {'layer': [], 'val': [], 'ssm_id': [], 'ssm_id+layer': []}
 
     for i, layer in tqdm(enumerate(model.backbone.layers)):

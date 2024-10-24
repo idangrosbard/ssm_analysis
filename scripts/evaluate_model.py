@@ -57,7 +57,7 @@ def get_subj_idx(input: str, subj: str, tokenizer: AutoTokenizer, last: bool = T
     return len(sent2subj_tokens) - 1
 
 
-def get_tokenizer_and_model(model_arch: str, model_size: str, device) -> tuple[
+def get_tokenizer_and_model(model_arch: str, model_size: str, device: Optional[torch.device] = None) -> tuple[
     PreTrainedTokenizer | PreTrainedTokenizerFast,
     PreTrainedModel | MambaForCausalLM | Mamba | Mamba2LMHeadModel | LlamaForCausalLM,
 ]:
@@ -89,7 +89,9 @@ def get_tokenizer_and_model(model_arch: str, model_size: str, device) -> tuple[
     else:
         assert False, f"model_arch {model_arch} not supported"
 
-    model.to(device)
+    if device:
+        model.to(device)
+        
     return tokenizer, model
 
 
