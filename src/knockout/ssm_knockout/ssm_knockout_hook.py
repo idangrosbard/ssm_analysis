@@ -5,11 +5,13 @@ from typing import Optional, Callable, Iterable
 
 
 def indices2khot(indices: Iterable[int], len: int, flip: bool = True) -> torch.Tensor:
-    indices = torch.tensor(indices, dtype=torch.long)
+    if type(indices) is not torch.Tensor:
+        indices = torch.tensor(indices, dtype=torch.long)
     one_hots = torch.nn.functional.one_hot(indices, len)
     k_hot = one_hots.sum(dim=0)
     if flip:
         k_hot = 1 - k_hot
+    print(k_hot.sum() / k_hot.shape[0])
     return k_hot
 
 
