@@ -15,7 +15,7 @@ from src.models.minimal_mamba2 import Mamba2LMHeadModel
 
 def setup_model(model_size: str = "2.8B") -> Tuple[MambaForCausalLM, AutoTokenizer, torch.device]:
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model, tokenizer = get_tokenizer_and_model("minimal_mamba1", model_size, device)
+    tokenizer, model = get_tokenizer_and_model("minimal_mamba1", model_size, device)
     return model, tokenizer, device
 
 

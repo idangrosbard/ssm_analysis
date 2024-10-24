@@ -9,7 +9,7 @@ import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from src.evaluate import evaluate_model
-from src.utils import load_knowns
+from src.datasets.known_1000.download_dataset import load_knowns
 from src.weight_analysis import get_low_rank_model
 
 
