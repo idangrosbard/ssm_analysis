@@ -141,6 +141,8 @@ def attention_knockout_evaluate(args: Namespace, model: MambaForCausalLM, tokeni
                 if out_fname.exists():
                     os.remove(out_fname)
                 bin_search_df.to_csv(out_fname)
+            else:
+                print(f"Skipping {target} {output} for binary search")
             
             if not ((target in layer_df['knockout_inputs'].unique()) & (output in layer_df['affected_outputs'].unique())):
                 curr_df = layer_by_layer(evaluator, knowns_df, KnockoutMode[args.interfere_mode])
@@ -154,6 +156,8 @@ def attention_knockout_evaluate(args: Namespace, model: MambaForCausalLM, tokeni
                 if out_fname.exists():
                     os.remove(out_fname)
                 layer_df.to_csv(out_fname)
+            else:
+                print(f"Skipping {target} {output} for layer by layer")
 
 
 def layer_knockout_evaluate(args: Namespace, model: MambaForCausalLM, tokenizer: AutoTokenizer, device: torch.device, knowns_df: pd.DataFrame):
