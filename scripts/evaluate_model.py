@@ -18,9 +18,14 @@ from tqdm import tqdm
 from pathlib import Path
 from argparse import ArgumentParser
 
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 from scripts.create_slurm_file import run_slurm
 from src.models.minimal_mamba1 import Mamba
 from src.models.minimal_mamba2 import Mamba2LMHeadModel
+from src.utils import load_knowns
 
 
 NEW_MAX_TOKENS = 5
