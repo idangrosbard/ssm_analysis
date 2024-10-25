@@ -256,6 +256,7 @@ def increase_delta_evaluate(args: Namespace, model: MambaForCausalLM, tokenizer:
         layers_of_interest = [18, 19, 20, 21]
     else:
         layers_of_interest = [40, 41, 42, 43, 44, 45, 46, 47]
+        layers_of_interest = sorted([63, 62, 61, 60, 59, 58, 57, 56])
     layer_classification = DecayNormClassifier(norm=1).classify_model(model.backbone)
 
     performance = {'acc': [], 'layers': [], 'factor': [], 'category': []}
@@ -284,7 +285,7 @@ def increase_delta_evaluate(args: Namespace, model: MambaForCausalLM, tokenizer:
             df.to_csv(out_fname)
     
     df = pd.DataFrame(performance)
-    out_fname = args.output_dir / f"{args.interfere_mode}_{args.model_size}_target_{target}.csv"
+    out_fname = args.output_dir / f"{args.interfere_mode}_{args.model_size}_target_{target}_layer_neighborhood_{max(layers_of_interest)}.csv"
     if out_fname.exists():
         os.remove(out_fname)
     df.to_csv(out_fname)
