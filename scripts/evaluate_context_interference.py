@@ -1,7 +1,7 @@
 import sys
 import os
 
-from src.datasets.known_1000.download_dataset import load_knowns
+
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import pandas as pd
@@ -9,6 +9,7 @@ from transformers import AutoTokenizer, MambaForCausalLM
 import torch
 from tqdm import tqdm
 from pathlib import Path
+from src.datasets.known_1000.download_dataset import load_knowns
 from src.knockout import KnockoutMode, KnockoutEvaluator
 from src.knockout.attention_knockout import KnockoutTarget, AttentionKnockoutEvaluator, is_last_token_subj
 from src.knockout.layer_knockout import LayerKnockoutEvaluator
