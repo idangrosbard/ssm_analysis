@@ -259,10 +259,12 @@ def increase_delta_evaluate(args: Namespace, model: MambaForCausalLM, tokenizer:
     layer_classification = DecayNormClassifier(norm=1).classify_model(model.backbone)
 
     performance = {'acc': [], 'layers': [], 'factor': [], 'category': []}
+    target = KnockoutTarget.ENTIRE_SUBJ
+    target = KnockoutTarget.SUBJ_FIRST
 
     for factor in [1.25 ** (i + 1) for i in range(5)]:
         for category in layer_classification:
-            evaluator = IncreaseDeltaEvaluator(model, tokenizer, device, KnockoutTarget.ENTIRE_SUBJ, layer_classification[category], factor, args.show_eval_progress)
+            evaluator = IncreaseDeltaEvaluator(model, tokenizer, device, target, layer_classification[category], factor, args.show_eval_progress)
 
             _, acc = evaluator.knockout_eval(knowns_df, layers_of_interest, KnockoutMode.INCREASE_DELTA)
             
