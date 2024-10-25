@@ -8,7 +8,7 @@ import torch
 from tqdm import tqdm
 from pathlib import Path
 from src.embeddings import LLMEmbeddingInterefere
-from src.utils import load_knowns
+from src.datasets.known_1000.download_dataset import load_knowns
 from argparse import ArgumentParser
 import numpy as np
 import plotly.graph_objects as go

@@ -1,6 +1,7 @@
 import subprocess
 from pathlib import Path
-from typing import NamedTuple
+
+from src.consts import ISlurmArgs
 
 
 def slurm_template(
@@ -8,11 +9,11 @@ def slurm_template(
         slurm_output_dir: Path,
         script_path: Path,
         args: dict,
-
+        add_args: ISlurmArgs = ISlurmArgs
 ) -> str:
     command_str = ' '.join([
         'python',
-        f"{script_path.name}",
+        f"{script_path}",
         *[
             f'--{k} "{v}"'
             for k, v in
@@ -27,21 +28,21 @@ def slurm_template(
 #SBATCH --job-name={experiment_name} # Job name
 #SBATCH --output={slurm_output_dir / 'out.log'} # redirect stdout
 #SBATCH --error={slurm_output_dir / 'err.log'} # redirect stderr
-#SBATCH --partition=gpu-a100-killable # (see resources section)
-#SBATCH --time=1200 # max time (minutes)
-#SBATCH --signal=USR1@120 # how to end job when time’s up
-#SBATCH --nodes=1 # number of machines
-#SBATCH --ntasks=1 # number of processes
-#SBATCH --mem=50000 # CPU memory (MB)
-#SBATCH --cpus-per-task=1 # CPU cores per process
-#SBATCH --gpus=1 # GPUs in total
-#SBATCH --account=gpu-research # billing account
+#SBATCH --partition={add_args.partition} # (see resources section)
+#SBATCH --time={add_args.time} # max time (minutes)
+#SBATCH --signal={add_args.singal} # how to end job when time’s up
+#SBATCH --nodes={add_args.nodes} # number of machines
+#SBATCH --ntasks={add_args.ntasks} # number of processes
+#SBATCH --mem={add_args.mem} # CPU memory (MB)
+#SBATCH --cpus-per-task={add_args.cpus_per_task} # CPU cores per process
+#SBATCH --gpus={add_args.gpus} # GPUs in total
+#SBATCH --account={add_args.account} # billing account
 
 nvidia-smi
 gpustat --no-color -pfu
 
 # Activate the conda environment
-source /home/yandex/DL20232024a/nirendy/repos/ADL_2/venv/bin/activate
+source {add_args.workspace}/venv/bin/activate
 
 # Print diagnostic information
 echo $CUDA_VISIBLE_DEVICES
@@ -50,7 +51,7 @@ echo "PYTHONPATH: $PYTHONPATH"
 echo $(pwd)
 
 # Change to the working directory
-cd {str(script_path.parent)}
+cd {add_args.workspace}
 
 # Export environment variables
 export PYTHONUNBUFFERED=1

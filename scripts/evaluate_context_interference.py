@@ -1,5 +1,8 @@
 import sys
 import os
+
+from src.datasets.known_1000.download_dataset import load_knowns
+
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import pandas as pd
 from transformers import AutoTokenizer, MambaForCausalLM
@@ -14,7 +17,7 @@ from src.knockout.ssm_knockout.ssm_classifier import SSMClassifier, DecayNormCla
 from src.knockout.increase_delta import IncreaseDeltaEvaluator
 from argparse import ArgumentParser, Namespace
 import numpy as np
-from src.utils import load_knowns, setup_model
+from src.utils import setup_model
 from typing import Optional, Iterable
 
 

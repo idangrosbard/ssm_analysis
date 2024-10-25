@@ -1,6 +1,7 @@
-import wget
 from pathlib import Path
+
 import pandas as pd
+import wget
 
 
 def load_knowns() -> pd.DataFrame:
