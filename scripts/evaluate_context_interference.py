@@ -290,13 +290,13 @@ def increase_delta_evaluate(args: Namespace, model: MambaForCausalLM, tokenizer:
             # save to csv
             df = pd.DataFrame(performance)
             print(df)
-            out_fname = args.output_dir / f"{args.interfere_mode}_{args.model_size}_target_{target}.csv"
+            out_fname = args.output_dir / f"{args.interfere_mode}_{args.model_size}_target_{target}_layer_neighborhood_{max(layers_of_interest)}-{min(layers_of_interest)}_root_decay_factor_{root_factor}.csv"
             if out_fname.exists():
                 os.remove(out_fname)
             df.to_csv(out_fname)
     
     df = pd.DataFrame(performance)
-    out_fname = args.output_dir / f"{args.interfere_mode}_{args.model_size}_target_{target}_layer_neighborhood_{max(layers_of_interest)}-{min(layers_of_interest)}.csv"
+    out_fname = args.output_dir / f"{args.interfere_mode}_{args.model_size}_target_{target}_layer_neighborhood_{max(layers_of_interest)}-{min(layers_of_interest)}_root_decay_factor_{root_factor}.csv"
     if out_fname.exists():
         os.remove(out_fname)
     df.to_csv(out_fname)
