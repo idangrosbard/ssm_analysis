@@ -261,8 +261,10 @@ def increase_delta_evaluate(args: Namespace, model: MambaForCausalLM, tokenizer:
     performance = {'acc': [], 'layers': [], 'factor': [], 'category': []}
     target = KnockoutTarget.ENTIRE_SUBJ
     target = KnockoutTarget.SUBJ_FIRST
+    target = KnockoutTarget.AFTER_SUBJ
 
-    for factor in [1.25 ** (i + 1) for i in range(5)]:
+    root_factor = 0.9
+    for factor in [root_factor ** (i + 1) for i in range(6)]:
         for category in layer_classification:
             evaluator = IncreaseDeltaEvaluator(model, tokenizer, device, target, layer_classification[category], factor, args.show_eval_progress)
 

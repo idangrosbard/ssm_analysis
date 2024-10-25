@@ -91,6 +91,10 @@ def choose_knockout_target(input: str, subj: str, tokenizer: AutoTokenizer, targ
     elif target == KnockoutTarget.SUBJ_FIRST:
         first, last = get_subj_idx(input, subj, tokenizer)
         last = first
+    elif target == KnockoutTarget.AFTER_SUBJ:
+        first, last = get_subj_idx(input, subj, tokenizer)
+        first = last
+        last = len(tokenizer(input)["input_ids"]) - 1
     elif target == KnockoutTarget.FIRST:
         first = 0
         last = first

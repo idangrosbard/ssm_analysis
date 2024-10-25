@@ -11,3 +11,4 @@ class KnockoutTarget(Enum):
     ALL_CONTEXT = 6
     SUBJ_CONTEXT = 7
     SUBJ_FIRST = 8
+    AFTER_SUBJ = 9
