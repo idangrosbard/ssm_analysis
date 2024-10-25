@@ -259,13 +259,18 @@ def increase_delta_evaluate(args: Namespace, model: MambaForCausalLM, tokenizer:
         layers_of_interest = [18, 19, 20, 21]
     else:
         layers_of_interest = [40, 41, 42, 43, 44, 45, 46, 47]
+        layers_of_interest = sorted([63, 62, 61, 60, 59, 58, 57, 56])
     layer_classification = DecayNormClassifier(norm=1).classify_model(model.backbone)
 
     performance = {'acc': [], 'layers': [], 'factor': [], 'category': []}
+    target = KnockoutTarget.ENTIRE_SUBJ
+    target = KnockoutTarget.SUBJ_FIRST
+    target = KnockoutTarget.AFTER_SUBJ
 
-    for factor in [1.25 ** (i + 1) for i in range(5)]:
+    root_factor = 0.9
+    for factor in [root_factor ** (i + 1) for i in range(6)]:
         for category in layer_classification:
-            evaluator = IncreaseDeltaEvaluator(model, tokenizer, device, KnockoutTarget.ENTIRE_SUBJ, layer_classification[category], factor, args.show_eval_progress)
+            evaluator = IncreaseDeltaEvaluator(model, tokenizer, device, target, layer_classification[category], factor, args.show_eval_progress)
 
             _, acc = evaluator.knockout_eval(knowns_df, layers_of_interest, KnockoutMode.INCREASE_DELTA)
             
@@ -277,13 +282,13 @@ def increase_delta_evaluate(args: Namespace, model: MambaForCausalLM, tokenizer:
             # save to csv
             df = pd.DataFrame(performance)
             print(df)
-            out_fname = args.output_dir / f"{args.interfere_mode}_{args.model_size}_bin_search.csv"
+            out_fname = args.output_dir / f"{args.interfere_mode}_{args.model_size}_target_{target}.csv"
             if out_fname.exists():
                 os.remove(out_fname)
             df.to_csv(out_fname)
     
     df = pd.DataFrame(performance)
-    out_fname = args.output_dir / f"{args.interfere_mode}_{args.model_size}_bin_search.csv"
+    out_fname = args.output_dir / f"{args.interfere_mode}_{args.model_size}_target_{target}_layer_neighborhood_{max(layers_of_interest)}-{min(layers_of_interest)}.csv"
     if out_fname.exists():
         os.remove(out_fname)
     df.to_csv(out_fname)
