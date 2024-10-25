@@ -14,7 +14,7 @@ from src.knockout import KnockoutMode, KnockoutEvaluator
 from src.knockout.attention_knockout import KnockoutTarget, AttentionKnockoutEvaluator, is_last_token_subj
 from src.knockout.layer_knockout import LayerKnockoutEvaluator
 from src.knockout.ssm_knockout import SSMKnockoutEvaluator
-from src.knockout.ssm_knockout.ssm_classifier import SSMClassifier, DecayNormClassifier
+from src.knockout.ssm_knockout.ssm_classifier import SSMClassifier, DecayNormClassifier, SSMClassifierStub
 from src.knockout.increase_delta import IncreaseDeltaEvaluator
 from argparse import ArgumentParser, Namespace
 import numpy as np
@@ -38,6 +38,7 @@ def get_args():
     parser.add_argument('--delta_factor_root', type=float, default=0.9)
     parser.add_argument('--delta_start_layer', type=int, default=40)
     parser.add_argument('--delta_end_layer', type=int, default=48)
+    parser.add_argument('--non_selective_ssm', action='store_true')
     return parser.parse_args()
 
 
@@ -258,14 +259,17 @@ def get_checkpoint(pth: Optional[Path]) -> Optional[pd.DataFrame]:
     return None
 
 
-def increase_delta_evaluate(args: Namespace, model: MambaForCausalLM, tokenizer: AutoTokenizer, device: torch.device, knowns_df: pd.DataFrame, root_factor: float, start_layer: int, end_layer: int):
+def increase_delta_evaluate(args: Namespace, model: MambaForCausalLM, tokenizer: AutoTokenizer, device: torch.device, knowns_df: pd.DataFrame, root_factor: float, start_layer: int, end_layer: int, non_selective_ssm: bool):
     if args.model_size == '130M':
         layers_of_interest = [18, 19, 20, 21]
     else:
         layers_of_interest = [40, 41, 42, 43, 44, 45, 46, 47]
         layers_of_interest = sorted([63, 62, 61, 60, 59, 58, 57, 56])
         layers_of_interest = list(range(start_layer, end_layer))
-    layer_classification = DecayNormClassifier(norm=1).classify_model(model.backbone)
+    if non_selective_ssm:
+        layer_classification = SSMClassifierStub().classify_model(model.backbone)
+    else:
+        layer_classification = DecayNormClassifier(norm=1).classify_model(model.backbone)
 
     performance = {'acc': [], 'layers': [], 'factor': [], 'category': []}
     target = KnockoutTarget.ENTIRE_SUBJ
@@ -331,7 +335,7 @@ def main() -> None:
         else:
             ssm_knockout_evaluate(args, model, tokenizer, device, knowns_df, norm=norm, ignore_layer_by_layer=args.ignore_layer_by_layer)
     elif KnockoutMode[args.interfere_mode] == KnockoutMode.INCREASE_DELTA:
-        increase_delta_evaluate(args, model, tokenizer, device, knowns_df, args.delta_factor_root, args.delta_start_layer, args.delta_end_layer)
+        increase_delta_evaluate(args, model, tokenizer, device, knowns_df, args.delta_factor_root, args.delta_start_layer, args.delta_end_layer, args.non_selective_ssm)
     else:
         raise ValueError(f"Unknown knockout mode: {args.interfere_mode}")
     
