@@ -1,7 +1,7 @@
 import sys
 import os
 
-from src.datasets.known_1000.download_dataset import load_knowns
+
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import pandas as pd
@@ -9,11 +9,12 @@ from transformers import AutoTokenizer, MambaForCausalLM
 import torch
 from tqdm import tqdm
 from pathlib import Path
+from src.datasets.known_1000.download_dataset import load_knowns
 from src.knockout import KnockoutMode, KnockoutEvaluator
 from src.knockout.attention_knockout import KnockoutTarget, AttentionKnockoutEvaluator, is_last_token_subj
 from src.knockout.layer_knockout import LayerKnockoutEvaluator
 from src.knockout.ssm_knockout import SSMKnockoutEvaluator
-from src.knockout.ssm_knockout.ssm_classifier import SSMClassifier, DecayNormClassifier
+from src.knockout.ssm_knockout.ssm_classifier import SSMClassifier, DecayNormClassifier, SSMClassifierStub
 from src.knockout.increase_delta import IncreaseDeltaEvaluator
 from argparse import ArgumentParser, Namespace
 import numpy as np
@@ -34,6 +35,10 @@ def get_args():
     parser.add_argument('--norm', type=str, default='1', choices=['1', 'inf'])
     parser.add_argument('--early_layers_ssm_knockout', action='store_true')
     parser.add_argument('--affected_output', type=str, choices={'last', 'subj', 'all'}, default='all')
+    parser.add_argument('--delta_factor_root', type=float, default=0.9)
+    parser.add_argument('--delta_start_layer', type=int, default=40)
+    parser.add_argument('--delta_end_layer', type=int, default=48)
+    parser.add_argument('--non_selective_ssm', action='store_true')
     return parser.parse_args()
 
 
@@ -254,20 +259,23 @@ def get_checkpoint(pth: Optional[Path]) -> Optional[pd.DataFrame]:
     return None
 
 
-def increase_delta_evaluate(args: Namespace, model: MambaForCausalLM, tokenizer: AutoTokenizer, device: torch.device, knowns_df: pd.DataFrame):
+def increase_delta_evaluate(args: Namespace, model: MambaForCausalLM, tokenizer: AutoTokenizer, device: torch.device, knowns_df: pd.DataFrame, root_factor: float, start_layer: int, end_layer: int, non_selective_ssm: bool):
     if args.model_size == '130M':
         layers_of_interest = [18, 19, 20, 21]
     else:
         layers_of_interest = [40, 41, 42, 43, 44, 45, 46, 47]
         layers_of_interest = sorted([63, 62, 61, 60, 59, 58, 57, 56])
-    layer_classification = DecayNormClassifier(norm=1).classify_model(model.backbone)
+        layers_of_interest = list(range(start_layer, end_layer))
+    if non_selective_ssm:
+        layer_classification = SSMClassifierStub().classify_model(model.backbone)
+    else:
+        layer_classification = DecayNormClassifier(norm=1).classify_model(model.backbone)
 
     performance = {'acc': [], 'layers': [], 'factor': [], 'category': []}
     target = KnockoutTarget.ENTIRE_SUBJ
     target = KnockoutTarget.SUBJ_FIRST
     target = KnockoutTarget.AFTER_SUBJ
 
-    root_factor = 0.9
     for factor in [root_factor ** (i + 1) for i in range(6)]:
         for category in layer_classification:
             evaluator = IncreaseDeltaEvaluator(model, tokenizer, device, target, layer_classification[category], factor, args.show_eval_progress)
@@ -282,13 +290,13 @@ def increase_delta_evaluate(args: Namespace, model: MambaForCausalLM, tokenizer:
             # save to csv
             df = pd.DataFrame(performance)
             print(df)
-            out_fname = args.output_dir / f"{args.interfere_mode}_{args.model_size}_target_{target}.csv"
+            out_fname = args.output_dir / f"{args.interfere_mode}_{args.model_size}_target_{target}_layer_neighborhood_{max(layers_of_interest)}-{min(layers_of_interest)}_root_decay_factor_{root_factor}.csv"
             if out_fname.exists():
                 os.remove(out_fname)
             df.to_csv(out_fname)
     
     df = pd.DataFrame(performance)
-    out_fname = args.output_dir / f"{args.interfere_mode}_{args.model_size}_target_{target}_layer_neighborhood_{max(layers_of_interest)}-{min(layers_of_interest)}.csv"
+    out_fname = args.output_dir / f"{args.interfere_mode}_{args.model_size}_target_{target}_layer_neighborhood_{max(layers_of_interest)}-{min(layers_of_interest)}_root_decay_factor_{root_factor}.csv"
     if out_fname.exists():
         os.remove(out_fname)
     df.to_csv(out_fname)
@@ -327,7 +335,7 @@ def main() -> None:
         else:
             ssm_knockout_evaluate(args, model, tokenizer, device, knowns_df, norm=norm, ignore_layer_by_layer=args.ignore_layer_by_layer)
     elif KnockoutMode[args.interfere_mode] == KnockoutMode.INCREASE_DELTA:
-        increase_delta_evaluate(args, model, tokenizer, device, knowns_df)
+        increase_delta_evaluate(args, model, tokenizer, device, knowns_df, args.delta_factor_root, args.delta_start_layer, args.delta_end_layer, args.non_selective_ssm)
     else:
         raise ValueError(f"Unknown knockout mode: {args.interfere_mode}")
     

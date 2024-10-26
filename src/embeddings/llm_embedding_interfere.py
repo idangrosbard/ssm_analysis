@@ -12,7 +12,7 @@ class LLMEmbeddingInterefere(Callable):
 
     def hook(self, module: nn.Module, inp: Tensor, out: Tensor) -> Optional[Tensor]:
         # project to token space
-        token_logits = out @ self.E.T / torch.norm(self.E, dim=-1)
+        token_logits = out @ self.E.T
 
         # gather top k closest tokens
         top_k_logits = torch.topk(token_logits, self.k_closest, dim=-1).values
@@ -29,7 +29,7 @@ class LLMEmbeddingInterefere(Callable):
           distribution = token_logits
 
         # project back to embedding space
-        new_out = distribution @ self.E
+        new_out = distribution @ self.E / torch.norm(self.E, dim=-1)
         return new_out
 
         

@@ -18,6 +18,8 @@ def get_args() -> Namespace:
     return parser.parse_args()
 
 
+BASELINE_PERFORMANCE = 0.6964433416046368
+
 def plot_performance(performance: pd.DataFrame) -> go.Figure:
     fig = make_subplots(rows=2, cols=1, shared_xaxes=True, shared_yaxes=True, vertical_spacing=0.02, subplot_titles=("KnockoutTarget.LAST", "KnockoutTarget.ENTIRE_SUBJ"))
     
@@ -46,6 +48,7 @@ def main():
 
     # save figure
     args.output.parent.mkdir(parents=True, exist_ok=True)
+    fig.add_hline(y=BASELINE_PERFORMANCE, line_dash="dot", line_color="black")
     fig.write_html(args.output)
 
 
