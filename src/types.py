@@ -1,79 +1,44 @@
-from typing import Any
+from re import L
+from typing import Any, Iterable, Literal
 from typing import Dict
 from typing import NamedTuple
 from typing import NewType
 from typing import Optional
 from typing import TypedDict
 
+from attr import dataclass
+from regex import D
+
 from src.utils.types_utils import STREnum
 
 
 class SPLIT(STREnum):
-    DEV = 'dev'
-    TRAIN = 'train'
-    TEST = 'test'
+    TRAIN1 = "train1"
+    TRAIN2 = "train2"
+    TRAIN3 = "train3"
+    TRAIN4 = "train4"
+    TRAIN5 = "train5"
+    TEST = "test"
 
 
-class T_SAMPLER(STREnum):
-    UNIFORM = 'uniform'
-    CONSTANT = 'constant'
+class MODEL_ARCH(STREnum):
+    MAMBA1 = "mamba"
+    MINIMAL_MAMBA1 = "minimal_mamba1"
+    MINIMAL_MAMBA2 = "minimal_mamba2"
+    LLAMA2 = "llama2"
+    LLAMA3_2 = "llama3.2"
 
 
-class SAMPLERS(STREnum):
-    STANDARD = 'standard'
-    DPM_SOLVER_PP = 'DPMSolver++'
-    FAST_DPM = 'FastDPM'
-    DDIM = 'DDIM'
+class DATASETS(STREnum):
+    KNOWN_1000 = "known_1000"
+    COUNTER_FACT = "counter_fact"
 
 
-class MODEL(STREnum):
-    DDPM = 'ddpm'
-    EDM = 'edm'
+TModelID = NewType("TModelID", str)
+TDatasetID = NewType("TDatasetID", str)
+TSplit = SPLIT | Iterable[SPLIT] | None | Literal['all']
 
-
-class CONFIG_KEYS(STREnum):
-    SAMPLERS = 'samplers'
-    TRAINING = 'training'
-    DDPM = MODEL.DDPM.value
-    EDM = MODEL.EDM.value
-    FASHION_MNIST = 'fashion_mnist'
-
-
-class STEP_TIMING(STREnum):
-    BATCH = 'batch'
-    EPOCH = 'epoch'
-    EVALUATION = 'evaluation'
-
-
-class LR_SCHEDULER(STREnum):
-    STEP = 'step'
-    ONE_CYCLE = 'one_cycle'
-
-
-class OPTIMIZER(STREnum):
-    ADAM = 'adam'
-    ADAMW = 'adamw'
-
-
-class METRICS(STREnum):
-    LOSS = 'loss'
-
-
-TimeStep = NewType('TimeStep', int)
-IEarlyStopped = NewType('IEarlyStopped', bool)
-ILoss = NewType('ILoss', float)
-IMetrics = NewType('IMetrics', Dict[str, float])
-
-
-class ITrainArgs(NamedTuple):
-    experiment_name: str
-    config: "Config"  # TODO: to avoid circular, fix it
-    run_id: Optional[str]
-
-
-class Checkpoint(TypedDict):
-    epoch: int
-    total_steps: int
-    model_state_dict: Dict[str, Any]
-    optimizer_state_dict: Dict[str, Any]
-    best_loss: float
+@dataclass
+class DatasetArgs:
+    name: DATASETS
+    splits: TSplit = 'all'

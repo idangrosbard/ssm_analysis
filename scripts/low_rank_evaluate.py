@@ -9,7 +9,7 @@ import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from src.evaluate import evaluate_model
-from src.datasets.known_1000.download_dataset import load_knowns
+from src.datasets.download_dataset import load_knowns_pd
 from src.weight_analysis import get_low_rank_model
 
 
@@ -28,7 +28,7 @@ def main(output_dir: Path, model_size: str = "2.8B", rank: int = 768, use_min_va
     tokenizer = AutoTokenizer.from_pretrained(f"state-spaces/mamba-{model_size}-hf")
     model = MambaForCausalLM.from_pretrained(f"state-spaces/mamba-{model_size}-hf")
 
-    knowns_df = load_knowns()
+    knowns_df = load_knowns_pd()
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     model.to(device)

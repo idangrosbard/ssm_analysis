@@ -9,7 +9,7 @@ from transformers import AutoTokenizer, MambaForCausalLM
 import torch
 from tqdm import tqdm
 from pathlib import Path
-from src.datasets.known_1000.download_dataset import load_knowns
+from src.datasets.download_dataset import load_knowns_pd
 from src.knockout import KnockoutMode, KnockoutEvaluator
 from src.knockout.attention_knockout import KnockoutTarget, AttentionKnockoutEvaluator, is_last_token_subj
 from src.knockout.layer_knockout import LayerKnockoutEvaluator
@@ -25,7 +25,7 @@ from typing import Optional, Iterable
 def get_args():
     parser = ArgumentParser()
     parser.add_argument("--model_size", type=str, choices={'130M', '2.8B'}, default="130M")
-    parser.add_argument("--interfere_mode", type=str, choices={str(mode).split('.')[1] for mode in KnockoutMode}, default="ZERO_ATTENTION")
+    parser.add_argument("--interfere_mode", type=str, choices={str(mode).split('.')[1] for mode in KnockoutMode}, default="INCREASE_DELTA")
     parser.add_argument("--drop_subj_last", action='store_true')
     parser.add_argument("--show_eval_progress", action='store_true')
     parser.add_argument("--output_dir", type=Path, default=Path("resources"))
@@ -108,7 +108,7 @@ def layer_by_layer(evaluator: KnockoutEvaluator, dataset: pd.DataFrame, knockout
 
 
 def get_last_token_stats(model_size: str = '130M'):
-    knowns_df = load_knowns()
+    knowns_df = load_knowns_pd()
 
     tokenizer = AutoTokenizer.from_pretrained(f"state-spaces/mamba-{model_size}-hf")
 
@@ -308,7 +308,7 @@ def main() -> None:
     get_last_token_stats(args.model_size)
 
     model, tokenizer, device = setup_model(args.model_size)
-    knowns_df = load_knowns()
+    knowns_df = load_knowns_pd()
     args.output_dir.mkdir(parents=True, exist_ok=True)
 
     bin_search_checkpoint = get_checkpoint(args.bin_search_checkpoint)
