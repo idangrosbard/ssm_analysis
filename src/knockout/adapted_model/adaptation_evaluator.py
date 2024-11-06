@@ -81,9 +81,5 @@ class AdaptationEvaluator(KnockoutEvaluator):
             # Update performance
             acc += float(correct) / len(dataset)
             dataset.loc[idx, 'correct'] = correct
-        
-        # remove hooks
-        for handle in handles:
-            handle.remove()
 
         return dataset, acc
