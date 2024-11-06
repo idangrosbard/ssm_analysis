@@ -11,8 +11,8 @@ class AdaptedMixer(nn.Module):
         self.alpha = nn.Parameter(alpha, requires_grad=False)
         self.feature_gating = nn.Parameter(gate, requires_grad=False)
 
-    def forward(self, x: Tensor) -> Tensor:
-        return self.slow_forward_for_ssm_manipulation(self.inner_module, x)
+    def forward(self, input_states, cache_params: Optional[MambaCache]=None, cache_position:Optional[torch.LongTensor]=None, attention_mask: Optional[torch.LongTensor] = None) -> Tensor:
+        return self.slow_forward_for_ssm_manipulation(self.inner_module, input_states, cache_params, cache_position, attention_mask)
 
     def slow_forward_for_ssm_manipulation(self, module, input_states, cache_params: Optional[MambaCache]=None, cache_position:Optional[torch.LongTensor]=None, attention_mask: Optional[torch.LongTensor] = None, feature_mask: torch.Tensor = None, factor: float = 1, factored_tokens: Optional[torch.Tensor] = None):
         """
