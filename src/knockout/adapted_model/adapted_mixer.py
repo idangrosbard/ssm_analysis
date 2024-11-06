@@ -99,7 +99,7 @@ class AdaptedMixer(nn.Module):
             cache_params.ssm_states[module.layer_idx].copy_(ssm_state)
 
         # Set some features values to zero, LAST TOKENT ONLY
-        contextualized_states[:, :, -1] = contextualized_states[:, :, -1] * self.feature_gating[None, :]
+        scan_output[:, :, -1] = scan_output[:, :, -1] * self.feature_gating[None, :]
 
         # 4. Final linear projection
         contextualized_states = module.out_proj(scan_output.transpose(1, 
