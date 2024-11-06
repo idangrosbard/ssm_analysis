@@ -8,7 +8,7 @@ import torch
 from tqdm import tqdm
 from pathlib import Path
 from src.embeddings import LLMEmbeddingInterefere
-from src.datasets.known_1000.download_dataset import load_knowns
+from src.datasets.download_dataset import load_knowns_pd
 from argparse import ArgumentParser
 import numpy as np
 import plotly.graph_objects as go
@@ -66,7 +66,7 @@ def tokenize_eval(model: MambaForCausalLM, tokenizer: AutoTokenizer, knowns_df: 
 
 def log_scale_k_closest_search(model_size: str, k: int):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    knowns_df = load_knowns()
+    knowns_df = load_knowns_pd()
 
     tokenizer = AutoTokenizer.from_pretrained(f"state-spaces/mamba-{model_size}-hf")
     model = MambaForCausalLM.from_pretrained(f"state-spaces/mamba-{model_size}-hf")
@@ -101,7 +101,7 @@ def log_scale_k_closest_search(model_size: str, k: int):
 
 def main_binary_search(model_size: str = "2.8B", n_tokens: int = 1):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    knowns_df = load_knowns()
+    knowns_df = load_knowns_pd()
 
     tokenizer = AutoTokenizer.from_pretrained(f"state-spaces/mamba-{model_size}-hf")
     model = MambaForCausalLM.from_pretrained(f"state-spaces/mamba-{model_size}-hf")
@@ -162,7 +162,7 @@ def main_binary_search(model_size: str = "2.8B", n_tokens: int = 1):
 
 def main(model_size: str = "2.8B"):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    knowns_df = load_knowns()
+    knowns_df = load_knowns_pd()
 
     tokenizer = AutoTokenizer.from_pretrained(f"state-spaces/mamba-{model_size}-hf")
     model = MambaForCausalLM.from_pretrained(f"state-spaces/mamba-{model_size}-hf")

@@ -176,3 +176,8 @@ cython_debug/
 **/*.csv
 /.idea/
 /runs/
+data/raw/
+/data/preprocessed/counter_fact/
+/slurm/
+/output/
+.envrc

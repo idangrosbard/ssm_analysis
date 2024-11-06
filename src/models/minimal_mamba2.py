@@ -95,7 +95,7 @@ class Mamba2LMHeadModel(nn.Module):
         self.lm_head.weight = self.backbone.embedding.weight
 
     @staticmethod
-    def from_pretrained(huggingface_model_id: str, device: Device = None):
+    def from_pretrained(huggingface_model_id: str, device: Device = None, device_map: Optional[str] = None):
         from transformers.utils import CONFIG_NAME, WEIGHTS_NAME
         from transformers.utils.hub import cached_file
 
@@ -112,6 +112,9 @@ class Mamba2LMHeadModel(nn.Module):
             pad_vocab_size_multiple=config["pad_vocab_size_multiple"],
         )
 
+        if device_map == "auto":
+            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+            
         map_location = "cpu" if device is None else device
         state_dict = torch.load(
             state_dict_path, weights_only=True, map_location=map_location, mmap=True
