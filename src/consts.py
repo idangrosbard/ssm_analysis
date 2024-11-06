@@ -68,7 +68,7 @@ MODEL_SIZES_PER_ARCH_TO_MODEL_ID: dict[MODEL_ARCH, dict[str, TModelID]] = {
         "2.8B": "state-spaces/mamba2-2.7B",
     },
     MODEL_ARCH.LLAMA2: {
-        "7b": "meta-llama/Llama2-7b-hf",
+        "7b": "meta-llama/Llama-2-7b-hf",
     },
     MODEL_ARCH.LLAMA3_2: {
         "1B": "meta-llama/Llama-3.2-1B",

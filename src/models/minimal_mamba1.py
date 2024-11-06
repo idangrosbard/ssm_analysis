@@ -100,7 +100,7 @@ class Mamba(nn.Module):
         return logits, None
 
     @staticmethod
-    def from_pretrained(pretrained_model_name: str):
+    def from_pretrained(pretrained_model_name: str, device: Optional[torch.device] = None, device_map: Optional[str] = None):
         """Load pretrained weights from HuggingFace into model.
 
         Args:
@@ -148,6 +148,10 @@ class Mamba(nn.Module):
             new_state_dict[new_key] = state_dict[key]
         model.load_state_dict(new_state_dict)
 
+        if device_map == "auto":
+            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        if device is not None:
+            model.to(device)
         return model
 
     def generate(

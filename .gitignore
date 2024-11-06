@@ -179,3 +179,5 @@ cython_debug/
 data/raw/
 /data/preprocessed/counter_fact/
 /slurm/
+/output/
+.envrc

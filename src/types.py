@@ -6,8 +6,7 @@ from typing import NewType
 from typing import Optional
 from typing import TypedDict
 
-from attr import dataclass
-from regex import D
+from dataclasses import dataclass
 
 from src.utils.types_utils import STREnum
 
@@ -36,9 +35,20 @@ class DATASETS(STREnum):
 
 TModelID = NewType("TModelID", str)
 TDatasetID = NewType("TDatasetID", str)
-TSplit = SPLIT | Iterable[SPLIT] | None | Literal['all']
+TSplit = SPLIT | Iterable[SPLIT] | Literal['all']
 
 @dataclass
 class DatasetArgs:
     name: DATASETS
     splits: TSplit = 'all'
+    
+    def __post_init__(self):
+        if self.splits != 'all' and isinstance(self.splits, str):
+            self.splits = [self.splits]
+            
+    @property
+    def dataset_name(self) -> str:
+        split_name = ""
+        if self.splits != "all":
+            split_name = f"_{self.splits}"
+        return self.name + split_name

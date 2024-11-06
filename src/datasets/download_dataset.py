@@ -7,8 +7,7 @@ from scripts.counterfact.splitting import split_dataset
 from src.consts import DATASETS_IDS, PATHS
 import tempfile
 from datasets import Dataset, DatasetDict, load_from_disk, concatenate_datasets
-
-from src.types import DATASETS, SPLIT, DatasetArgs
+from src.types import DATASETS, SPLIT, DatasetArgs, TSplit
 
 
 def load_knowns() -> Dataset:
@@ -27,13 +26,14 @@ def load_knowns() -> Dataset:
 
 
 def load_knowns_pd() -> pd.DataFrame:
-    return pd.DataFrame(load_knowns_ds())
+    return pd.DataFrame(load_knowns())
 
 
-def load_splitted_counter_fact(split=(SPLIT.TRAIN1,)) -> Dataset:
+def load_splitted_counter_fact(split: TSplit = (SPLIT.TRAIN1,)) -> Dataset:
     splitted_path = PATHS.COUNTER_FACT_DIR / "splitted"
 
-    if not PATHS.COUNTER_FACT_DIR.exists():
+    if not splitted_path.exists():
+        print("Creating splitted dataset")
         dataset_name = DATASETS_IDS[DATASETS.COUNTER_FACT]
         num_splits = 5
         split_ratio = 0.1
@@ -46,6 +46,8 @@ def load_splitted_counter_fact(split=(SPLIT.TRAIN1,)) -> Dataset:
 
     if split == "all":
         split = list(data.keys())
+    if isinstance(split, str):
+        split = [split]
 
     return concatenate_datasets([data[split] for split in split])
 

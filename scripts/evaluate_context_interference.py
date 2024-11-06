@@ -18,7 +18,7 @@ from src.knockout.ssm_knockout.ssm_classifier import SSMClassifier, DecayNormCla
 from src.knockout.increase_delta import IncreaseDeltaEvaluator
 from argparse import ArgumentParser, Namespace
 import numpy as np
-from src.utils import setup_model
+from src.utils.setup_models import setup_mamba_model
 from typing import Optional, Iterable
 
 
@@ -307,7 +307,7 @@ def main() -> None:
     args = get_args()
     get_last_token_stats(args.model_size)
 
-    model, tokenizer, device = setup_model(args.model_size)
+    model, tokenizer, device = setup_mamba_model(args.model_size)
     knowns_df = load_knowns_pd()
     args.output_dir.mkdir(parents=True, exist_ok=True)
 
