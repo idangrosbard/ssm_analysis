@@ -25,7 +25,7 @@ def indices2khot(indices: Iterable[int], len: int, flip: bool = True) -> torch.T
 def build_delta_factor_map(layers: Dict[str, Iterable[int]], factor: Dict[str, float], size: int, layer_index: int) -> Dict[str, float]:
     factor_maps = []
     for layer, indices in layers.items():
-        feature_map = indices2khot(indices[layer_index], size, flip=True)
+        feature_map = indices2khot(indices[layer_index], size, flip=False)
         feature_map = feature_map.unsqueeze(0)
         factor_maps.append(feature_map * factor[layer])
     delta_factor_map = torch.stack(factor_maps).sum(dim=0)
