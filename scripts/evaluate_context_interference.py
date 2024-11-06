@@ -140,7 +140,7 @@ def attention_knockout_evaluate(args: Namespace, model: MambaForCausalLM, tokeni
     elif affected_output == 'subj':
         affected_outputs = [KnockoutTarget.ENTIRE_SUBJ]
 
-    specific_targets = {KnockoutTarget.LAST: KnockoutTarget, KnockoutTarget.ENTIRE_SUBJ: [KnockoutTarget.ENTIRE_SUBJ, KnockoutTarget.SUBJ_LAST, KnockoutTarget.SUBJ_CONTEXT]}
+    specific_targets = {KnockoutTarget.LAST: [KnockoutTarget.LAST, KnockoutTarget.ENTIRE_SUBJ, KnockoutTarget.SUBJ_CONTEXT], KnockoutTarget.ENTIRE_SUBJ: [KnockoutTarget.ENTIRE_SUBJ, KnockoutTarget.SUBJ_CONTEXT]}
     
     for output in affected_outputs:
         for target in specific_targets[output]:
@@ -167,34 +167,34 @@ def attention_knockout_evaluate(args: Namespace, model: MambaForCausalLM, tokeni
             else:
                 print(f"Skipping {target} {output} for binary search")
             
-            cond = (layer_df is None)
-            if not cond:
-                cond = (len(layer_df[(layer_df['knockout_inputs'] == str(target)) & (layer_df['affected_outputs'] == str(output))]) == 0)
+            # cond = (layer_df is None)
+            # if not cond:
+            #     cond = (len(layer_df[(layer_df['knockout_inputs'] == str(target)) & (layer_df['affected_outputs'] == str(output))]) == 0)
             
-            if cond:
-                print('Layer iteration for', target, output)
-                curr_df = layer_by_layer(evaluator, knowns_df, KnockoutMode[args.interfere_mode])
-                curr_df['knockout_inputs'] = target
-                curr_df['affected_outputs'] = output
-                layer_df = [layer_df, curr_df]
-                layer_df = pd.concat(layer_df)
+            # if cond:
+            #     print('Layer iteration for', target, output)
+            #     curr_df = layer_by_layer(evaluator, knowns_df, KnockoutMode[args.interfere_mode])
+            #     curr_df['knockout_inputs'] = target
+            #     curr_df['affected_outputs'] = output
+            #     layer_df = [layer_df, curr_df]
+            #     layer_df = pd.concat(layer_df)
                 
-                # save to csv
-                out_fname = args.output_dir / f"{args.interfere_mode}_{args.model_size}_layer_by_layer.csv"
-                if out_fname.exists():
-                    os.remove(out_fname)
-                layer_df.to_csv(out_fname)
-            else:
-                print(f"Skipping {target} {output} for layer by layer")
+            #     # save to csv
+            #     out_fname = args.output_dir / f"{args.interfere_mode}_{args.model_size}_layer_by_layer.csv"
+            #     if out_fname.exists():
+            #         os.remove(out_fname)
+            #     layer_df.to_csv(out_fname)
+            # else:
+            #     print(f"Skipping {target} {output} for layer by layer")
 
 
 def layer_knockout_evaluate(args: Namespace, model: MambaForCausalLM, tokenizer: AutoTokenizer, device: torch.device, knowns_df: pd.DataFrame):
     evaluator = LayerKnockoutEvaluator(model, tokenizer, device, args.show_eval_progress)
     bin_search_df = binary_search(evaluator, knowns_df, KnockoutMode[args.interfere_mode])
-    layer_df = layer_by_layer(evaluator, knowns_df, KnockoutMode[args.interfere_mode])
+    # layer_df = layer_by_layer(evaluator, knowns_df, KnockoutMode[args.interfere_mode])
 
     bin_search_df.to_csv(args.output_dir / f"{args.interfere_mode}_{args.model_size}_bin_search.csv")
-    layer_df.to_csv(args.output_dir / f"{args.interfere_mode}_{args.model_size}_layer_by_layer.csv")
+    # layer_df.to_csv(args.output_dir / f"{args.interfere_mode}_{args.model_size}_layer_by_layer.csv")
 
 
 def ssm_knockout_evaluate_early_layers(args: Namespace, model: MambaForCausalLM, tokenizer: AutoTokenizer, device: torch.device, knowns_df: pd.DataFrame, norm: int | float):
@@ -218,7 +218,7 @@ def ssm_knockout_evaluate_early_layers(args: Namespace, model: MambaForCausalLM,
     bin_search_df.to_csv(args.output_dir / f"{args.interfere_mode}_{args.model_size}_norm_{norm}_bin_search_early_layers_focus.csv")
 
 
-def ssm_knockout_evaluate(args: Namespace, model: MambaForCausalLM, tokenizer: AutoTokenizer, device: torch.device, knowns_df: pd.DataFrame, norm: int | float, ignore_layer_by_layer: bool = False):
+def ssm_knockout_evaluate(args: Namespace, model: MambaForCausalLM, tokenizer: AutoTokenizer, device: torch.device, knowns_df: pd.DataFrame, norm: int | float, ignore_layer_by_layer: bool = True):
     ssm_classifier = DecayNormClassifier()
     bin_search_df = None
     layer_df = None
