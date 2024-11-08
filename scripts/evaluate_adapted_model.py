@@ -28,6 +28,7 @@ def main() -> None:
 
     model, tokenizer, device = setup_mamba_model(args.model_size)
     knowns_df = pd.DataFrame(load_dataset(DatasetArgs(name=DATASETS.KNOWN_1000, splits=['test'])))
+    knowns_df['attribute'] = knowns_df['attribute'].apply(lambda x: x[1:])
 
     # If we do attention knockout:
     layers_of_interest = sorted([63, 62, 61, 60, 59, 58, 57, 56])

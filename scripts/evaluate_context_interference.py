@@ -68,7 +68,8 @@ def binary_search(evaluator: KnockoutEvaluator, dataset: pd.DataFrame, knockout_
     log_n = np.ceil(np.log2(n))
 
     with torch.no_grad():
-        for _ in tqdm(range(int(log_n)), desc='Binary search for optimal layer'):
+        pbar = tqdm(range(int(log_n)), desc='Binary search for optimal layer')
+        for _ in pbar:
             if (len(knockout_target_layers) // 2) < (len(knockout_target_layers) / 2):
                 early = knockout_target_layers[:len(knockout_target_layers) // 2 + 1]
                 late = knockout_target_layers[len(knockout_target_layers) // 2:]
@@ -92,6 +93,7 @@ def binary_search(evaluator: KnockoutEvaluator, dataset: pd.DataFrame, knockout_
                 knockout_target_layers = early
             else:
                 knockout_target_layers = late
+            pbar.set_description(f"Binary search for optimal layer. Curr acc: {min(acc_early, acc_late)}")
     
     df = pd.DataFrame(performance)
     
@@ -325,6 +327,7 @@ def main() -> None:
     # If we do attention knockout:
     if KnockoutMode[args.interfere_mode] in {KnockoutMode.ZERO_ATTENTION, KnockoutMode.ZERO_DELTA}:
         knowns_df = pd.DataFrame(load_dataset(DatasetArgs(name=DATASETS.KNOWN_1000, splits=['train1'])))
+        knowns_df['attribute'] = knowns_df['attribute'].apply(lambda x: x[1:])
         attention_knockout_evaluate(args, model, tokenizer, device, knowns_df, layer_checkpoint=layer_checkpoint, bin_search_checkpoint=bin_search_checkpoint, affected_output=args.affected_output)
 
 
@@ -332,11 +335,14 @@ def main() -> None:
     # If we skip entire layer \ component
     elif KnockoutMode[args.interfere_mode] in {KnockoutMode.IGNORE_CONTEXT, KnockoutMode.IGNORE_LAYER, KnockoutMode.ONLY_CONTEXT}:
         knowns_df = pd.DataFrame(load_dataset(DatasetArgs(name=DATASETS.KNOWN_1000, splits=['train1'])))
+        knowns_df['attribute'] = knowns_df['attribute'].apply(lambda x: x[1:])
         layer_knockout_evaluate(args, model, tokenizer, device, knowns_df)
 
     # If we do SSM knockout
     elif KnockoutMode[args.interfere_mode] == KnockoutMode.IGNORE_SSM:
         knowns_df = pd.DataFrame(load_dataset(DatasetArgs(name=DATASETS.KNOWN_1000, splits=['train2'])))
+        # drop the first character in the attribute string
+        knowns_df['attribute'] = knowns_df['attribute'].apply(lambda x: x[1:])
         if args.norm == 'inf':
             norm = float('inf')
         else:
@@ -348,6 +354,7 @@ def main() -> None:
     
     elif KnockoutMode[args.interfere_mode] == KnockoutMode.INCREASE_DELTA:
         knowns_df = pd.DataFrame(load_dataset(DatasetArgs(name=DATASETS.KNOWN_1000, splits=['train3'])))
+        knowns_df['attribute'] = knowns_df['attribute'].apply(lambda x: x[1:])
         increase_delta_evaluate(args, model, tokenizer, device, knowns_df, args.delta_factor_root, args.delta_start_layer, args.delta_end_layer, args.non_selective_ssm, KnockoutTarget[args.increase_delta_target])
     else:
         raise ValueError(f"Unknown knockout mode: {args.interfere_mode}")
