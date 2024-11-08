@@ -177,7 +177,8 @@ cython_debug/
 /.idea/
 /runs/
 data/raw/
-/data/preprocessed/counter_fact/
+/data/preprocessed/
 /slurm/
 /output/
+/output_2/
 .envrc

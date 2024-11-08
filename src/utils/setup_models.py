@@ -8,6 +8,7 @@ from transformers import MambaForCausalLM
 from transformers import PreTrainedModel
 from transformers import PreTrainedTokenizer
 from transformers import PreTrainedTokenizerFast
+from mamba_ssm.models.mixer_seq_simple import MambaLMHeadModel
 
 from src.consts import MODEL_SIZES_PER_ARCH_TO_MODEL_ID
 from src.models.minimal_mamba1 import Mamba
@@ -32,9 +33,9 @@ def setup_mamba_model(
 
 def _get_tokenizer_id(model_arch: MODEL_ARCH, model_id: str) -> str:
     match model_arch:
-        case MODEL_ARCH.MINIMAL_MAMBA1 | MODEL_ARCH.MINIMAL_MAMBA2:
+        case  MODEL_ARCH.MAMBA1 | MODEL_ARCH.MAMBA2 | MODEL_ARCH.MINIMAL_MAMBA1 | MODEL_ARCH.MINIMAL_MAMBA2:
             return f"EleutherAI/gpt-neox-20b"
-        case MODEL_ARCH.MAMBA1 | MODEL_ARCH.LLAMA2 | MODEL_ARCH.LLAMA3_2:
+        case MODEL_ARCH.LLAMA2 | MODEL_ARCH.LLAMA3_2:
             return model_id
         case _:
             assert_never(model_arch)
@@ -68,7 +69,10 @@ def get_tokenizer_and_model(
                 model.to(device)
             else:
                 model = MambaForCausalLM.from_pretrained(model_id, device_map="auto")
-
+        case MODEL_ARCH.MAMBA2:
+            if not device:
+                device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+            model = MambaLMHeadModel.from_pretrained(model_id, device=device)
         case MODEL_ARCH.LLAMA2 | MODEL_ARCH.LLAMA3_2:
             if device:
                 model = LlamaForCausalLM.from_pretrained(model_id)

@@ -22,6 +22,7 @@ class SPLIT(STREnum):
 
 class MODEL_ARCH(STREnum):
     MAMBA1 = "mamba"
+    MAMBA2 = "mamba2"
     MINIMAL_MAMBA1 = "minimal_mamba1"
     MINIMAL_MAMBA2 = "minimal_mamba2"
     LLAMA2 = "llama2"
