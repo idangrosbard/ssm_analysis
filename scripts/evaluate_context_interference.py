@@ -21,6 +21,11 @@ import numpy as np
 from src.utils.setup_models import setup_mamba_model
 from typing import Optional, Iterable
 
+from src.datasets.download_dataset import load_dataset
+from src.types import DatasetArgs
+from src.types import DATASETS
+
+
 
 def get_args():
     parser = ArgumentParser()
@@ -237,7 +242,7 @@ def ssm_knockout_evaluate(args: Namespace, model: MambaForCausalLM, tokenizer: A
             os.remove(out_fname)
         bin_search_df.to_csv(out_fname)
 
-        if not ignore_layer_by_layer:
+        if (not ignore_layer_by_layer) and False:
             curr = layer_by_layer(evaluator, knowns_df, KnockoutMode[args.interfere_mode])
             curr['category'] = category
             curr['norm'] = norm
@@ -249,7 +254,7 @@ def ssm_knockout_evaluate(args: Namespace, model: MambaForCausalLM, tokenizer: A
             layer_df.to_csv(out_fname)
 
     bin_search_df.to_csv(args.output_dir / f"{args.interfere_mode}_{args.model_size}_norm_{norm}_bin_search.csv")
-    if not ignore_layer_by_layer:
+    if (not ignore_layer_by_layer) and False:
         layer_df.to_csv(args.output_dir / f"{args.interfere_mode}_{args.model_size}_norm_{norm}_layer_by_layer.csv")
 
 
@@ -308,7 +313,6 @@ def main() -> None:
     get_last_token_stats(args.model_size)
 
     model, tokenizer, device = setup_mamba_model(args.model_size)
-    knowns_df = load_knowns_pd()
     args.output_dir.mkdir(parents=True, exist_ok=True)
 
     bin_search_checkpoint = get_checkpoint(args.bin_search_checkpoint)
@@ -318,14 +322,19 @@ def main() -> None:
     
     # If we do attention knockout:
     if KnockoutMode[args.interfere_mode] in {KnockoutMode.ZERO_ATTENTION, KnockoutMode.ZERO_DELTA}:
+        knowns_df = pd.DataFrame(load_dataset(DatasetArgs(name=DATASETS.KNOWN_1000, splits=['train1', 'train2', 'train3'])))
         attention_knockout_evaluate(args, model, tokenizer, device, knowns_df, layer_checkpoint=layer_checkpoint, bin_search_checkpoint=bin_search_checkpoint, affected_output=args.affected_output)
 
+
+    # Not done in our code
     # If we skip entire layer \ component
     elif KnockoutMode[args.interfere_mode] in {KnockoutMode.IGNORE_CONTEXT, KnockoutMode.IGNORE_LAYER, KnockoutMode.ONLY_CONTEXT}:
+        knowns_df = pd.DataFrame(load_dataset(DatasetArgs(name=DATASETS.KNOWN_1000, splits=['train1', 'train2', 'train3'])))
         layer_knockout_evaluate(args, model, tokenizer, device, knowns_df)
 
     # If we do SSM knockout
     elif KnockoutMode[args.interfere_mode] == KnockoutMode.IGNORE_SSM:
+        knowns_df = pd.DataFrame(load_dataset(DatasetArgs(name=DATASETS.KNOWN_1000, splits=['train1', 'train2', 'train3'])))
         if args.norm == 'inf':
             norm = float('inf')
         else:
@@ -334,7 +343,9 @@ def main() -> None:
             ssm_knockout_evaluate_early_layers(args, model, tokenizer, device, knowns_df, norm=norm)
         else:
             ssm_knockout_evaluate(args, model, tokenizer, device, knowns_df, norm=norm, ignore_layer_by_layer=args.ignore_layer_by_layer)
+    
     elif KnockoutMode[args.interfere_mode] == KnockoutMode.INCREASE_DELTA:
+        knowns_df = pd.DataFrame(load_dataset(DatasetArgs(name=DATASETS.KNOWN_1000, splits=['train4', 'train5'])))
         increase_delta_evaluate(args, model, tokenizer, device, knowns_df, args.delta_factor_root, args.delta_start_layer, args.delta_end_layer, args.non_selective_ssm)
     else:
         raise ValueError(f"Unknown knockout mode: {args.interfere_mode}")

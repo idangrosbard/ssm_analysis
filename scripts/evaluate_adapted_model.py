@@ -11,6 +11,10 @@ from argparse import ArgumentParser, Namespace
 from src.utils.setup_models import setup_mamba_model
 from src.knockout.knockout_mode import KnockoutMode
 
+from src.datasets.download_dataset import load_dataset
+from src.types import DatasetArgs
+from src.types import DATASETS
+
 
 
 def get_args() -> Namespace:
@@ -23,7 +27,7 @@ def main() -> None:
     args = get_args()
 
     model, tokenizer, device = setup_mamba_model(args.model_size)
-    knowns_df = load_knowns_pd()
+    knowns_df = pd.DataFrame(load_dataset(DatasetArgs(name=DATASETS.KNOWN_1000, splits=['test'])))
 
     # If we do attention knockout:
     layers_of_interest = sorted([63, 62, 61, 60, 59, 58, 57, 56])
