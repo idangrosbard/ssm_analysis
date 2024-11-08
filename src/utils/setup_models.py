@@ -8,7 +8,7 @@ from transformers import MambaForCausalLM
 from transformers import PreTrainedModel
 from transformers import PreTrainedTokenizer
 from transformers import PreTrainedTokenizerFast
-from mamba_ssm.models.mixer_seq_simple import MambaLMHeadModel
+
 
 from src.consts import MODEL_SIZES_PER_ARCH_TO_MODEL_ID
 from src.models.minimal_mamba1 import Mamba
@@ -72,6 +72,7 @@ def get_tokenizer_and_model(
         case MODEL_ARCH.MAMBA2:
             if not device:
                 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+            from mamba_ssm.models.mixer_seq_simple import MambaLMHeadModel
             model = MambaLMHeadModel.from_pretrained(model_id, device=device)
         case MODEL_ARCH.LLAMA2 | MODEL_ARCH.LLAMA3_2:
             if device:

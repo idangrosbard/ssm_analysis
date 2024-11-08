@@ -44,6 +44,7 @@ def get_args():
     parser.add_argument('--delta_start_layer', type=int, default=40)
     parser.add_argument('--delta_end_layer', type=int, default=48)
     parser.add_argument('--non_selective_ssm', action='store_true')
+    parser.add_argument('--increase_delta_target', type=str, choices={str(mode).split('.')[1] for mode in KnockoutTarget}, default="LAST")
     return parser.parse_args()
 
 
@@ -264,7 +265,7 @@ def get_checkpoint(pth: Optional[Path]) -> Optional[pd.DataFrame]:
     return None
 
 
-def increase_delta_evaluate(args: Namespace, model: MambaForCausalLM, tokenizer: AutoTokenizer, device: torch.device, knowns_df: pd.DataFrame, root_factor: float, start_layer: int, end_layer: int, non_selective_ssm: bool):
+def increase_delta_evaluate(args: Namespace, model: MambaForCausalLM, tokenizer: AutoTokenizer, device: torch.device, knowns_df: pd.DataFrame, root_factor: float, start_layer: int, end_layer: int, non_selective_ssm: bool, target: KnockoutTarget = KnockoutTarget.LAST):
     if args.model_size == '130M':
         layers_of_interest = [18, 19, 20, 21]
     else:
@@ -277,9 +278,10 @@ def increase_delta_evaluate(args: Namespace, model: MambaForCausalLM, tokenizer:
         layer_classification = DecayNormClassifier(norm=1).classify_model(model.backbone)
 
     performance = {'acc': [], 'layers': [], 'factor': [], 'category': []}
-    target = KnockoutTarget.ENTIRE_SUBJ
-    target = KnockoutTarget.SUBJ_FIRST
-    target = KnockoutTarget.AFTER_SUBJ
+    # target = KnockoutTarget.ENTIRE_SUBJ
+    # target = KnockoutTarget.SUBJ_FIRST
+    # target = KnockoutTarget.AFTER_SUBJ
+    # target = KnockoutTarget.LAST
 
     for factor in [root_factor ** (i + 1) for i in range(6)]:
         for category in layer_classification:
@@ -322,19 +324,19 @@ def main() -> None:
     
     # If we do attention knockout:
     if KnockoutMode[args.interfere_mode] in {KnockoutMode.ZERO_ATTENTION, KnockoutMode.ZERO_DELTA}:
-        knowns_df = pd.DataFrame(load_dataset(DatasetArgs(name=DATASETS.KNOWN_1000, splits=['train1', 'train2', 'train3'])))
+        knowns_df = pd.DataFrame(load_dataset(DatasetArgs(name=DATASETS.KNOWN_1000, splits=['train1'])))
         attention_knockout_evaluate(args, model, tokenizer, device, knowns_df, layer_checkpoint=layer_checkpoint, bin_search_checkpoint=bin_search_checkpoint, affected_output=args.affected_output)
 
 
     # Not done in our code
     # If we skip entire layer \ component
     elif KnockoutMode[args.interfere_mode] in {KnockoutMode.IGNORE_CONTEXT, KnockoutMode.IGNORE_LAYER, KnockoutMode.ONLY_CONTEXT}:
-        knowns_df = pd.DataFrame(load_dataset(DatasetArgs(name=DATASETS.KNOWN_1000, splits=['train1', 'train2', 'train3'])))
+        knowns_df = pd.DataFrame(load_dataset(DatasetArgs(name=DATASETS.KNOWN_1000, splits=['train1'])))
         layer_knockout_evaluate(args, model, tokenizer, device, knowns_df)
 
     # If we do SSM knockout
     elif KnockoutMode[args.interfere_mode] == KnockoutMode.IGNORE_SSM:
-        knowns_df = pd.DataFrame(load_dataset(DatasetArgs(name=DATASETS.KNOWN_1000, splits=['train1', 'train2', 'train3'])))
+        knowns_df = pd.DataFrame(load_dataset(DatasetArgs(name=DATASETS.KNOWN_1000, splits=['train2'])))
         if args.norm == 'inf':
             norm = float('inf')
         else:
@@ -345,8 +347,8 @@ def main() -> None:
             ssm_knockout_evaluate(args, model, tokenizer, device, knowns_df, norm=norm, ignore_layer_by_layer=args.ignore_layer_by_layer)
     
     elif KnockoutMode[args.interfere_mode] == KnockoutMode.INCREASE_DELTA:
-        knowns_df = pd.DataFrame(load_dataset(DatasetArgs(name=DATASETS.KNOWN_1000, splits=['train4', 'train5'])))
-        increase_delta_evaluate(args, model, tokenizer, device, knowns_df, args.delta_factor_root, args.delta_start_layer, args.delta_end_layer, args.non_selective_ssm)
+        knowns_df = pd.DataFrame(load_dataset(DatasetArgs(name=DATASETS.KNOWN_1000, splits=['train3'])))
+        increase_delta_evaluate(args, model, tokenizer, device, knowns_df, args.delta_factor_root, args.delta_start_layer, args.delta_end_layer, args.non_selective_ssm, KnockoutTarget[args.increase_delta_target])
     else:
         raise ValueError(f"Unknown knockout mode: {args.interfere_mode}")
     

@@ -1,11 +1,13 @@
-# LAST TOKEN
-python plot_knockout.py --binary_search_results "/home/idg/projects/ssm_analysis/resources/final_plots/ZERO_ATTENTION_2.8B_bin_search.csv" --output "last_token_zero_attention.html"
+python scripts/evaluate_context_interference.py --model_size 2.8B --interfere_mode ZERO_ATTENTION --output_dir ""
 
-# SUBJ TOKEN
-python plot_knockout.py --binary_search_results "/home/idg/projects/ssm_analysis/resources/final_plots/ZERO_ATTENTION_2.8B_bin_search_SUBJ.csv" --output "subj_zero_attention.html"
+python scripts/evaluate_context_interference.py --model_size 2.8B --interfere_mode IGNORE_SSM --output_dir ""
 
-# SSM
-python plot_knockout.py --binary_search_results "/home/idg/projects/ssm_analysis/resources/final_plots/IGNORE_SSM_2.8B_norm_1_bin_search.csv" --output "ssm_knockout.html" --knockout_mode ssm
+python scripts/evaluate_context_interference.py --model_size 2.8B --interfere_mode IGNORE_SSM --output_dir "" --early_layers_ssm_knockout
 
-# SSM_EARLY
-python plot_knockout.py --binary_search_results "/home/idg/projects/ssm_analysis/resources/final_plots/IGNORE_SSM_2.8B_norm_1_bin_search_early_layers_focus.csv" --output "ssm_knockout_early.html" --knockout_mode ssm
+python scripts/evaluate_context_interference.py --model_size 2.8B --interfere_mode INCREASE_DELTA --output_dir "" --delta_factor_root 0.5 --delta_start_layer 40 --delta_end_layer 48 --increase_delta_target LAST
+
+python scripts/evaluate_context_interference.py --model_size 2.8B --interfere_mode INCREASE_DELTA --output_dir "" --delta_factor_root 1.5 --delta_start_layer 40 --delta_end_layer 48 --increase_delta_target LAST
+
+python scripts/evaluate_context_interference.py --model_size 2.8B --interfere_mode INCREASE_DELTA --output_dir "" --delta_factor_root 0.5 --delta_start_layer 56 --delta_end_layer 64 --increase_delta_target LAST
+
+python scripts/evaluate_context_interference.py --model_size 2.8B --interfere_mode INCREASE_DELTA --output_dir "" --delta_factor_root 1.5 --delta_start_layer 56 --delta_end_layer 64 --increase_delta_target LAST
