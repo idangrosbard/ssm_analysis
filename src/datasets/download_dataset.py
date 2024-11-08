@@ -20,9 +20,9 @@ def load_knowns() -> Dataset:
                 "known_id"
             )
             dataset = Dataset.from_pandas(knowns_df)
-            dataset.save_to_disk(PATHS.RAW_KNOWN_1000_DIR)
+            dataset.save_to_disk(str(PATHS.RAW_KNOWN_1000_DIR))
 
-    return load_from_disk(PATHS.RAW_KNOWN_1000_DIR)  # type: ignore
+    return load_from_disk(str(PATHS.RAW_KNOWN_1000_DIR))  # type: ignore
 
 
 def load_knowns_pd() -> pd.DataFrame:
