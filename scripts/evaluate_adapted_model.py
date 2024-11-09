@@ -33,7 +33,7 @@ def main() -> None:
     # If we do attention knockout:
     layers_of_interest = sorted([63, 62, 61, 60, 59, 58, 57, 56])
     layer_classification = DecayNormClassifier(norm=1).classify_model(model.backbone)
-    factor = {'max': 1, 'min': 0.9, 'mid': 1.1}
+    factor = {'max': 1, 'min': 0.5, 'mid': 1}
     mask = {'max':0, 'min': 1, 'mid': 1}
     evaluator = AdaptationEvaluator(model, tokenizer, device, layer_classification, factor, mask, True)
     

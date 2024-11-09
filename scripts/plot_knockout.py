@@ -53,23 +53,23 @@ def get_ssm_style():
     return color, dash
 
 
-def plot_bin_search(performance: pd.DataFrame, fig: go.Figure) -> go.Figure:
+def plot_bin_search(performance: pd.DataFrame, fig: go.Figure, row: int) -> go.Figure:
 
     interesting_tests = [KnockoutTarget.LAST, KnockoutTarget.ENTIRE_SUBJ, KnockoutTarget.SUBJ_LAST, KnockoutTarget.RANDOM_SPAN, KnockoutTarget.SUBJ_CONTEXT]
     interesting_tests = {str(test) for test in interesting_tests}
 
     color, dash = get_attention_style()
     
-    for i, affected_output in enumerate(performance['affected_outputs'].unique()):
-        for target in tqdm(performance['knockout_inputs'].unique()):
-            if str(target) not in interesting_tests:
-                continue
-            curr = performance[(performance['knockout_inputs'] == target) &(performance['affected_outputs'] == affected_output)]
-            first = True
-            for layer in curr['layer'].unique():
-                curr_layer = curr[curr['layer'] == layer]
-                fig.add_trace(go.Scatter(x=curr_layer['x'], y=curr_layer['acc'], mode='lines+markers', line=dict(color=color[str(target)]), name=f"{str(target)}", legendgroup=str(target), showlegend=first, line_dash=dash[str(target)]))
-                first = False
+    
+    for target in tqdm(performance['knockout_inputs'].unique()):
+        if str(target) not in interesting_tests:
+            continue
+        curr = performance[(performance['knockout_inputs'] == target)]
+        first = True
+        for layer in curr['layer'].unique():
+            curr_layer = curr[curr['layer'] == layer]
+            fig.add_trace(go.Scatter(x=curr_layer['x'], y=curr_layer['acc'], mode='lines+markers', line=dict(color=color[str(target)]), name=f"{str(target)}", legendgroup=str(target), showlegend=first, line_dash=dash[str(target)]), row=row+1, col=1)
+            first = False
         
     return fig
 
@@ -120,13 +120,18 @@ def main():
     elif args.knockout_mode == 'ssm':
         performance = performance.melt(id_vars=['layer', 'norm', 'category', 'acc'], value_vars=['start_layer', 'end_layer'], value_name='x')
     
-    fig = go.Figure()
+    
     if args.knockout_mode == 'attention':
-        fig = plot_bin_search(performance, fig)
+        fig = make_subplots(rows=performance['affected_outputs'].nunique(), cols=1, subplot_titles=performance['affected_outputs'].unique())
+
+        for i, affected_output in enumerate(performance['affected_outputs'].unique()):
+            output_performance = performance[performance['affected_outputs'] == affected_output]
+            fig = plot_bin_search(output_performance, fig, i)
     elif args.knockout_mode == 'ssm':
+        fig = go.Figure()
         fig = plot_ssm_bin_search(performance, fig)
     
-    fig.update_layout(title="SSM Interference", template='plotly_white', xaxis_title="Layer", yaxis_title="Accuracy", legend_title="Knockout Target", font=dict(size=18))
+    fig.update_layout(title="SSM Interference", template='plotly_white', xaxis_title="Layer", yaxis_title="Accuracy", legend_title="Knockout Target", font=dict(size=18), height=1600, width=1000)
     # set minimum y value as 0
     fig.update_yaxes(range=[0, 0.8])
     fig.update_xaxes(range=[0-0.05, 63+0.05])
