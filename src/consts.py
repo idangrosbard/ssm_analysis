@@ -16,6 +16,7 @@ class PATHS:
     DATA_SHARED_DIR = PROJECT_DIR / "shared"
     RUNS_DIR = PROJECT_DIR / "runs"
     TENSORBOARD_DIR = PROJECT_DIR / "tensorboard"
+    RESULTS_DIR = PROJECT_DIR / "results"
     OUTPUT_DIR = PROJECT_DIR / "output"
     SLURM_DIR = PROJECT_DIR / "slurm"
 

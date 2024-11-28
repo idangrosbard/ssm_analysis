@@ -25,7 +25,7 @@ def setup_mamba_model(
 ]:
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     tokenizer, model = get_tokenizer_and_model(
-        MODEL_ARCH.MAMBA1, model_size, device=device
+        MODEL_ARCH.MAMBA1, model_size
     )
     assert isinstance(model, MambaForCausalLM)
     return model, tokenizer, device

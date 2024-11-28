@@ -1,9 +1,17 @@
+from dataclasses import dataclass
+from re import split
 import sys
 import os
 
+from src.consts import PATHS
 
+is_nir = os.getenv('USER') == 'nirendy'
+if is_nir:
+    import pyrallis
+    from src.utils.slurm import submit_job
+else:
+    sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import pandas as pd
 from transformers import AutoTokenizer, MambaForCausalLM
 import torch
@@ -25,27 +33,48 @@ from src.datasets.download_dataset import load_dataset
 from src.types import DatasetArgs
 from src.types import DATASETS
 
+@dataclass
+class Args:
+    model_size: str = "2.8B"
+    interfere_mode: str = "INCREASE_DELTA"
+    drop_subj_last: bool = False
+    show_eval_progress: bool = False
+    output_dir: Path = PATHS.RESULTS_DIR / 'evaluate_context_interference'
+    layer_checkpoint: Optional[Path] = None
+    bin_search_checkpoint: Optional[Path] = None
+    ignore_layer_by_layer: bool = False
+    norm: str = '1'
+    early_layers_ssm_knockout: bool = False
+    affected_output: str = 'all'
+    delta_factor_root: float = 0.9
+    delta_start_layer: int = 40
+    delta_end_layer: int = 48
+    non_selective_ssm: bool = False
+    increase_delta_target: str = "LAST"
+    with_slurm:bool = False
+    split_name:str='train1'
 
-
-def get_args():
-    parser = ArgumentParser()
-    parser.add_argument("--model_size", type=str, choices={'130M', '2.8B'}, default="130M")
-    parser.add_argument("--interfere_mode", type=str, choices={str(mode).split('.')[1] for mode in KnockoutMode}, default="INCREASE_DELTA")
-    parser.add_argument("--drop_subj_last", action='store_true')
-    parser.add_argument("--show_eval_progress", action='store_true')
-    parser.add_argument("--output_dir", type=Path, default=Path("resources"))
-    parser.add_argument("--layer_checkpoint", type=Path, default=None)
-    parser.add_argument("--bin_search_checkpoint", type=Path, default=None)
-    parser.add_argument("--ignore_layer_by_layer", action='store_true')
-    parser.add_argument('--norm', type=str, default='1', choices=['1', 'inf'])
-    parser.add_argument('--early_layers_ssm_knockout', action='store_true')
-    parser.add_argument('--affected_output', type=str, choices={'last', 'subj', 'all'}, default='all')
-    parser.add_argument('--delta_factor_root', type=float, default=0.9)
-    parser.add_argument('--delta_start_layer', type=int, default=40)
-    parser.add_argument('--delta_end_layer', type=int, default=48)
-    parser.add_argument('--non_selective_ssm', action='store_true')
-    parser.add_argument('--increase_delta_target', type=str, choices={str(mode).split('.')[1] for mode in KnockoutTarget}, default="LAST")
-    return parser.parse_args()
+if not is_nir:
+    def get_args():
+        parser = ArgumentParser()
+        parser.add_argument("--model_size", type=str, choices={'130M', '2.8B'}, default="130M")
+        parser.add_argument("--interfere_mode", type=str, choices={str(mode).split('.')[1] for mode in KnockoutMode}, default="INCREASE_DELTA")
+        parser.add_argument("--drop_subj_last", action='store_true')
+        parser.add_argument("--show_eval_progress", action='store_true')
+        parser.add_argument("--output_dir", type=Path, default=Path("resources"))
+        parser.add_argument("--layer_checkpoint", type=Path, default=None)
+        parser.add_argument("--bin_search_checkpoint", type=Path, default=None)
+        parser.add_argument("--ignore_layer_by_layer", action='store_true')
+        parser.add_argument('--norm', type=str, default='1', choices=['1', 'inf'])
+        parser.add_argument('--early_layers_ssm_knockout', action='store_true')
+        parser.add_argument('--affected_output', type=str, choices={'last', 'subj', 'all'}, default='all')
+        parser.add_argument('--delta_factor_root', type=float, default=0.9)
+        parser.add_argument('--delta_start_layer', type=int, default=40)
+        parser.add_argument('--delta_end_layer', type=int, default=48)
+        parser.add_argument('--non_selective_ssm', action='store_true')
+        parser.add_argument('--increase_delta_target', type=str, choices={str(mode).split('.')[1] for mode in KnockoutTarget}, default="LAST")
+        parser.add_argument('--split_name', type=str, default='train1')
+        return parser.parse_args()
 
 
 def binary_search(evaluator: KnockoutEvaluator, dataset: pd.DataFrame, knockout_mode: KnockoutMode, start_layers: Optional[Iterable[int]] = None) -> pd.DataFrame:
@@ -311,11 +340,9 @@ def increase_delta_evaluate(args: Namespace, model: MambaForCausalLM, tokenizer:
     df.to_csv(out_fname)
 
 
-
-def main() -> None:
-    args = get_args()
+def main_local(args:Args) -> None:
+    print(args)
     get_last_token_stats(args.model_size)
-
     model, tokenizer, device = setup_mamba_model(args.model_size)
     args.output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -326,7 +353,7 @@ def main() -> None:
     
     # If we do attention knockout:
     if KnockoutMode[args.interfere_mode] in {KnockoutMode.ZERO_ATTENTION, KnockoutMode.ZERO_DELTA}:
-        knowns_df = pd.DataFrame(load_dataset(DatasetArgs(name=DATASETS.KNOWN_1000, splits=['train1'])))
+        knowns_df = pd.DataFrame(load_dataset(DatasetArgs(name=DATASETS.KNOWN_1000, splits=[args.split_name])))
         knowns_df['attribute'] = knowns_df['attribute'].apply(lambda x: x[1:])
         attention_knockout_evaluate(args, model, tokenizer, device, knowns_df, layer_checkpoint=layer_checkpoint, bin_search_checkpoint=bin_search_checkpoint, affected_output=args.affected_output)
 
@@ -334,13 +361,13 @@ def main() -> None:
     # Not done in our code
     # If we skip entire layer \ component
     elif KnockoutMode[args.interfere_mode] in {KnockoutMode.IGNORE_CONTEXT, KnockoutMode.IGNORE_LAYER, KnockoutMode.ONLY_CONTEXT}:
-        knowns_df = pd.DataFrame(load_dataset(DatasetArgs(name=DATASETS.KNOWN_1000, splits=['train1'])))
+        knowns_df = pd.DataFrame(load_dataset(DatasetArgs(name=DATASETS.KNOWN_1000, splits=[args.split_name])))
         knowns_df['attribute'] = knowns_df['attribute'].apply(lambda x: x[1:])
         layer_knockout_evaluate(args, model, tokenizer, device, knowns_df)
 
     # If we do SSM knockout
     elif KnockoutMode[args.interfere_mode] == KnockoutMode.IGNORE_SSM:
-        knowns_df = pd.DataFrame(load_dataset(DatasetArgs(name=DATASETS.KNOWN_1000, splits=['train2'])))
+        knowns_df = pd.DataFrame(load_dataset(DatasetArgs(name=DATASETS.KNOWN_1000, splits=[args.split_name])))
         # drop the first character in the attribute string
         knowns_df['attribute'] = knowns_df['attribute'].apply(lambda x: x[1:])
         if args.norm == 'inf':
@@ -353,12 +380,131 @@ def main() -> None:
             ssm_knockout_evaluate(args, model, tokenizer, device, knowns_df, norm=norm, ignore_layer_by_layer=args.ignore_layer_by_layer)
     
     elif KnockoutMode[args.interfere_mode] == KnockoutMode.INCREASE_DELTA:
-        knowns_df = pd.DataFrame(load_dataset(DatasetArgs(name=DATASETS.KNOWN_1000, splits=['train3'])))
+        knowns_df = pd.DataFrame(load_dataset(DatasetArgs(name=DATASETS.KNOWN_1000, splits=[args.split_name])))
         knowns_df['attribute'] = knowns_df['attribute'].apply(lambda x: x[1:])
         increase_delta_evaluate(args, model, tokenizer, device, knowns_df, args.delta_factor_root, args.delta_start_layer, args.delta_end_layer, args.non_selective_ssm, KnockoutTarget[args.increase_delta_target])
     else:
         raise ValueError(f"Unknown knockout mode: {args.interfere_mode}")
     
+    print ('Done')
+
+if is_nir:
+    def get_experiment_configs():
+        """Generate configurations for different experiment variations."""
+        base_config = {
+            'model_size': '2.8B',
+            'output_dir': '',
+        }
+
+        # Standard configurations
+        configs = [
+            {**base_config, 'interfere_mode': 'ZERO_ATTENTION'},
+            {**base_config, 'interfere_mode': 'IGNORE_SSM'},
+            {**base_config, 'interfere_mode': 'IGNORE_SSM', 'early_layers_ssm_knockout': True},
+        ]
+
+        # Delta configurations
+        delta_variations = [
+            {'delta_factor_root': 0.5, 'delta_start_layer': 40, 'delta_end_layer': 48},
+            {'delta_factor_root': 1.5, 'delta_start_layer': 40, 'delta_end_layer': 48},
+            {'delta_factor_root': 0.5, 'delta_start_layer': 56, 'delta_end_layer': 64},
+            {'delta_factor_root': 1.5, 'delta_start_layer': 56, 'delta_end_layer': 64},
+        ]
+
+        # Add delta configurations
+        for delta_config in delta_variations:
+            configs.append({
+                **base_config,
+                'interfere_mode': 'INCREASE_DELTA',
+                'increase_delta_target': 'LAST',
+                **delta_config
+            })
+
+        return configs
+
+    @pyrallis.wrap()
+    def main(args: Args):
+        if args.with_slurm:
+            args.model_size = '2.8B'
+            
+            # gpu_type = "titan_xp-studentrun"
+            # gpu_type = "titan_xp-studentbatch"
+            gpu_type = "titan_xp-studentkillable"
+            # gpu_type = "a100"
+            
+            job_name1 = f"evaluate_context_interference_{args.model_size}"
+            args.output_dir = args.output_dir / args.model_size / 'split'
+
+            for i in [
+                1,
+                # 2,
+                ]:
+                args.output_dir = args.output_dir.parent / f"split{i}"
+                args.split_name = f"train{i}"
+                job_name2 = job_name1 + f"_split={args.split_name}"
+
+                for interfere_mode in [
+                    # 'ZERO_ATTENTION',
+                    # 'IGNORE_SSM', 
+                    'INCREASE_DELTA',
+                    ]:
+                    args.interfere_mode = interfere_mode
+                    job_name3 = job_name2 + f"_{interfere_mode}"
+                    
+                    mods:list[dict] = [{}]
+                    
+                    if interfere_mode == 'INCREASE_DELTA':
+                        mods = [
+                            {'delta_factor_root': 0.5, 'delta_start_layer': 40, 'delta_end_layer': 48, 'increase_delta_target': 'LAST'},
+                            {'delta_factor_root': 1.5, 'delta_start_layer': 40, 'delta_end_layer': 48, 'increase_delta_target': 'LAST'},
+                            {'delta_factor_root': 0.5, 'delta_start_layer': 56, 'delta_end_layer': 64, 'increase_delta_target': 'LAST'},
+                            {'delta_factor_root': 1.5, 'delta_start_layer': 56, 'delta_end_layer': 64, 'increase_delta_target': 'LAST'},
+                        ]
+                        short_cuts = {
+                            'delta_factor_root': 'dfr',
+                            'delta_start_layer': 'dsl',
+                            'delta_end_layer': 'del',
+                            'increase_delta_target': 'idt'
+                        }
+                    if interfere_mode == 'IGNORE_SSM':
+                        mods = [
+                            {'early_layers_ssm_knockout': False},
+                            {'early_layers_ssm_knockout': True},
+                        ]
+                        
+                        short_cuts = {
+                            'early_layers_ssm_knockout': 'elsk',
+                        }
+                        
+
+                    # Update args with config
+                    for mod in mods:
+                        prev_vals = {}
+                        job_name = job_name3
+                        for key in mod:
+                            prev_vals[key] = getattr(args, key)
+                            setattr(args, key, mod[key])
+                            job_name += f"_{short_cuts[key]}={mod[key]}"
+                            
+                        job = submit_job(
+                            main_local,
+                            args,
+                            log_folder=str(PATHS.SLURM_DIR / job_name1 / job_name / "%j"),
+                            job_name=job_name,
+                            gpu_type=gpu_type,
+                            slurm_gpus_per_node=2,
+                        )
+
+                        print(f"{job}: {job_name}")
+                        # Restore args
+                        for key in mod:
+                            setattr(args, key, prev_vals[key])
+        else:
+            main_local(args)
 
 if __name__ == "__main__":
-    main()
+    if is_nir:
+        main()
+    else:
+        args = get_args()
+        main_local(args)
