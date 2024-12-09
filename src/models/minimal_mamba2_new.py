@@ -1,5 +1,7 @@
 """
 mamba2-minimal
+
+Adapted from https://github.com/tommyip/mamba2-minimal
 ==============
 
 A minimal, single-file implementation of the Mamba-2 model in PyTorch.
@@ -35,7 +37,7 @@ class Mamba2Config:
     d_conv: int = 4  # convolution kernel size
     expand: int = 2  # expansion factor (E)
     headdim: int = 64  # head dimension (P)
-    chunk_size: int = 64  # matrix partition size (Q)
+    chunk_size: int = 1  # matrix partition size (Q)
     vocab_size: int = 50277
     pad_vocab_size_multiple: int = 16
 
@@ -122,7 +124,8 @@ class Mamba2LMHeadModel(nn.Module):
         return model
 
     def forward(
-            self, input_ids: LongTensor, h: list[InferenceCache] | list[None] | None = None
+            self, input_ids: LongTensor, h: list[InferenceCache] | list[None] | None = None, attention=False,
+            num_to_masks=None
     ) -> tuple[LongTensor, list[InferenceCache]]:
         """
         Arguments
@@ -131,6 +134,7 @@ class Mamba2LMHeadModel(nn.Module):
                (wrt sequence length) inference path will be taken, input_ids
                should have shape (batch, 1) containing the next batch of prompt
                token.
+            num_to_masks: dict of layer num to list of tuples, [idx1,idx2] where idx1 won't get info from idx2.
 
         Return (logits, h)
             logits: (batch, seqlen, vocab_size)
@@ -143,7 +147,7 @@ class Mamba2LMHeadModel(nn.Module):
 
         x = self.backbone.embedding(input_ids)
         for i, layer in enumerate(self.backbone.layers):
-            y, h[i] = layer.mixer(layer.norm(x), h[i])
+            y, h[i] = layer.mixer(layer.norm(x), h[i], layer_num=i, attention=attention, num_to_masks=num_to_masks)
             x = y + x
 
         x = self.backbone.norm_f(x)
@@ -158,7 +162,10 @@ class Mamba2LMHeadModel(nn.Module):
             top_k: int = 50,
             top_p: float = 1.0,
             eos_token_id: int = 0,
+            attention=False,
+            num_to_masks=None,
     ) -> Iterable[tuple[int, list[InferenceCache]]]:
+        # num_to_masks: dict of layer num to list of tuples, [idx1,idx2] where idx1 won't get info from idx2.
         prefix, tokens = input_ids[:-1], input_ids[-1:].unsqueeze(0)
 
         # Process prompt
@@ -174,12 +181,14 @@ class Mamba2LMHeadModel(nn.Module):
                 for _ in range(self.args.n_layer)
             ]
         for i in range(n_chunked, prefix.shape[0]):
-            _, h = self(prefix[i: i + 1].unsqueeze(0), h)
+            _, h = self(prefix[i: i + 1].unsqueeze(0), h, attention=attention,
+                      num_to_masks=num_to_masks)
 
         # Generate
         for _ in range(max_new_length):
             with torch.no_grad():
-                out, h = self(tokens, h)
+                out, h = self(tokens, h, attention=attention,
+                      num_to_masks=num_to_masks)
             logits = out[0, -1]
             if temperature != 1.0:
                 logits = logits / temperature
@@ -209,48 +218,49 @@ class Mamba2LMHeadModel(nn.Module):
             top_k: int = 50,
             top_p: float = 1.0,
             eos_token_id: int = 0,
+            attention=False,
+            num_to_masks=None,
     ) -> Iterable[tuple[int, list[InferenceCache]]]:
-        prefix, tokens = input_ids[:-1], input_ids[-1:].unsqueeze(0)
+        # num_to_masks: dict of layer num to list of tuples, [idx1,idx2] where idx1 won't get info from idx2.
 
+        tokens = input_ids
+        if len(tokens.shape) == 1:
+            self.args.chunk_size = tokens.shape[0]
+        else:
+            self.args.chunk_size = tokens.shape[1]
         # Process prompt
         # The input sequence to forward (non-inference path) must have length multiple that of chunk_size.
         # We split out excess tokens so that n_chunked tokens can be processed by one forward call and
         # process the rest in multiple inference steps.
-        n_chunked = (prefix.shape[0] // self.args.chunk_size) * self.args.chunk_size
-        if n_chunked > 0:
-            _, h = self(prefix[:n_chunked].unsqueeze(0), None)
-        else:
-            h = [
-                InferenceCache.alloc(1, self.args, device=self.device)
-                for _ in range(self.args.n_layer)
-            ]
-        for i in range(n_chunked, prefix.shape[0]):
-            _, h = self(prefix[i: i + 1].unsqueeze(0), h)
+        # n_chunked = (tokens.shape[0] // self.args.chunk_size) * self.args.chunk_size
+        if len(tokens.shape) == 1:
+            tokens = tokens.unsqueeze(0)
+        out, h = self(tokens, None, attention=attention,
+                      num_to_masks=num_to_masks)  # self(tokens[:n_chunked], None, num_to_masks=num_to_masks)
 
         # Generate
-        for _ in range(max_new_length):
-            with torch.no_grad():
-                out, h = self(tokens, h)
-            logits = out[0, -1]
-            if temperature != 1.0:
-                logits = logits / temperature
-            if top_k > 0:
-                indices_to_remove = logits < torch.topk(logits, k=top_k)[0][-1]
-                logits[indices_to_remove] = -torch.inf
-            if top_p < 1.0:
-                sorted_logits, sorted_indices = torch.sort(logits, descending=True)
-                cum_probs = torch.cumsum(F.softmax(sorted_logits, dim=-1), dim=-1)
-                sorted_indices_to_remove = cum_probs > 0.5
-                sorted_indices_to_remove[1:] = sorted_indices_to_remove[:-1].clone()
-                sorted_indices_to_remove[0] = False
-                indices_to_remove = sorted_indices[sorted_indices_to_remove]
-                logits[indices_to_remove] = -torch.inf
-            probs = F.softmax(logits, dim=-1)
-            next_token = torch.multinomial(probs, num_samples=1)
-            if next_token.item() == eos_token_id:
-                return
-            tokens = next_token.unsqueeze(0)
-            yield cast(int, next_token.item()), h
+        logits = out[:, -1]
+        if temperature != 1.0:
+            logits = logits / temperature
+        if top_k > 0:
+            indices_to_remove = logits < torch.topk(logits, k=top_k)[0][-1]
+            logits[indices_to_remove] = -torch.inf
+        if top_p < 1.0:
+            sorted_logits, sorted_indices = torch.sort(logits, descending=True)
+            cum_probs = torch.cumsum(F.softmax(sorted_logits, dim=-1), dim=-1)
+            sorted_indices_to_remove = cum_probs > 0.5
+            sorted_indices_to_remove[1:] = sorted_indices_to_remove[:-1].clone()
+            sorted_indices_to_remove[0] = False
+            indices_to_remove = sorted_indices[sorted_indices_to_remove]
+            logits[indices_to_remove] = -torch.inf
+        probs = F.softmax(logits, dim=-1)
+        next_token = torch.multinomial(probs, num_samples=1)
+        '''
+        if next_token.item() == eos_token_id:
+            return
+        tokens = next_token.unsqueeze(0)
+        '''
+        return next_token, h, probs  # cast(int, next_token.item()), h, probs
 
 
 class Mamba2(nn.Module):
@@ -279,7 +289,10 @@ class Mamba2(nn.Module):
         self.norm = RMSNorm(args.d_inner, device=device)
         self.out_proj = nn.Linear(args.d_inner, args.d_model, bias=False, device=device)
 
-    def forward(self, u: Tensor, h: InferenceCache | None = None):
+    def forward(self, u: Tensor, h: InferenceCache | None = None,
+                layer_num=0,
+                attention=False,
+                num_to_masks=None, ):
         """
         Arguments
             u: (batch, seqlen, d_model) input. seqlen should be a multiple of chunk_size.
@@ -289,8 +302,10 @@ class Mamba2(nn.Module):
             y: (batch, seqlen, d_model) output
             h: updated inference cache after processing `u`
         """
-        if h:
-            return self.step(u, h)
+        if num_to_masks is None or layer_num not in num_to_masks:
+            list_of_masks = []
+        else:
+            list_of_masks = num_to_masks[layer_num]
 
         A = -torch.exp(self.A_log)  # (nheads,)
         zxbcdt = self.in_proj(u)  # (batch, seqlen, d_in_proj)
@@ -324,6 +339,8 @@ class Mamba2(nn.Module):
             rearrange(C, "b l n -> b l 1 n"),
             self.args.chunk_size,
             device=self.device,
+            attention=attention,
+            list_of_masks=list_of_masks,
         )
         y = y + x * self.D.unsqueeze(-1)
         y = rearrange(y, "b l h p -> b l (h p)")
@@ -411,9 +428,9 @@ def segsum(x: Tensor, device: Device = None) -> Tensor:
     return x_segsum
 
 
-def ssd(x, A, B, C, chunk_size, initial_states=None, device: Device = None):
+def ssd(x, A, B, C, chunk_size, initial_states=None, device: Device = None, attention=False,
+        list_of_masks=None):
     """Structed State Space Duality (SSD) - the core of Mamba-2
-
     This is almost the exact same minimal SSD code from the blog post.
 
     Arguments
@@ -421,7 +438,7 @@ def ssd(x, A, B, C, chunk_size, initial_states=None, device: Device = None):
         A: (batch, seqlen, n_heads)
         B: (batch, seqlen, n_heads, d_state)
         C: (batch, seqlen, n_heads, d_state)
-
+        list_of_masks: list of tuples, [idx1,idx2] where idx1 won't get info from idx2.
     Return
         y: (batch, seqlen, n_heads, d_head)
 
@@ -430,10 +447,12 @@ def ssd(x, A, B, C, chunk_size, initial_states=None, device: Device = None):
      2. https://github.com/state-spaces/mamba/blob/219f03c840d5a44e7d42e4e728134834fddccf45/mamba_ssm/modules/ssd_minimal.py#L34-L78
     """
     assert x.shape[1] % chunk_size == 0
-
+    if list_of_masks is None:
+        list_of_masks = []
     # Rearrange into chunks
     # Step 1, 2 and 4 of SSD can be computed in parallel for each chunk across devices (sequence parallel)
     # This is not implemented and left as an exercise for the reader 😜
+
     x, A, B, C = [
         rearrange(m, "b (c l) ... -> b c l ...", l=chunk_size) for m in (x, A, B, C)
     ]
@@ -443,31 +462,48 @@ def ssd(x, A, B, C, chunk_size, initial_states=None, device: Device = None):
 
     # 1. Compute the output for each intra-chunk (diagonal blocks)
     L = torch.exp(segsum(A, device=device))
-    Y_diag = torch.einsum("bclhn, bcshn, bhcls, bcshp -> bclhp", C, B, L, x)
 
-    # 2. Compute the state for each intra-chunk
-    # (right term of low-rank factorization of off-diagonal blocks; B terms)
-    decay_states = torch.exp(A_cumsum[:, :, :, -1:] - A_cumsum)
-    states = torch.einsum("bclhn, bhcl, bclhp -> bchpn", B, decay_states, x)
+    CBT = torch.einsum("bclhn, bcshn -> bhcls", C, B)
+    attention_matrix = torch.einsum("bhcls, bhcls -> bclhs", CBT, L)
+    # attention_matrix shape is: batch, chunk, seq_len , heads, seq_len
+    # To remove the attention *given* by idx1 to idx2 do :
+    # attention_matrix[:,:,idx1,:,idx2] = 0
+    # by this notion idx1 is always greater or equal to idx2
+    # attention_matrix[:, :, 11, :, 3] = 0
+    for idx1, idx2 in list_of_masks:
+        attention_matrix[:, :, idx1, :, idx2] = 0
 
-    # 3. Compute the inter-chunk SSM recurrence; produces correct SSM states at chunk boundaries
-    # (middle term of factorization of off-diag blocks; A terms)
-    if initial_states is None:
-        initial_states = torch.zeros_like(states[:, :1])
-    states = torch.cat([initial_states, states], dim=1)
-    decay_chunk = torch.exp(segsum(F.pad(A_cumsum[:, :, :, -1], (1, 0)), device=device))
-    new_states = torch.einsum("bhzc, bchpn -> bzhpn", decay_chunk, states)
-    states, final_state = new_states[:, :-1], new_states[:, -1]
+    out_by_atten = torch.einsum("bclhs, bcshp-> bclhp", attention_matrix, x)
+    out_by_atten = rearrange(out_by_atten, 'b c l h p -> b (c l) h p')
 
-    # 4. Compute state -> output conversion per chunk
-    # (left term of low-rank factorization of off-diagonal blocks; C terms)
-    state_decay_out = torch.exp(A_cumsum)
-    Y_off = torch.einsum("bclhn, bchpn, bhcl -> bclhp", C, states, state_decay_out)
+    if not attention:
+        Y_diag = torch.einsum("bclhn, bcshn, bhcls, bcshp -> bclhp", C, B, L, x)
+        # 2. Compute the state for each intra-chunk
+        # (right term of low-rank factorization of off-diagonal blocks; B terms)
+        decay_states = torch.exp(A_cumsum[:, :, :, -1:] - A_cumsum)
+        states = torch.einsum("bclhn, bhcl, bclhp -> bchpn", B, decay_states, x)
 
-    # Add output of intra-chunk and inter-chunk terms (diagonal and off-diagonal blocks)
-    Y = rearrange(Y_diag + Y_off, "b c l h p -> b (c l) h p")
+        # 3. Compute the inter-chunk SSM recurrence; produces correct SSM states at chunk boundaries
+        # (middle term of factorization of off-diag blocks; A terms)
+        if initial_states is None:
+            initial_states = torch.zeros_like(states[:, :1])
+        states = torch.cat([initial_states, states], dim=1)
+        decay_chunk = torch.exp(segsum(F.pad(A_cumsum[:, :, :, -1], (1, 0)), device=device))
+        new_states = torch.einsum("bhzc, bchpn -> bzhpn", decay_chunk, states)
+        states, final_state = new_states[:, :-1], new_states[:, -1]
 
-    return Y, final_state
+        # 4. Compute state -> output conversion per chunk
+        # (left term of low-rank factorization of off-diagonal blocks; C terms)
+        state_decay_out = torch.exp(A_cumsum)
+        Y_off = torch.einsum("bclhn, bchpn, bhcl -> bclhp", C, states, state_decay_out)
+
+        # Add output of intra-chunk and inter-chunk terms (diagonal and off-diagonal blocks)
+        Y = rearrange(Y_diag + Y_off, "b c l h p -> b (c l) h p")
+
+        return Y, None
+        # assert torch.linalg.norm(Y - out_by_atten)<1e-16
+
+    return out_by_atten, None
 
 
 class RMSNorm(nn.Module):
