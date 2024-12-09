@@ -201,6 +201,57 @@ class Mamba2LMHeadModel(nn.Module):
             tokens = next_token.unsqueeze(0)
             yield cast(int, next_token.item()), h
 
+    def generate_single(
+            self,
+            input_ids: LongTensor,
+            max_new_length: int = 20,
+            temperature: float = 1.0,
+            top_k: int = 50,
+            top_p: float = 1.0,
+            eos_token_id: int = 0,
+    ) -> Iterable[tuple[int, list[InferenceCache]]]:
+        prefix, tokens = input_ids[:-1], input_ids[-1:].unsqueeze(0)
+
+        # Process prompt
+        # The input sequence to forward (non-inference path) must have length multiple that of chunk_size.
+        # We split out excess tokens so that n_chunked tokens can be processed by one forward call and
+        # process the rest in multiple inference steps.
+        n_chunked = (prefix.shape[0] // self.args.chunk_size) * self.args.chunk_size
+        if n_chunked > 0:
+            _, h = self(prefix[:n_chunked].unsqueeze(0), None)
+        else:
+            h = [
+                InferenceCache.alloc(1, self.args, device=self.device)
+                for _ in range(self.args.n_layer)
+            ]
+        for i in range(n_chunked, prefix.shape[0]):
+            _, h = self(prefix[i: i + 1].unsqueeze(0), h)
+
+        # Generate
+        for _ in range(max_new_length):
+            with torch.no_grad():
+                out, h = self(tokens, h)
+            logits = out[0, -1]
+            if temperature != 1.0:
+                logits = logits / temperature
+            if top_k > 0:
+                indices_to_remove = logits < torch.topk(logits, k=top_k)[0][-1]
+                logits[indices_to_remove] = -torch.inf
+            if top_p < 1.0:
+                sorted_logits, sorted_indices = torch.sort(logits, descending=True)
+                cum_probs = torch.cumsum(F.softmax(sorted_logits, dim=-1), dim=-1)
+                sorted_indices_to_remove = cum_probs > 0.5
+                sorted_indices_to_remove[1:] = sorted_indices_to_remove[:-1].clone()
+                sorted_indices_to_remove[0] = False
+                indices_to_remove = sorted_indices[sorted_indices_to_remove]
+                logits[indices_to_remove] = -torch.inf
+            probs = F.softmax(logits, dim=-1)
+            next_token = torch.multinomial(probs, num_samples=1)
+            if next_token.item() == eos_token_id:
+                return
+            tokens = next_token.unsqueeze(0)
+            yield cast(int, next_token.item()), h
+
 
 class Mamba2(nn.Module):
     def __init__(self, args: Mamba2Config, device: Device = None):
@@ -249,7 +300,7 @@ class Mamba2(nn.Module):
                 self.args.d_inner,
                 self.args.d_inner + 2 * self.args.d_state,
                 self.args.nheads,
-                ],
+            ],
             dim=-1,
         )
         dt = F.softplus(dt + self.dt_bias)  # (batch, seqlen, nheads)
@@ -273,7 +324,7 @@ class Mamba2(nn.Module):
             rearrange(C, "b l n -> b l 1 n"),
             self.args.chunk_size,
             device=self.device,
-            )
+        )
         y = y + x * self.D.unsqueeze(-1)
         y = rearrange(y, "b l h p -> b l (h p)")
         y = self.norm(y, z)
@@ -309,7 +360,7 @@ class Mamba2(nn.Module):
                 self.args.d_inner,
                 self.args.d_inner + 2 * self.args.d_state,
                 self.args.nheads,
-                ],
+            ],
             dim=-1,
         )
 
