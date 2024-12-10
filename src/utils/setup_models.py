@@ -12,7 +12,9 @@ from transformers import PreTrainedTokenizerFast
 
 from src.consts import MODEL_SIZES_PER_ARCH_TO_MODEL_ID
 from src.models.minimal_mamba1 import Mamba
-from src.models.minimal_mamba2 import Mamba2LMHeadModel
+import src.models.minimal_mamba2 as minimal_mamba2
+import src.models.minimal_mamba2_new as minimal_mamba2_new
+
 from src.types import MODEL_ARCH
 
 from huggingface_hub import login
@@ -33,7 +35,7 @@ def setup_mamba_model(
 
 def _get_tokenizer_id(model_arch: MODEL_ARCH, model_id: str) -> str:
     match model_arch:
-        case  MODEL_ARCH.MAMBA1 | MODEL_ARCH.MAMBA2 | MODEL_ARCH.MINIMAL_MAMBA1 | MODEL_ARCH.MINIMAL_MAMBA2:
+        case  MODEL_ARCH.MAMBA1 | MODEL_ARCH.MAMBA2 | MODEL_ARCH.MINIMAL_MAMBA1 | MODEL_ARCH.MINIMAL_MAMBA2 | MODEL_ARCH.MINIMAL_MAMBA2_new:
             return f"EleutherAI/gpt-neox-20b"
         case MODEL_ARCH.LLAMA2 | MODEL_ARCH.LLAMA3_2:
             return model_id
@@ -45,7 +47,7 @@ def get_tokenizer_and_model(
     model_arch: MODEL_ARCH, model_size: str, device: Optional[torch.device] = None
 ) -> tuple[
     PreTrainedTokenizer | PreTrainedTokenizerFast,
-    PreTrainedModel | MambaForCausalLM | Mamba | Mamba2LMHeadModel | LlamaForCausalLM,
+    PreTrainedModel | MambaForCausalLM | Mamba | minimal_mamba2.Mamba2LMHeadModel | minimal_mamba2_new.Mamba2LMHeadModel | LlamaForCausalLM,
 ]:
     if os.getenv("HUGGINGFACE_TOKEN") is not None:
         login(token=os.getenv("HUGGINGFACE_TOKEN"))
@@ -57,12 +59,15 @@ def get_tokenizer_and_model(
 
     model_id = MODEL_SIZES_PER_ARCH_TO_MODEL_ID[model_arch][model_size]
     tokenizer = AutoTokenizer.from_pretrained(_get_tokenizer_id(model_arch, model_id))
-
+    tokenizer.pad_token = tokenizer.eos_token
+    
     match model_arch:
         case MODEL_ARCH.MINIMAL_MAMBA1:
             model = Mamba.from_pretrained(model_id, **minimal_kwargs)
         case MODEL_ARCH.MINIMAL_MAMBA2:
-            model = Mamba2LMHeadModel.from_pretrained(model_id, **minimal_kwargs)
+            model = minimal_mamba2.Mamba2LMHeadModel.from_pretrained(model_id, **minimal_kwargs)
+        case MODEL_ARCH.MINIMAL_MAMBA2_new:
+            model = minimal_mamba2_new.Mamba2LMHeadModel.from_pretrained(model_id, **minimal_kwargs)
         case MODEL_ARCH.MAMBA1:
             if device:
                 model = MambaForCausalLM.from_pretrained(model_id)

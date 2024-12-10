@@ -288,12 +288,14 @@ def main(args: Args):
         # gpu_type = "titan_xp-studentrun"
 
         for model_arch, model_size in [
-            (MODEL_ARCH.MAMBA1, "130M"),
+            # (MODEL_ARCH.MAMBA1, "130M"),
+            (MODEL_ARCH.MAMBA1, "1.4B"),
             # (MODEL_ARCH.MAMBA1, "2.8B"),
-            (MODEL_ARCH.MAMBA2, "130M"),
-            # (MODEL_ARCH.MAMBA2, "2.8B"),
+            # (MODEL_ARCH.MAMBA2, "130M"),
+            # (MODEL_ARCH.MAMBA2, "1.3B"),
+            # (MODEL_ARCH.MAMBA2, "2.7B"),
             # (MODEL_ARCH.MINIMAL_MAMBA2, "130M"),
-            # (MODEL_ARCH.MINIMAL_MAMBA2, "2.8B"),
+            # (MODEL_ARCH.MINIMAL_MAMBA2, "2.7B"),
             # (MODEL_ARCH.LLAMA2, "7B"),
             # (MODEL_ARCH.LLAMA3_2, "1B"),
             # (MODEL_ARCH.LLAMA3_2, "3B"),
@@ -305,7 +307,8 @@ def main(args: Args):
             # for i in range(5):
             #     args.dataset_args = DatasetArgs(name=DATASETS.COUNTER_FACT, splits=f"train{i+1}")
             # args.dataset_args = DatasetArgs(name=DATASETS.COUNTER_FACT, splits=f"train1")
-            args.dataset_args = DatasetArgs(name=DATASETS.KNOWN_1000, splits=f"all")
+            # args.dataset_args = DatasetArgs(name=DATASETS.KNOWN_1000, splits=f"all")
+            args.dataset_args = DatasetArgs(name=DATASETS.COUNTER_FACT, splits=f"all")
             # args.dataset_args = DatasetArgs(name=DATASETS.COUNTER_FACT, splits=f"test")
 
             job_name = f"evaluate_model_{model_arch}_{model_size}_{args.dataset_args.dataset_name}"

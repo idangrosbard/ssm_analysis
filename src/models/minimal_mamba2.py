@@ -1,5 +1,7 @@
 """
 mamba2-minimal
+
+Adapted from https://github.com/tommyip/mamba2-minimal
 ==============
 
 A minimal, single-file implementation of the Mamba-2 model in PyTorch.

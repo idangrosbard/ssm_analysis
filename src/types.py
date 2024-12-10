@@ -25,6 +25,7 @@ class MODEL_ARCH(STREnum):
     MAMBA2 = "mamba2"
     MINIMAL_MAMBA1 = "minimal_mamba1"
     MINIMAL_MAMBA2 = "minimal_mamba2"
+    MINIMAL_MAMBA2_new = "minimal_mamba2_new"
     LLAMA2 = "llama2"
     LLAMA3_2 = "llama3.2"
 
