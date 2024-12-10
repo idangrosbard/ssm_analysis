@@ -1,14 +1,15 @@
 from pathlib import Path
+from typing import Optional
 
 import pandas as pd
 import wget
 
 from scripts.counterfact.splitting import split_dataset
-from src.consts import DATASETS_IDS, PATHS
+from src.consts import COLUMNS, DATASETS_IDS, FILTERATIONS, PATHS
 import tempfile
 from datasets import Dataset, DatasetDict, load_from_disk, concatenate_datasets
 from src.types import DATASETS, SPLIT, DatasetArgs, TSplit
-from datasets import load_dataset, DatasetDict
+from datasets import load_dataset as huggingface_load_dataset
 
 
 def load_knowns() -> Dataset:
@@ -18,19 +19,22 @@ def load_knowns() -> Dataset:
                 "https://rome.baulab.info/data/dsets/known_1000.json", out=tmpdirname
             )
             knowns_df = (
-                pd.read_json(Path(tmpdirname) / "known_1000.json")
-                .set_index("known_id")
+                pd.read_json(Path(tmpdirname) / "known_1000.json").set_index("known_id")
                 # add space before values in the 'attribute' col to match counterfact
-                .assign(**{'attribute':lambda x: " " + x["attribute"]})
+                .assign(**{"attribute": lambda x: " " + x["attribute"]})
             )
-            
+
             dataset = Dataset.from_pandas(knowns_df)
             dataset.save_to_disk(str(PATHS.RAW_KNOWN_1000_DIR))
 
     return load_from_disk(str(PATHS.RAW_KNOWN_1000_DIR))  # type: ignore
 
 
-def load_splitted_knowns(split: TSplit = (SPLIT.TRAIN1,)) -> Dataset:
+def load_splitted_knowns(
+    split: TSplit = (SPLIT.TRAIN1,),
+    add_split_name_column: bool = False,
+    filteration: Optional[FILTERATIONS] = None,
+) -> Dataset:
     splitted_path = PATHS.PROCESSED_KNOWN_DIR / "splitted"
 
     if not splitted_path.exists():
@@ -50,14 +54,32 @@ def load_splitted_knowns(split: TSplit = (SPLIT.TRAIN1,)) -> Dataset:
     if isinstance(split, str):
         split = [split]
 
-    return concatenate_datasets([data[split] for split in split])
+    datasets = [data[split_name] for split_name in split]
+
+    if add_split_name_column:
+        for i, (split_name, dataset) in enumerate(zip(split, datasets)):
+            dataset = dataset.add_column("split_name", [split_name] * len(dataset))
+            datasets[i] = dataset
+
+    dataset = concatenate_datasets(datasets)
+    
+    if filteration is not None:
+        original_idx = pd.read_csv(PATHS.KNOWN_1000_FILTERATIONS_DIR / f"{filteration}.csv")[COLUMNS.ORIGINAL_IDX]
+        dataset = dataset.filter(lambda x: x[COLUMNS.ORIGINAL_IDX] in original_idx)
+    
+    return dataset
 
 
 def load_knowns_pd() -> pd.DataFrame:
     return pd.DataFrame(load_knowns())
 
 
-def load_splitted_counter_fact(split: TSplit = (SPLIT.TRAIN1,)) -> Dataset:
+def load_splitted_counter_fact(
+    split: TSplit = (SPLIT.TRAIN1,),
+    add_split_name_column: bool = False,
+    filteration: Optional[FILTERATIONS] = None,
+    align_to_known: bool = True,
+) -> Dataset:
     splitted_path = PATHS.COUNTER_FACT_DIR / "splitted"
 
     if not splitted_path.exists():
@@ -67,15 +89,7 @@ def load_splitted_counter_fact(split: TSplit = (SPLIT.TRAIN1,)) -> Dataset:
         split_ratio = 0.1
         seed = 42
 
-        dataset = load_dataset(dataset_name)["train"]
-
-        # Align counterfact to known
-        # rename 'target_true' -> 'attribute',
-        dataset = dataset.rename_column("target_true", "attribute")
-        # remove: 'target_false', 'target_false_id', 'target_true_id'
-        dataset = dataset.remove_columns(
-            ["target_false", "target_false_id", "target_true_id"]
-        )
+        dataset = huggingface_load_dataset(dataset_name)["train"]
 
         splitted_dataset = split_dataset(dataset, num_splits, split_ratio, seed)
         splitted_dataset.save_to_disk(str(splitted_path))
@@ -87,7 +101,28 @@ def load_splitted_counter_fact(split: TSplit = (SPLIT.TRAIN1,)) -> Dataset:
     if isinstance(split, str):
         split = [split]
 
-    return concatenate_datasets([data[split] for split in split])
+    datasets = [data[split_name] for split_name in split]
+
+    if add_split_name_column:
+        for i, (split_name, dataset) in enumerate(zip(split, datasets)):
+            dataset = dataset.add_column("split_name", [split_name] * len(dataset))
+            datasets[i] = dataset
+
+    dataset = concatenate_datasets(datasets)
+    
+    if align_to_known:
+        # rename 'target_true' -> 'attribute',
+        dataset = dataset.rename_column("target_true", "attribute")
+        # remove: 'target_false', 'target_false_id', 'target_true_id'
+        dataset = dataset.remove_columns(
+            ["target_false", "target_false_id", "target_true_id"]
+        )
+    
+    if filteration is not None:
+        original_idx = pd.read_csv(PATHS.COUNTER_FACT_FILTERATIONS_DIR / f"{filteration}.csv")[COLUMNS.ORIGINAL_IDX].to_list()
+        dataset = dataset.filter(lambda x: x[COLUMNS.ORIGINAL_IDX] in original_idx)
+    
+    return dataset
 
 
 def load_dataset(dataset_args: DatasetArgs) -> Dataset:

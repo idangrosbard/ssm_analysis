@@ -9,10 +9,12 @@ class PATHS:
     PROJECT_DIR = Path(__file__).parent.parent.resolve()
     DATA_DIR = PROJECT_DIR / "data"
     RAW_DATA_DIR = DATA_DIR / "raw"
-    PREPROCESSED_DATA_DIR = DATA_DIR / "preprocessed" 
-    RAW_KNOWN_1000_DIR = RAW_DATA_DIR / 'spaced' / DATASETS.KNOWN_1000
+    PREPROCESSED_DATA_DIR = DATA_DIR / "preprocessed"
+    RAW_KNOWN_1000_DIR = RAW_DATA_DIR / "spaced" / DATASETS.KNOWN_1000
     COUNTER_FACT_DIR = PREPROCESSED_DATA_DIR / DATASETS.COUNTER_FACT
+    COUNTER_FACT_FILTERATIONS_DIR = COUNTER_FACT_DIR / "filterations"
     PROCESSED_KNOWN_DIR = PREPROCESSED_DATA_DIR / DATASETS.KNOWN_1000
+    KNOWN_1000_FILTERATIONS_DIR = PROCESSED_KNOWN_DIR / "filterations"
     DATA_SHARED_DIR = PROJECT_DIR / "shared"
     RUNS_DIR = PROJECT_DIR / "runs"
     TENSORBOARD_DIR = PROJECT_DIR / "tensorboard"
@@ -59,19 +61,23 @@ class ISlurmArgs(NamedTuple):
 MODEL_SIZES_PER_ARCH_TO_MODEL_ID: dict[MODEL_ARCH, dict[str, TModelID]] = {
     MODEL_ARCH.MAMBA1: {
         "130M": "state-spaces/mamba-130M-hf",
+        "1.4B": "state-spaces/mamba-1.4B-hf",
         "2.8B": "state-spaces/mamba-2.8B-hf",
     },
     MODEL_ARCH.MINIMAL_MAMBA1: {
         "130M": "state-spaces/mamba-130M",
+        "2.8B": "state-spaces/mamba-1.3B",
         "2.8B": "state-spaces/mamba-2.8B",
     },
     MODEL_ARCH.MINIMAL_MAMBA2: {
         "130M": "state-spaces/mamba2-130M",
-        "2.8B": "state-spaces/mamba2-2.7B",
+        "1.4B": "state-spaces/mamba2-1.4b",
+        "2.7B": "state-spaces/mamba2-2.7B",
     },
     MODEL_ARCH.MAMBA2: {
         "130M": "state-spaces/mamba2-130M",
-        "2.8B": "state-spaces/mamba2-2.7B",
+        "1.3B": "state-spaces/mamba2-1.3b",
+        "2.7B": "state-spaces/mamba2-2.7B",
     },
     MODEL_ARCH.LLAMA2: {
         "7B": "meta-llama/Llama-2-7b-hf",
@@ -83,6 +89,14 @@ MODEL_SIZES_PER_ARCH_TO_MODEL_ID: dict[MODEL_ARCH, dict[str, TModelID]] = {
 }  # type: ignore
 
 
+class FILTERATIONS:
+    all_correct = "all_correct"
+    all_any_correct = "all_any_correct"
+
+
 DATASETS_IDS: dict[DATASETS, TDatasetID] = {
     DATASETS.COUNTER_FACT: "NeelNanda/counterfact-tracing"
 }  # type: ignore
+
+class COLUMNS:
+    ORIGINAL_IDX = "original_idx"

@@ -1,6 +1,6 @@
 from datasets import load_dataset, DatasetDict
 
-from src.consts import DATASETS_IDS, PATHS
+from src.consts import COLUMNS, DATASETS_IDS, PATHS
 from src.types import DATASETS
 import random
 
@@ -28,7 +28,7 @@ def split_dataset(dataset, num_splits, split_ratio, seed):
     dataset = dataset.select(indices)
     # Add original indices as a feature
     dataset = dataset.map(
-        lambda example, idx: {"original_idx": indices[idx]}, with_indices=True
+        lambda example, idx: {COLUMNS.ORIGINAL_IDX: indices[idx]}, with_indices=True
     )
     # Calculate sizes
     num_examples = len(dataset)

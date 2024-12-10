@@ -96,7 +96,7 @@ def _get_logits(out, model_arch: MODEL_ARCH):
     match model_arch:
         case MODEL_ARCH.MINIMAL_MAMBA1 | MODEL_ARCH.MINIMAL_MAMBA2:
             logits, _ = out
-        case MODEL_ARCH.MAMBA1 | MODEL_ARCH.LLAMA2 | MODEL_ARCH.LLAMA3_2:
+        case MODEL_ARCH.MAMBA1 | MODEL_ARCH.LLAMA2 | MODEL_ARCH.LLAMA3_2 | MODEL_ARCH.MAMBA1 | MODEL_ARCH.MAMBA2:
             logits = out.logits
         case _:
             assert_never(model_arch)
@@ -164,7 +164,6 @@ def main_local(args: Args):
     df["target_rank"] = None
     df["model_top_outputs"] = None
     df["model_generation"] = None
-    df["target_first_tokens"] = None
     df["target_probs"] = None
     df["target_tokens"] = None
     if "target_true" in df.columns:
