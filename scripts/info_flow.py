@@ -3,7 +3,8 @@ from dataclasses import dataclass
 from hmac import new
 import json
 from pathlib import Path
-from typing import Optional, assert_never
+from typing import Optional, assert_never, Dict, List, Tuple
+from torch import Tensor
 from matplotlib import pyplot as plt
 import numpy as np
 
@@ -46,7 +47,9 @@ class Args:
     top_k = 0
     top_p = 1
     window_size = 9
-    blocks = [None, "subject", "relation"]
+    knockout_map = {'last': ['last', 'first', "subject", "relation"], 
+                    'subject': ['context', 'subject']}
+
     output_dir: Optional[Path] = None
 
     @property
@@ -125,8 +128,53 @@ def main_local(args: Args):
                 tok_end = i + 1
                 break
         return (tok_start, tok_end)
+    
 
-    def forward_eval(temperature, top_k, top_p, prompt_idx, window, block=None):
+    def get_num_to_masks(prompt_idx: int, window: List[int], knockout_src: str, knockout_target: str) -> Tuple[Dict[int, List[Tuple[int, int]]], bool]:
+        prompt = data.loc[prompt_idx, 'prompt']
+        tokens = tokenizer(prompt, return_tensors="pt", padding=True)
+        input_ids = tokens.input_ids.to(device=device)
+        last_idx = input_ids.shape[1] - 1
+        num_to_masks = {}
+        first_token = False
+
+        last_idx = input_ids.shape[1] - 1
+        tok_start, tok_end = find_token_range(tokenizer, input_ids[0], data.loc[prompt_idx, 'subject'])
+        subject_tokens = list(range(tok_start, tok_end))
+        if 0 in subject_tokens:
+            first_token = True
+        if knockout_src == 'first':
+            src_idx = [0]
+        elif knockout_src == 'last':
+            src_idx = [last_idx]
+        elif knockout_src == 'subject':
+            src_idx = subject_tokens
+        elif knockout_src == 'relation':
+            src_idx = [i for i in range(last_idx + 1) if i not in subject_tokens]
+        elif knockout_src == 'context':
+            src_idx = [i for i in range(subject_tokens[0])]
+        else:
+            src_idx = [last_idx]
+
+
+        if knockout_target == 'last':
+            target_idx = [last_idx]
+        elif knockout_target == 'subject':
+            target_idx = subject_tokens
+        else:
+            target_idx = [last_idx]
+            
+        for layer in window:
+            for src in src_idx:
+                for target in target_idx:
+                    if layer not in num_to_masks:
+                        num_to_masks[layer] = []
+                    num_to_masks[layer].append((target, src))
+
+        return num_to_masks, first_token
+
+
+    def forward_eval(temperature, top_k, top_p, prompt_idx, window, knockout_src: str, knockout_target: str):
         prompt = data.loc[prompt_idx, "prompt"]
         true_word = data.loc[prompt_idx, "target_true"]
         base_prob = data.loc[prompt_idx, "true_prob"]
@@ -134,33 +182,8 @@ def main_local(args: Args):
         true_id = true_token.input_ids.to(device="cpu")
         tokens = tokenizer(prompt, return_tensors="pt", padding=True)
         input_ids = tokens.input_ids.to(device=device)
-        max_new_length = input_ids.shape[1] + 1
-        last_idx = input_ids.shape[1] - 1
-        num_to_masks = {}
-        first_token = False
 
-        tok_start, tok_end = find_token_range(
-            tokenizer, input_ids[0], data.loc[prompt_idx, "subject"]
-        )
-        subject_tokens = list(range(tok_start, tok_end))
-        if 0 in subject_tokens:
-            first_token = True
-        if block not in ("subject", "relation"):
-            blocked_idx = [last_idx]
-        else:
-            if block == "subject":
-                blocked_idx = subject_tokens
-            else:
-                blocked_idx = [
-                    i for i in range(last_idx + 1) if i not in subject_tokens
-                ]
-
-        for layer in window:
-            for idx in blocked_idx:
-                if num_to_masks.get(layer) == None:
-                    num_to_masks[layer] = [(last_idx, idx)]
-                else:
-                    num_to_masks[layer].append((last_idx, idx))
+        num_to_masks, first_token = get_num_to_masks(prompt_idx, window, knockout_src, knockout_target)
 
         next_token_probs = model_interface.generate_logits(
             input_ids=input_ids,
@@ -177,7 +200,7 @@ def main_local(args: Args):
         )
 
     def evaluate(
-        temperature, top_k, top_p, prompt_indices, windows, block=None, print_period=500
+        temperature, top_k, top_p, prompt_indices, windows, knockout_src: str = None, knockout_target: str = None, print_period=500
     ):
         counts_w_first = np.zeros((len(windows)))
         counts_wo_first = np.zeros((len(windows)))
@@ -189,7 +212,7 @@ def main_local(args: Args):
             print(f"Starting window {i}: {window}")
             for j, prompt_idx in enumerate(prompt_indices):
                 hit, diff, first = forward_eval(
-                    temperature, top_k, top_p, prompt_idx, window, block
+                    temperature, top_k, top_p, prompt_idx, window, knockout_src, knockout_target
                 )
                 if first:
                     if i == 0:
@@ -229,43 +252,52 @@ def main_local(args: Args):
 
     combined_results = defaultdict(dict)
 
-    for block in args.blocks:
-        res = evaluate(temperature, top_k, top_p, prompt_indices, windows, block=block)
-        block_name = block if block is not None else "last"
-        for key, value in res.items():
-            df = pd.DataFrame(value)
-            df.to_parquet(args.output_file / f"block_{block_name}_{key}.parquet")
-            combined_results[block][key] = value
+    for key in args.knockout_map:
+        for block in args.knockout_map[key]:
+            if ((args.output_file / f"block_{block}.parquet".exists()) and (key == 'last')):
+                (args.output_file / f"block_{block}.parquet").rename(args.output_file / f"block_{block}_target_{key}.parquet")
 
-    layers = list(range(n_layers - window_size + 1))
-    fig, ax = plt.subplots(1, 2, figsize=(8, 3))
-    colors = ["orange", "green", "purple"]
+            if (args.output_file / f"block_{block}_target_{key}.parquet".exists()):
+                res = pd.read_parquet(args.output_file / f"block_{block}_target_{key}.parquet")
+                
+            else:
+                res = evaluate(temperature, top_k, top_p, prompt_indices, windows, knockout_src=block, knockout_target=key)
+            
+            for key, value in res.items():
+                df = pd.DataFrame(value)
+                df.to_parquet(args.output_file / f"block_{block}_target_{key}.parquet")
+                combined_results[block][key] = value
 
-    for block, color in zip(args.blocks, colors):
-        block_name = block if block is not None else "last"
-        block_acc = combined_results[block]["acc"]
-        block_diff = combined_results[block]["diff"]
-        ax[0].plot(layers, block_acc * 100, label=block_name, color=color)
-        ax[1].plot(layers, block_diff, label=block_name, color=color)
+        layers = list(range(n_layers - window_size + 1))
+        fig, ax = plt.subplots(1, 2, figsize=(8, 3))
+        colors = ["orange", "green", "purple", "blue"]
+        line_styles = [":", '-', "--", '-.']
 
-    ax[0].axhline(100, color="gray", linewidth=1)
-    ax[0].grid(True, which="both", linestyle="--", linewidth=0.5)
-    ax[0].set_xlabel("Layers")
-    ax[0].set_ylabel("% accuracy")
-    ax[0].set_title(f"Accuracy", fontsize=10)
-    ax[0].legend(loc="lower left", fontsize=8)
+        for block, color, line_style in zip(args.knockout_map[key], colors, line_styles):
+            block = block if block is not None else "last"
+            block_acc = combined_results[block]["acc"]
+            block_diff = combined_results[block]["diff"]
+            ax[0].plot(layers, block_acc * 100, label=block, color=color, linestyle=line_style)
+            ax[1].plot(layers, block_diff, label=block, color=color, linestyle=line_style)
 
-    ax[1].axhline(0, color="gray", linewidth=1)
-    ax[1].grid(True, which="both", linestyle="--", linewidth=0.5)
-    ax[1].set_xlabel("Layers")
-    ax[1].set_ylabel("% change in prediction probability")
-    ax[1].set_title(f"Change in prediction probability", fontsize=10)
-    ax[1].legend(loc="lower left", fontsize=8)
+        ax[0].axhline(100, color="gray", linewidth=1)
+        ax[0].grid(True, which="both", linestyle="--", linewidth=0.5)
+        ax[0].set_xlabel("Layers")
+        ax[0].set_ylabel("% accuracy")
+        ax[0].set_title(f"Accuracy - knocking out flow to {key}", fontsize=10)
+        ax[0].legend(loc="lower left", fontsize=8)
 
-    plt.suptitle(f"Results with {args.model_id} and window size={window_size}")
-    plt.tight_layout(pad=1, w_pad=3.0)
-    plt.savefig(args.output_file /f"results_ws={window_size}.pdf", format="pdf")
-    plt.show()
+        ax[1].axhline(0, color="gray", linewidth=1)
+        ax[1].grid(True, which="both", linestyle="--", linewidth=0.5)
+        ax[1].set_xlabel("Layers")
+        ax[1].set_ylabel("% change in prediction probability")
+        ax[1].set_title(f"Change in prediction probability - knocking out flow to {key}", fontsize=10)
+        ax[1].legend(loc="lower left", fontsize=8)
+
+        plt.suptitle(f"Results with {args.model_id} and window size={window_size}")
+        plt.tight_layout(pad=1, w_pad=3.0)
+        plt.savefig(args.output_file /f"results_ws={window_size}_knockout_target={key}.pdf", format="pdf")
+        plt.show()
 
 
 @pyrallis.wrap()
