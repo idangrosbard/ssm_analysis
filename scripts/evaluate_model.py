@@ -329,7 +329,3 @@ def main(args: Args):
 
 if __name__ == "__main__":
     main()
-
-# python /home/yandex/DL20232024a/nirendy/repos/ssm_analysis/scripts/evaluate_model.py --model_arch mamba --model_size 2.8B --with_slurm
-# python /home/yandex/DL20232024a/nirendy/repos/ssm_analysis/scripts/evaluate_model.py --model_arch minimal_mamba2 --model_size 2.8B --with_slurm
-# python /home/yandex/DL20232024a/nirendy/repos/ssm_analysis/scripts/evaluate_model.py --model_arch llama2 --model_size 2-7b --with_slurm

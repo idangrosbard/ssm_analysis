@@ -66,17 +66,17 @@ MODEL_SIZES_PER_ARCH_TO_MODEL_ID: dict[MODEL_ARCH, dict[str, TModelID]] = {
     },
     MODEL_ARCH.MINIMAL_MAMBA1: {
         "130M": "state-spaces/mamba-130M",
-        "2.8B": "state-spaces/mamba-1.3B",
+        "1.4B": "state-spaces/mamba-1.4B",
         "2.8B": "state-spaces/mamba-2.8B",
     },
     MODEL_ARCH.MINIMAL_MAMBA2: {
         "130M": "state-spaces/mamba2-130M",
-        "1.4B": "state-spaces/mamba2-1.4b",
+        "1.3B": "state-spaces/mamba2-1.3b",
         "2.7B": "state-spaces/mamba2-2.7B",
     },
     MODEL_ARCH.MINIMAL_MAMBA2_new: {
         "130M": "state-spaces/mamba2-130M",
-        "1.4B": "state-spaces/mamba2-1.4b",
+        "1.3B": "state-spaces/mamba2-1.3b",
         "2.7B": "state-spaces/mamba2-2.7B",
     },
     MODEL_ARCH.MAMBA2: {
