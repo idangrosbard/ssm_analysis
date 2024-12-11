@@ -11,6 +11,9 @@ from src.utils.setup_models import get_tokenizer_and_model
 import src.models.minimal_mamba2_new as minimal_mamba2_new
 from transformers import MambaForCausalLM
 
+from src.knockout.ssm_knockout.ssm_interfere_hook import SSMInterfereHook
+from src.knockout.knockout_mode import KnockoutMode
+
 
 class ModelInterface(ABC):
     """Abstract interface for language models with attention knockout capability."""
@@ -72,6 +75,8 @@ class Mamba1Interface(ModelInterface):
 
         self.handles = []
 
+        self.knockout_mode = KnockoutMode.ZERO_ATTENTION
+
     def generate_logits(
         self,
         input_ids: Tensor,
@@ -87,21 +92,18 @@ class Mamba1Interface(ModelInterface):
                     # "mixer of interest" - moi
                     moi = self.model.backbone.layers[i].mixer
 
-                    hooks.append(SSMInterfereHook(i, knockout_mode))
+                    hooks.append(SSMInterfereHook(i, self.knockout_mode))
 
                     self.handles.append(moi.register_forward_hook(hooks[-1]))
 
-            # set subject token as knockout idx
-            knockout_indices = choose_knockout_target(
-                input, subj, self.tokenizer, self.knockout_target
-            )
-            affected_target_indices = choose_knockout_target(
-                input, subj, self.tokenizer, self.affected_target
-            )
+            for layer in num_to_masks:
+                source_indices = [num_to_masks[layer][i][1] for i in range(len(num_to_masks[layer]))]
+                target_indices = [num_to_masks[layer][i][1] for i in range(len(num_to_masks[layer]))]
+                break
 
             for hook in hooks:
-                hook.knockout_indices = knockout_indices
-                hook.affected_outputs = affected_target_indices
+                hook.knockout_indices = source_indices
+                hook.affected_outputs = target_indices
 
         out = self.model(input_ids)
 
