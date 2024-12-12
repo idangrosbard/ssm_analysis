@@ -58,22 +58,14 @@ if not is_nir:
     def get_args():
         parser = ArgumentParser()
         parser.add_argument("--model_size", type=str, choices={'130M', '2.8B'}, default="130M")
-        parser.add_argument("--interfere_mode", type=str, choices={str(mode).split('.')[1] for mode in KnockoutMode}, default="INCREASE_DELTA")
-        parser.add_argument("--drop_subj_last", action='store_true')
         parser.add_argument("--show_eval_progress", action='store_true')
         parser.add_argument("--output_dir", type=Path, default=Path("resources"))
         parser.add_argument("--layer_checkpoint", type=Path, default=None)
         parser.add_argument("--bin_search_checkpoint", type=Path, default=None)
-        parser.add_argument("--ignore_layer_by_layer", action='store_true')
         parser.add_argument('--norm', type=str, default='1', choices=['1', 'inf'])
-        parser.add_argument('--early_layers_ssm_knockout', action='store_true')
         parser.add_argument('--affected_output', type=str, choices={'last', 'subj', 'all'}, default='all')
-        parser.add_argument('--delta_factor_root', type=float, default=0.9)
-        parser.add_argument('--delta_start_layer', type=int, default=40)
-        parser.add_argument('--delta_end_layer', type=int, default=48)
-        parser.add_argument('--non_selective_ssm', action='store_true')
-        parser.add_argument('--increase_delta_target', type=str, choices={str(mode).split('.')[1] for mode in KnockoutTarget}, default="LAST")
-        parser.add_argument('--split_name', type=str, default='train1')
+        parser.add_argument('--layer_window_length', type=int, default=9)
+        
         return parser.parse_args()
 
 
@@ -146,7 +138,7 @@ def layer_by_layer(evaluator: KnockoutEvaluator, dataset: pd.DataFrame, knockout
 
 
 
-def ssm_knockout_evaluate(args: Namespace, model: MambaForCausalLM, tokenizer: AutoTokenizer, device: torch.device, knowns_df: pd.DataFrame, norm: int | float, ignore_layer_by_layer: bool = True):
+def ssm_knockout_evaluate(args: Namespace, model: MambaForCausalLM, tokenizer: AutoTokenizer, device: torch.device, knowns_df: pd.DataFrame, norm: int | float, n_layers):
     ssm_classifier = DecayNormClassifier()
     out_df = None
     layer_df = None
@@ -155,7 +147,7 @@ def ssm_knockout_evaluate(args: Namespace, model: MambaForCausalLM, tokenizer: A
     categorized_ssms = ssm_classifier.classify_model(model.backbone)
     for category in categorized_ssms:
         evaluator = SSMKnockoutEvaluator(model, tokenizer, device, categorized_ssms[category], False)
-        curr = layer_by_layer(evaluator, knowns_df, KnockoutMode[args.interfere_mode])
+        curr = layer_by_layer(evaluator, knowns_df, KnockoutMode[args.interfere_mode], n_layers)
         curr['category'] = category
         curr['norm'] = norm
         out_df = pd.concat([out_df, curr])
@@ -196,7 +188,7 @@ def main_local(args:Args) -> None:
     else:
         norm = int(args.norm)
     
-    ssm_knockout_evaluate(args, model, tokenizer, device, knowns_df, norm=norm, ignore_layer_by_layer=args.ignore_layer_by_layer)
+    ssm_knockout_evaluate(args, model, tokenizer, device, knowns_df, norm=norm, ignore_layer_by_layer=args.ignore_layer_by_layer, n_layers=args.layer_window_length)
     
 
 if is_nir:
