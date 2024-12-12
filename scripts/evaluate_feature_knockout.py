@@ -3,14 +3,14 @@ from re import split
 import sys
 import os
 
-from src.consts import PATHS
-
 is_nir = os.getenv('USER') == 'nirendy'
 if is_nir:
     import pyrallis
     from src.utils.slurm import submit_job
 else:
     sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+from src.consts import PATHS
 
 import pandas as pd
 from transformers import AutoTokenizer, MambaForCausalLM
