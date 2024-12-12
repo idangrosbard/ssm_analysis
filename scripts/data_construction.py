@@ -33,7 +33,8 @@ from src.utils.slurm import submit_job
 
 @dataclass
 class Args:
-    model_arch: MODEL_ARCH = MODEL_ARCH.MINIMAL_MAMBA2_new
+    # model_arch: MODEL_ARCH = MODEL_ARCH.MINIMAL_MAMBA2_new
+    model_arch: MODEL_ARCH = MODEL_ARCH.MAMBA1
     model_size: str = "130M"
     dataset_args: DatasetArgs = pyrallis.field(
         default=DatasetArgs(name=DATASETS.COUNTER_FACT, splits="all"), is_mutable=True
@@ -107,7 +108,7 @@ def main_local(args: Args):
         max_new_length = input_ids.shape[1] + 1
         next_token_probs = model_interface.generate_logits(
             input_ids=input_ids,
-            attention=False,
+            attention=attention,
         )
         max_idx = np.argmax(next_token_probs, axis=1)
         row_idx = np.arange(next_token_probs.shape[0])
@@ -138,13 +139,13 @@ def main(args: Args):
     # args.with_slurm = True
 
     if args.with_slurm:
-        gpu_type = "a100"
-        # gpu_type = "titan_xp-studentrun"
+        # gpu_type = "a100"
+        gpu_type = "titan_xp-studentrun"
 
         for model_arch, model_size in [
-            (MODEL_ARCH.MAMBA1, "130M"),
-            (MODEL_ARCH.MAMBA1, "1.4B"),
-            # (MODEL_ARCH.MAMBA1, "2.8B"),
+            # (MODEL_ARCH.MAMBA1, "130M"),
+            # (MODEL_ARCH.MAMBA1, "1.4B"),
+            (MODEL_ARCH.MAMBA1, "2.8B"),
             # (MODEL_ARCH.MINIMAL_MAMBA2_new, "130M"),
             # (MODEL_ARCH.MINIMAL_MAMBA2_new, "1.3B"),
             # (MODEL_ARCH.MINIMAL_MAMBA2_new, "2.7B"),
@@ -163,7 +164,7 @@ def main(args: Args):
                     job_name=job_name,
                     # timeout_min=1200,
                     gpu_type=gpu_type,
-                    slurm_gpus_per_node=1,
+                    slurm_gpus_per_node=3,
                 )
 
                 print(f"{job}: {job_name}")

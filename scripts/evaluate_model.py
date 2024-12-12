@@ -311,7 +311,7 @@ def main(args: Args):
             args.dataset_args = DatasetArgs(name=DATASETS.COUNTER_FACT, splits=f"all")
             # args.dataset_args = DatasetArgs(name=DATASETS.COUNTER_FACT, splits=f"test")
 
-            job_name = f"evaluate_model_{model_arch}_{model_size}_{args.dataset_args.dataset_name}"
+            job_name = f"evaluate_model/{model_arch}_{model_size}_{args.dataset_args.dataset_name}"
             job = submit_job(
                 main_local,
                 args,

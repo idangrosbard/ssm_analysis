@@ -34,8 +34,8 @@ from src.utils.slurm import submit_job
 
 @dataclass
 class Args:
-    # model_arch: MODEL_ARCH = MODEL_ARCH.MINIMAL_MAMBA2_new
-    model_arch: MODEL_ARCH = MODEL_ARCH.MAMBA1
+    model_arch: MODEL_ARCH = MODEL_ARCH.MINIMAL_MAMBA2_new
+    # model_arch: MODEL_ARCH = MODEL_ARCH.MAMBA1
     model_size: str = "130M"
     dataset_args: DatasetArgs = pyrallis.field(
         default=DatasetArgs(name=DATASETS.COUNTER_FACT, splits="all"), is_mutable=True
@@ -47,7 +47,7 @@ class Args:
     temperature = 1
     top_k = 0
     top_p = 1
-    window_size = 9
+    window_size = 15
     knockout_map = {'last': ['last', 'first', "subject", "relation"], 
                     'subject': ['context', 'subject']}
 
@@ -82,12 +82,6 @@ def main_local(args: Args):
         for attention in [True, False]
     ]
 
-    mask = (original_res["hit"] == attn_res["hit"]) & (attn_res["hit"] == True)
-    data = attn_res[mask]
-
-    temperature = args.temperature
-    top_k = args.top_k
-    top_p = args.top_p
     window_size = args.window_size
 
     if not args.output_file:
@@ -101,153 +95,6 @@ def main_local(args: Args):
 
     args.output_file.mkdir(parents=True, exist_ok=True)
 
-    n_prompts = len(data)
-    model_interface = get_model_interface(args.model_arch, args.model_size)
-    tokenizer = model_interface.tokenizer
-    device = model_interface.device
-
-    n_layers = len(model_interface.model.backbone.layers)
-
-    # Taken from https://github.com/google-research/google-research/blob/master/dissecting_factual_predictions/utils.py
-    def decode_tokens(tokenizer, token_array):
-        if hasattr(token_array, "shape") and len(token_array.shape) > 1:
-            return [decode_tokens(tokenizer, row) for row in token_array]
-        return [tokenizer.decode([t]) for t in token_array]
-
-    def find_token_range(tokenizer, token_array, substring):
-        """Find the tokens corresponding to the given substring in token_array."""
-        toks = decode_tokens(tokenizer, token_array)
-        whole_string = "".join(toks)
-        char_loc = whole_string.index(substring)
-        loc = 0
-        tok_start, tok_end = None, None
-        for i, t in enumerate(toks):
-            loc += len(t)
-            if tok_start is None and loc > char_loc:
-                tok_start = i
-            if tok_end is None and loc >= char_loc + len(substring):
-                tok_end = i + 1
-                break
-        return (tok_start, tok_end)
-    
-
-    def get_num_to_masks(prompt_idx: int, window: List[int], knockout_src: str, knockout_target: str) -> Tuple[Dict[int, List[Tuple[int, int]]], bool]:
-        prompt = data.loc[prompt_idx, 'prompt']
-        tokens = tokenizer(prompt, return_tensors="pt", padding=True)
-        input_ids = tokens.input_ids.to(device=device)
-        last_idx = input_ids.shape[1] - 1
-        num_to_masks = {}
-        first_token = False
-
-        last_idx = input_ids.shape[1] - 1
-        tok_start, tok_end = find_token_range(tokenizer, input_ids[0], data.loc[prompt_idx, 'subject'])
-        subject_tokens = list(range(tok_start, tok_end))
-        if 0 in subject_tokens:
-            first_token = True
-        if knockout_src == 'first':
-            src_idx = [0]
-        elif knockout_src == 'last':
-            src_idx = [last_idx]
-        elif knockout_src == 'subject':
-            src_idx = subject_tokens
-        elif knockout_src == 'relation':
-            src_idx = [i for i in range(last_idx + 1) if i not in subject_tokens]
-        elif knockout_src == 'context':
-            src_idx = [i for i in range(subject_tokens[0])]
-        else:
-            src_idx = [last_idx]
-
-
-        if knockout_target == 'last':
-            target_idx = [last_idx]
-        elif knockout_target == 'subject':
-            target_idx = subject_tokens
-        else:
-            target_idx = [last_idx]
-            
-        for layer in window:
-            for src in src_idx:
-                for target in target_idx:
-                    if layer not in num_to_masks:
-                        num_to_masks[layer] = []
-                    num_to_masks[layer].append((target, src))
-
-        return num_to_masks, first_token
-
-
-    def forward_eval(temperature, top_k, top_p, prompt_idx, window, knockout_src: str, knockout_target: str):
-        prompt = data.loc[prompt_idx, "prompt"]
-        true_word = data.loc[prompt_idx, "target_true"]
-        base_prob = data.loc[prompt_idx, "true_prob"]
-        true_token = tokenizer(true_word, return_tensors="pt", padding=True)
-        true_id = true_token.input_ids.to(device="cpu")
-        tokens = tokenizer(prompt, return_tensors="pt", padding=True)
-        input_ids = tokens.input_ids.to(device=device)
-
-        num_to_masks, first_token = get_num_to_masks(prompt_idx, window, knockout_src, knockout_target)
-    
-        next_token_probs = model_interface.generate_logits(
-            input_ids=input_ids,
-            attention=True,
-            num_to_masks=num_to_masks,
-        )
-        max_prob = np.max(next_token_probs, axis=1)[0]
-        true_prob = next_token_probs[0, true_id[:, 0]]
-        torch.cuda.empty_cache()
-        return (
-            true_prob == max_prob,
-            (true_prob - base_prob) * 100.0 / base_prob,
-            first_token,
-        )
-
-    def evaluate(
-        temperature, top_k, top_p, prompt_indices, windows, knockout_src: str = None, knockout_target: str = None, print_period=100
-    ):
-        counts_w_first = np.zeros((len(windows)))
-        counts_wo_first = np.zeros((len(windows)))
-        diffs_w_first = np.zeros((len(windows)))
-        diffs_wo_first = np.zeros((len(windows)))
-        w_first = 0
-        for i, window in enumerate(tqdm(windows, desc="Windows")):
-            model_interface.setup(layers=window)
-            for _, prompt_idx in enumerate(tqdm(prompt_indices, desc="Prompts", miniters=print_period)):
-                hit, diff, first = forward_eval(
-                    temperature, top_k, top_p, prompt_idx, window, knockout_src, knockout_target
-                )
-                if first:
-                    if i == 0:
-                        w_first += 1
-                    counts_w_first[i] += hit
-                    diffs_w_first[i] += diff
-                else:
-                    counts_wo_first[i] += hit
-                    diffs_wo_first[i] += diff
-        counts = counts_w_first + counts_wo_first
-        diffs = diffs_w_first + diffs_wo_first
-        return {
-            f"acc": counts / n_prompts,
-            f"diff": diffs / n_prompts,
-            f"wf_acc": counts_w_first / w_first,
-            f"wf_diff": diffs_w_first / w_first,
-            f"wof_acc": counts_wo_first / (n_prompts - w_first),
-            f"wof_diff": diffs_wo_first / (n_prompts - w_first),
-        }
-
-    # prompt_indices = list(data.index)
-    # windows = [[]]
-    # no_block_acc, no_block_diff, _, _, _, _ = evaluate(
-    #     temperature, top_k, top_p, prompt_indices, windows
-    # )
-
-    # print(no_block_acc)
-    # print(no_block_diff)
-
-    # # Experiments - window size = 9
-    prompt_indices = list(data.index)
-    windows = [
-        list(range(i, i + window_size)) for i in range(0, n_layers - window_size + 1)
-    ]
-
     combined_results = defaultdict(lambda: defaultdict(dict))
 
     for key in args.knockout_map:
@@ -257,13 +104,20 @@ def main_local(args: Args):
             block_outdir = args.output_file / f"block_{block}_target_{key}"
             block_outdir.mkdir(parents=True, exist_ok=True)
             
+            # if (block_outdir/f"{metrics[0]}.parquet").exists():
+            #     (block_outdir/f"{metrics[0]}.parquet").rename(block_outdir/f"{metrics[0]}.csv")
+            
             res = {}
             if (block_outdir/f"{metrics[0]}.csv").exists():
                 print(f"Reading from existing file")
                 for metric in metrics:
                     res[metric] = pd.read_csv(block_outdir / f"{metric}.csv")
-            else:
-                res = evaluate(temperature, top_k, top_p, prompt_indices, windows, knockout_src=block, knockout_target=key)
+
+            if (block_outdir/f"{metrics[0]}.parquet").exists():
+                print(f"Reading from existing file")
+                for metric in metrics:
+                    res[metric] = pd.read_parquet(block_outdir / f"{metric}.parquet")
+                    (block_outdir / f"{metric}.parquet").unlink()
             
             for metric, value in res.items():
                 df = pd.DataFrame(value)
@@ -272,7 +126,7 @@ def main_local(args: Args):
                 df.to_csv(block_outdir/f"{metric}.csv", index=False)
                 combined_results[key][block][metric] = value
 
-        layers = list(range(n_layers - window_size + 1))
+        layers = list(range(len(df)))
         fig, ax = plt.subplots(1, 2, figsize=(8, 3))
         colors = {
             "last": "orange",
@@ -322,8 +176,8 @@ def main(args: Args):
     # args.with_slurm = True
 
     if args.with_slurm:
-        gpu_type = "a100"
-        # gpu_type = "titan_xp-studentrun"
+        # gpu_type = "a100"
+        gpu_type = "titan_xp-studentrun"
 
         for model_arch, model_size in [
             # (MODEL_ARCH.MAMBA1, "130M"),
@@ -337,7 +191,7 @@ def main(args: Args):
             args.model_size = model_size
             args.dataset_args = DatasetArgs(name=DATASETS.COUNTER_FACT, splits=f"all")
             for window_size in [9, 15]:
-            # for window_size in [15]:
+            # for window_size in [9]:
                 args.window_size = window_size
 
                 job_name = f"info_flow/{model_arch}_{model_size}_ws={window_size}_{args.dataset_args.dataset_name}"

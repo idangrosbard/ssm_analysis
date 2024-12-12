@@ -9,6 +9,7 @@ class PATHS:
     PROJECT_DIR = Path(__file__).parent.parent.resolve()
     DATA_DIR = PROJECT_DIR / "data"
     RAW_DATA_DIR = DATA_DIR / "raw"
+    OTHER_DATA_DIR = DATA_DIR / "other"
     PREPROCESSED_DATA_DIR = DATA_DIR / "preprocessed"
     RAW_KNOWN_1000_DIR = RAW_DATA_DIR / "spaced" / DATASETS.KNOWN_1000
     COUNTER_FACT_DIR = PREPROCESSED_DATA_DIR / DATASETS.COUNTER_FACT
