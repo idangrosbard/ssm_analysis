@@ -61,7 +61,6 @@ if not is_nir:
         parser.add_argument("--show_eval_progress", action='store_true')
         parser.add_argument("--output_dir", type=Path, default=Path("resources"))
         parser.add_argument("--layer_checkpoint", type=Path, default=None)
-        parser.add_argument("--bin_search_checkpoint", type=Path, default=None)
         parser.add_argument('--norm', type=str, default='1', choices=['1', 'inf'])
         parser.add_argument('--affected_output', type=str, choices={'last', 'subj', 'all'}, default='all')
         parser.add_argument('--layer_window_length', type=int, default=9)
