@@ -7,6 +7,7 @@ from typing import Optional, assert_never, Dict, List, Tuple
 from torch import Tensor
 from matplotlib import pyplot as plt
 import numpy as np
+import seaborn as sns
 
 import pandas as pd
 import pyrallis
@@ -47,7 +48,8 @@ class Args:
     temperature = 1
     top_k = 0
     top_p = 1
-    window_size = 9
+    window_size = 5
+    prompt_indices = [1,2,3,4,5]
     knockout_map = {'last': ['last', 'first', "subject", "relation"], 
                     'subject': ['context', 'subject']}
 
@@ -94,7 +96,7 @@ def main_local(args: Args):
         args.output_file = (
             PATHS.OUTPUT_DIR
             / args.model_id
-            / "info_flow_v4"
+            / "heatmap_v5"
             / f"ds={args.dataset_args.dataset_name}"
             / f"ws={args.window_size}"
         )
@@ -175,7 +177,7 @@ def main_local(args: Args):
         return num_to_masks, first_token
 
 
-    def forward_eval(temperature, top_k, top_p, prompt_idx, window, knockout_src: str, knockout_target: str):
+    def forward_eval(temperature, top_k, top_p, prompt_idx, window):
         prompt = data.loc[prompt_idx, "prompt"]
         true_word = data.loc[prompt_idx, "target_true"]
         base_prob = data.loc[prompt_idx, "true_prob"]
@@ -183,138 +185,72 @@ def main_local(args: Args):
         true_id = true_token.input_ids.to(device="cpu")
         tokens = tokenizer(prompt, return_tensors="pt", padding=True)
         input_ids = tokens.input_ids.to(device=device)
+        max_new_length = input_ids.shape[1] + 1
+        last_idx = input_ids.shape[1] - 1
+        probs = np.zeros((input_ids.shape[1]))
 
-        num_to_masks, first_token = get_num_to_masks(prompt_idx, window, knockout_src, knockout_target)
-    
-        next_token_probs = model_interface.generate_logits(
-            input_ids=input_ids,
-            attention=True,
-            num_to_masks=num_to_masks,
-        )
-        max_prob = np.max(next_token_probs, axis=1)[0]
-        true_prob = next_token_probs[0, true_id[:, 0]]
-        torch.cuda.empty_cache()
-        return (
-            true_prob == max_prob,
-            (true_prob - base_prob) * 100.0 / base_prob,
-            first_token,
-        )
+        for idx in range(input_ids.shape[1]):
+            num_to_masks = {layer : [(last_idx, idx)] for layer in window}
+            
+            next_token_probs = model_interface.generate_logits(
+                input_ids=input_ids,
+                attention=True,
+                num_to_masks=num_to_masks,
+            )
+            probs[idx] = next_token_probs[0, true_id[:, 0]]
+            torch.cuda.empty_cache()
+        return probs
 
     def evaluate(
-        temperature, top_k, top_p, prompt_indices, windows, knockout_src: str = None, knockout_target: str = None, print_period=100
+        temperature, top_k, top_p, prompt_indices, windows, print_period=100
     ):
-        counts_w_first = np.zeros((len(windows)))
-        counts_wo_first = np.zeros((len(windows)))
-        diffs_w_first = np.zeros((len(windows)))
-        diffs_wo_first = np.zeros((len(windows)))
-        w_first = 0
-        for i, window in enumerate(tqdm(windows, desc="Windows")):
-            model_interface.setup(layers=window)
-            for _, prompt_idx in enumerate(tqdm(prompt_indices, desc="Prompts", miniters=print_period)):
-                hit, diff, first = forward_eval(
-                    temperature, top_k, top_p, prompt_idx, window, knockout_src, knockout_target
-                )
-                if first:
-                    if i == 0:
-                        w_first += 1
-                    counts_w_first[i] += hit
-                    diffs_w_first[i] += diff
-                else:
-                    counts_wo_first[i] += hit
-                    diffs_wo_first[i] += diff
-        counts = counts_w_first + counts_wo_first
-        diffs = diffs_w_first + diffs_wo_first
-        return {
-            f"acc": counts / n_prompts,
-            f"diff": diffs / n_prompts,
-            f"wf_acc": counts_w_first / w_first,
-            f"wf_diff": diffs_w_first / w_first,
-            f"wof_acc": counts_wo_first / (n_prompts - w_first),
-            f"wof_diff": diffs_wo_first / (n_prompts - w_first),
-        }
+        
+        for prompt_idx in tqdm(prompt_indices, desc="Prompts"):
+            prob_mat = []
+            for window in windows:
+                model_interface.setup(layers=window)
+                prob_mat.append(forward_eval(temperature, top_k, top_p, prompt_idx, window))
+            
+            prob_mat = np.array(prob_mat).T
+            prompt = data.loc[prompt_idx, 'prompt']
+            true_word = data.loc[prompt_idx, 'target_true']
+            base_prob = data.loc[prompt_idx, 'true_prob']
+            tokens = tokenizer(prompt, return_tensors="pt", padding=True)
+            input_ids = tokens.input_ids.to(device=device)
+            toks = decode_tokens(tokenizer, input_ids[0]) 
+            last_tok = toks[-1]
+            toks[-1] = toks[-1] + '*'
 
-    # prompt_indices = list(data.index)
-    # windows = [[]]
-    # no_block_acc, no_block_diff, _, _, _, _ = evaluate(
-    #     temperature, top_k, top_p, prompt_indices, windows
-    # )
-
-    # print(no_block_acc)
-    # print(no_block_diff)
-
-    # # Experiments - window size = 9
-    prompt_indices = list(data.index)
+            fontsize = 8
+            plt.figure(figsize=(4, 3))
+            ax = sns.heatmap(prob_mat, cmap="Purples_r", cbar=True)
+            plt.title(
+                f'{args.model_id} - Window Size: {window_size}' +
+                f'\nIntervening on flow to: {last_tok}, base probability: {round(base_prob, 4)}', 
+                    fontsize=fontsize)
+            plt.xlabel('')
+            plt.ylabel('')
+            x_pos = list(range(0, prob_mat.shape[1], 5))
+            plt.xticks(ticks=np.array(range(0, prob_mat.shape[1], 5)) + 0.5, labels=[str(x) for x in x_pos], 
+                    rotation=0, fontsize=fontsize)
+            plt.yticks(ticks=np.arange(prob_mat.shape[0]) + 0.5, labels=toks, rotation=0, fontsize=fontsize)
+            ax.tick_params(axis='both', which='both', length=0)
+            cbar = ax.collections[0].colorbar
+            cbar.ax.set_xlabel(f'p({true_word[1:]})', labelpad=10, fontsize=fontsize)
+            cbar.locator = plt.MaxNLocator(nbins=5)
+            cbar.update_ticks()
+            cbar.ax.tick_params(labelsize=fontsize)
+            plt.tight_layout()
+            plt.savefig(args.output_file / f'heatmap_idx={prompt_idx}_ws={window_size}.png')
+            plt.show()                
+            
+    prompt_indices = args.prompt_indices
     windows = [
         list(range(i, i + window_size)) for i in range(0, n_layers - window_size + 1)
     ]
 
-    combined_results = defaultdict(lambda: defaultdict(dict))
-
-    for key in args.knockout_map:
-        for block in args.knockout_map[key]:
-            print(f"Knocking out flow to {key} from {block}")
-            metrics = ['acc','diff','wf_acc','wf_diff','wof_acc','wof_diff', ]
-            block_outdir = args.output_file / f"block_{block}_target_{key}"
-            block_outdir.mkdir(parents=True, exist_ok=True)
-            
-            res = {}
-            if (block_outdir/f"{metrics[0]}.csv").exists():
-                print(f"Reading from existing file")
-                for metric in metrics:
-                    res[metric] = pd.read_csv(block_outdir / f"{metric}.csv")
-            else:
-                res = evaluate(temperature, top_k, top_p, prompt_indices, windows, knockout_src=block, knockout_target=key)
-            
-            for metric, value in res.items():
-                df = pd.DataFrame(value)
-                if len(df.columns) >1:
-                    df = df[df.columns[-1]]
-                df.to_csv(block_outdir/f"{metric}.csv", index=False)
-                combined_results[key][block][metric] = value
-
-        layers = list(range(n_layers - window_size + 1))
-        fig, ax = plt.subplots(1, 2, figsize=(8, 3))
-        colors = {
-            "last": "orange",
-            "first": "blue",
-            "subject": "green",
-            "relation": "purple",
-            "context": "cyan",
-        }
-        line_styles = {
-            "last": ":",
-            "first": "-.",
-            "subject": "-",
-            "relation": "--",
-            "context": ":",
-        }
-
-        for block in args.knockout_map[key]:
-            color = colors[block]
-            line_style = line_styles[block]
-            block_acc = combined_results[key][block]["acc"]
-            block_diff = combined_results[key][block]["diff"]
-            ax[0].plot(layers, block_acc * 100, label=block, color=color, linestyle=line_style)
-            ax[1].plot(layers, block_diff, label=block, color=color, linestyle=line_style)
-
-        ax[0].axhline(100, color="gray", linewidth=1)
-        ax[0].grid(True, which="both", linestyle="--", linewidth=0.5)
-        ax[0].set_xlabel("Layers")
-        ax[0].set_ylabel("% accuracy")
-        ax[0].set_title(f"Accuracy - knocking out flow to {key}", fontsize=10)
-        ax[0].legend(loc="lower left", fontsize=8)
-
-        ax[1].axhline(0, color="gray", linewidth=1)
-        ax[1].grid(True, which="both", linestyle="--", linewidth=0.5)
-        ax[1].set_xlabel("Layers")
-        ax[1].set_ylabel("% change in prediction probability")
-        ax[1].set_title(f"Change in prediction probability - knocking out flow to {key}", fontsize=10)
-        ax[1].legend(loc="lower left", fontsize=8)
-
-        plt.suptitle(f"Results with {args.model_id} and window size={window_size}")
-        plt.tight_layout(pad=1, w_pad=3.0)
-        plt.savefig(args.output_file /f"results_ws={window_size}_knockout_target={key}.png")
-        plt.show()
+    evaluate(temperature, top_k, top_p, prompt_indices, windows)
+    
 
 
 @pyrallis.wrap()
@@ -322,8 +258,8 @@ def main(args: Args):
     # args.with_slurm = True
 
     if args.with_slurm:
-        gpu_type = "a100"
-        # gpu_type = "titan_xp-studentrun"
+        # gpu_type = "a100"
+        gpu_type = "titan_xp-studentrun"
 
         for model_arch, model_size in [
             (MODEL_ARCH.MAMBA1, "130M"),
@@ -336,19 +272,19 @@ def main(args: Args):
             args.model_arch = model_arch
             args.model_size = model_size
             args.dataset_args = DatasetArgs(name=DATASETS.COUNTER_FACT, splits=f"all")
-            # for window_size in [9, 15]:
-            for window_size in [9]:
+            for window_size in [5, 9]:
+            # for window_size in [9]:
                 args.window_size = window_size
 
-                job_name = f"info_flow/{model_arch}_{model_size}_ws={window_size}_{args.dataset_args.dataset_name}"
+                job_name = f"heatmap/{model_arch}_{model_size}_ws={window_size}_{args.dataset_args.dataset_name}"
                 job = submit_job(
                     main_local,
                     args,
                     log_folder=str(PATHS.SLURM_DIR / job_name / "%j"),
                     job_name=job_name,
                     # timeout_min=1200,
-                    gpu_type=gpu_type,
-                    slurm_gpus_per_node=1,
+                    gpu_type="a100" if (model_size == "2.7B" and model_arch == MODEL_ARCH.MINIMAL_MAMBA2_new) else gpu_type,
+                    slurm_gpus_per_node=3 if (model_size in ["2.8B", "2.7B"] and gpu_type == "titan_xp-studentrun") else 1,
                 )
 
                 print(f"{job}: {job_name}")

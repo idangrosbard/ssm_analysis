@@ -88,7 +88,7 @@ def main_local(args: Args):
         args.output_file = (
             PATHS.OUTPUT_DIR
             / args.model_id
-            / "info_flow"
+            / "info_flow_v4"
             / f"ds={args.dataset_args.dataset_name}"
             / f"ws={args.window_size}"
         )
@@ -181,8 +181,8 @@ def main(args: Args):
 
         for model_arch, model_size in [
             # (MODEL_ARCH.MAMBA1, "130M"),
-            # (MODEL_ARCH.MAMBA1, "1.4B"),
-            (MODEL_ARCH.MAMBA1, "2.8B"),
+            (MODEL_ARCH.MAMBA1, "1.4B"),
+            # (MODEL_ARCH.MAMBA1, "2.8B"),
             # (MODEL_ARCH.MINIMAL_MAMBA2_new, "130M"),
             # (MODEL_ARCH.MINIMAL_MAMBA2_new, "1.3B"),
             # (MODEL_ARCH.MINIMAL_MAMBA2_new, "2.7B"),
@@ -190,8 +190,8 @@ def main(args: Args):
             args.model_arch = model_arch
             args.model_size = model_size
             args.dataset_args = DatasetArgs(name=DATASETS.COUNTER_FACT, splits=f"all")
-            for window_size in [9, 15]:
-            # for window_size in [9]:
+            # for window_size in [9, 15]:
+            for window_size in [9]:
                 args.window_size = window_size
 
                 job_name = f"info_flow/{model_arch}_{model_size}_ws={window_size}_{args.dataset_args.dataset_name}"
