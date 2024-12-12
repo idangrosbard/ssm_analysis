@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import Optional, Tuple, Dict, List, Union, assert_never
+import torch.nn.functional as F
 
 import torch
 from torch import Tensor
@@ -120,7 +121,10 @@ class Mamba1Interface(ModelInterface):
         with torch.no_grad():
             out = self.model(input_ids)
 
-        return out.logits[:, -1, :].detach().cpu().numpy()
+        logits = out.logits
+        probs = F.softmax(logits, dim=-1)
+        
+        return probs[:, -1, :].detach().cpu().numpy()
 
 
 class Mamba2Interface(ModelInterface):
