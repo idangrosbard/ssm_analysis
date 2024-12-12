@@ -17,21 +17,14 @@ from transformers import AutoTokenizer, MambaForCausalLM
 import torch
 from tqdm import tqdm
 from pathlib import Path
-from src.datasets.download_dataset import load_knowns_pd
 from src.knockout import KnockoutMode, KnockoutEvaluator
-from src.knockout.attention_knockout import KnockoutTarget, AttentionKnockoutEvaluator, is_last_token_subj
-from src.knockout.layer_knockout import LayerKnockoutEvaluator
 from src.knockout.ssm_knockout import SSMKnockoutEvaluator
-from src.knockout.ssm_knockout.ssm_classifier import SSMClassifier, DecayNormClassifier, SSMClassifierStub
-from src.knockout.increase_delta import IncreaseDeltaEvaluator
+from src.knockout.ssm_knockout.ssm_classifier import DecayNormClassifier
 from argparse import ArgumentParser, Namespace
 import numpy as np
 from src.utils.setup_models import setup_mamba_model
 from typing import Optional, Iterable
 
-from src.datasets.download_dataset import load_dataset
-from src.types import DatasetArgs
-from src.types import DATASETS
 
 @dataclass
 class Args:
