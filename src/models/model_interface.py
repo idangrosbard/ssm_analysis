@@ -81,6 +81,11 @@ class Mamba1Interface(ModelInterface):
 
         for handle in self.handles:
             handle.remove()
+
+        # Assert that no hooks are left
+        for m in self.model.modules():
+            assert len(list(m._forward_hooks.items())) == 0
+
         self.handles = []
         self.hooks = []
 
@@ -110,7 +115,7 @@ class Mamba1Interface(ModelInterface):
                     num_to_masks[layer][i][1] for i in range(len(num_to_masks[layer]))
                 ]
                 target_indices = [
-                    num_to_masks[layer][i][1] for i in range(len(num_to_masks[layer]))
+                    num_to_masks[layer][i][0] for i in range(len(num_to_masks[layer]))
                 ]
                 break
 
