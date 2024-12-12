@@ -33,7 +33,7 @@ def evaluate_model(model: nn.Module, tokenizer: AutoTokenizer, knowns_df: pd.Dat
         pbar = tqdm(knowns_df.index, total=len(knowns_df), disable=True)
         for idx in pbar:
             input = knowns_df.loc[idx, "prompt"]
-            target = knowns_df.loc[idx, "attribute"]
+            target = knowns_df.loc[idx, "target_true"]
             base_prob = knowns_df.loc[idx, "true_prob"]
             
             prob = evaluate_sample(model, tokenizer, input, target, device)

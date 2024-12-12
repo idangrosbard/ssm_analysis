@@ -186,9 +186,11 @@ def main_local(args:Args) -> None:
     print(layer_checkpoint)
     
     # If we do SSM knockout
-    knowns_df = pd.DataFrame(load_dataset(DatasetArgs(name=DATASETS.KNOWN_1000, splits=[args.split_name])))
+    # knowns_df = pd.DataFrame(load_dataset(DatasetArgs(name=DATASETS.KNOWN_1000, splits=[args.split_name])))
+    knowns_df = pd.read_parquet("./entire_results_attention.parquet")
+
     # drop the first character in the attribute string
-    knowns_df['attribute'] = knowns_df['attribute'].apply(lambda x: x[1:])
+    # knowns_df['attribute'] = knowns_df['attribute'].apply(lambda x: x[1:])
     if args.norm == 'inf':
         norm = float('inf')
     else:
