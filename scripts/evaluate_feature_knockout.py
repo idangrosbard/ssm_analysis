@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from re import split
 import sys
 import os
 
@@ -50,7 +49,7 @@ class Args:
 if not is_nir:
     def get_args():
         parser = ArgumentParser()
-        parser.add_argument("--model_size", type=str, choices={'130M', '2.8B'}, default="130M")
+        parser.add_argument("--model_size", type=str, choices={'130M','370M', '790M', '1.4B', '2.8B'}, default="130M")
         parser.add_argument("--show_eval_progress", action='store_true')
         parser.add_argument("--output_dir", type=Path, default=Path("resources"))
         parser.add_argument("--layer_checkpoint", type=Path, default=None)
