@@ -77,7 +77,7 @@ def slow_forward_for_ssm_materializing_knockout(module, input_states, cache_para
     # 3.c perform the recurrence y ← SSM(A, B, C)(x)
     # Here is the call to the knockout_scan functions
     
-    USE_MATRIX = True
+    USE_MATRIX = False
     if USE_MATRIX:
         u = hidden_states[:, :, :, None].float()
         scan_output = knockout_matrix(seq_len, discrete_A, discrete_B, u, C, knockout_indices, affected_outputs, dtype)

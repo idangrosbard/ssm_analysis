@@ -48,7 +48,8 @@ class Args:
     top_k = 0
     top_p = 1
     window_size = 9
-    knockout_map = {'last': ['last', 'first', "subject", "relation"], 
+    overwrite: bool = False
+    knockout_map = {'last': ['last', 'first', "subject", "relation"],
                     'subject': ['context', 'subject']}
 
     output_dir: Optional[Path] = None
@@ -258,7 +259,7 @@ def main_local(args: Args):
             block_outdir.mkdir(parents=True, exist_ok=True)
             
             res = {}
-            if (block_outdir/f"{metrics[0]}.csv").exists():
+            if (block_outdir/f"{metrics[0]}.csv").exists() and not args.overwrite:
                 print(f"Reading from existing file")
                 for metric in metrics:
                     res[metric] = pd.read_csv(block_outdir / f"{metric}.csv")
