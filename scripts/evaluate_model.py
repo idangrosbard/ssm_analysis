@@ -289,13 +289,13 @@ def main(args: Args):
 
         for model_arch, model_size in [
             # (MODEL_ARCH.MAMBA1, "130M"),
-            (MODEL_ARCH.MAMBA1, "1.4B"),
+            # (MODEL_ARCH.MAMBA1, "1.4B"),
             # (MODEL_ARCH.MAMBA1, "2.8B"),
             # (MODEL_ARCH.MAMBA2, "130M"),
             # (MODEL_ARCH.MAMBA2, "1.3B"),
             # (MODEL_ARCH.MAMBA2, "2.7B"),
             # (MODEL_ARCH.MINIMAL_MAMBA2, "130M"),
-            # (MODEL_ARCH.MINIMAL_MAMBA2, "2.7B"),
+            (MODEL_ARCH.MINIMAL_MAMBA2, "2.7B"),
             # (MODEL_ARCH.LLAMA2, "7B"),
             # (MODEL_ARCH.LLAMA3_2, "1B"),
             # (MODEL_ARCH.LLAMA3_2, "3B"),

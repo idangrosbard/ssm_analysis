@@ -269,14 +269,15 @@ def main(args: Args):
         experiment_name = "heatmap"
         variation_name = '_v6'
         args.experiment_name = experiment_name + variation_name
-        window_sizes = [1, 5]
+        # window_sizes = [1, 5]
+        window_sizes = [9]
 
         for model_arch, model_size in [
-            (MODEL_ARCH.MAMBA1, "130M"),
-            (MODEL_ARCH.MAMBA1, "1.4B"),
-            (MODEL_ARCH.MAMBA1, "2.8B"),
-            (MODEL_ARCH.MINIMAL_MAMBA2_new, "130M"),
-            (MODEL_ARCH.MINIMAL_MAMBA2_new, "1.3B"),
+            # (MODEL_ARCH.MAMBA1, "130M"),
+            # (MODEL_ARCH.MAMBA1, "1.4B"),
+            # (MODEL_ARCH.MAMBA1, "2.8B"),
+            # (MODEL_ARCH.MINIMAL_MAMBA2_new, "130M"),
+            # (MODEL_ARCH.MINIMAL_MAMBA2_new, "1.3B"),
             (MODEL_ARCH.MINIMAL_MAMBA2_new, "2.7B"),
         ]:
             args.model_arch = model_arch
