@@ -36,6 +36,7 @@ from src.utils.slurm import submit_job
 class Args:
     # model_arch: MODEL_ARCH = MODEL_ARCH.MINIMAL_MAMBA2_new
     model_arch: MODEL_ARCH = MODEL_ARCH.MAMBA1
+    experiment_name: str = "info_flow"
     model_size: str = "130M"
     dataset_args: DatasetArgs = pyrallis.field(
         default=DatasetArgs(name=DATASETS.COUNTER_FACT, splits="all"), is_mutable=True
@@ -48,6 +49,7 @@ class Args:
     top_k = 0
     top_p = 1
     window_size = 9
+    DEBUG_LAST_WINDOWS: Optional[int] = None
     overwrite: bool = False
     knockout_map = {'last': ['last', 'first', "subject", "relation"],
                     'subject': ['context', 'subject']}
@@ -95,7 +97,7 @@ def main_local(args: Args):
         args.output_file = (
             PATHS.OUTPUT_DIR
             / args.model_id
-            / "info_flow_v4"
+            / args.experiment_name
             / f"ds={args.dataset_args.dataset_name}"
             / f"ws={args.window_size}"
         )
@@ -243,11 +245,13 @@ def main_local(args: Args):
     # print(no_block_acc)
     # print(no_block_diff)
 
-    # # Experiments - window size = 9
     prompt_indices = list(data.index)
     windows = [
         list(range(i, i + window_size)) for i in range(0, n_layers - window_size + 1)
     ]
+    
+    if args.DEBUG_LAST_WINDOWS:
+        windows = windows[-args.DEBUG_LAST_WINDOWS:]
 
     combined_results = defaultdict(lambda: defaultdict(dict))
 
@@ -274,6 +278,8 @@ def main_local(args: Args):
                 combined_results[key][block][metric] = value
 
         layers = list(range(n_layers - window_size + 1))
+        if args.DEBUG_LAST_WINDOWS:
+            layers = layers[-args.DEBUG_LAST_WINDOWS:]
         fig, ax = plt.subplots(1, 2, figsize=(8, 3))
         colors = {
             "last": "orange",
@@ -325,23 +331,29 @@ def main(args: Args):
     if args.with_slurm:
         gpu_type = "a100"
         # gpu_type = "titan_xp-studentrun"
+        
+        args.DEBUG_LAST_WINDOWS = 10
+        args.experiment_name += f'_debug_{args.DEBUG_LAST_WINDOWS}_last_windows'
+        args.knockout_map={'last': ['last', "subject", "relation"]}
+        window_sizes =[9]
+        window_sizes =[9,15]
+        window_sizes =[1,2,3,4,5,6,7,8,9]
 
         for model_arch, model_size in [
-            (MODEL_ARCH.MAMBA1, "130M"),
-            (MODEL_ARCH.MAMBA1, "1.4B"),
-            (MODEL_ARCH.MAMBA1, "2.8B"),
+            # (MODEL_ARCH.MAMBA1, "130M"),
+            # (MODEL_ARCH.MAMBA1, "1.4B"),
+            # (MODEL_ARCH.MAMBA1, "2.8B"),
             # (MODEL_ARCH.MINIMAL_MAMBA2_new, "130M"),
-            # (MODEL_ARCH.MINIMAL_MAMBA2_new, "1.3B"),
+            (MODEL_ARCH.MINIMAL_MAMBA2_new, "1.3B"),
             # (MODEL_ARCH.MINIMAL_MAMBA2_new, "2.7B"),
         ]:
             args.model_arch = model_arch
             args.model_size = model_size
             args.dataset_args = DatasetArgs(name=DATASETS.COUNTER_FACT, splits=f"all")
-            # for window_size in [9, 15]:
-            for window_size in [9]:
+            for window_size in window_sizes:
                 args.window_size = window_size
 
-                job_name = f"info_flow/{model_arch}_{model_size}_ws={window_size}_{args.dataset_args.dataset_name}"
+                job_name = f"{args.experiment_name}/{model_arch}_{model_size}_ws={window_size}_{args.dataset_args.dataset_name}"
                 job = submit_job(
                     main_local,
                     args,

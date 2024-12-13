@@ -27,6 +27,7 @@ from src.datasets.download_dataset import load_dataset, load_splitted_counter_fa
 from src.datasets.download_dataset import load_knowns_pd
 from src.logit_utils import get_last_token_logits, logits_to_probs
 from src.models.model_interface import get_model_interface
+from src.plots import create_diverging_heatmap
 from src.types import DATASETS
 from src.types import MODEL_ARCH, SPLIT, DatasetArgs, TModelID
 from src.utils.setup_models import get_tokenizer_and_model
@@ -36,6 +37,7 @@ from src.utils.slurm import submit_job
 @dataclass
 class Args:
     # model_arch: MODEL_ARCH = MODEL_ARCH.MINIMAL_MAMBA2_new
+    experiment_name: str = "heatmap"
     model_arch: MODEL_ARCH = MODEL_ARCH.MAMBA1
     model_size: str = "130M"
     dataset_args: DatasetArgs = pyrallis.field(
@@ -49,9 +51,11 @@ class Args:
     top_k = 0
     top_p = 1
     window_size = 5
-    prompt_indices = [1,2,3,4,5]
-    knockout_map = {'last': ['last', 'first', "subject", "relation"], 
-                    'subject': ['context', 'subject']}
+    prompt_indices = [1, 2, 3, 4, 5]
+    knockout_map = {
+        "last": ["last", "first", "subject", "relation"],
+        "subject": ["context", "subject"],
+    }
 
     output_dir: Optional[Path] = None
 
@@ -96,7 +100,7 @@ def main_local(args: Args):
         args.output_file = (
             PATHS.OUTPUT_DIR
             / args.model_id
-            / "heatmap_v5"
+            / args.experiment_name
             / f"ds={args.dataset_args.dataset_name}"
             / f"ws={args.window_size}"
         )
@@ -131,10 +135,11 @@ def main_local(args: Args):
                 tok_end = i + 1
                 break
         return (tok_start, tok_end)
-    
 
-    def get_num_to_masks(prompt_idx: int, window: List[int], knockout_src: str, knockout_target: str) -> Tuple[Dict[int, List[Tuple[int, int]]], bool]:
-        prompt = data.loc[prompt_idx, 'prompt']
+    def get_num_to_masks(
+        prompt_idx: int, window: List[int], knockout_src: str, knockout_target: str
+    ) -> Tuple[Dict[int, List[Tuple[int, int]]], bool]:
+        prompt = data.loc[prompt_idx, "prompt"]
         tokens = tokenizer(prompt, return_tensors="pt", padding=True)
         input_ids = tokens.input_ids.to(device=device)
         last_idx = input_ids.shape[1] - 1
@@ -142,31 +147,32 @@ def main_local(args: Args):
         first_token = False
 
         last_idx = input_ids.shape[1] - 1
-        tok_start, tok_end = find_token_range(tokenizer, input_ids[0], data.loc[prompt_idx, 'subject'])
+        tok_start, tok_end = find_token_range(
+            tokenizer, input_ids[0], data.loc[prompt_idx, "subject"]
+        )
         subject_tokens = list(range(tok_start, tok_end))
         if 0 in subject_tokens:
             first_token = True
-        if knockout_src == 'first':
+        if knockout_src == "first":
             src_idx = [0]
-        elif knockout_src == 'last':
+        elif knockout_src == "last":
             src_idx = [last_idx]
-        elif knockout_src == 'subject':
+        elif knockout_src == "subject":
             src_idx = subject_tokens
-        elif knockout_src == 'relation':
+        elif knockout_src == "relation":
             src_idx = [i for i in range(last_idx + 1) if i not in subject_tokens]
-        elif knockout_src == 'context':
+        elif knockout_src == "context":
             src_idx = [i for i in range(subject_tokens[0])]
         else:
             src_idx = [last_idx]
 
-
-        if knockout_target == 'last':
+        if knockout_target == "last":
             target_idx = [last_idx]
-        elif knockout_target == 'subject':
+        elif knockout_target == "subject":
             target_idx = subject_tokens
         else:
             target_idx = [last_idx]
-            
+
         for layer in window:
             for src in src_idx:
                 for target in target_idx:
@@ -175,7 +181,6 @@ def main_local(args: Args):
                     num_to_masks[layer].append((target, src))
 
         return num_to_masks, first_token
-
 
     def forward_eval(temperature, top_k, top_p, prompt_idx, window):
         prompt = data.loc[prompt_idx, "prompt"]
@@ -190,8 +195,8 @@ def main_local(args: Args):
         probs = np.zeros((input_ids.shape[1]))
 
         for idx in range(input_ids.shape[1]):
-            num_to_masks = {layer : [(last_idx, idx)] for layer in window}
-            
+            num_to_masks = {layer: [(last_idx, idx)] for layer in window}
+
             next_token_probs = model_interface.generate_logits(
                 input_ids=input_ids,
                 attention=True,
@@ -201,56 +206,56 @@ def main_local(args: Args):
             torch.cuda.empty_cache()
         return probs
 
-    def evaluate(
-        temperature, top_k, top_p, prompt_indices, windows, print_period=100
-    ):
-        
+    def evaluate(temperature, top_k, top_p, prompt_indices, windows, print_period=100):
+
         for prompt_idx in tqdm(prompt_indices, desc="Prompts"):
             prob_mat = []
             for window in windows:
                 model_interface.setup(layers=window)
-                prob_mat.append(forward_eval(temperature, top_k, top_p, prompt_idx, window))
-            
+                prob_mat.append(
+                    forward_eval(temperature, top_k, top_p, prompt_idx, window)
+                )
+
             prob_mat = np.array(prob_mat).T
-            prompt = data.loc[prompt_idx, 'prompt']
-            true_word = data.loc[prompt_idx, 'target_true']
-            base_prob = data.loc[prompt_idx, 'true_prob']
+            prompt = data.loc[prompt_idx, "prompt"]
+            true_word = data.loc[prompt_idx, "target_true"]
+            base_prob = data.loc[prompt_idx, "true_prob"]
             tokens = tokenizer(prompt, return_tensors="pt", padding=True)
             input_ids = tokens.input_ids.to(device=device)
-            toks = decode_tokens(tokenizer, input_ids[0]) 
+            toks = decode_tokens(tokenizer, input_ids[0])
             last_tok = toks[-1]
-            toks[-1] = toks[-1] + '*'
-
-            fontsize = 8
-            plt.figure(figsize=(4, 3))
-            ax = sns.heatmap(prob_mat, cmap="Purples_r", cbar=True)
-            plt.title(
-                f'{args.model_id} - Window Size: {window_size}' +
-                f'\nIntervening on flow to: {last_tok}, base probability: {round(base_prob, 4)}', 
-                    fontsize=fontsize)
-            plt.xlabel('')
-            plt.ylabel('')
-            x_pos = list(range(0, prob_mat.shape[1], 5))
-            plt.xticks(ticks=np.array(range(0, prob_mat.shape[1], 5)) + 0.5, labels=[str(x) for x in x_pos], 
-                    rotation=0, fontsize=fontsize)
-            plt.yticks(ticks=np.arange(prob_mat.shape[0]) + 0.5, labels=toks, rotation=0, fontsize=fontsize)
-            ax.tick_params(axis='both', which='both', length=0)
-            cbar = ax.collections[0].colorbar
-            cbar.ax.set_xlabel(f'p({true_word[1:]})', labelpad=10, fontsize=fontsize)
-            cbar.locator = plt.MaxNLocator(nbins=5)
-            cbar.update_ticks()
-            cbar.ax.tick_params(labelsize=fontsize)
-            plt.tight_layout()
-            plt.savefig(args.output_file / f'heatmap_idx={prompt_idx}_ws={window_size}.png')
-            plt.show()                
+            toks[-1] = toks[-1] + "*"
             
+            np.save(args.output_file / f"idx={prompt_idx}.npy", prob_mat)
+            for heatmap_func, heatmap_name in zip(
+                [create_diverging_heatmap],
+                ["diverging"],
+            ):
+                fig, _ = heatmap_func(
+                    prob_mat=prob_mat,
+                    model_id=args.model_id,
+                    window_size=window_size,
+                    last_tok=last_tok,
+                    base_prob=base_prob,
+                    true_word=true_word,
+                    toks=toks,
+                    fontsize=8
+                )
+
+                # Save the figure
+                output_path = args.output_file / f'idx={prompt_idx}_{heatmap_name}.png'
+                fig.tight_layout()
+                fig.savefig(output_path)
+
+                # Show the plot
+                plt.show()
+
     prompt_indices = args.prompt_indices
     windows = [
         list(range(i, i + window_size)) for i in range(0, n_layers - window_size + 1)
     ]
 
     evaluate(temperature, top_k, top_p, prompt_indices, windows)
-    
 
 
 @pyrallis.wrap()
@@ -258,33 +263,51 @@ def main(args: Args):
     # args.with_slurm = True
 
     if args.with_slurm:
-        # gpu_type = "a100"
-        gpu_type = "titan_xp-studentrun"
+        gpu_type = "a100"
+        # gpu_type = "titan_xp-studentrun"
+        # window_sizes = [5, 9]
+        experiment_name = "heatmap"
+        variation_name = '_v6'
+        args.experiment_name = experiment_name + variation_name
+        window_sizes = [1, 5]
 
         for model_arch, model_size in [
             (MODEL_ARCH.MAMBA1, "130M"),
             (MODEL_ARCH.MAMBA1, "1.4B"),
             (MODEL_ARCH.MAMBA1, "2.8B"),
-            # (MODEL_ARCH.MINIMAL_MAMBA2_new, "130M"),
-            # (MODEL_ARCH.MINIMAL_MAMBA2_new, "1.3B"),
-            # (MODEL_ARCH.MINIMAL_MAMBA2_new, "2.7B"),
+            (MODEL_ARCH.MINIMAL_MAMBA2_new, "130M"),
+            (MODEL_ARCH.MINIMAL_MAMBA2_new, "1.3B"),
+            (MODEL_ARCH.MINIMAL_MAMBA2_new, "2.7B"),
         ]:
             args.model_arch = model_arch
             args.model_size = model_size
             args.dataset_args = DatasetArgs(name=DATASETS.COUNTER_FACT, splits=f"all")
-            for window_size in [5, 9]:
-            # for window_size in [9]:
+            for window_size in window_sizes:
                 args.window_size = window_size
 
-                job_name = f"heatmap/{model_arch}_{model_size}_ws={window_size}_{args.dataset_args.dataset_name}"
+                job_name = f"{experiment_name}/{model_arch}_{model_size}_ws={window_size}_{args.dataset_args.dataset_name}"
                 job = submit_job(
                     main_local,
                     args,
                     log_folder=str(PATHS.SLURM_DIR / job_name / "%j"),
                     job_name=job_name,
                     # timeout_min=1200,
-                    gpu_type="a100" if (model_size == "2.7B" and model_arch == MODEL_ARCH.MINIMAL_MAMBA2_new) else gpu_type,
-                    slurm_gpus_per_node=3 if (model_size in ["2.8B", "2.7B"] and gpu_type == "titan_xp-studentrun") else 1,
+                    gpu_type=(
+                        "a100"
+                        if (
+                            model_size == "2.7B"
+                            and model_arch == MODEL_ARCH.MINIMAL_MAMBA2_new
+                        )
+                        else gpu_type
+                    ),
+                    slurm_gpus_per_node=(
+                        3
+                        if (
+                            model_size in ["2.8B", "2.7B"]
+                            and gpu_type == "titan_xp-studentrun"
+                        )
+                        else 1
+                    ),
                 )
 
                 print(f"{job}: {job_name}")
