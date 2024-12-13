@@ -128,7 +128,7 @@ def main_local(args: Args):
             knockout_target: TokenType,
     ):
         prompt = get_prompt_row(data, prompt_idx)
-        num_to_masks, first_token = get_num_to_masks(
+        _, first_token = get_num_to_masks(
             prompt, tokenizer, window, knockout_src, knockout_target, device
         )
 
