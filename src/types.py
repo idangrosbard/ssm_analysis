@@ -1,12 +1,9 @@
-from re import L
-from typing import Any, Iterable, Literal
-from typing import Dict
-from typing import NamedTuple
-from typing import NewType
-from typing import Optional
-from typing import TypedDict
-
 from dataclasses import dataclass
+from typing import Iterable
+from typing import Literal
+from typing import NewType
+
+import pandas as pd
 
 from src.utils.types_utils import STREnum
 
@@ -39,15 +36,28 @@ TModelID = NewType("TModelID", str)
 TDatasetID = NewType("TDatasetID", str)
 TSplit = SPLIT | Iterable[SPLIT] | Literal['all']
 
+TNum2Mask = NewType("TNum2Mask", dict[int, list[tuple[int, int]]])
+TWindow = NewType("TWindow", list[int])
+TPromptData = NewType("TPromptData", pd.DataFrame)
+
+
+class TokenType(STREnum):
+    first = "first"
+    last = "last"
+    subject = "subject"
+    relation = "relation"
+    context = "context"
+
+
 @dataclass
 class DatasetArgs:
     name: DATASETS
     splits: TSplit = 'all'
-    
+
     def __post_init__(self):
         if self.splits != 'all' and isinstance(self.splits, str):
             self.splits = [self.splits]
-            
+
     @property
     def dataset_name(self) -> str:
         split_name = ""
