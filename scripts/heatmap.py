@@ -1,36 +1,24 @@
-from collections import defaultdict
 from dataclasses import dataclass
-from hmac import new
-import json
 from pathlib import Path
-from typing import Optional, assert_never, Dict, List, Tuple
-from torch import Tensor
-from matplotlib import pyplot as plt
-import numpy as np
-import seaborn as sns
+from typing import Optional
 
-import pandas as pd
+import numpy as np
 import pyrallis
 import torch
 from tqdm import tqdm
-from transformers import (
-    AutoTokenizer,
-)
 
-from scripts.create_slurm_file import run_slurm
-from src.consts import (
-    FILTERATIONS,
-    MODEL_SIZES_PER_ARCH_TO_MODEL_ID,
-    PATHS,
-)
-from src.datasets.download_dataset import load_dataset, load_splitted_counter_fact
-from src.datasets.download_dataset import load_knowns_pd
-from src.logit_utils import get_last_token_logits, logits_to_probs
+from src.consts import FILTERATIONS
+from src.consts import MODEL_SIZES_PER_ARCH_TO_MODEL_ID
+from src.consts import PATHS
+from src.datasets.download_dataset import get_hit_dataset
+from src.logit_utils import decode_tokens
+from src.logit_utils import get_prompt_row
 from src.models.model_interface import get_model_interface
 from src.plots import create_diverging_heatmap
 from src.types import DATASETS
-from src.types import MODEL_ARCH, SPLIT, DatasetArgs, TModelID
-from src.utils.setup_models import get_tokenizer_and_model
+from src.types import DatasetArgs
+from src.types import MODEL_ARCH
+from src.types import TModelID
 from src.utils.slurm import submit_job
 
 
@@ -47,15 +35,8 @@ class Args:
     _batch_size: int = 16  # Adjust based on GPU memory
     output_file: Optional[Path] = None
     with_slurm: bool = False
-    temperature = 1
-    top_k = 0
-    top_p = 1
     window_size = 5
     prompt_indices = [1, 2, 3, 4, 5]
-    knockout_map = {
-        "last": ["last", "first", "subject", "relation"],
-        "subject": ["context", "subject"],
-    }
 
     output_dir: Optional[Path] = None
 
@@ -64,8 +45,8 @@ class Args:
         return (
             1
             if (
-                self.model_arch == MODEL_ARCH.MINIMAL_MAMBA2
-                or self.model_arch == MODEL_ARCH.MINIMAL_MAMBA2_new
+                    self.model_arch == MODEL_ARCH.MINIMAL_MAMBA2
+                    or self.model_arch == MODEL_ARCH.MINIMAL_MAMBA2_new
             )
             else self._batch_size
         )
@@ -77,120 +58,31 @@ class Args:
 
 def main_local(args: Args):
     print(args)
-    original_res, attn_res = [
-        pd.read_parquet(
-            PATHS.OUTPUT_DIR
-            / args.model_id
-            / "data_construction"
-            / f"ds={args.dataset_args.dataset_name}"
-            / f"entire_results_{"attention" if attention else "original"}.parquet"
-        )
-        for attention in [True, False]
-    ]
-
-    mask = (original_res["hit"] == attn_res["hit"]) & (attn_res["hit"] == True)
-    data = attn_res[mask]
-
-    temperature = args.temperature
-    top_k = args.top_k
-    top_p = args.top_p
+    data = get_hit_dataset(model_id=args.model_id, dataset_args=args.dataset_args)
     window_size = args.window_size
 
     if not args.output_file:
         args.output_file = (
-            PATHS.OUTPUT_DIR
-            / args.model_id
-            / args.experiment_name
-            / f"ds={args.dataset_args.dataset_name}"
-            / f"ws={args.window_size}"
+                PATHS.OUTPUT_DIR
+                / args.model_id
+                / args.experiment_name
+                / f"ds={args.dataset_args.dataset_name}"
+                / f"ws={args.window_size}"
         )
 
     args.output_file.mkdir(parents=True, exist_ok=True)
 
-    n_prompts = len(data)
     model_interface = get_model_interface(args.model_arch, args.model_size)
     tokenizer = model_interface.tokenizer
     device = model_interface.device
 
     n_layers = len(model_interface.model.backbone.layers)
 
-    # Taken from https://github.com/google-research/google-research/blob/master/dissecting_factual_predictions/utils.py
-    def decode_tokens(tokenizer, token_array):
-        if hasattr(token_array, "shape") and len(token_array.shape) > 1:
-            return [decode_tokens(tokenizer, row) for row in token_array]
-        return [tokenizer.decode([t]) for t in token_array]
+    def forward_eval(prompt_idx, window):
+        prompt = get_prompt_row(data, prompt_idx)
+        true_id = prompt.true_id(tokenizer, 'cpu')
+        input_ids = prompt.input_ids(tokenizer, device)
 
-    def find_token_range(tokenizer, token_array, substring):
-        """Find the tokens corresponding to the given substring in token_array."""
-        toks = decode_tokens(tokenizer, token_array)
-        whole_string = "".join(toks)
-        char_loc = whole_string.index(substring)
-        loc = 0
-        tok_start, tok_end = None, None
-        for i, t in enumerate(toks):
-            loc += len(t)
-            if tok_start is None and loc > char_loc:
-                tok_start = i
-            if tok_end is None and loc >= char_loc + len(substring):
-                tok_end = i + 1
-                break
-        return (tok_start, tok_end)
-
-    def get_num_to_masks(
-        prompt_idx: int, window: List[int], knockout_src: str, knockout_target: str
-    ) -> Tuple[Dict[int, List[Tuple[int, int]]], bool]:
-        prompt = data.loc[prompt_idx, "prompt"]
-        tokens = tokenizer(prompt, return_tensors="pt", padding=True)
-        input_ids = tokens.input_ids.to(device=device)
-        last_idx = input_ids.shape[1] - 1
-        num_to_masks = {}
-        first_token = False
-
-        last_idx = input_ids.shape[1] - 1
-        tok_start, tok_end = find_token_range(
-            tokenizer, input_ids[0], data.loc[prompt_idx, "subject"]
-        )
-        subject_tokens = list(range(tok_start, tok_end))
-        if 0 in subject_tokens:
-            first_token = True
-        if knockout_src == "first":
-            src_idx = [0]
-        elif knockout_src == "last":
-            src_idx = [last_idx]
-        elif knockout_src == "subject":
-            src_idx = subject_tokens
-        elif knockout_src == "relation":
-            src_idx = [i for i in range(last_idx + 1) if i not in subject_tokens]
-        elif knockout_src == "context":
-            src_idx = [i for i in range(subject_tokens[0])]
-        else:
-            src_idx = [last_idx]
-
-        if knockout_target == "last":
-            target_idx = [last_idx]
-        elif knockout_target == "subject":
-            target_idx = subject_tokens
-        else:
-            target_idx = [last_idx]
-
-        for layer in window:
-            for src in src_idx:
-                for target in target_idx:
-                    if layer not in num_to_masks:
-                        num_to_masks[layer] = []
-                    num_to_masks[layer].append((target, src))
-
-        return num_to_masks, first_token
-
-    def forward_eval(temperature, top_k, top_p, prompt_idx, window):
-        prompt = data.loc[prompt_idx, "prompt"]
-        true_word = data.loc[prompt_idx, "target_true"]
-        base_prob = data.loc[prompt_idx, "true_prob"]
-        true_token = tokenizer(true_word, return_tensors="pt", padding=True)
-        true_id = true_token.input_ids.to(device="cpu")
-        tokens = tokenizer(prompt, return_tensors="pt", padding=True)
-        input_ids = tokens.input_ids.to(device=device)
-        max_new_length = input_ids.shape[1] + 1
         last_idx = input_ids.shape[1] - 1
         probs = np.zeros((input_ids.shape[1]))
 
@@ -206,56 +98,48 @@ def main_local(args: Args):
             torch.cuda.empty_cache()
         return probs
 
-    def evaluate(temperature, top_k, top_p, prompt_indices, windows, print_period=100):
-
-        for prompt_idx in tqdm(prompt_indices, desc="Prompts"):
-            prob_mat = []
-            for window in windows:
-                model_interface.setup(layers=window)
-                prob_mat.append(
-                    forward_eval(temperature, top_k, top_p, prompt_idx, window)
-                )
-
-            prob_mat = np.array(prob_mat).T
-            prompt = data.loc[prompt_idx, "prompt"]
-            true_word = data.loc[prompt_idx, "target_true"]
-            base_prob = data.loc[prompt_idx, "true_prob"]
-            tokens = tokenizer(prompt, return_tensors="pt", padding=True)
-            input_ids = tokens.input_ids.to(device=device)
-            toks = decode_tokens(tokenizer, input_ids[0])
-            last_tok = toks[-1]
-            toks[-1] = toks[-1] + "*"
-            
-            np.save(args.output_file / f"idx={prompt_idx}.npy", prob_mat)
-            for heatmap_func, heatmap_name in zip(
-                [create_diverging_heatmap],
-                ["diverging"],
-            ):
-                fig, _ = heatmap_func(
-                    prob_mat=prob_mat,
-                    model_id=args.model_id,
-                    window_size=window_size,
-                    last_tok=last_tok,
-                    base_prob=base_prob,
-                    true_word=true_word,
-                    toks=toks,
-                    fontsize=8
-                )
-
-                # Save the figure
-                output_path = args.output_file / f'idx={prompt_idx}_{heatmap_name}.png'
-                fig.tight_layout()
-                fig.savefig(output_path)
-
-                # Show the plot
-                plt.show()
-
-    prompt_indices = args.prompt_indices
     windows = [
         list(range(i, i + window_size)) for i in range(0, n_layers - window_size + 1)
     ]
 
-    evaluate(temperature, top_k, top_p, prompt_indices, windows)
+    for prompt_idx in tqdm(args.prompt_indices, desc="Prompts"):
+        prob_mat = []
+        for window in windows:
+            model_interface.setup(layers=window)
+            prob_mat.append(
+                forward_eval(prompt_idx, window)
+            )
+
+        prob_mat = np.array(prob_mat).T
+        prompt = data.loc[prompt_idx, "prompt"]
+        true_word = data.loc[prompt_idx, "target_true"]
+        base_prob = data.loc[prompt_idx, "true_prob"]
+        tokens = tokenizer(prompt, return_tensors="pt", padding=True)
+        input_ids = tokens.input_ids.to(device=device)
+        toks = decode_tokens(tokenizer, input_ids[0])
+        last_tok = toks[-1]
+        toks[-1] = toks[-1] + "*"
+
+        np.save(args.output_file / f"idx={prompt_idx}.npy", prob_mat)
+        for heatmap_func, heatmap_name in zip(
+                [create_diverging_heatmap],
+                ["diverging"],
+        ):
+            fig, _ = heatmap_func(
+                prob_mat=prob_mat,
+                model_id=args.model_id,
+                window_size=window_size,
+                last_tok=last_tok,
+                base_prob=base_prob,
+                true_word=true_word,
+                toks=toks,
+                fontsize=8
+            )
+
+            # Save the figure
+            output_path = args.output_file / f'idx={prompt_idx}_{heatmap_name}.png'
+            fig.tight_layout()
+            fig.savefig(output_path)
 
 
 @pyrallis.wrap()
@@ -296,16 +180,16 @@ def main(args: Args):
                     gpu_type=(
                         "a100"
                         if (
-                            model_size == "2.7B"
-                            and model_arch == MODEL_ARCH.MINIMAL_MAMBA2_new
+                                model_size == "2.7B"
+                                and model_arch == MODEL_ARCH.MINIMAL_MAMBA2_new
                         )
                         else gpu_type
                     ),
                     slurm_gpus_per_node=(
                         3
                         if (
-                            model_size in ["2.8B", "2.7B"]
-                            and gpu_type == "titan_xp-studentrun"
+                                model_size in ["2.8B", "2.7B"]
+                                and gpu_type == "titan_xp-studentrun"
                         )
                         else 1
                     ),

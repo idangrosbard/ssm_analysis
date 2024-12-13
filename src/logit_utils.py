@@ -1,12 +1,11 @@
+from collections import defaultdict
 from dataclasses import dataclass
 from typing import assert_never
 
 import torch
 
-from src.models.model_interface import ModelInterface
 from src.types import TNum2Mask
 from src.types import TPromptData
-from src.types import TWindow
 from src.types import TokenType
 
 
@@ -19,7 +18,7 @@ def logits_to_probs(logits: torch.Tensor) -> torch.Tensor:
 
 
 def get_top_k_outputs_and_probs(
-    logits: torch.Tensor, tokenizer, top_k: int
+        logits: torch.Tensor, tokenizer, top_k: int
 ) -> list[tuple[int, str, float]]:
     next_probs = logits_to_probs(get_last_token_logits(logits))
     top_probs, top_indices = torch.topk(next_probs, top_k)
@@ -38,9 +37,9 @@ def decode_tokens(tokenizer, token_array):
 
 
 def find_token_range(
-    tokenizer,
-    token_array,
-    substring,
+        tokenizer,
+        token_array,
+        substring,
 ) -> tuple[int, int]:
     """Find the tokens corresponding to the given substring in token_array."""
     toks = decode_tokens(tokenizer, token_array)
@@ -90,15 +89,15 @@ class Prompt:
 
 
 def get_num_to_masks(
-    prompt: Prompt,
-    tokenizer,
-    window: list[int],
-    knockout_src: TokenType,
-    knockout_target: TokenType,
-    device,
+        prompt: Prompt,
+        tokenizer,
+        window: list[int],
+        knockout_src: TokenType,
+        knockout_target: TokenType,
+        device,
 ) -> tuple[TNum2Mask, bool]:
     input_ids = prompt.input_ids(tokenizer, device)
-    num_to_masks: TNum2Mask = {}
+    num_to_masks: TNum2Mask = defaultdict(list)
     first_token = False
 
     last_idx = input_ids.shape[1] - 1
@@ -127,33 +126,9 @@ def get_num_to_masks(
     for layer in window:
         for src in src_idx:
             for target in target_idx:
-                if layer not in num_to_masks:
-                    num_to_masks[layer] = []
                 num_to_masks[layer].append((target, src))
 
     return num_to_masks, first_token
-
-
-def get_next_token_probs(
-    # data: pd.DataFrame,
-    model_interface: ModelInterface,
-    prompt: Prompt,
-    window: TWindow,
-    knockout_src: TokenType,
-    knockout_target: TokenType,
-    device,
-) -> torch.Tensor:
-    tokenizer = model_interface.tokenizer
-
-    num_to_masks, _ = get_num_to_masks(
-        prompt, tokenizer, window, knockout_src, knockout_target, device
-    )
-
-    return model_interface.generate_logits(
-        input_ids=prompt.input_ids(tokenizer, device),
-        attention=True,
-        num_to_masks=num_to_masks,
-    )
 
 
 def get_prompt_row(data: TPromptData, prompt_idx: int) -> Prompt:

@@ -15,7 +15,6 @@ from src.consts import FILTERATIONS
 from src.consts import MODEL_SIZES_PER_ARCH_TO_MODEL_ID
 from src.consts import PATHS
 from src.datasets.download_dataset import get_hit_dataset
-from src.logit_utils import get_next_token_probs
 from src.logit_utils import get_num_to_masks
 from src.logit_utils import get_prompt_row
 from src.models.model_interface import get_model_interface
@@ -61,9 +60,6 @@ class Args:
     _batch_size: int = 16  # Adjust based on GPU memory
     output_file: Optional[Path] = None
     with_slurm: bool = False
-    temperature = 1
-    top_k = 0
-    top_p = 1
     window_size = 9
     DEBUG_LAST_WINDOWS: Optional[int] = None
     overwrite: bool = False
@@ -95,9 +91,6 @@ def main_local(args: Args):
     print(args)
     data = get_hit_dataset(model_id=args.model_id, dataset_args=args.dataset_args)
 
-    temperature = args.temperature
-    top_k = args.top_k
-    top_p = args.top_p
     window_size = args.window_size
 
     if not args.output_file:
@@ -119,25 +112,22 @@ def main_local(args: Args):
     n_layers = len(model_interface.model.backbone.layers)
 
     def forward_eval(
-            temperature,
-            top_k,
-            top_p,
             prompt_idx,
             window,
             knockout_src: TokenType,
             knockout_target: TokenType,
     ):
         prompt = get_prompt_row(data, prompt_idx)
-        _, first_token = get_num_to_masks(
+        num_to_masks, first_token = get_num_to_masks(
             prompt, tokenizer, window, knockout_src, knockout_target, device
         )
 
-        next_token_probs = get_next_token_probs(
-            model_interface, prompt, window,
-            knockout_src=knockout_src,
-            knockout_target=knockout_target,
-            device=device
+        next_token_probs = model_interface.generate_logits(
+            input_ids=prompt.input_ids(tokenizer, device),
+            attention=True,
+            num_to_masks=num_to_masks,
         )
+
         max_prob = np.max(next_token_probs, axis=1)[0]
         true_id = prompt.true_id(tokenizer, 'cpu')
         base_prob = prompt.base_prob
@@ -152,9 +142,6 @@ def main_local(args: Args):
         )
 
     def evaluate(
-            temperature,
-            top_k,
-            top_p,
             prompt_indices,
             windows,
             knockout_src: TokenType,
@@ -177,9 +164,6 @@ def main_local(args: Args):
                     tqdm(prompt_indices, desc="Prompts", miniters=print_period)
             ):
                 hit, diff, first, diff_unnorm, true_prob = forward_eval(
-                    temperature,
-                    top_k,
-                    top_p,
                     prompt_idx,
                     window,
                     knockout_src,
@@ -254,9 +238,6 @@ def main_local(args: Args):
                     res[metric] = pd.read_csv(block_outdir / f"{metric}.csv")
             else:
                 res, window_outputs = evaluate(
-                    temperature,
-                    top_k,
-                    top_p,
                     prompt_indices,
                     windows,
                     knockout_src=block,
