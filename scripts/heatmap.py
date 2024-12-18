@@ -14,7 +14,7 @@ from src.datasets.download_dataset import get_hit_dataset
 from src.logit_utils import decode_tokens
 from src.logit_utils import get_prompt_row
 from src.models.model_interface import get_model_interface
-from src.plots import create_diverging_heatmap
+from src.plots import plot_simple_heatmap
 from src.types import DATASETS
 from src.types import DatasetArgs
 from src.types import MODEL_ARCH
@@ -122,7 +122,7 @@ def main_local(args: Args):
 
         np.save(args.output_file / f"idx={prompt_idx}.npy", prob_mat)
         for heatmap_func, heatmap_name in zip(
-                [create_diverging_heatmap],
+                [plot_simple_heatmap],
                 ["diverging"],
         ):
             fig, _ = heatmap_func(
@@ -150,8 +150,8 @@ def main(args: Args):
         gpu_type = "a100"
         # gpu_type = "titan_xp-studentrun"
         # window_sizes = [5, 9]
-        experiment_name = "heatmap"
-        variation_name = '_v6'
+        experiment_name = "heatmap_debug_use_matrix"
+        variation_name = ''
         args.experiment_name = experiment_name + variation_name
         # window_sizes = [1, 5]
         window_sizes = [9]
@@ -159,10 +159,10 @@ def main(args: Args):
         for model_arch, model_size in [
             # (MODEL_ARCH.MAMBA1, "130M"),
             # (MODEL_ARCH.MAMBA1, "1.4B"),
-            # (MODEL_ARCH.MAMBA1, "2.8B"),
+            (MODEL_ARCH.MAMBA1, "2.8B"),
             # (MODEL_ARCH.MINIMAL_MAMBA2_new, "130M"),
             # (MODEL_ARCH.MINIMAL_MAMBA2_new, "1.3B"),
-            (MODEL_ARCH.MINIMAL_MAMBA2_new, "2.7B"),
+            # (MODEL_ARCH.MINIMAL_MAMBA2_new, "2.7B"),
         ]:
             args.model_arch = model_arch
             args.model_size = model_size
@@ -197,6 +197,8 @@ def main(args: Args):
 
                 print(f"{job}: {job_name}")
     else:
+        args.experiment_name = "debug"
+        args.prompt_indices = [1]
         main_local(args)
 
 
