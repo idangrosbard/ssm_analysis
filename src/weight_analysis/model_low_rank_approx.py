@@ -1,7 +1,9 @@
-from transformers import MambaModel
 from typing import Iterable
-from .rank import create_low_rank_approx
+
 from torch import nn
+from transformers import MambaModel
+
+from .rank import create_low_rank_approx
 
 
 def setup_rank(rank: int, model_rank: int) -> int:
@@ -24,12 +26,15 @@ def setup_low_ranks(rank: int | Iterable[int], model_rank: int, n_layers: int) -
 
 
 def get_low_rank_model(model: MambaModel, rank: int | Iterable[int], use_max_vals: bool = True) -> MambaModel:
+    rank = setup_low_ranks(
+        rank,
+        model_rank=model.layers[0].mixer.out_proj.weight.shape[0],
+        n_layers=len(model.layers),
+    )
 
-    rank = setup_low_ranks(rank, model_rank=model.layers[0].mixer.out_proj.weight.shape[0], n_layers=len(model.layers))
-    
     for layer, r in zip(model.layers, rank):
         w = layer.mixer.out_proj.weight.detach()
         w = create_low_rank_approx(w, r, use_max_vals)
         layer.mixer.out_proj.weight = nn.Parameter(w)
-    
+
     return model

@@ -4,9 +4,7 @@ from typing import assert_never
 
 import torch
 
-from src.types import TNum2Mask
-from src.types import TPromptData
-from src.types import TokenType
+from src.types import TNum2Mask, TokenType, TPromptData
 
 
 def get_last_token_logits(logits: torch.Tensor) -> torch.Tensor:
@@ -17,14 +15,11 @@ def logits_to_probs(logits: torch.Tensor) -> torch.Tensor:
     return torch.softmax(logits, dim=-1)
 
 
-def get_top_k_outputs_and_probs(
-        logits: torch.Tensor, tokenizer, top_k: int
-) -> list[tuple[int, str, float]]:
+def get_top_k_outputs_and_probs(logits: torch.Tensor, tokenizer, top_k: int) -> list[tuple[int, str, float]]:
     next_probs = logits_to_probs(get_last_token_logits(logits))
     top_probs, top_indices = torch.topk(next_probs, top_k)
     top_outputs = [
-        (idx.item(), str(tokenizer.decode([idx])), prob.item())
-        for idx, prob in zip(top_indices[0], top_probs[0])
+        (idx.item(), str(tokenizer.decode([idx])), prob.item()) for idx, prob in zip(top_indices[0], top_probs[0])
     ]
     return top_outputs
 
@@ -37,9 +32,9 @@ def decode_tokens(tokenizer, token_array):
 
 
 def find_token_range(
-        tokenizer,
-        token_array,
-        substring,
+    tokenizer,
+    token_array,
+    substring,
 ) -> tuple[int, int]:
     """Find the tokens corresponding to the given substring in token_array."""
     toks = decode_tokens(tokenizer, token_array)
@@ -78,23 +73,19 @@ class Prompt:
         return self.prompt_row["true_prob"]
 
     def true_id(self, tokenizer, device) -> torch.Tensor:
-        return tokenizer(
-            self.true_word, return_tensors="pt", padding=True
-        ).input_ids.to(device="cpu")
+        return tokenizer(self.true_word, return_tensors="pt", padding=True).input_ids.to(device="cpu")
 
     def input_ids(self, tokenizer, device) -> torch.Tensor:
-        return tokenizer(self.prompt, return_tensors="pt", padding=True).input_ids.to(
-            device=device
-        )
+        return tokenizer(self.prompt, return_tensors="pt", padding=True).input_ids.to(device=device)
 
 
 def get_num_to_masks(
-        prompt: Prompt,
-        tokenizer,
-        window: list[int],
-        knockout_src: TokenType,
-        knockout_target: TokenType,
-        device,
+    prompt: Prompt,
+    tokenizer,
+    window: list[int],
+    knockout_src: TokenType,
+    knockout_target: TokenType,
+    device,
 ) -> tuple[TNum2Mask, bool]:
     input_ids = prompt.input_ids(tokenizer, device)
     num_to_masks: TNum2Mask = defaultdict(list)

@@ -1,37 +1,21 @@
-import json
 from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
-from tkinter import font
 from typing import Optional
 
-import numpy as np
 import pandas as pd
 import pyrallis
 import torch
 from matplotlib import pyplot as plt
-from tqdm import tqdm
 
-from src.consts import FILTERATIONS
-from src.consts import MODEL_SIZES_PER_ARCH_TO_MODEL_ID
-from src.consts import PATHS
-from src.datasets.download_dataset import get_hit_dataset
-from src.logit_utils import get_num_to_masks
-from src.logit_utils import get_prompt_row
-from src.models.model_interface import get_model_interface
-from src.types import DATASETS
-from src.types import DatasetArgs
-from src.types import MODEL_ARCH
-from src.types import TModelID
-from src.types import TokenType
+from src.consts import FILTERATIONS, MODEL_SIZES_PER_ARCH_TO_MODEL_ID, PATHS
+from src.types import DATASETS, MODEL_ARCH, DatasetArgs, TModelID, TokenType
 from src.utils.slurm import submit_job
 
 
 def get_top_outputs(probs, tokenizer, top_k):
     # Get the top 5 outputs and their probs
-    top_probs, top_indices = map(
-        torch.Tensor.tolist, torch.topk(torch.Tensor(probs), top_k)
-    )
+    top_probs, top_indices = map(torch.Tensor.tolist, torch.topk(torch.Tensor(probs), top_k))
     top_tokens = list(map(tokenizer.batch_decode, top_indices))
     return list(
         map(
@@ -89,10 +73,7 @@ class Args:
     def batch_size(self) -> int:
         return (
             1
-            if (
-                self.model_arch == MODEL_ARCH.MINIMAL_MAMBA2
-                or self.model_arch == MODEL_ARCH.MINIMAL_MAMBA2_new
-            )
+            if (self.model_arch == MODEL_ARCH.MINIMAL_MAMBA2 or self.model_arch == MODEL_ARCH.MINIMAL_MAMBA2_new)
             else self._batch_size
         )
 
@@ -140,12 +121,12 @@ def main_local(args: Args):
 
             res = {}
             if (block_outdir / f"{metrics[0]}.csv").exists():
-                print(f"Reading from existing file")
+                print("Reading from existing file")
                 for metric in metrics:
                     res[metric] = pd.read_csv(block_outdir / f"{metric}.csv")
 
             if (block_outdir / f"{metrics[0]}.parquet").exists():
-                print(f"Reading from existing file")
+                print("Reading from existing file")
                 for metric in metrics:
                     res[metric] = pd.read_parquet(block_outdir / f"{metric}.parquet")
                     (block_outdir / f"{metric}.parquet").unlink()
@@ -184,7 +165,7 @@ def main_local(args: Args):
                 "data_modifier": lambda x: x * 100,
             },
             "diff": {
-                "title": f"Normalized change in prediction probability",
+                "title": "Normalized change in prediction probability",
                 "ylabel": "% probability change",
                 "ylabel_loc": "top",
                 "axhline_value": 0,
@@ -192,7 +173,7 @@ def main_local(args: Args):
                 "data_modifier": lambda x: x,
             },
             "diff_unnorm": {
-                "title": f"Change in prediction probability",
+                "title": "Change in prediction probability",
                 "ylabel": "Change",
                 "ylabel_loc": "center",
                 "axhline_value": 0,
@@ -228,18 +209,17 @@ def main_local(args: Args):
             )
             ax.axhline(plot_metadata["axhline_value"], color="gray", linewidth=1)
             ax.set_ylabel(plot_metadata["ylabel"], fontsize=12, loc=plot_metadata["ylabel_loc"])
-            ax.tick_params(axis='both', which='major', labelsize=12)
+            ax.tick_params(axis="both", which="major", labelsize=12)
             fig.subplots_adjust(top=0.4)
 
             if args.for_multi_plot:
                 plt.suptitle(
                     # f"Knocking out flow to {key}"
                     # "\n"
-                    f"{args.model_arch} - size {args.model_size}, window size={window_size}"
+                    f"{args.model_arch} - size {args.model_size}, window size={window_size}",
                     # "\n"
                     # f"{plot_metadata['title']}"
                     # "\n"
-                    ,
                     fontsize=12,
                 )
             else:
@@ -248,13 +228,12 @@ def main_local(args: Args):
                     "\n"
                     f"{args.model_arch} - size {args.model_size}, window size={window_size}"
                     "\n"
-                    f"{plot_metadata["title"]}"
+                    f"{plot_metadata["title"]}",
                     # "\n"
-                    ,
                     fontsize=12,
                 )
 
-            results_dir_name = "results_for_multi_plot" if args.for_multi_plot else 'results'
+            results_dir_name = "results_for_multi_plot" if args.for_multi_plot else "results"
             key_results_path = args.output_file / results_dir_name / f"knockout_target={key}"
             key_results_path.mkdir(parents=True, exist_ok=True)
             plt.tight_layout()
@@ -268,7 +247,7 @@ def main(args: Args):
     if args.with_slurm:
         # gpu_type = "a100"
         gpu_type = "titan_xp-studentrun"
-        args.experiment_name += f"_v6"
+        args.experiment_name += "_v6"
         window_sizes = [9, 15]
 
         for model_arch, model_size in [
@@ -281,7 +260,7 @@ def main(args: Args):
         ]:
             args.model_arch = model_arch
             args.model_size = model_size
-            args.dataset_args = DatasetArgs(name=DATASETS.COUNTER_FACT, splits=f"all")
+            args.dataset_args = DatasetArgs(name=DATASETS.COUNTER_FACT, splits="all")
             # for window_size in [9, 15]:
             for window_size in window_sizes:
                 args.window_size = window_size
@@ -299,7 +278,7 @@ def main(args: Args):
 
                 print(f"{job}: {job_name}")
     else:
-        args.experiment_name += f"_v6"
+        args.experiment_name += "_v6"
         main_local(args)
 
 

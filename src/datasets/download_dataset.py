@@ -4,31 +4,21 @@ from typing import Optional
 
 import pandas as pd
 import wget
-from datasets import Dataset
-from datasets import concatenate_datasets
+from datasets import Dataset, concatenate_datasets, load_from_disk
 from datasets import load_dataset as huggingface_load_dataset
-from datasets import load_from_disk
 
 from scripts.counterfact.splitting import split_dataset
-from src.consts import COLUMNS
-from src.consts import DATASETS_IDS
-from src.consts import FILTERATIONS
-from src.consts import PATHS
-from src.types import DATASETS
-from src.types import DatasetArgs
-from src.types import SPLIT
-from src.types import TPromptData
-from src.types import TSplit
+from src.consts import COLUMNS, DATASETS_IDS, FILTERATIONS, PATHS
+from src.types import DATASETS, SPLIT, DatasetArgs, TPromptData, TSplit
 
 
 def load_knowns() -> Dataset:
     if not PATHS.RAW_KNOWN_1000_DIR.exists():
         with tempfile.TemporaryDirectory() as tmpdirname:
-            wget.download(
-                "https://rome.baulab.info/data/dsets/known_1000.json", out=tmpdirname
-            )
+            wget.download("https://rome.baulab.info/data/dsets/known_1000.json", out=tmpdirname)
             knowns_df = (
-                pd.read_json(Path(tmpdirname) / "known_1000.json").set_index("known_id")
+                pd.read_json(Path(tmpdirname) / "known_1000.json")
+                .set_index("known_id")
                 # add space before values in the 'attribute' col to match counterfact
                 .assign(**{"attribute": lambda x: " " + x["attribute"]})
             )
@@ -40,9 +30,9 @@ def load_knowns() -> Dataset:
 
 
 def load_splitted_knowns(
-        split: TSplit = (SPLIT.TRAIN1,),
-        add_split_name_column: bool = False,
-        filteration: Optional[FILTERATIONS] = None,
+    split: TSplit = (SPLIT.TRAIN1,),
+    add_split_name_column: bool = False,
+    filteration: Optional[FILTERATIONS] = None,
 ) -> Dataset:
     splitted_path = PATHS.PROCESSED_KNOWN_DIR / "splitted"
 
@@ -84,10 +74,10 @@ def load_knowns_pd() -> pd.DataFrame:
 
 
 def load_splitted_counter_fact(
-        split: TSplit = (SPLIT.TRAIN1,),
-        add_split_name_column: bool = False,
-        filteration: Optional[FILTERATIONS] = None,
-        align_to_known: bool = True,
+    split: TSplit = (SPLIT.TRAIN1,),
+    add_split_name_column: bool = False,
+    filteration: Optional[FILTERATIONS] = None,
+    align_to_known: bool = True,
 ) -> Dataset:
     splitted_path = PATHS.COUNTER_FACT_DIR / "splitted"
 
@@ -123,13 +113,12 @@ def load_splitted_counter_fact(
         # rename 'target_true' -> 'attribute',
         dataset = dataset.rename_column("target_true", "attribute")
         # remove: 'target_false', 'target_false_id', 'target_true_id'
-        dataset = dataset.remove_columns(
-            ["target_false", "target_false_id", "target_true_id"]
-        )
+        dataset = dataset.remove_columns(["target_false", "target_false_id", "target_true_id"])
 
     if filteration is not None:
         original_idx = pd.read_csv(PATHS.COUNTER_FACT_FILTERATIONS_DIR / f"{filteration}.csv")[
-            COLUMNS.ORIGINAL_IDX].to_list()
+            COLUMNS.ORIGINAL_IDX
+        ].to_list()
         dataset = dataset.filter(lambda x: x[COLUMNS.ORIGINAL_IDX] in original_idx)
 
     return dataset

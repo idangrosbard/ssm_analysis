@@ -1,10 +1,8 @@
 from typing import Optional
-from torch import nn
+
 import torch
-from typing import Iterable
+from torch import nn
 from transformers.cache_utils import MambaCache
-
-
 
 
 # fmt: off

@@ -1,7 +1,8 @@
 import os
 from pathlib import Path
-from typing import NamedTuple, assert_never
-from src.types import DATASETS, MODEL_ARCH, MODEL_SIZE_CAT, TModelID, TDatasetID
+from typing import NamedTuple
+
+from src.types import DATASETS, MODEL_ARCH, MODEL_SIZE_CAT, TDatasetID, TModelID
 
 
 class PATHS:
@@ -116,14 +117,9 @@ def get_model_by_cat_size(cat_size: MODEL_SIZE_CAT) -> list[tuple[MODEL_ARCH, st
 def reverse_model_id(model_id: str) -> tuple[MODEL_ARCH, str]:
     for arch, model_size in GRAPHS_ORDER:
         for model_id_prefix in ["", "state-spaces/"]:
-            if (
-                MODEL_SIZES_PER_ARCH_TO_MODEL_ID[arch][model_size]
-                == f"{model_id_prefix}{model_id}"
-            ):
+            if MODEL_SIZES_PER_ARCH_TO_MODEL_ID[arch][model_size] == f"{model_id_prefix}{model_id}":
                 return arch, model_size
-    raise ValueError(
-        f"Model id {model_id} not found in MODEL_SIZES_PER_ARCH_TO_MODEL_ID"
-    )
+    raise ValueError(f"Model id {model_id} not found in MODEL_SIZES_PER_ARCH_TO_MODEL_ID")
 
 
 class FILTERATIONS:
@@ -131,9 +127,7 @@ class FILTERATIONS:
     all_any_correct = "all_any_correct"
 
 
-DATASETS_IDS: dict[DATASETS, TDatasetID] = {
-    DATASETS.COUNTER_FACT: TDatasetID("NeelNanda/counterfact-tracing")
-}  # type: ignore
+DATASETS_IDS: dict[DATASETS, TDatasetID] = {DATASETS.COUNTER_FACT: TDatasetID("NeelNanda/counterfact-tracing")}  # type: ignore
 
 
 class COLUMNS:

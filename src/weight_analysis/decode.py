@@ -1,13 +1,20 @@
-from transformers import AutoTokenizer
 from typing import Optional
+
 import pandas as pd
 import torch
+from transformers import AutoTokenizer
 
 
-def decode(embeddings: torch.Tensor, E: torch.Tensor, k: int, tokenizer: AutoTokenizer, tokens: Optional[torch.Tensor] = None) -> pd.DataFrame:
-    output_df = {'t': [], 'decoded': [], 'score': [], 'rank': []}
+def decode(
+    embeddings: torch.Tensor,
+    E: torch.Tensor,
+    k: int,
+    tokenizer: AutoTokenizer,
+    tokens: Optional[torch.Tensor] = None,
+) -> pd.DataFrame:
+    output_df = {"t": [], "decoded": [], "score": [], "rank": []}
     if tokens is not None:
-        output_df['token'] = []
+        output_df["token"] = []
         if len(tokens.shape) == 2:
             tokens = tokens.unsqueeze(dim=0)
     if len(embeddings.shape) == 3:
@@ -29,11 +36,11 @@ def decode(embeddings: torch.Tensor, E: torch.Tensor, k: int, tokenizer: AutoTok
             score = topk_values[t, i].item()
 
             if tokens is not None:
-                output_df['token'].append(token)
+                output_df["token"].append(token)
 
-            output_df['t'].append(t)
-            output_df['decoded'].append(decoded)
-            output_df['score'].append(score)
-            output_df['rank'].append(i + 1)
+            output_df["t"].append(t)
+            output_df["decoded"].append(decoded)
+            output_df["score"].append(score)
+            output_df["rank"].append(i + 1)
 
     return pd.DataFrame(output_df)

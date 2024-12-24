@@ -8,29 +8,19 @@ import numpy as np
 import pandas as pd
 import pyrallis
 import torch
-from matplotlib import pyplot as plt
 from tqdm import tqdm
 
-from src.consts import FILTERATIONS
-from src.consts import MODEL_SIZES_PER_ARCH_TO_MODEL_ID
-from src.consts import PATHS
+from src.consts import FILTERATIONS, MODEL_SIZES_PER_ARCH_TO_MODEL_ID, PATHS
 from src.datasets.download_dataset import get_hit_dataset
-from src.logit_utils import get_num_to_masks
-from src.logit_utils import get_prompt_row
+from src.logit_utils import get_num_to_masks, get_prompt_row
 from src.models.model_interface import get_model_interface
-from src.types import DATASETS
-from src.types import DatasetArgs
-from src.types import MODEL_ARCH
-from src.types import TModelID
-from src.types import TokenType
+from src.types import DATASETS, MODEL_ARCH, DatasetArgs, TModelID, TokenType
 from src.utils.slurm import submit_job
 
 
 def get_top_outputs(probs, tokenizer, top_k):
     # Get the top 5 outputs and their probs
-    top_probs, top_indices = map(
-        torch.Tensor.tolist, torch.topk(torch.Tensor(probs), top_k)
-    )
+    top_probs, top_indices = map(torch.Tensor.tolist, torch.topk(torch.Tensor(probs), top_k))
     top_tokens = list(map(tokenizer.batch_decode, top_indices))
     return list(
         map(
@@ -87,25 +77,18 @@ class Args:
     def batch_size(self) -> int:
         return (
             1
-            if (
-                self.model_arch == MODEL_ARCH.MINIMAL_MAMBA2
-                or self.model_arch == MODEL_ARCH.MINIMAL_MAMBA2_new
-            )
+            if (self.model_arch == MODEL_ARCH.MINIMAL_MAMBA2 or self.model_arch == MODEL_ARCH.MINIMAL_MAMBA2_new)
             else self._batch_size
         )
 
     @property
     def model_id(self) -> TModelID:
-        return MODEL_SIZES_PER_ARCH_TO_MODEL_ID[self.model_arch][
-            self.model_size
-        ]
+        return MODEL_SIZES_PER_ARCH_TO_MODEL_ID[self.model_arch][self.model_size]
 
 
 def main_local(args: Args):
     print(args)
-    data = get_hit_dataset(
-        model_id=args.model_id, dataset_args=args.dataset_args
-    )
+    data = get_hit_dataset(model_id=args.model_id, dataset_args=args.dataset_args)
 
     window_size = args.window_size
 
@@ -134,9 +117,7 @@ def main_local(args: Args):
         knockout_target: TokenType,
     ):
         prompt = get_prompt_row(data, prompt_idx)
-        num_to_masks, first_token = get_num_to_masks(
-            prompt, tokenizer, window, knockout_src, knockout_target, device
-        )
+        num_to_masks, first_token = get_num_to_masks(prompt, tokenizer, window, knockout_src, knockout_target, device)
 
         next_token_probs = model_interface.generate_logits(
             input_ids=prompt.input_ids(tokenizer, device),
@@ -145,7 +126,7 @@ def main_local(args: Args):
         )
 
         max_prob = np.max(next_token_probs, axis=1)[0]
-        true_id = prompt.true_id(tokenizer, 'cpu')
+        true_id = prompt.true_id(tokenizer, "cpu")
         base_prob = prompt.base_prob
         true_prob = next_token_probs[0, true_id[:, 0]]
         torch.cuda.empty_cache()
@@ -175,9 +156,7 @@ def main_local(args: Args):
         for i, window in enumerate(tqdm(windows, desc="Windows")):
             windows_true_probs[i] = defaultdict(list)
             model_interface.setup(layers=window)
-            for _, prompt_idx in enumerate(
-                tqdm(prompt_indices, desc="Prompts", miniters=print_period)
-            ):
+            for _, prompt_idx in enumerate(tqdm(prompt_indices, desc="Prompts", miniters=print_period)):
                 hit, diff, first, diff_unnorm, true_prob = forward_eval(
                     prompt_idx,
                     window,
@@ -201,15 +180,15 @@ def main_local(args: Args):
         diffs = diffs_w_first + diffs_wo_first
         diffs_unnorm = diffs_unnorm_w_first + diffs_unnorm_wo_first
         return {
-            f"acc": counts / n_prompts,
-            f"diff": diffs / n_prompts,
-            f"diff_unnorm": diffs_unnorm / n_prompts,
-            f"wf_acc": counts_w_first / w_first,
-            f"wf_diff": diffs_w_first / w_first,
-            f"wf_diff_unnorm": diffs_unnorm_w_first / w_first,
-            f"wof_acc": counts_wo_first / (n_prompts - w_first),
-            f"wof_diff": diffs_wo_first / (n_prompts - w_first),
-            f"wof_diff_unnorm": diffs_unnorm_wo_first / (n_prompts - w_first),
+            "acc": counts / n_prompts,
+            "diff": diffs / n_prompts,
+            "diff_unnorm": diffs_unnorm / n_prompts,
+            "wf_acc": counts_w_first / w_first,
+            "wf_diff": diffs_w_first / w_first,
+            "wf_diff_unnorm": diffs_unnorm_w_first / w_first,
+            "wof_acc": counts_wo_first / (n_prompts - w_first),
+            "wof_diff": diffs_wo_first / (n_prompts - w_first),
+            "wof_diff_unnorm": diffs_unnorm_wo_first / (n_prompts - w_first),
         }, windows_true_probs
 
     # prompt_indices = list(data.index)
@@ -222,10 +201,7 @@ def main_local(args: Args):
     # print(no_block_diff)
 
     prompt_indices = list(data.index)
-    windows = [
-        list(range(i, i + window_size))
-        for i in range(0, n_layers - window_size + 1)
-    ]
+    windows = [list(range(i, i + window_size)) for i in range(0, n_layers - window_size + 1)]
 
     if args.DEBUG_LAST_WINDOWS:
         windows = windows[-args.DEBUG_LAST_WINDOWS :]
@@ -240,12 +216,9 @@ def main_local(args: Args):
 
             output_file = block_outdir / "metrics.csv"
             if output_file.exists() and not args.overwrite:
-                print(f"Reading from existing file")
+                print("Reading from existing file")
                 metrics_df = pd.read_csv(output_file)
-                res = {
-                    metric: metrics_df[metric].values
-                    for metric in metrics_df.columns
-                }
+                res = {metric: metrics_df[metric].values for metric in metrics_df.columns}
             else:
                 res, window_outputs = evaluate(
                     prompt_indices,
@@ -255,20 +228,12 @@ def main_local(args: Args):
                 )
                 if args.DEBUG_LAST_WINDOWS:
                     window_outputs = {
-                        k
-                        + (
-                            n_layers - window_size + 1 - args.DEBUG_LAST_WINDOWS
-                        ): v
-                        for k, v in window_outputs.items()
+                        k + (n_layers - window_size + 1 - args.DEBUG_LAST_WINDOWS): v for k, v in window_outputs.items()
                     }
-                json.dump(
-                    window_outputs, (block_outdir / "outputs.json").open("w")
-                )
+                json.dump(window_outputs, (block_outdir / "outputs.json").open("w"))
 
                 # Combine all metrics into a single DataFrame and save
-                metrics_df = pd.DataFrame(
-                    {metric: value for metric, value in res.items()}
-                )
+                metrics_df = pd.DataFrame({metric: value for metric, value in res.items()})
                 metrics_df.to_csv(output_file, index=False)
 
             combined_results[key][block] = res
@@ -281,7 +246,7 @@ def main(args: Args):
         gpu_type = "a100"
         # gpu_type = "titan_xp-studentrun"
 
-        args.experiment_name += f"_v7"
+        args.experiment_name += "_v7"
         # window_sizes =[3,5,7]
         window_sizes = [9, 15]
 
@@ -302,9 +267,7 @@ def main(args: Args):
         ]:
             args.model_arch = model_arch
             args.model_size = model_size
-            args.dataset_args = DatasetArgs(
-                name=DATASETS.COUNTER_FACT, splits=f"all"
-            )
+            args.dataset_args = DatasetArgs(name=DATASETS.COUNTER_FACT, splits="all")
             for window_size in window_sizes:
                 args.window_size = window_size
 
@@ -321,7 +284,7 @@ def main(args: Args):
 
                 print(f"{job}: {job_name}")
     else:
-        args.experiment_name += f"_debug"
+        args.experiment_name += "_debug"
         args.overwrite = True
         args.knockout_map = {"last": ["last", "subject", "relation"]}
         args.DEBUG_LAST_WINDOWS = 1

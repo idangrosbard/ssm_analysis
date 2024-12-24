@@ -1,9 +1,14 @@
-from .ssm_metric import SSMMetric
-from ..matrix.matrix_metric import MatrixMetric
-import numpy as np
 from typing import Dict
+
+import numpy as np
 from torch import Tensor
-from .materialize import materialize_ssm_attention, materialize_ssm_transition, materialize_ssm_bc
+
+from ..matrix.matrix_metric import MatrixMetric
+from .materialize import (
+    materialize_ssm_attention,
+    materialize_ssm_bc,
+)
+from .ssm_metric import SSMMetric
 
 
 class AllSSMMatricesMetrics(SSMMetric):
@@ -21,5 +26,9 @@ class AllSSMMatricesMetrics(SSMMetric):
         attn_metric = self.matrix_metric.calc(mat=attn)
         transition_metric = self.matrix_metric.calc(mat=transition)
         bc_metric = self.matrix_metric.calc(mat=bc)
-        return {'attn': attn_metric, 'transition': transition_metric, 'bc': bc_metric, 'T': T}
-    
+        return {
+            "attn": attn_metric,
+            "transition": transition_metric,
+            "bc": bc_metric,
+            "T": T,
+        }

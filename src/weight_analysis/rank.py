@@ -1,5 +1,6 @@
-import torch
 import pandas as pd
+import torch
+
 
 def get_singular_values(w: torch.Tensor) -> torch.Tensor:
     u, s, v = torch.svd(w)
@@ -20,7 +21,12 @@ def low_rank_approx_error_df(s: torch.Tensor) -> pd.DataFrame:
     cumsum = reversed.cumsum(dim=0)
     spectral_error = cumsum.flip(dims=[0])
 
-    return pd.DataFrame({'rank': (torch.arange(d) + 1).numpy(), 'spectral_error': spectral_error.numpy()})
+    return pd.DataFrame(
+        {
+            "rank": (torch.arange(d) + 1).numpy(),
+            "spectral_error": spectral_error.numpy(),
+        }
+    )
 
 
 def create_low_rank_approx(w: torch.Tensor, k: int, use_max_vals: bool = True) -> torch.Tensor:

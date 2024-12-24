@@ -1,7 +1,5 @@
 from dataclasses import dataclass
-from typing import Iterable
-from typing import Literal
-from typing import NewType
+from typing import Iterable, Literal, NewType
 
 import pandas as pd
 
@@ -31,11 +29,7 @@ class MODEL_ARCH(STREnum):
         match self:
             case MODEL_ARCH.MAMBA1 | MODEL_ARCH.MINIMAL_MAMBA1:
                 return "Mamba1"
-            case (
-                MODEL_ARCH.MAMBA2
-                | MODEL_ARCH.MINIMAL_MAMBA2
-                | MODEL_ARCH.MINIMAL_MAMBA2_new
-            ):
+            case MODEL_ARCH.MAMBA2 | MODEL_ARCH.MINIMAL_MAMBA2 | MODEL_ARCH.MINIMAL_MAMBA2_new:
                 return "Mamba2"
         return self.value
 

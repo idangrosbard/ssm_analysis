@@ -1,27 +1,52 @@
-import sys
 import os
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from transformers import AutoTokenizer, MambaModel
-from src.readout import SSMListenerHook, summarized_hooks2df, values_hooks2df
-from src.metrics import SSMOperatorVariances, SSMOperatorEntropy, AllSSMMatricesMetrics, SSMOperatorValueMap
-import torch
-import plotly.express as px
-import pandas as pd
+import sys
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from argparse import ArgumentParser
+
+import pandas as pd
+import plotly.express as px
+import torch
+from transformers import AutoTokenizer, MambaModel
+
+from src.metrics import (
+    AllSSMMatricesMetrics,
+    SSMOperatorEntropy,
+    SSMOperatorValueMap,
+    SSMOperatorVariances,
+)
+from src.readout import SSMListenerHook, summarized_hooks2df, values_hooks2df
 
 
 def get_args():
     parser = ArgumentParser()
-    parser.add_argument("--metric", type=str, choices={'entropy', 'values'}, default="entropy")
+    parser.add_argument("--metric", type=str, choices={"entropy", "values"}, default="entropy")
     return parser.parse_args()
 
 
 def _plot_summarized(df: pd.DataFrame):
-    return px.line(data_frame=df, x='layer', y='entropy', color='matrix_type', title='Entropy per layer')
+    return px.line(
+        data_frame=df,
+        x="layer",
+        y="entropy",
+        color="matrix_type",
+        title="Entropy per layer",
+    )
+
 
 def _plot_values(df: pd.DataFrame):
-    for mat_type in df['matrix_type'].unique():
-        yield (mat_type, px.scatter_3d(data_frame=df[df['matrix_type'] == mat_type], x='T_1', y='T_2', z='value', color='DN', title='matrix_value'))
+    for mat_type in df["matrix_type"].unique():
+        yield (
+            mat_type,
+            px.scatter_3d(
+                data_frame=df[df["matrix_type"] == mat_type],
+                x="T_1",
+                y="T_2",
+                z="value",
+                color="DN",
+                title="matrix_value",
+            ),
+        )
 
 
 def main():
@@ -44,7 +69,7 @@ def main():
 
             counter = SSMListenerHook(input, i, AllSSMMatricesMetrics(metric))
             hooks.append(counter)
-            
+
             handle = moi.register_forward_hook(counter.hook)
 
             input_ids = tokenizer(input, return_tensors="pt")["input_ids"]
@@ -57,12 +82,11 @@ def main():
                 for mat_type, fig in plots:
                     fig.write_html(f"ssm_values_layer_{i}_mat_{mat_type}.html")
                 hooks = []
-        
 
         else:
             df = summarized_hooks2df(hooks)
             _plot_summarized(df).write_html("ssm_entropies.html")
 
-    
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()

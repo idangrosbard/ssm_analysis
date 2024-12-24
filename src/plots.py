@@ -1,22 +1,12 @@
 import matplotlib.pyplot as plt
-from matplotlib.text import Text
-import seaborn as sns
 import numpy as np
-from matplotlib.colors import SymLogNorm, TwoSlopeNorm
-import numpy as np
-import matplotlib.pyplot as plt
 import seaborn as sns
-from matplotlib.colors import TwoSlopeNorm
-import matplotlib.colors
-from matplotlib.colors import Normalize
-from torch import mode
+from matplotlib.colors import Normalize, SymLogNorm, TwoSlopeNorm
 
 from src.consts import reverse_model_id
 
 
-def plot_simple_heatmap(
-    prob_mat, model_id, window_size, last_tok, base_prob, true_word, toks, fontsize=8
-):
+def plot_simple_heatmap(prob_mat, model_id, window_size, last_tok, base_prob, true_word, toks, fontsize=8):
     """
     Creates a diverging heatmap with a specified baseline value and returns the plot object.
 
@@ -131,19 +121,10 @@ def simple_diff_fixed(
             + (
                 ""
                 if minimal_title
-                else (
-                    f" - Window Size: {window_size}"
-                    "\n"
-                    "Knockout to last token '"
-                    r"$\bf{"
-                    f"{last_tok}"
-                    r"}$"
-                    "'"
-                )
+                else (f" - Window Size: {window_size}" "\n" "Knockout to last token '" r"$\bf{" f"{last_tok}" r"}$" "'")
             )
-        )
+        ),
         # f"'base probability: {round(base_prob, 4)}"
-        ,
         position=(0.45, 0.95),
         fontsize=12,
     )
@@ -219,7 +200,11 @@ def plot_percentile_normalized_heatmap(
     # Plot the heatmap
     fig, ax = plt.subplots(figsize=(4, 3))
     sns.heatmap(
-        prob_mat, cbar=True, cmap="RdYlGn", norm=norm, ax=ax  # Diverging colormap
+        prob_mat,
+        cbar=True,
+        cmap="RdYlGn",
+        norm=norm,
+        ax=ax,  # Diverging colormap
     )
 
     # Add title and labels
@@ -407,9 +392,7 @@ def plot_heatmap_robust_diff(
 
     # Customize colorbar
     cbar = ax.collections[0].colorbar
-    cbar.ax.set_xlabel(
-        f"p({true_word[1:]}) - base_prob", labelpad=15, fontsize=fontsize
-    )
+    cbar.ax.set_xlabel(f"p({true_word[1:]}) - base_prob", labelpad=15, fontsize=fontsize)
     cbar.ax.tick_params(labelsize=fontsize)
 
     plt.tight_layout()
@@ -492,9 +475,7 @@ def plot_heatmap_diff_symlog(
 
     # Customize colorbar
     cbar = ax.collections[0].colorbar
-    cbar.ax.set_xlabel(
-        f"p({true_word[1:]}) - base_prob", labelpad=15, fontsize=fontsize
-    )
+    cbar.ax.set_xlabel(f"p({true_word[1:]}) - base_prob", labelpad=15, fontsize=fontsize)
     cbar.ax.tick_params(labelsize=fontsize)
 
     plt.tight_layout()
@@ -577,9 +558,7 @@ def plot_heatmap(
 
     # Customize colorbar
     cbar = ax.collections[0].colorbar
-    cbar.ax.set_xlabel(
-        f"p({true_word[1:]}) - base_prob", labelpad=15, fontsize=fontsize
-    )
+    cbar.ax.set_xlabel(f"p({true_word[1:]}) - base_prob", labelpad=15, fontsize=fontsize)
     cbar.ax.tick_params(labelsize=fontsize)
 
     plt.tight_layout()

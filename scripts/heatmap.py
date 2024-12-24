@@ -7,18 +7,12 @@ import pyrallis
 import torch
 from tqdm import tqdm
 
-from src.consts import FILTERATIONS
-from src.consts import MODEL_SIZES_PER_ARCH_TO_MODEL_ID
-from src.consts import PATHS
+from src.consts import FILTERATIONS, MODEL_SIZES_PER_ARCH_TO_MODEL_ID, PATHS
 from src.datasets.download_dataset import get_hit_dataset
-from src.logit_utils import decode_tokens
-from src.logit_utils import get_prompt_row
+from src.logit_utils import decode_tokens, get_prompt_row
 from src.models.model_interface import get_model_interface
 from src.plots import plot_simple_heatmap
-from src.types import DATASETS
-from src.types import DatasetArgs
-from src.types import MODEL_ARCH
-from src.types import TModelID
+from src.types import DATASETS, MODEL_ARCH, DatasetArgs, TModelID
 from src.utils.slurm import submit_job
 
 
@@ -44,10 +38,7 @@ class Args:
     def batch_size(self) -> int:
         return (
             1
-            if (
-                    self.model_arch == MODEL_ARCH.MINIMAL_MAMBA2
-                    or self.model_arch == MODEL_ARCH.MINIMAL_MAMBA2_new
-            )
+            if (self.model_arch == MODEL_ARCH.MINIMAL_MAMBA2 or self.model_arch == MODEL_ARCH.MINIMAL_MAMBA2_new)
             else self._batch_size
         )
 
@@ -63,11 +54,11 @@ def main_local(args: Args):
 
     if not args.output_file:
         args.output_file = (
-                PATHS.OUTPUT_DIR
-                / args.model_id
-                / args.experiment_name
-                / f"ds={args.dataset_args.dataset_name}"
-                / f"ws={args.window_size}"
+            PATHS.OUTPUT_DIR
+            / args.model_id
+            / args.experiment_name
+            / f"ds={args.dataset_args.dataset_name}"
+            / f"ws={args.window_size}"
         )
 
     args.output_file.mkdir(parents=True, exist_ok=True)
@@ -80,7 +71,7 @@ def main_local(args: Args):
 
     def forward_eval(prompt_idx, window):
         prompt = get_prompt_row(data, prompt_idx)
-        true_id = prompt.true_id(tokenizer, 'cpu')
+        true_id = prompt.true_id(tokenizer, "cpu")
         input_ids = prompt.input_ids(tokenizer, device)
 
         last_idx = input_ids.shape[1] - 1
@@ -98,17 +89,13 @@ def main_local(args: Args):
             torch.cuda.empty_cache()
         return probs
 
-    windows = [
-        list(range(i, i + window_size)) for i in range(0, n_layers - window_size + 1)
-    ]
+    windows = [list(range(i, i + window_size)) for i in range(0, n_layers - window_size + 1)]
 
     for prompt_idx in tqdm(args.prompt_indices, desc="Prompts"):
         prob_mat = []
         for window in windows:
             model_interface.setup(layers=window)
-            prob_mat.append(
-                forward_eval(prompt_idx, window)
-            )
+            prob_mat.append(forward_eval(prompt_idx, window))
 
         prob_mat = np.array(prob_mat).T
         prompt = data.loc[prompt_idx, "prompt"]
@@ -122,8 +109,8 @@ def main_local(args: Args):
 
         np.save(args.output_file / f"idx={prompt_idx}.npy", prob_mat)
         for heatmap_func, heatmap_name in zip(
-                [plot_simple_heatmap],
-                ["diverging"],
+            [plot_simple_heatmap],
+            ["diverging"],
         ):
             fig, _ = heatmap_func(
                 prob_mat=prob_mat,
@@ -133,11 +120,11 @@ def main_local(args: Args):
                 base_prob=base_prob,
                 true_word=true_word,
                 toks=toks,
-                fontsize=8
+                fontsize=8,
             )
 
             # Save the figure
-            output_path = args.output_file / f'idx={prompt_idx}_{heatmap_name}.png'
+            output_path = args.output_file / f"idx={prompt_idx}_{heatmap_name}.png"
             fig.tight_layout()
             fig.savefig(output_path)
 
@@ -151,7 +138,7 @@ def main(args: Args):
         # gpu_type = "titan_xp-studentrun"
         # window_sizes = [5, 9]
         experiment_name = "heatmap_debug_use_matrix"
-        variation_name = ''
+        variation_name = ""
         args.experiment_name = experiment_name + variation_name
         # window_sizes = [1, 5]
         window_sizes = [9]
@@ -166,11 +153,13 @@ def main(args: Args):
         ]:
             args.model_arch = model_arch
             args.model_size = model_size
-            args.dataset_args = DatasetArgs(name=DATASETS.COUNTER_FACT, splits=f"all")
+            args.dataset_args = DatasetArgs(name=DATASETS.COUNTER_FACT, splits="all")
             for window_size in window_sizes:
                 args.window_size = window_size
 
-                job_name = f"{experiment_name}/{model_arch}_{model_size}_ws={window_size}_{args.dataset_args.dataset_name}"
+                job_name = (
+                    f"{experiment_name}/{model_arch}_{model_size}_ws={window_size}_{args.dataset_args.dataset_name}"
+                )
                 job = submit_job(
                     main_local,
                     args,
@@ -178,20 +167,10 @@ def main(args: Args):
                     job_name=job_name,
                     # timeout_min=1200,
                     gpu_type=(
-                        "a100"
-                        if (
-                                model_size == "2.7B"
-                                and model_arch == MODEL_ARCH.MINIMAL_MAMBA2_new
-                        )
-                        else gpu_type
+                        "a100" if (model_size == "2.7B" and model_arch == MODEL_ARCH.MINIMAL_MAMBA2_new) else gpu_type
                     ),
                     slurm_gpus_per_node=(
-                        3
-                        if (
-                                model_size in ["2.8B", "2.7B"]
-                                and gpu_type == "titan_xp-studentrun"
-                        )
-                        else 1
+                        3 if (model_size in ["2.8B", "2.7B"] and gpu_type == "titan_xp-studentrun") else 1
                     ),
                 )
 

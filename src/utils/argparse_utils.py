@@ -2,43 +2,44 @@ import json
 from argparse import ArgumentParser
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Any
-from typing import List
-from typing import NamedTuple
-from typing import Type
-from typing import TypedDict
-from typing import get_args
-from typing import get_origin
-from typing import get_type_hints
-from typing import is_typeddict
+from typing import (
+    Any,
+    List,
+    NamedTuple,
+    Type,
+    TypedDict,
+    get_args,
+    get_origin,
+    get_type_hints,
+    is_typeddict,
+)
 
 from src.utils.types_utils import STREnum
 
-SPLIT_KEY = '.'
-REMOVE_KEY = 'remove-'
+SPLIT_KEY = "."
+REMOVE_KEY = "remove-"
 
 
 def enum_values(enum: Type[STREnum]) -> List[str]:
     return [x.value for x in enum]  # noqa
 
 
-def add_arguments_from_named_tuple(
-        parser: ArgumentParser,
-        named_tuple: Type[NamedTuple],
-        **kwargs
-):
+def add_arguments_from_named_tuple(parser: ArgumentParser, named_tuple: Type[NamedTuple], **kwargs):
     add_arguments_from_typed_dict(
-        parser, named_tuple, named_tuple._field_defaults, **kwargs  # noqa
+        parser,
+        named_tuple,
+        named_tuple._field_defaults,
+        **kwargs,  # noqa
     )
 
 
 def add_arguments_from_typed_dict(
-        parser: ArgumentParser,
-        typed_dict: Type[TypedDict],
-        config_instance: TypedDict,
-        force_non_positional=True,
-        print_only=False,
-        prefix='',
+    parser: ArgumentParser,
+    typed_dict: Type[TypedDict],
+    config_instance: TypedDict,
+    force_non_positional=True,
+    print_only=False,
+    prefix="",
 ):
     def rec(_typed_dict: Type[TypedDict], instance: dict, prefix: str):
         for key, value_type in get_type_hints(_typed_dict).items():
@@ -52,7 +53,7 @@ def add_arguments_from_typed_dict(
 
             default_value = instance[key]
             is_optional = False
-            if hasattr(value_type, '__supertype__'):
+            if hasattr(value_type, "__supertype__"):
                 # Handle NewType by extracting the underlying type
                 value_type = value_type.__supertype__
             if type(None) in get_args(value_type):
@@ -72,11 +73,11 @@ def add_arguments_from_typed_dict(
                 if value_type == bool:
                     if default_value is True:
                         arg_name = f"{prefix}{SPLIT_KEY}no-{key}" if prefix else f"no-{key}"
-                        action = 'store_false'
+                        action = "store_false"
                         dest_name = key
                     else:
                         dest_name = None
-                        action = 'store_true'
+                        action = "store_true"
                     help_text = f"Default: {default_value}"
                     parser.add_argument(arg_name, action=action, help=help_text, dest=dest_name)
                 elif is_optional and default_value is not None:
@@ -86,11 +87,21 @@ def add_arguments_from_typed_dict(
                         choices = enum_values(arg_type)
                         help_text = f"Choices: {choices}. Default: {default_value}"
                         parser.add_argument(arg_name, type=str, choices=choices, help=help_text)
-                        parser.add_argument(remove_arg_name, action='store_const', const=None, dest=arg_name)
+                        parser.add_argument(
+                            remove_arg_name,
+                            action="store_const",
+                            const=None,
+                            dest=arg_name,
+                        )
                     else:
                         help_text = f"Default: {default_value}"
                         parser.add_argument(arg_name, type=arg_type, help=help_text)
-                        parser.add_argument(remove_arg_name, action='store_const', const=None, dest=arg_name)
+                        parser.add_argument(
+                            remove_arg_name,
+                            action="store_const",
+                            const=None,
+                            dest=arg_name,
+                        )
                 elif isinstance(value_type, type) and issubclass(value_type, STREnum):
                     choices = enum_values(value_type)
                     help_text = f"Choices: {choices}. Default: {default_value}"
@@ -100,10 +111,16 @@ def add_arguments_from_typed_dict(
                     if isinstance(list_type, type) and issubclass(list_type, STREnum):
                         choices = enum_values(list_type)
                         help_text = f"Choices: {choices}. Nargs: '+'. Default: {default_value}"
-                        parser.add_argument(arg_name, type=str, nargs='+', choices=choices, help=help_text)
+                        parser.add_argument(
+                            arg_name,
+                            type=str,
+                            nargs="+",
+                            choices=choices,
+                            help=help_text,
+                        )
                     else:
                         help_text = f"Nargs: '+'. Default: {default_value}"
-                        parser.add_argument(arg_name, type=list_type, nargs='+', help=help_text)
+                        parser.add_argument(arg_name, type=list_type, nargs="+", help=help_text)
                 elif origin_type is dict and args[0] == str:
                     assert args[1] == Any, f"Expected Dict[str, Any], got Dict[{args[0].__name__}, {args[1].__name__}]"
                     help_text = f"Provide as JSON string. Default: {default_value}"
@@ -119,6 +136,7 @@ def add_arguments_from_typed_dict(
 
     _original_add_argument = parser.add_argument
     try:
+
         def new_add_argument(*args, **kwargs):
             if force_non_positional:
                 args = (f"--{args[0]}",) + args[1:]
@@ -135,9 +153,9 @@ def add_arguments_from_typed_dict(
 
 
 def update_config_from_args(config_instance: TypedDict, args: Any):
-    SPLIT_KEY = '.'
+    SPLIT_KEY = "."
     for arg_key, arg_value in vars(args).items():
-        arg_key = arg_key.removeprefix('--')
+        arg_key = arg_key.removeprefix("--")
         keys = arg_key.split(SPLIT_KEY)
         config_section = config_instance
 
@@ -146,7 +164,7 @@ def update_config_from_args(config_instance: TypedDict, args: Any):
             config_section = config_section[key]
 
         if arg_key.startswith(REMOVE_KEY):
-            key = arg_key[len(REMOVE_KEY):]
+            key = arg_key[len(REMOVE_KEY) :]
             if key in config_section:
                 del config_section[key]
         elif arg_value is not None:

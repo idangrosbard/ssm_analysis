@@ -1,10 +1,12 @@
-from .mamba_mixer_listener import slow_forward_for_ssm_materializing_listener
-from ..metrics.ssm.ssm_metric import SSMMetric
-from torch import nn, Tensor
 from typing import Optional
 
+from torch import Tensor, nn
 
-class SSMListenerHook():
+from ..metrics.ssm.ssm_metric import SSMMetric
+from .mamba_mixer_listener import slow_forward_for_ssm_materializing_listener
+
+
+class SSMListenerHook:
     def __init__(self, input: str, layer: int | str | nn.Module, metric: SSMMetric):
         self.counter = 0
         self.input = input

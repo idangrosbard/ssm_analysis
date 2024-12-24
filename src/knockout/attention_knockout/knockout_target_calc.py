@@ -1,17 +1,19 @@
-from transformers import AutoTokenizer
-from typing import Tuple, Iterable
-from .knockout_target import KnockoutTarget
 import random
+from typing import Iterable, Tuple
+
+from transformers import AutoTokenizer
+
+from .knockout_target import KnockoutTarget
 
 
-def get_subj_idx_old(input: str, subj: str, tokenizer: AutoTokenizer) -> Tuple[int,int]:
+def get_subj_idx_old(input: str, subj: str, tokenizer: AutoTokenizer) -> Tuple[int, int]:
     prefix = input.split(subj)[0]
     sent2subj = prefix
-    
+
     if prefix == "":
         sent2subj = subj
     else:
-        sent2subj = prefix + ' ' + subj
+        sent2subj = prefix + " " + subj
 
     sent2subj_tokens = tokenizer(sent2subj)["input_ids"]
     print(sent2subj, sent2subj_tokens)
@@ -22,12 +24,12 @@ def get_subj_idx_old(input: str, subj: str, tokenizer: AutoTokenizer) -> Tuple[i
     return (len(prefix_tokens), len(sent2subj_tokens))
 
 
-def get_subj_idx(input: str, subj: str, tokenizer: AutoTokenizer) -> Tuple[int,int]:
+def get_subj_idx(input: str, subj: str, tokenizer: AutoTokenizer) -> Tuple[int, int]:
     input_encoded = tokenizer(input)["input_ids"]
     start_idx = 0
     end_idx = len(input_encoded)
     decoded = input
-    
+
     while subj in decoded:
         start_idx += 1
         decoded = tokenizer.decode(input_encoded[start_idx:end_idx])
@@ -42,7 +44,7 @@ def get_subj_idx(input: str, subj: str, tokenizer: AutoTokenizer) -> Tuple[int,i
     return (start_idx, end_idx)
 
 
-def check_intersect(a: Tuple[int,int], b: Tuple[int,int]) -> bool:
+def check_intersect(a: Tuple[int, int], b: Tuple[int, int]) -> bool:
     assert a[0] <= a[1]
     assert b[0] <= b[1]
 
@@ -72,11 +74,11 @@ def random_non_subj(input: str, subj: str, tokenizer: AutoTokenizer, single_toke
 
             # end is non-inclusive, so if they're the same we need to increment `end`
             target_idx = (start, end)
-        
+
         # If the two don't intersect, we're good
         if not check_intersect(subj_idx, target_idx):
             break
-    
+
     return target_idx
 
 
@@ -115,7 +117,7 @@ def choose_knockout_target(input: str, subj: str, tokenizer: AutoTokenizer, targ
     return {i for i in range(first, last + 1)}
 
 
-def is_last_token_subj(input: str, subj: str, tokenizer: AutoTokenizer) -> Tuple[int,int]:
+def is_last_token_subj(input: str, subj: str, tokenizer: AutoTokenizer) -> Tuple[int, int]:
     last_token_idx = len(tokenizer(input)["input_ids"])
     last_subj_idx = get_subj_idx(input, subj, tokenizer)[1]
-    return (last_token_idx == last_subj_idx)
+    return last_token_idx == last_subj_idx

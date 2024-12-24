@@ -1,10 +1,11 @@
-from typing import Optional, Iterable
-from torch import nn
-import torch
+from typing import Iterable, Optional
 
+import torch
+from torch import nn
 from transformers.cache_utils import MambaCache
+
 from ..knockout_mode import KnockoutMode
-from .knockout_scan import knockout_scan, knockout_matrix
+from .knockout_scan import knockout_matrix, knockout_scan
 
 
 # fmt: off

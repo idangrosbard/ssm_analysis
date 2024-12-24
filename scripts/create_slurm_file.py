@@ -5,24 +5,15 @@ from src.consts import ISlurmArgs
 
 
 def slurm_template(
-        experiment_name: str,
-        slurm_output_dir: Path,
-        script_path: Path,
-        args: dict,
-        add_args: ISlurmArgs = ISlurmArgs
+    experiment_name: str,
+    slurm_output_dir: Path,
+    script_path: Path,
+    args: dict,
+    add_args: ISlurmArgs = ISlurmArgs,
 ) -> str:
-    command_str = ' '.join([
-        'python',
-        f"{script_path}",
-        *[
-            f'--{k} "{v}"'
-            for k, v in
-            args.items()
-        ]
-    ])
+    command_str = " ".join(["python", f"{script_path}", *[f'--{k} "{v}"' for k, v in args.items()]])
 
-    return (
-        f"""\
+    return f"""\
 #! /bin/bash
 
 #SBATCH --job-name={experiment_name} # Job name
@@ -61,14 +52,14 @@ export PYTHONUNBUFFERED=1
 # Trap keyboard interrupt (Ctrl+C) to end the job
 trap 'echo "Keyboard interrupt received. Ending job."; exit' INT
 
-""")
+"""
 
 
 def create_template(
-        experiment_name: str,
-        output_dir: Path,
-        script_path: Path,
-        script_args: dict,
+    experiment_name: str,
+    output_dir: Path,
+    script_path: Path,
+    script_args: dict,
 ):
     """
 
@@ -84,10 +75,10 @@ def create_template(
         experiment_name=experiment_name,
         slurm_output_dir=slurm_output_dir,
         script_path=script_path,
-        args=script_args
+        args=script_args,
     )
 
-    slurm_path = slurm_output_dir / f"run.slurm"
+    slurm_path = slurm_output_dir / "run.slurm"
 
     slurm_path.write_text(template)
 
@@ -95,16 +86,16 @@ def create_template(
 
 
 def run_slurm(
-        experiment_name: str,
-        output_dir: Path,
-        script_path: Path,
-        script_args: dict,
+    experiment_name: str,
+    output_dir: Path,
+    script_path: Path,
+    script_args: dict,
 ):
     slurm_path = create_template(
         experiment_name=experiment_name,
         output_dir=output_dir,
         script_path=script_path,
-        script_args=script_args
+        script_args=script_args,
     )
     print(f"Submitting job, to see the logs run: \nless +F {slurm_path.parent / 'err.log'}")
-    subprocess.run(['sbatch', str(slurm_path)])
+    subprocess.run(["sbatch", str(slurm_path)])
