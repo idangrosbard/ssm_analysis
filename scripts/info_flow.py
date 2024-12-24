@@ -64,9 +64,21 @@ class Args:
     DEBUG_LAST_WINDOWS: Optional[int] = None
     overwrite: bool = False
     knockout_map = {
-        TokenType.last: [TokenType.last, TokenType.first, TokenType.subject, TokenType.relation, ],
-        TokenType.subject: [TokenType.context, TokenType.subject, ],
-        TokenType.relation: [TokenType.context, TokenType.subject, TokenType.relation, ],
+        TokenType.last: [
+            TokenType.last,
+            TokenType.first,
+            TokenType.subject,
+            TokenType.relation,
+        ],
+        TokenType.subject: [
+            TokenType.context,
+            TokenType.subject,
+        ],
+        TokenType.relation: [
+            TokenType.context,
+            TokenType.subject,
+            TokenType.relation,
+        ],
     }
 
     output_dir: Optional[Path] = None
@@ -76,30 +88,34 @@ class Args:
         return (
             1
             if (
-                    self.model_arch == MODEL_ARCH.MINIMAL_MAMBA2
-                    or self.model_arch == MODEL_ARCH.MINIMAL_MAMBA2_new
+                self.model_arch == MODEL_ARCH.MINIMAL_MAMBA2
+                or self.model_arch == MODEL_ARCH.MINIMAL_MAMBA2_new
             )
             else self._batch_size
         )
 
     @property
     def model_id(self) -> TModelID:
-        return MODEL_SIZES_PER_ARCH_TO_MODEL_ID[self.model_arch][self.model_size]
+        return MODEL_SIZES_PER_ARCH_TO_MODEL_ID[self.model_arch][
+            self.model_size
+        ]
 
 
 def main_local(args: Args):
     print(args)
-    data = get_hit_dataset(model_id=args.model_id, dataset_args=args.dataset_args)
+    data = get_hit_dataset(
+        model_id=args.model_id, dataset_args=args.dataset_args
+    )
 
     window_size = args.window_size
 
     if not args.output_file:
         args.output_file = (
-                PATHS.OUTPUT_DIR
-                / args.model_id
-                / args.experiment_name
-                / f"ds={args.dataset_args.dataset_name}"
-                / f"ws={args.window_size}"
+            PATHS.OUTPUT_DIR
+            / args.model_id
+            / args.experiment_name
+            / f"ds={args.dataset_args.dataset_name}"
+            / f"ws={args.window_size}"
         )
 
     args.output_file.mkdir(parents=True, exist_ok=True)
@@ -112,10 +128,10 @@ def main_local(args: Args):
     n_layers = len(model_interface.model.backbone.layers)
 
     def forward_eval(
-            prompt_idx,
-            window,
-            knockout_src: TokenType,
-            knockout_target: TokenType,
+        prompt_idx,
+        window,
+        knockout_src: TokenType,
+        knockout_target: TokenType,
     ):
         prompt = get_prompt_row(data, prompt_idx)
         num_to_masks, first_token = get_num_to_masks(
@@ -142,11 +158,11 @@ def main_local(args: Args):
         )
 
     def evaluate(
-            prompt_indices,
-            windows,
-            knockout_src: TokenType,
-            knockout_target: TokenType,
-            print_period=100,
+        prompt_indices,
+        windows,
+        knockout_src: TokenType,
+        knockout_target: TokenType,
+        print_period=100,
     ):
         counts_w_first = np.zeros((len(windows)))
         counts_wo_first = np.zeros((len(windows)))
@@ -154,14 +170,13 @@ def main_local(args: Args):
         diffs_wo_first = np.zeros((len(windows)))
         diffs_unnorm_w_first = np.zeros((len(windows)))
         diffs_unnorm_wo_first = np.zeros((len(windows)))
-        windows_true_probs = {}
+        windows_true_probs = defaultdict(lambda: defaultdict(list))
         w_first = 0
         for i, window in enumerate(tqdm(windows, desc="Windows")):
-            outputs = []
-            windows_true_probs[i] = outputs
+            windows_true_probs[i] = defaultdict(list)
             model_interface.setup(layers=window)
             for _, prompt_idx in enumerate(
-                    tqdm(prompt_indices, desc="Prompts", miniters=print_period)
+                tqdm(prompt_indices, desc="Prompts", miniters=print_period)
             ):
                 hit, diff, first, diff_unnorm, true_prob = forward_eval(
                     prompt_idx,
@@ -169,7 +184,9 @@ def main_local(args: Args):
                     knockout_src,
                     knockout_target,
                 )
-                outputs.append(float(true_prob))
+                windows_true_probs[i]["hit"].append(bool(hit))
+                windows_true_probs[i]["true_probs"].append(float(true_prob))
+                windows_true_probs[i]["diffs"].append(float(diff))
                 if first:
                     if i == 0:
                         w_first += 1
@@ -206,36 +223,29 @@ def main_local(args: Args):
 
     prompt_indices = list(data.index)
     windows = [
-        list(range(i, i + window_size)) for i in range(0, n_layers - window_size + 1)
+        list(range(i, i + window_size))
+        for i in range(0, n_layers - window_size + 1)
     ]
 
     if args.DEBUG_LAST_WINDOWS:
-        windows = windows[-args.DEBUG_LAST_WINDOWS:]
+        windows = windows[-args.DEBUG_LAST_WINDOWS :]
 
     combined_results: dict[str, dict] = defaultdict(lambda: defaultdict(dict))
 
     for key in args.knockout_map:
         for block in args.knockout_map[key]:
             print(f"Knocking out flow to {key} from {block}")
-            metrics = [
-                "acc",
-                "diff",
-                "wf_acc",
-                "wf_diff",
-                "wof_acc",
-                "wof_diff",
-                "diff_unnorm",
-                "wf_diff_unnorm",
-                "wof_diff_unnorm",
-            ]
             block_outdir = args.output_file / f"block_{block}_target_{key}"
             block_outdir.mkdir(parents=True, exist_ok=True)
 
-            res = {}
-            if (block_outdir / f"{metrics[0]}.csv").exists() and not args.overwrite:
+            output_file = block_outdir / "metrics.csv"
+            if output_file.exists() and not args.overwrite:
                 print(f"Reading from existing file")
-                for metric in metrics:
-                    res[metric] = pd.read_csv(block_outdir / f"{metric}.csv")
+                metrics_df = pd.read_csv(output_file)
+                res = {
+                    metric: metrics_df[metric].values
+                    for metric in metrics_df.columns
+                }
             else:
                 res, window_outputs = evaluate(
                     prompt_indices,
@@ -245,82 +255,23 @@ def main_local(args: Args):
                 )
                 if args.DEBUG_LAST_WINDOWS:
                     window_outputs = {
-                        k + (n_layers - window_size + 1 - args.DEBUG_LAST_WINDOWS): v
+                        k
+                        + (
+                            n_layers - window_size + 1 - args.DEBUG_LAST_WINDOWS
+                        ): v
                         for k, v in window_outputs.items()
                     }
-                json.dump(window_outputs, (block_outdir / "outputs.json").open('w'))
+                json.dump(
+                    window_outputs, (block_outdir / "outputs.json").open("w")
+                )
 
-            for metric, value in res.items():
-                df = pd.DataFrame(value)
-                if len(df.columns) > 1:
-                    df = df[df.columns[-1]]
-                df.to_csv(block_outdir / f"{metric}.csv", index=False)
-                combined_results[key][block][metric] = value
+                # Combine all metrics into a single DataFrame and save
+                metrics_df = pd.DataFrame(
+                    {metric: value for metric, value in res.items()}
+                )
+                metrics_df.to_csv(output_file, index=False)
 
-        layers = list(range(n_layers - window_size + 1))
-        if args.DEBUG_LAST_WINDOWS:
-            layers = layers[-args.DEBUG_LAST_WINDOWS:]
-        fig, ax = plt.subplots(1, 3, figsize=(15, 3))
-        colors = {
-            "last": "orange",
-            "first": "blue",
-            "subject": "green",
-            "relation": "purple",
-            "context": "cyan",
-        }
-        line_styles = {
-            "last": ":",
-            "first": "-.",
-            "subject": "-",
-            "relation": "--",
-            "context": ":",
-        }
-
-        for block in args.knockout_map[key]:
-            color = colors[block]
-            line_style = line_styles[block]
-            block_acc = combined_results[key][block]["acc"]
-            block_diff = combined_results[key][block]["diff"]
-            block_diff_unnorm = combined_results[key][block]["diff_unnorm"]
-            ax[0].plot(
-                layers, block_acc * 100, label=block, color=color, linestyle=line_style
-            )
-            ax[1].plot(
-                layers, block_diff, label=block, color=color, linestyle=line_style
-            )
-            ax[2].plot(
-                layers,
-                block_diff_unnorm,
-                label=block,
-                color=color,
-                linestyle=line_style,
-            )
-
-        for i in range(len(ax)):
-            ax[i].grid(True, which="both", linestyle="--", linewidth=0.5)
-            ax[i].set_xlabel("Layers")
-            ax[i].legend(loc="lower left", fontsize=8)
-
-        ax[0].axhline(100, color="gray", linewidth=1)
-        ax[0].set_ylabel("% accuracy")
-        ax[0].set_title(f"Accuracy - knocking out flow to {key}", fontsize=10)
-
-        ax[1].axhline(0, color="gray", linewidth=1)
-        ax[1].set_ylabel("normalized change")
-        ax[1].set_title(f"Change in prediction probability", fontsize=10)
-
-        ax[2].axhline(0, color="gray", linewidth=1)
-        ax[2].set_ylabel("change")
-        ax[2].set_title(f"Change in prediction probability (unnormalized)", fontsize=10)
-
-        plt.suptitle(
-            f"Knocking out flow to {key} - {args.model_id.split('/')[1]}, window size={window_size}"
-        )
-        plt.tight_layout(pad=1, w_pad=3.0)
-        plt.savefig(
-            args.output_file / f"results_ws={window_size}_knockout_target={key}.png"
-        )
-        plt.show()
+            combined_results[key][block] = res
 
 
 @pyrallis.wrap()
@@ -330,7 +281,7 @@ def main(args: Args):
         gpu_type = "a100"
         # gpu_type = "titan_xp-studentrun"
 
-        args.experiment_name += f"_v6"
+        args.experiment_name += f"_v7"
         # window_sizes =[3,5,7]
         window_sizes = [9, 15]
 
@@ -342,16 +293,18 @@ def main(args: Args):
         # window_sizes = [9]
 
         for model_arch, model_size in [
-            # (MODEL_ARCH.MAMBA1, "130M"),
+            (MODEL_ARCH.MAMBA1, "130M"),
             (MODEL_ARCH.MAMBA1, "1.4B"),
             (MODEL_ARCH.MAMBA1, "2.8B"),
-            # (MODEL_ARCH.MINIMAL_MAMBA2_new, "130M"),
+            (MODEL_ARCH.MINIMAL_MAMBA2_new, "130M"),
             (MODEL_ARCH.MINIMAL_MAMBA2_new, "1.3B"),
             (MODEL_ARCH.MINIMAL_MAMBA2_new, "2.7B"),
         ]:
             args.model_arch = model_arch
             args.model_size = model_size
-            args.dataset_args = DatasetArgs(name=DATASETS.COUNTER_FACT, splits=f"all")
+            args.dataset_args = DatasetArgs(
+                name=DATASETS.COUNTER_FACT, splits=f"all"
+            )
             for window_size in window_sizes:
                 args.window_size = window_size
 
