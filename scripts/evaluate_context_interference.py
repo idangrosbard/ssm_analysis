@@ -1,35 +1,25 @@
 import os
-import sys
 from dataclasses import dataclass
-
-from src.consts import PATHS
-
-is_nir = os.getenv("USER") == "nirendy"
-if is_nir:
-    import pyrallis
-
-    from src.utils.slurm import submit_job
-else:
-    sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
-from argparse import ArgumentParser, Namespace
 from pathlib import Path
 from typing import Iterable, Optional
 
 import numpy as np
 import pandas as pd
+import pyrallis
 import torch
 from tqdm import tqdm
 from transformers import AutoTokenizer, MambaForCausalLM
 
+from src.consts import PATHS
 from src.datasets.download_dataset import load_dataset, load_knowns_pd
-from src.knockout import KnockoutEvaluator, KnockoutMode
 from src.knockout.attention_knockout import (
     AttentionKnockoutEvaluator,
     KnockoutTarget,
     is_last_token_subj,
 )
 from src.knockout.increase_delta import IncreaseDeltaEvaluator
+from src.knockout.knockout_evaluator import KnockoutEvaluator
+from src.knockout.knockout_mode import KnockoutMode
 from src.knockout.layer_knockout import LayerKnockoutEvaluator
 from src.knockout.ssm_knockout import SSMKnockoutEvaluator
 from src.knockout.ssm_knockout.ssm_classifier import (
@@ -38,6 +28,7 @@ from src.knockout.ssm_knockout.ssm_classifier import (
 )
 from src.types import DATASETS, DatasetArgs
 from src.utils.setup_models import setup_mamba_model
+from src.utils.slurm import submit_job
 
 
 @dataclass
@@ -60,45 +51,7 @@ class Args:
     increase_delta_target: str = "LAST"
     with_slurm: bool = False
     split_name: str = "train1"
-
-
-if not is_nir:
-
-    def get_args():
-        parser = ArgumentParser()
-        parser.add_argument("--model_size", type=str, choices={"130M", "2.8B"}, default="130M")
-        parser.add_argument(
-            "--interfere_mode",
-            type=str,
-            choices={str(mode).split(".")[1] for mode in KnockoutMode},
-            default="INCREASE_DELTA",
-        )
-        parser.add_argument("--drop_subj_last", action="store_true")
-        parser.add_argument("--show_eval_progress", action="store_true")
-        parser.add_argument("--output_dir", type=Path, default=Path("resources"))
-        parser.add_argument("--layer_checkpoint", type=Path, default=None)
-        parser.add_argument("--bin_search_checkpoint", type=Path, default=None)
-        parser.add_argument("--ignore_layer_by_layer", action="store_true")
-        parser.add_argument("--norm", type=str, default="1", choices=["1", "inf"])
-        parser.add_argument("--early_layers_ssm_knockout", action="store_true")
-        parser.add_argument(
-            "--affected_output",
-            type=str,
-            choices={"last", "subj", "all"},
-            default="all",
-        )
-        parser.add_argument("--delta_factor_root", type=float, default=0.9)
-        parser.add_argument("--delta_start_layer", type=int, default=40)
-        parser.add_argument("--delta_end_layer", type=int, default=48)
-        parser.add_argument("--non_selective_ssm", action="store_true")
-        parser.add_argument(
-            "--increase_delta_target",
-            type=str,
-            choices={str(mode).split(".")[1] for mode in KnockoutTarget},
-            default="LAST",
-        )
-        parser.add_argument("--split_name", type=str, default="train1")
-        return parser.parse_args()
+    search_mode: str = "binary"  # Options: "binary", "layer", "both"
 
 
 def binary_search(
@@ -186,7 +139,6 @@ def get_last_token_stats(model_size: str = "130M"):
     for idx in pbar:
         # Get relevant data
         input = knowns_df.loc[idx, "prompt"]
-        target = knowns_df.loc[idx, "attribute"]
         subj = knowns_df.loc[idx, "subject"]
 
         val = is_last_token_subj(input, subj, tokenizer)
@@ -197,7 +149,7 @@ def get_last_token_stats(model_size: str = "130M"):
 
 
 def attention_knockout_evaluate(
-    args: Namespace,
+    args: Args,
     model: MambaForCausalLM,
     tokenizer: AutoTokenizer,
     device: torch.device,
@@ -236,57 +188,68 @@ def attention_knockout_evaluate(
         for target in specific_targets[output]:
             evaluator.knockout_target = target
             evaluator.affected_target = output
-            cond = bin_search_df is None
-            if not cond:
-                cond = (
-                    len(
-                        bin_search_df[
-                            (bin_search_df["knockout_inputs"] == str(target))
-                            & (bin_search_df["affected_outputs"] == str(output))
-                        ]
+
+            # Binary search evaluation
+            if args.search_mode in ["binary", "both"]:
+                cond = bin_search_df is None
+                if not cond:
+                    cond = (
+                        len(
+                            bin_search_df[
+                                (bin_search_df["knockout_inputs"] == str(target))
+                                & (bin_search_df["affected_outputs"] == str(output))
+                            ]
+                        )
+                        == 0
                     )
-                    == 0
-                )
 
-            if cond:
-                print("Binary search for", target, output)
-                curr_df = binary_search(evaluator, knowns_df, KnockoutMode[args.interfere_mode])
-                curr_df["knockout_inputs"] = target
-                curr_df["affected_outputs"] = output
-                bin_search_df = [bin_search_df, curr_df]
-                bin_search_df = pd.concat(bin_search_df)
+                if cond:
+                    print("Binary search for", target, output)
+                    curr_df = binary_search(evaluator, knowns_df, KnockoutMode[args.interfere_mode])
+                    curr_df["knockout_inputs"] = target
+                    curr_df["affected_outputs"] = output
+                    bin_search_df = pd.concat([bin_search_df, curr_df] if bin_search_df is not None else [curr_df])
 
-                # save to csv
-                out_fname = args.output_dir / f"{args.interfere_mode}_{args.model_size}_bin_search.csv"
-                if out_fname.exists():
-                    os.remove(out_fname)
-                bin_search_df.to_csv(out_fname)
-            else:
-                print(f"Skipping {target} {output} for binary search")
+                    # save to csv
+                    out_fname = args.output_dir / f"{args.interfere_mode}_{args.model_size}_bin_search.csv"
+                    if out_fname.exists():
+                        os.remove(out_fname)
+                    bin_search_df.to_csv(out_fname)
+                else:
+                    print(f"Skipping {target} {output} for binary search")
 
-            # cond = (layer_df is None)
-            # if not cond:
-            #     cond = (len(layer_df[(layer_df['knockout_inputs'] == str(target)) & (layer_df['affected_outputs'] == str(output))]) == 0)
+            # Layer by layer evaluation
+            if args.search_mode in ["layer", "both"]:
+                cond = layer_df is None
+                if not cond:
+                    cond = (
+                        len(
+                            layer_df[
+                                (layer_df["knockout_inputs"] == str(target))
+                                & (layer_df["affected_outputs"] == str(output))
+                            ]
+                        )
+                        == 0
+                    )
 
-            # if cond:
-            #     print('Layer iteration for', target, output)
-            #     curr_df = layer_by_layer(evaluator, knowns_df, KnockoutMode[args.interfere_mode])
-            #     curr_df['knockout_inputs'] = target
-            #     curr_df['affected_outputs'] = output
-            #     layer_df = [layer_df, curr_df]
-            #     layer_df = pd.concat(layer_df)
+                if cond:
+                    print("Layer iteration for", target, output)
+                    curr_df = layer_by_layer(evaluator, knowns_df, KnockoutMode[args.interfere_mode])
+                    curr_df["knockout_inputs"] = target
+                    curr_df["affected_outputs"] = output
+                    layer_df = pd.concat([layer_df, curr_df] if layer_df is not None else [curr_df])
 
-            #     # save to csv
-            #     out_fname = args.output_dir / f"{args.interfere_mode}_{args.model_size}_layer_by_layer.csv"
-            #     if out_fname.exists():
-            #         os.remove(out_fname)
-            #     layer_df.to_csv(out_fname)
-            # else:
-            #     print(f"Skipping {target} {output} for layer by layer")
+                    # save to csv
+                    out_fname = args.output_dir / f"{args.interfere_mode}_{args.model_size}_layer_by_layer.csv"
+                    if out_fname.exists():
+                        os.remove(out_fname)
+                    layer_df.to_csv(out_fname)
+                else:
+                    print(f"Skipping {target} {output} for layer by layer")
 
 
 def layer_knockout_evaluate(
-    args: Namespace,
+    args: Args,
     model: MambaForCausalLM,
     tokenizer: AutoTokenizer,
     device: torch.device,
@@ -301,7 +264,7 @@ def layer_knockout_evaluate(
 
 
 def ssm_knockout_evaluate_early_layers(
-    args: Namespace,
+    args: Args,
     model: MambaForCausalLM,
     tokenizer: AutoTokenizer,
     device: torch.device,
@@ -338,7 +301,7 @@ def ssm_knockout_evaluate_early_layers(
 
 
 def ssm_knockout_evaluate(
-    args: Namespace,
+    args: Args,
     model: MambaForCausalLM,
     tokenizer: AutoTokenizer,
     device: torch.device,
@@ -354,29 +317,35 @@ def ssm_knockout_evaluate(
     categorized_ssms = ssm_classifier.classify_model(model.backbone)
     for category in categorized_ssms:
         evaluator = SSMKnockoutEvaluator(model, tokenizer, device, categorized_ssms[category], False)
-        curr = binary_search(evaluator, knowns_df, KnockoutMode[args.interfere_mode])
-        curr["category"] = category
-        curr["norm"] = norm
-        bin_search_df = pd.concat([bin_search_df, curr])
 
-        out_fname = args.output_dir / f"{args.interfere_mode}_{args.model_size}_norm_{norm}_bin_search.csv"
-        if out_fname.exists():
-            os.remove(out_fname)
-        bin_search_df.to_csv(out_fname)
+        # Binary search evaluation
+        if args.search_mode in ["binary", "both"]:
+            curr = binary_search(evaluator, knowns_df, KnockoutMode[args.interfere_mode])
+            curr["category"] = category
+            curr["norm"] = norm
+            bin_search_df = pd.concat([bin_search_df, curr] if bin_search_df is not None else [curr])
 
-        if (not ignore_layer_by_layer) and False:
+            out_fname = args.output_dir / f"{args.interfere_mode}_{args.model_size}_norm_{norm}_bin_search.csv"
+            if out_fname.exists():
+                os.remove(out_fname)
+            bin_search_df.to_csv(out_fname)
+
+        # Layer by layer evaluation
+        if args.search_mode in ["layer", "both"] and not ignore_layer_by_layer:
             curr = layer_by_layer(evaluator, knowns_df, KnockoutMode[args.interfere_mode])
             curr["category"] = category
             curr["norm"] = norm
-            layer_df = pd.concat([layer_df, curr])
+            layer_df = pd.concat([layer_df, curr] if layer_df is not None else [curr])
 
             out_fname = args.output_dir / f"{args.interfere_mode}_{args.model_size}_norm_{norm}_layer_by_layer.csv"
             if out_fname.exists():
                 os.remove(out_fname)
             layer_df.to_csv(out_fname)
 
-    bin_search_df.to_csv(args.output_dir / f"{args.interfere_mode}_{args.model_size}_norm_{norm}_bin_search.csv")
-    if (not ignore_layer_by_layer) and False:
+    # Save final results
+    if args.search_mode in ["binary", "both"]:
+        bin_search_df.to_csv(args.output_dir / f"{args.interfere_mode}_{args.model_size}_norm_{norm}_bin_search.csv")
+    if args.search_mode in ["layer", "both"] and not ignore_layer_by_layer:
         layer_df.to_csv(args.output_dir / f"{args.interfere_mode}_{args.model_size}_norm_{norm}_layer_by_layer.csv")
 
 
@@ -387,7 +356,7 @@ def get_checkpoint(pth: Optional[Path]) -> Optional[pd.DataFrame]:
 
 
 def increase_delta_evaluate(
-    args: Namespace,
+    args: Args,
     model: MambaForCausalLM,
     tokenizer: AutoTokenizer,
     device: torch.device,
@@ -437,18 +406,18 @@ def increase_delta_evaluate(
             # save to csv
             df = pd.DataFrame(performance)
             print(df)
-            out_fname = (
-                args.output_dir
-                / f"{args.interfere_mode}_{args.model_size}_target_{target}_layer_neighborhood_{max(layers_of_interest)}-{min(layers_of_interest)}_root_decay_factor_{root_factor}.csv"
+            out_fname = args.output_dir / (
+                f"{args.interfere_mode}_{args.model_size}_target_{target}_layer_neighborhood"
+                f"_{max(layers_of_interest)}-{min(layers_of_interest)}_root_decay_factor_{root_factor}.csv"
             )
             if out_fname.exists():
                 os.remove(out_fname)
             df.to_csv(out_fname)
 
     df = pd.DataFrame(performance)
-    out_fname = (
-        args.output_dir
-        / f"{args.interfere_mode}_{args.model_size}_target_{target}_layer_neighborhood_{max(layers_of_interest)}-{min(layers_of_interest)}_root_decay_factor_{root_factor}.csv"
+    out_fname = args.output_dir / (
+        f"{args.interfere_mode}_{args.model_size}_target_{target}"
+        f"_layer_neighborhood_{max(layers_of_interest)}-{min(layers_of_interest)}_root_decay_factor_{root_factor}.csv"
     )
     if out_fname.exists():
         os.remove(out_fname)
@@ -538,8 +507,8 @@ def main_local(args: Args) -> None:
     print("Done")
 
 
-if is_nir:
-
+@pyrallis.wrap()
+def main(args: Args):
     def get_experiment_configs():
         """Generate configurations for different experiment variations."""
         base_config = {
@@ -579,109 +548,103 @@ if is_nir:
 
         return configs
 
-    @pyrallis.wrap()
-    def main(args: Args):
-        if args.with_slurm:
-            args.model_size = "2.8B"
+    if args.with_slurm:
+        args.model_size = "2.8B"
 
-            # gpu_type = "titan_xp-studentrun"
-            # gpu_type = "titan_xp-studentbatch"
-            gpu_type = "titan_xp-studentkillable"
-            # gpu_type = "a100"
+        # gpu_type = "titan_xp-studentrun"
+        # gpu_type = "titan_xp-studentbatch"
+        gpu_type = "titan_xp-studentkillable"
+        # gpu_type = "a100"
 
-            job_name1 = f"evaluate_context_interference_{args.model_size}"
-            args.output_dir = args.output_dir / args.model_size / "split"
+        job_name1 = f"evaluate_context_interference_{args.model_size}"
+        args.output_dir = args.output_dir / args.model_size / "split"
 
-            for i in [
-                1,
-                # 2,
+        for i in [
+            1,
+            # 2,
+        ]:
+            args.output_dir = args.output_dir.parent / f"split{i}"
+            args.split_name = f"train{i}"
+            job_name2 = job_name1 + f"_split={args.split_name}"
+
+            for interfere_mode in [
+                # 'ZERO_ATTENTION',
+                # 'IGNORE_SSM',
+                "INCREASE_DELTA",
             ]:
-                args.output_dir = args.output_dir.parent / f"split{i}"
-                args.split_name = f"train{i}"
-                job_name2 = job_name1 + f"_split={args.split_name}"
+                args.interfere_mode = interfere_mode
+                job_name3 = job_name2 + f"_{interfere_mode}"
 
-                for interfere_mode in [
-                    # 'ZERO_ATTENTION',
-                    # 'IGNORE_SSM',
-                    "INCREASE_DELTA",
-                ]:
-                    args.interfere_mode = interfere_mode
-                    job_name3 = job_name2 + f"_{interfere_mode}"
+                mods: list[dict] = [{}]
 
-                    mods: list[dict] = [{}]
+                if interfere_mode == "INCREASE_DELTA":
+                    mods = [
+                        {
+                            "delta_factor_root": 0.5,
+                            "delta_start_layer": 40,
+                            "delta_end_layer": 48,
+                            "increase_delta_target": "LAST",
+                        },
+                        {
+                            "delta_factor_root": 1.5,
+                            "delta_start_layer": 40,
+                            "delta_end_layer": 48,
+                            "increase_delta_target": "LAST",
+                        },
+                        {
+                            "delta_factor_root": 0.5,
+                            "delta_start_layer": 56,
+                            "delta_end_layer": 64,
+                            "increase_delta_target": "LAST",
+                        },
+                        {
+                            "delta_factor_root": 1.5,
+                            "delta_start_layer": 56,
+                            "delta_end_layer": 64,
+                            "increase_delta_target": "LAST",
+                        },
+                    ]
+                    short_cuts = {
+                        "delta_factor_root": "dfr",
+                        "delta_start_layer": "dsl",
+                        "delta_end_layer": "del",
+                        "increase_delta_target": "idt",
+                    }
+                if interfere_mode == "IGNORE_SSM":
+                    mods = [
+                        {"early_layers_ssm_knockout": False},
+                        {"early_layers_ssm_knockout": True},
+                    ]
 
-                    if interfere_mode == "INCREASE_DELTA":
-                        mods = [
-                            {
-                                "delta_factor_root": 0.5,
-                                "delta_start_layer": 40,
-                                "delta_end_layer": 48,
-                                "increase_delta_target": "LAST",
-                            },
-                            {
-                                "delta_factor_root": 1.5,
-                                "delta_start_layer": 40,
-                                "delta_end_layer": 48,
-                                "increase_delta_target": "LAST",
-                            },
-                            {
-                                "delta_factor_root": 0.5,
-                                "delta_start_layer": 56,
-                                "delta_end_layer": 64,
-                                "increase_delta_target": "LAST",
-                            },
-                            {
-                                "delta_factor_root": 1.5,
-                                "delta_start_layer": 56,
-                                "delta_end_layer": 64,
-                                "increase_delta_target": "LAST",
-                            },
-                        ]
-                        short_cuts = {
-                            "delta_factor_root": "dfr",
-                            "delta_start_layer": "dsl",
-                            "delta_end_layer": "del",
-                            "increase_delta_target": "idt",
-                        }
-                    if interfere_mode == "IGNORE_SSM":
-                        mods = [
-                            {"early_layers_ssm_knockout": False},
-                            {"early_layers_ssm_knockout": True},
-                        ]
+                    short_cuts = {
+                        "early_layers_ssm_knockout": "elsk",
+                    }
 
-                        short_cuts = {
-                            "early_layers_ssm_knockout": "elsk",
-                        }
+                # Update args with config
+                for mod in mods:
+                    prev_vals = {}
+                    job_name = job_name3
+                    for key in mod:
+                        prev_vals[key] = getattr(args, key)
+                        setattr(args, key, mod[key])
+                        job_name += f"_{short_cuts[key]}={mod[key]}"
 
-                    # Update args with config
-                    for mod in mods:
-                        prev_vals = {}
-                        job_name = job_name3
-                        for key in mod:
-                            prev_vals[key] = getattr(args, key)
-                            setattr(args, key, mod[key])
-                            job_name += f"_{short_cuts[key]}={mod[key]}"
+                    job = submit_job(
+                        main_local,
+                        args,
+                        log_folder=str(PATHS.SLURM_DIR / job_name1 / job_name / "%j"),
+                        job_name=job_name,
+                        gpu_type=gpu_type,
+                        slurm_gpus_per_node=1,
+                    )
 
-                        job = submit_job(
-                            main_local,
-                            args,
-                            log_folder=str(PATHS.SLURM_DIR / job_name1 / job_name / "%j"),
-                            job_name=job_name,
-                            gpu_type=gpu_type,
-                            slurm_gpus_per_node=1,
-                        )
-
-                        print(f"{job}: {job_name}")
-                        # Restore args
-                        for key in mod:
-                            setattr(args, key, prev_vals[key])
-        else:
-            main_local(args)
+                    print(f"{job}: {job_name}")
+                    # Restore args
+                    for key in mod:
+                        setattr(args, key, prev_vals[key])
+    else:
+        main_local(args)
 
 
 if __name__ == "__main__":
-    if is_nir:
-        main()
-    else:
-        args = get_args()
-        main_local(args)
+    main()

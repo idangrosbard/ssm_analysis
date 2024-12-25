@@ -492,7 +492,7 @@ def ssd(
         states = torch.cat([initial_states, states], dim=1)
         decay_chunk = torch.exp(segsum(F.pad(A_cumsum[:, :, :, -1], (1, 0)), device=device))
         new_states = torch.einsum("bhzc, bchpn -> bzhpn", decay_chunk, states)
-        states, final_state = new_states[:, :-1], new_states[:, -1]
+        states = new_states[:, :-1]
 
         # 4. Compute state -> output conversion per chunk
         # (left term of low-rank factorization of off-diagonal blocks; C terms)

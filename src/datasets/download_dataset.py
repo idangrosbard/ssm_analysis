@@ -145,5 +145,5 @@ def get_hit_dataset(model_id: str, dataset_args: DatasetArgs) -> TPromptData:
         for attention in [True, False]
     ]
 
-    mask = (original_res["hit"] == attn_res["hit"]) & (attn_res["hit"] == True)
+    mask = (original_res["hit"] == attn_res["hit"]) & (attn_res["hit"])
     return attn_res[mask]

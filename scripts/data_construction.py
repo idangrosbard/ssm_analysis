@@ -82,7 +82,6 @@ def main_local(args: Args):
         true_id = true_token.input_ids.to(device="cpu")
         tokens = tokenizer(prompts, return_tensors="pt", padding=True)
         input_ids = tokens.input_ids.to(device=device)
-        max_new_length = input_ids.shape[1] + 1
         next_token_probs = model_interface.generate_logits(
             input_ids=input_ids,
             attention=attention,

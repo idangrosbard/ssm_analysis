@@ -105,7 +105,7 @@ GRAPHS_ORDER = [
 
 
 def get_model_by_cat_size(cat_size: MODEL_SIZE_CAT) -> list[tuple[MODEL_ARCH, str]]:
-    if type(cat_size) == str:
+    if isinstance(cat_size, str):
         cat_size = MODEL_SIZE_CAT[cat_size.upper()]
 
     for i, size in enumerate(MODEL_SIZE_CAT):

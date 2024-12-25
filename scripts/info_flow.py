@@ -271,7 +271,10 @@ def main(args: Args):
             for window_size in window_sizes:
                 args.window_size = window_size
 
-                job_name = f"{args.experiment_name}/{model_arch}_{model_size}_ws={window_size}_{args.dataset_args.dataset_name}"
+                job_name = (
+                    f"{args.experiment_name}/"
+                    f"{model_arch}_{model_size}_ws={window_size}_{args.dataset_args.dataset_name}"
+                )
                 job = submit_job(
                     main_local,
                     args,

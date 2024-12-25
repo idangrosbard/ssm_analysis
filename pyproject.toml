@@ -3,11 +3,31 @@ line-length = 120
 target-version = "py312"
 
 [tool.ruff.lint]
-# Enable pycodestyle (`E`), Pyflakes (`F`), and import sorting (`I`)
 select = ["E", "F", "I"]
 
-# Ignore `E402` (import violations) in all `__init__.py` files
-per-file-ignores = { "__init__.py" = ["E402"] }
+[tool.ruff.lint.isort]
+known-first-party = []
 
-# Sort imports
-isort = { known-first-party = [] } # Add your project's modules here
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["E402", "F401"]
+"src/models/*.py" = ["E501", "E721", "E741"]
+"tests/*.py" = ["F821", "F841"]
+"src/knockout/**/*.py" = ["E501"]
+"src/readout/*.py" = ["E501", "F841"]
+"src/metrics/matrix/ssm_operator_values_map.py" = ["E721"]
+"src/metrics/matrix/ssm_operator_variances.py" = ["E721"]
+"src/utils/argparse_utils.py" = ["E721", "F811"]
+"src/weight_analysis/model_low_rank_approx.py" = ["E721"]
+"src/weight_analysis/mamba_mixer_context_split.py" = ["E501"]
+"src/knockout/adapted_model/adaptation_evaluator.py" = ["F841"]
+"src/knockout/attention_knockout/mamba_mixer_knockout.py" = ["F841"]
+"src/models/minimal_mamba1.py" = ["F821"]
+# TODO: fix these
+"scripts/evaluate_tokenization.py" = ["ALL"]
+"scripts/evaluate_interference.py" = ["ALL"]
+"scripts/analyze_ssm.py" = ["ALL"]
+# notebooks
+"notebooks/*.ipynb" = ["E501", 'E712', 'E402', 'F841', 'E701', 'F811', 'E731']
+"notebooks/feature_knockout_plots.ipynb" = ["F821"]
+"notebooks/tmp*.ipynb" = ["ALL"]
+"notebooks/test_knockout.ipynb" = ["ALL"]

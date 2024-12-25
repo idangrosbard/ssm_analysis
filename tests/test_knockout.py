@@ -1,10 +1,7 @@
-import os
-import sys
-
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 import torch
-from knockout.attention_knockout.knockout_scan import knockout_scan
-from knockout.knockout_mode import KnockoutMode
+
+from src.knockout.attention_knockout.knockout_scan import knockout_scan
+from src.knockout.knockout_mode import KnockoutMode
 
 
 def is_prime(n):

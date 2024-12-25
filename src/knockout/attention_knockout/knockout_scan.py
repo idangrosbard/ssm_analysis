@@ -3,7 +3,7 @@ from typing import Iterable, List
 import torch
 from torch import Tensor, matmul, zeros_like
 
-from .. import KnockoutMode
+from src.knockout.knockout_mode import KnockoutMode
 
 
 def knockout_scan(

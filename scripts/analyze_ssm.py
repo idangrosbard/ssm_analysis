@@ -1,6 +1,10 @@
 import os
 import sys
 
+from src.metrics.matrix.ssm_operator_entropy import SSMOperatorEntropy
+from src.metrics.matrix.ssm_operator_values_map import SSMOperatorValueMap
+from src.metrics.matrix.ssm_operator_variances import SSMOperatorVariances
+
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from argparse import ArgumentParser
 
@@ -9,12 +13,7 @@ import plotly.express as px
 import torch
 from transformers import AutoTokenizer, MambaModel
 
-from src.metrics import (
-    AllSSMMatricesMetrics,
-    SSMOperatorEntropy,
-    SSMOperatorValueMap,
-    SSMOperatorVariances,
-)
+from src.metrics.ssm import AllSSMMatricesMetrics
 from src.readout import SSMListenerHook, summarized_hooks2df, values_hooks2df
 
 
