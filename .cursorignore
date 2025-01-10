@@ -3,3 +3,6 @@ data/
 slurm/
 output/
 results/
+notebooks/.ipynb_checkpoints/
+notebooks/tmp_idan.ipynb
+notebooks/tmp.ipynb

@@ -8,7 +8,8 @@ setup(
     extras_require={
         "dev": [
             "pre-commit",
-            "ruff>=0.3.0",  # Fast Python linter written in Rust
-        ]
+            "ruff>=0.3.0",
+        ],
+        "streamlit": ["streamlit"],
     },
 )
