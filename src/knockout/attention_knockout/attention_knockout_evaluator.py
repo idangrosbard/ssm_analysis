@@ -5,7 +5,9 @@ import torch
 from tqdm import tqdm
 from transformers import AutoTokenizer, MambaForCausalLM
 
-from .. import KnockoutEvaluator, KnockoutMode
+from src.knockout.knockout_evaluator import KnockoutEvaluator
+from src.knockout.knockout_mode import KnockoutMode
+
 from .knockout_target import KnockoutTarget
 from .knockout_target_calc import choose_knockout_target, is_last_token_subj
 from .ssm_interfere import SSMInterfereHook

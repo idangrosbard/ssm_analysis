@@ -2,7 +2,8 @@ from typing import Callable, Optional
 
 from torch import Tensor, nn
 
-from .. import KnockoutMode
+from src.knockout.knockout_mode import KnockoutMode
+
 from .mamba_mixer_knockout import slow_forward_for_ssm_materializing_knockout
 
 

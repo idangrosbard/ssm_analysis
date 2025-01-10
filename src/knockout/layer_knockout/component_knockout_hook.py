@@ -2,8 +2,8 @@ from typing import Callable, Optional
 
 from torch import Tensor, nn
 
-from .. import KnockoutMode
-from .mamba_mixer_context_split import slow_forward_for_context_indep_split
+from src.knockout.knockout_mode import KnockoutMode
+from src.knockout.layer_knockout.mamba_mixer_context_split import slow_forward_for_context_indep_split
 
 
 class ComponentKnockoutHook(Callable):

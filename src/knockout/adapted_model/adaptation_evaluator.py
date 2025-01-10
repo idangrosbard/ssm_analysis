@@ -5,13 +5,15 @@ import torch
 from tqdm import tqdm
 from transformers import AutoTokenizer, MambaForCausalLM
 
-from .. import KnockoutEvaluator, KnockoutMode
+from src.knockout.knockout_evaluator import KnockoutEvaluator
+from src.knockout.knockout_mode import KnockoutMode
+
 from .adapted_mixer import AdaptedMixer
 
 
 def indices2khot(indices: Iterable[int], len: int, flip: bool = True) -> torch.Tensor:
     if type(indices) is not torch.Tensor:
-        if type(indices) is not list:
+        if not isinstance(indices, list):
             indices = list(indices)
         print(indices)
         indices = torch.tensor(indices, dtype=torch.long)

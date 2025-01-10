@@ -5,17 +5,18 @@ import torch
 from tqdm import tqdm
 from transformers import AutoTokenizer, MambaForCausalLM
 
-from .. import KnockoutEvaluator, KnockoutMode
-from ..attention_knockout.knockout_target import KnockoutTarget
-from ..attention_knockout.knockout_target_calc import (
+from src.knockout.attention_knockout.knockout_target import KnockoutTarget
+from src.knockout.attention_knockout.knockout_target_calc import (
     choose_knockout_target,
 )
-from .hook import IncreaseDeltaHook
+from src.knockout.increase_delta.hook import IncreaseDeltaHook
+from src.knockout.knockout_evaluator import KnockoutEvaluator
+from src.knockout.knockout_mode import KnockoutMode
 
 
 def indices2khot(indices: Iterable[int], len: int, flip: bool = True) -> torch.Tensor:
     if type(indices) is not torch.Tensor:
-        if type(indices) is not list:
+        if not isinstance(indices, list):
             indices = list(indices)
         indices = torch.tensor(indices, dtype=torch.long)
     one_hots = torch.nn.functional.one_hot(indices, len)
