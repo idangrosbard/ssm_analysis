@@ -6,9 +6,8 @@ from tqdm import tqdm
 from src.config import HeatmapConfig
 from src.consts import PATHS
 from src.datasets.download_dataset import get_hit_dataset
-from src.logit_utils import decode_tokens, get_prompt_row
+from src.logit_utils import get_prompt_row
 from src.models.model_interface import get_model_interface
-from src.plots import plot_simple_heatmap
 from src.types import DATASETS, MODEL_ARCH, DatasetArgs
 from src.utils.slurm import submit_job
 
@@ -64,35 +63,7 @@ def main_local(args: HeatmapConfig):
             prob_mat.append(forward_eval(prompt_idx, window))
 
         prob_mat = np.array(prob_mat).T
-        prompt = str(data.loc[prompt_idx, "prompt"])
-        true_word = data.loc[prompt_idx, "target_true"]
-        base_prob = data.loc[prompt_idx, "true_prob"]
-        tokens = tokenizer(prompt, return_tensors="pt", padding=True)
-        input_ids = tokens.input_ids.to(device=device)
-        toks = decode_tokens(tokenizer, input_ids[0])
-        last_tok = toks[-1]
-        toks[-1] = toks[-1] + "*"
-
         np.save(args.output_file / f"idx={prompt_idx}.npy", prob_mat)
-        for heatmap_func, heatmap_name in zip(
-            [plot_simple_heatmap],
-            ["diverging"],
-        ):
-            fig, _ = heatmap_func(
-                prob_mat=prob_mat,
-                model_id=args.model_id,
-                window_size=window_size,
-                last_tok=last_tok,
-                base_prob=base_prob,
-                true_word=true_word,
-                toks=toks,
-                fontsize=8,
-            )
-
-            # Save the figure
-            output_path = args.output_file / f"idx={prompt_idx}_{heatmap_name}.png"
-            fig.tight_layout()
-            fig.savefig(output_path)
 
 
 @pyrallis.wrap()
