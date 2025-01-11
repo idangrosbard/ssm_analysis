@@ -10,36 +10,15 @@ from tqdm import tqdm
 from src.config import InfoFlowConfig
 from src.consts import PATHS
 from src.datasets.download_dataset import get_hit_dataset
-from src.logit_utils import get_num_to_masks, get_prompt_row
 from src.models.model_interface import get_model_interface
 from src.types import DATASETS, MODEL_ARCH, DatasetArgs, TokenType
+from src.utils.logits import get_num_to_masks, get_prompt_row
 from src.utils.slurm import submit_job
-
-
-def get_top_outputs(probs, tokenizer, top_k):
-    # Get the top 5 outputs and their probs
-    top_probs, top_indices = map(torch.Tensor.tolist, torch.topk(torch.Tensor(probs), top_k))
-    top_tokens = list(map(tokenizer.batch_decode, top_indices))
-    return list(
-        map(
-            list,
-            map(
-                lambda x: zip(*x),
-                zip(
-                    top_indices,
-                    top_tokens,
-                    top_probs,
-                ),
-            ),
-        )
-    )
 
 
 def main_local(args: InfoFlowConfig):
     print(args)
     data = get_hit_dataset(model_id=args.model_id, dataset_args=args.dataset_args)
-
-    window_size = args.window_size
 
     if not args.output_file:
         args.output_file = (
@@ -141,7 +120,7 @@ def main_local(args: InfoFlowConfig):
         }, windows_true_probs
 
     prompt_indices = list(data.index)
-    windows = [list(range(i, i + window_size)) for i in range(0, n_layers - window_size + 1)]
+    windows = [list(range(i, i + args.window_size)) for i in range(0, n_layers - args.window_size + 1)]
 
     if args.DEBUG_LAST_WINDOWS:
         windows = windows[-args.DEBUG_LAST_WINDOWS :]
@@ -168,7 +147,8 @@ def main_local(args: InfoFlowConfig):
                 )
                 if args.DEBUG_LAST_WINDOWS:
                     window_outputs = {
-                        k + (n_layers - window_size + 1 - args.DEBUG_LAST_WINDOWS): v for k, v in window_outputs.items()
+                        k + (n_layers - args.window_size + 1 - args.DEBUG_LAST_WINDOWS): v
+                        for k, v in window_outputs.items()
                     }
                 json.dump(window_outputs, (block_outdir / "outputs.json").open("w"))
 

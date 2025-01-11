@@ -2,32 +2,12 @@ from collections import defaultdict
 
 import pandas as pd
 import pyrallis
-import torch
 from matplotlib import pyplot as plt
 
 from src.config import InfoFlowConfig
 from src.consts import PATHS
 from src.types import DATASETS, MODEL_ARCH, DatasetArgs
 from src.utils.slurm import submit_job
-
-
-def get_top_outputs(probs, tokenizer, top_k):
-    # Get the top 5 outputs and their probs
-    top_probs, top_indices = map(torch.Tensor.tolist, torch.topk(torch.Tensor(probs), top_k))
-    top_tokens = list(map(tokenizer.batch_decode, top_indices))
-    return list(
-        map(
-            list,
-            map(
-                lambda x: zip(*x),
-                zip(
-                    top_indices,
-                    top_tokens,
-                    top_probs,
-                ),
-            ),
-        )
-    )
 
 
 def main_local(args: InfoFlowConfig):

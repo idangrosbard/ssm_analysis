@@ -10,7 +10,6 @@ import torch
 from app.streamlit_utils import SessionKey
 from src.consts import MODEL_SIZES_PER_ARCH_TO_MODEL_ID
 from src.datasets.download_dataset import get_hit_dataset
-from src.logit_utils import get_num_to_masks, get_prompt_row
 from src.models.model_interface import ModelInterface, get_model_interface
 from src.types import (
     DATASETS,
@@ -20,6 +19,7 @@ from src.types import (
     TokenType,
     TPromptData,
 )
+from src.utils.logits import get_num_to_masks, get_prompt_row
 
 NO_MODEL = "no_model"
 

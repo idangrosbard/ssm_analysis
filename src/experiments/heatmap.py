@@ -6,16 +6,15 @@ from tqdm import tqdm
 from src.config import HeatmapConfig
 from src.consts import PATHS
 from src.datasets.download_dataset import get_hit_dataset
-from src.logit_utils import get_prompt_row
 from src.models.model_interface import get_model_interface
 from src.types import DATASETS, MODEL_ARCH, DatasetArgs
+from src.utils.logits import get_prompt_row
 from src.utils.slurm import submit_job
 
 
 def main_local(args: HeatmapConfig):
     print(args)
     data = get_hit_dataset(model_id=args.model_id, dataset_args=args.dataset_args)
-    window_size = args.window_size
 
     if not args.output_file:
         args.output_file = (
@@ -54,7 +53,7 @@ def main_local(args: HeatmapConfig):
             torch.cuda.empty_cache()
         return probs
 
-    windows = [list(range(i, i + window_size)) for i in range(0, n_layers - window_size + 1)]
+    windows = [list(range(i, i + args.window_size)) for i in range(0, n_layers - args.window_size + 1)]
 
     for prompt_idx in tqdm(args.prompt_indices, desc="Prompts"):
         prob_mat = []

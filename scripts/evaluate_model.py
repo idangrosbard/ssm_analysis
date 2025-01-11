@@ -16,8 +16,8 @@ from src.consts import (
     PATHS,
 )
 from src.datasets.download_dataset import load_dataset
-from src.logit_utils import get_last_token_logits, logits_to_probs
 from src.types import DATASETS, MODEL_ARCH, DatasetArgs, TModelID
+from src.utils.logits import get_last_token_logits, logits_to_probs
 from src.utils.setup_models import get_tokenizer_and_model
 from src.utils.slurm import submit_job
 

@@ -24,6 +24,25 @@ def get_top_k_outputs_and_probs(logits: torch.Tensor, tokenizer, top_k: int) -> 
     return top_outputs
 
 
+def get_top_outputs(probs, tokenizer, top_k):
+    # Get the top 5 outputs and their probs
+    top_probs, top_indices = map(torch.Tensor.tolist, torch.topk(torch.Tensor(probs), top_k))
+    top_tokens = list(map(tokenizer.batch_decode, top_indices))
+    return list(
+        map(
+            list,
+            map(
+                lambda x: zip(*x),
+                zip(
+                    top_indices,
+                    top_tokens,
+                    top_probs,
+                ),
+            ),
+        )
+    )
+
+
 # Taken from https://github.com/google-research/google-research/blob/master/dissecting_factual_predictions/utils.py
 def decode_tokens(tokenizer, token_array):
     if hasattr(token_array, "shape") and len(token_array.shape) > 1:
