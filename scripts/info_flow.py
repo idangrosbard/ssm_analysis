@@ -1,8 +1,5 @@
 import json
 from collections import defaultdict
-from dataclasses import dataclass
-from pathlib import Path
-from typing import Optional
 
 import numpy as np
 import pandas as pd
@@ -10,11 +7,12 @@ import pyrallis
 import torch
 from tqdm import tqdm
 
-from src.consts import FILTERATIONS, MODEL_SIZES_PER_ARCH_TO_MODEL_ID, PATHS
+from src.config import InfoFlowConfig
+from src.consts import PATHS
 from src.datasets.download_dataset import get_hit_dataset
 from src.logit_utils import get_num_to_masks, get_prompt_row
 from src.models.model_interface import get_model_interface
-from src.types import DATASETS, MODEL_ARCH, DatasetArgs, TModelID, TokenType
+from src.types import DATASETS, MODEL_ARCH, DatasetArgs, TokenType
 from src.utils.slurm import submit_job
 
 
@@ -37,56 +35,7 @@ def get_top_outputs(probs, tokenizer, top_k):
     )
 
 
-@dataclass
-class Args:
-    # model_arch: MODEL_ARCH = MODEL_ARCH.MINIMAL_MAMBA2_new
-    model_arch: MODEL_ARCH = MODEL_ARCH.MAMBA1
-    experiment_name: str = "info_flow"
-    model_size: str = "130M"
-    dataset_args: DatasetArgs = pyrallis.field(
-        default=DatasetArgs(name=DATASETS.COUNTER_FACT, splits="all"), is_mutable=True
-    )
-    filteration: str = FILTERATIONS.all_correct
-    _batch_size: int = 16  # Adjust based on GPU memory
-    output_file: Optional[Path] = None
-    with_slurm: bool = False
-    window_size = 9
-    DEBUG_LAST_WINDOWS: Optional[int] = None
-    overwrite: bool = False
-    knockout_map = {
-        TokenType.last: [
-            TokenType.last,
-            TokenType.first,
-            TokenType.subject,
-            TokenType.relation,
-        ],
-        TokenType.subject: [
-            TokenType.context,
-            TokenType.subject,
-        ],
-        TokenType.relation: [
-            TokenType.context,
-            TokenType.subject,
-            TokenType.relation,
-        ],
-    }
-
-    output_dir: Optional[Path] = None
-
-    @property
-    def batch_size(self) -> int:
-        return (
-            1
-            if (self.model_arch == MODEL_ARCH.MINIMAL_MAMBA2 or self.model_arch == MODEL_ARCH.MINIMAL_MAMBA2_new)
-            else self._batch_size
-        )
-
-    @property
-    def model_id(self) -> TModelID:
-        return MODEL_SIZES_PER_ARCH_TO_MODEL_ID[self.model_arch][self.model_size]
-
-
-def main_local(args: Args):
+def main_local(args: InfoFlowConfig):
     print(args)
     data = get_hit_dataset(model_id=args.model_id, dataset_args=args.dataset_args)
 
@@ -191,15 +140,6 @@ def main_local(args: Args):
             "wof_diff_unnorm": diffs_unnorm_wo_first / (n_prompts - w_first),
         }, windows_true_probs
 
-    # prompt_indices = list(data.index)
-    # windows = [[]]
-    # no_block_acc, no_block_diff, _, _, _, _ = evaluate(
-    #     temperature, top_k, top_p, prompt_indices, windows
-    # )
-
-    # print(no_block_acc)
-    # print(no_block_diff)
-
     prompt_indices = list(data.index)
     windows = [list(range(i, i + window_size)) for i in range(0, n_layers - window_size + 1)]
 
@@ -240,8 +180,7 @@ def main_local(args: Args):
 
 
 @pyrallis.wrap()
-def main(args: Args):
-    # args.with_slurm = True
+def main(args: InfoFlowConfig):
     if args.with_slurm:
         gpu_type = "a100"
         # gpu_type = "titan_xp-studentrun"
@@ -289,11 +228,12 @@ def main(args: Args):
     else:
         args.experiment_name += "_debug"
         args.overwrite = True
-        args.knockout_map = {"last": ["last", "subject", "relation"]}
+        args.knockout_map = {TokenType.last: [TokenType.last, TokenType.subject, TokenType.relation]}
         args.DEBUG_LAST_WINDOWS = 1
         window_sizes = [9]
         main_local(args)
 
 
 if __name__ == "__main__":
-    main()
+    args = InfoFlowConfig()
+    main(args)

@@ -1,53 +1,19 @@
-from dataclasses import dataclass
-from pathlib import Path
-from typing import Optional
-
 import numpy as np
 import pyrallis
 import torch
 from tqdm import tqdm
 
-from src.consts import FILTERATIONS, MODEL_SIZES_PER_ARCH_TO_MODEL_ID, PATHS
+from src.config import HeatmapConfig
+from src.consts import PATHS
 from src.datasets.download_dataset import get_hit_dataset
 from src.logit_utils import decode_tokens, get_prompt_row
 from src.models.model_interface import get_model_interface
 from src.plots import plot_simple_heatmap
-from src.types import DATASETS, MODEL_ARCH, DatasetArgs, TModelID
+from src.types import DATASETS, MODEL_ARCH, DatasetArgs
 from src.utils.slurm import submit_job
 
 
-@dataclass
-class Args:
-    # model_arch: MODEL_ARCH = MODEL_ARCH.MINIMAL_MAMBA2_new
-    experiment_name: str = "heatmap"
-    model_arch: MODEL_ARCH = MODEL_ARCH.MAMBA1
-    model_size: str = "130M"
-    dataset_args: DatasetArgs = pyrallis.field(
-        default=DatasetArgs(name=DATASETS.COUNTER_FACT, splits="all"), is_mutable=True
-    )
-    filteration: str = FILTERATIONS.all_correct
-    _batch_size: int = 16  # Adjust based on GPU memory
-    output_file: Optional[Path] = None
-    with_slurm: bool = False
-    window_size = 5
-    prompt_indices = [1, 2, 3, 4, 5]
-
-    output_dir: Optional[Path] = None
-
-    @property
-    def batch_size(self) -> int:
-        return (
-            1
-            if (self.model_arch == MODEL_ARCH.MINIMAL_MAMBA2 or self.model_arch == MODEL_ARCH.MINIMAL_MAMBA2_new)
-            else self._batch_size
-        )
-
-    @property
-    def model_id(self) -> TModelID:
-        return MODEL_SIZES_PER_ARCH_TO_MODEL_ID[self.model_arch][self.model_size]
-
-
-def main_local(args: Args):
+def main_local(args: HeatmapConfig):
     print(args)
     data = get_hit_dataset(model_id=args.model_id, dataset_args=args.dataset_args)
     window_size = args.window_size
@@ -98,7 +64,7 @@ def main_local(args: Args):
             prob_mat.append(forward_eval(prompt_idx, window))
 
         prob_mat = np.array(prob_mat).T
-        prompt = data.loc[prompt_idx, "prompt"]
+        prompt = str(data.loc[prompt_idx, "prompt"])
         true_word = data.loc[prompt_idx, "target_true"]
         base_prob = data.loc[prompt_idx, "true_prob"]
         tokens = tokenizer(prompt, return_tensors="pt", padding=True)
@@ -130,9 +96,7 @@ def main_local(args: Args):
 
 
 @pyrallis.wrap()
-def main(args: Args):
-    # args.with_slurm = True
-
+def main(args: HeatmapConfig):
     if args.with_slurm:
         gpu_type = "a100"
         # gpu_type = "titan_xp-studentrun"
@@ -182,4 +146,5 @@ def main(args: Args):
 
 
 if __name__ == "__main__":
-    main()
+    args = HeatmapConfig()
+    main(args)
