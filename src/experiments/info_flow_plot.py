@@ -1,13 +1,10 @@
 from collections import defaultdict
 
 import pandas as pd
-import pyrallis
 from matplotlib import pyplot as plt
 
-from src.config import InfoFlowConfig
 from src.consts import PATHS
-from src.types import DATASETS, MODEL_ARCH, DatasetArgs
-from src.utils.slurm import submit_job
+from src.experiments.info_flow import InfoFlowConfig
 
 
 def main_local(args: InfoFlowConfig):
@@ -155,48 +152,3 @@ def main_local(args: InfoFlowConfig):
             key_results_path.mkdir(parents=True, exist_ok=True)
             plt.tight_layout()
             plt.savefig(key_results_path / f"{plot_metadata['filename_suffix']}.png")
-
-
-@pyrallis.wrap()
-def main(args: InfoFlowConfig):
-    # args.with_slurm = True
-
-    if args.with_slurm:
-        # gpu_type = "a100"
-        gpu_type = "titan_xp-studentrun"
-        args.experiment_name += "_v6"
-        window_sizes = [9, 15]
-
-        for model_arch, model_size in [
-            (MODEL_ARCH.MAMBA1, "130M"),
-            (MODEL_ARCH.MAMBA1, "1.4B"),
-            (MODEL_ARCH.MAMBA1, "2.8B"),
-            (MODEL_ARCH.MINIMAL_MAMBA2_new, "130M"),
-            (MODEL_ARCH.MINIMAL_MAMBA2_new, "1.3B"),
-            (MODEL_ARCH.MINIMAL_MAMBA2_new, "2.7B"),
-        ]:
-            args.model_arch = model_arch
-            args.model_size = model_size
-            args.dataset_args = DatasetArgs(name=DATASETS.COUNTER_FACT, splits="all")
-            for window_size in window_sizes:
-                args.window_size = window_size
-
-                job_name = f"info_flow/{model_arch}_{model_size}_ws={window_size}_{args.dataset_args.dataset_name}"
-                job = submit_job(
-                    main_local,
-                    args,
-                    log_folder=str(PATHS.SLURM_DIR / job_name / "%j"),
-                    job_name=job_name,
-                    gpu_type=gpu_type,
-                    slurm_gpus_per_node=1,
-                )
-
-                print(f"{job}: {job_name}")
-    else:
-        args.experiment_name += "_v6"
-        main_local(args)
-
-
-if __name__ == "__main__":
-    args = InfoFlowConfig()
-    main(args)
