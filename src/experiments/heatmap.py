@@ -21,7 +21,8 @@ class HeatmapConfig(BaseConfig):
     window_size: int = 5
     prompt_indices: list[int] = pyrallis.field(default_factory=lambda: [1, 2, 3, 4, 5])
 
-    def get_output_path(self) -> Path:
+    @property
+    def output_path(self) -> Path:
         return (
             PATHS.OUTPUT_DIR
             / self.model_id

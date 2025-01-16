@@ -1,4 +1,4 @@
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
@@ -10,8 +10,10 @@ from src.types import DATASETS, MODEL_ARCH, DatasetArgs, TModelID
 
 
 @dataclass
-class BaseConfig:
+class BaseConfig(ABC):
     """Base configuration class with common parameters across all scripts."""
+
+    experiment_name: str
 
     model_arch: MODEL_ARCH = MODEL_ARCH.MAMBA1
     model_size: str = "130M"
@@ -22,7 +24,6 @@ class BaseConfig:
     _batch_size: int = 16  # Adjust based on GPU memory
     output_file: Optional[Path] = None
     with_slurm: bool = False
-    output_dir: Optional[Path] = None
 
     @property
     def batch_size(self) -> int:
@@ -36,18 +37,7 @@ class BaseConfig:
     def model_id(self) -> TModelID:
         return MODEL_SIZES_PER_ARCH_TO_MODEL_ID[self.model_arch][self.model_size]
 
-    @abstractmethod
-    def get_output_path(self) -> Path:
-        pass
-
-    @abstractmethod
-    def get_experiment_name(self) -> str:
-        pass
-
     @property
+    @abstractmethod
     def output_path(self) -> Path:
-        return self.get_output_path()
-
-    @property
-    def experiment_name(self) -> str:
-        return self.get_experiment_name()
+        pass
