@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Generic, Optional, TypeVar
+from typing import Generator, Generic, Optional, TypeVar
 
 from src.consts import PATHS
 from src.datasets.download_dataset import get_hit_dataset
@@ -26,7 +26,7 @@ class BaseExperiment(ABC, Generic[TConfig, TSingleData, TSingleResult, TCombined
 
     def _setup_paths(self):
         """Setup experiment directories"""
-        self.config.get_output_path().mkdir(parents=True, exist_ok=True)
+        self.config.output_path.mkdir(parents=True, exist_ok=True)
 
     @property
     def model_interface(self) -> ModelInterface:
@@ -39,9 +39,7 @@ class BaseExperiment(ABC, Generic[TConfig, TSingleData, TSingleResult, TCombined
     def dataset(self) -> TPromptData:
         """Lazy load dataset"""
         if self._dataset is None:
-            self._dataset = get_hit_dataset(
-                model_id=f"{self.config.model_arch}_{self.config.model_size}", dataset_args=self.config.dataset_args
-            )
+            self._dataset = get_hit_dataset(model_id=self.config.model_id, dataset_args=self.config.dataset_args)
         return self._dataset
 
     @abstractmethod
@@ -50,7 +48,7 @@ class BaseExperiment(ABC, Generic[TConfig, TSingleData, TSingleResult, TCombined
         pass
 
     @abstractmethod
-    def evaluation_data(self) -> list[TSingleData]:
+    def evaluation_data(self) -> Generator[TSingleData, None, None]:
         """Get evaluation data"""
         pass
 
@@ -60,7 +58,7 @@ class BaseExperiment(ABC, Generic[TConfig, TSingleData, TSingleResult, TCombined
         pass
 
     @abstractmethod
-    def save_single_results(self, results: list[TSingleResult]):
+    def save_single_results(self, results: list[tuple[TSingleData, TSingleResult]]):
         """Save single experiment results"""
         pass
 
@@ -70,7 +68,7 @@ class BaseExperiment(ABC, Generic[TConfig, TSingleData, TSingleResult, TCombined
         pass
 
     @abstractmethod
-    def combine_results(self, results: list[TSingleResult]) -> TCombinedResult:
+    def combine_results(self, results: list[tuple[TSingleData, TSingleResult]]) -> TCombinedResult:
         """Combine results"""
         pass
 
@@ -82,9 +80,12 @@ class BaseExperiment(ABC, Generic[TConfig, TSingleData, TSingleResult, TCombined
         if self.get_results():
             print("Using cached results")
 
+        self._setup_paths()
+
         results = []
-        for data in self.evaluation_data():
-            results.append(self.run_single_evaluation(data))
+        data = self.evaluation_data()
+        for data_point in data:
+            results.append((data_point, self.run_single_evaluation(data_point)))
             self.save_single_results(results)
         self.save_results(self.combine_results(results))
 

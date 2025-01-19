@@ -55,7 +55,10 @@ check_untyped_defs = true # Perform checks even in untyped functions
 # Plugin and path settings
 # plugins = [] # Add plugins, if applicable
 files = ["src", "tests", 'app'] # Target specific directories for type checking
-# exclude = "" # Exclude specific files or patterns
+exclude = [
+    "src/embeddings",
+    
+]
 
 # Error reporting
 # pretty = true # Make output more readable

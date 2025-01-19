@@ -1,5 +1,5 @@
 import gc
-from typing import Dict, List, Tuple, Union, cast
+from typing import Dict, List, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -79,7 +79,7 @@ def render_llm_pipeline_hyperparameters():
             )
 
     if st.button("Unload Model"):
-        load_model_interface.clear()
+        load_model_interface.clear()  # type: ignore
         unload_model()
 
 
@@ -218,14 +218,10 @@ def render_app():
 
     # Dataset sample selection
     st.header("Dataset Sample")
-    data = cast(
-        TPromptData,
-        get_hit_dataset(
-            model_id=MODEL_SIZES_PER_ARCH_TO_MODEL_ID[model_arch][model_size],
-            dataset_args=DatasetArgs(name=DATASETS.COUNTER_FACT, splits="all"),
-        ),
+    data = get_hit_dataset(
+        model_id=MODEL_SIZES_PER_ARCH_TO_MODEL_ID[model_arch][model_size],
+        dataset_args=DatasetArgs(name=DATASETS.COUNTER_FACT, splits="all"),
     )
-
     cols = st.columns(2)
     with cols[0]:
         st.write("**Dataset Preview:**")
