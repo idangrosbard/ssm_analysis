@@ -1,7 +1,6 @@
 import random
 
 from datasets import DatasetDict
-
 from src.consts import COLUMNS
 
 
@@ -37,7 +36,7 @@ def split_dataset(dataset, num_splits, split_ratio, seed):
     for i in range(num_splits):
         start_idx = i * split_size
         end_idx = start_idx + split_size
-        split_name = f"train{i+1}"
+        split_name = f"train{i + 1}"
         splits[split_name] = dataset.select(range(start_idx, end_idx)).map(lambda x: {"split": split_name})
 
     # Remaining data for test split

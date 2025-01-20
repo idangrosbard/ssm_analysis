@@ -33,12 +33,12 @@ class HeatmapConfig(BaseConfig):
 
 class HeatmapExperiment(BaseExperiment[HeatmapConfig, tuple[int, list[int]], np.ndarray, list[np.ndarray]]):
     @property
-    def n_layers(self) -> int:
+    def _n_layers(self) -> int:
         return len(self.model_interface.model.backbone.layers)
 
     def evaluation_data(self):
         windows = [
-            list(range(i, i + self.config.window_size)) for i in range(0, self.n_layers - self.config.window_size + 1)
+            list(range(i, i + self.config.window_size)) for i in range(0, self._n_layers - self.config.window_size + 1)
         ]
 
         for prompt_idx in tqdm(self.config.prompt_indices, desc="Prompts"):

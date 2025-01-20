@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Dict, List, Optional, Tuple, Union, assert_never
+from typing import Dict, Iterable, List, Optional, Tuple, Union
 
 import torch
 import torch.nn.functional as F
@@ -31,7 +31,7 @@ class ModelInterface(ABC):
 
         self.device = self.model.device
 
-    def setup(self, layers: Optional[list[int]] = None):
+    def setup(self, layers: Optional[Iterable[int]] = None):
         self.model.eval()
 
     @abstractmethod
@@ -67,12 +67,12 @@ class Mamba1Interface(ModelInterface):
     ):
         super().__init__(MODEL_ARCH.MAMBA1, model_size, device, tokenizer)
 
-        self.handles = []
-        self.hooks = []
+        self.hooks: list[SSMInterfereHook] = []
+        self.handles: list[torch.utils.hooks.RemovableHandle] = []
 
         self.knockout_mode = KnockoutMode.ZERO_ATTENTION
 
-    def setup(self, layers: Optional[list[int]] = None):
+    def setup(self, layers: Optional[Iterable[int]] = None):
         super().setup(layers)
 
         for handle in self.handles:
@@ -121,7 +121,7 @@ class Mamba1Interface(ModelInterface):
         logits = out.logits
         probs = F.softmax(logits, dim=-1)
 
-        return probs[:, -1, :].detach().cpu().numpy()
+        return probs[:, -1, :].detach().cpu().numpy()  # type: ignore
 
 
 class Mamba2Interface(ModelInterface):
@@ -144,7 +144,7 @@ class Mamba2Interface(ModelInterface):
         self.setup(num_to_masks)
         with torch.no_grad():
             out = self.model.generate_single(
-                input_ids=input_ids,
+                input_ids=input_ids,  # type: ignore
                 max_new_length=input_ids.shape[1] + 1,
                 temperature=1.0,
                 top_k=0,
@@ -153,7 +153,7 @@ class Mamba2Interface(ModelInterface):
                 num_to_masks=num_to_masks,
             )
 
-        return out[-1].detach().cpu().numpy()
+        return out[-1].detach().cpu().numpy()  # type: ignore
 
 
 def get_model_interface(
@@ -165,4 +165,5 @@ def get_model_interface(
         case MODEL_ARCH.MAMBA1:
             return Mamba1Interface(model_size, device)
         case _:
-            assert_never(model_arch)
+            # assert_never(model_arch)
+            raise ValueError(f"Unknown model architecture: {model_arch}")

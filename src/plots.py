@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
+from matplotlib.ticker import MaxNLocator
 
 from src.consts import reverse_model_id
 
@@ -89,9 +90,10 @@ def simple_diff_fixed(
         fontsize=fontsize,
         # loc='left'
     )
-    cbar.locator = plt.MaxNLocator(nbins=5)
-    cbar.update_ticks()
-    cbar.ax.tick_params(labelsize=fontsize)
+    if cbar:
+        cbar.locator = MaxNLocator(nbins=5)
+        cbar.update_ticks()
+        cbar.ax.tick_params(labelsize=fontsize)
 
     fig.subplots_adjust(top=0.8)
 

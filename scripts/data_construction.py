@@ -97,7 +97,7 @@ def main_local(args: Args):
         )
         original_data.loc[batch_start : batch_end - 1, "pred"] = preds
         if (batch_start + 1) % print_period == 0:
-            print(f"Finished batch [{batch_start}:{batch_end-1}]")
+            print(f"Finished batch [{batch_start}:{batch_end - 1}]")
         torch.cuda.empty_cache()
 
     batch_size = 1

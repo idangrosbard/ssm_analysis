@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Iterable, Literal, NewType
+from typing import TYPE_CHECKING, Iterable, Literal, NewType
 
 import pandas as pd
 
@@ -25,7 +25,7 @@ class MODEL_ARCH(STREnum):
     LLAMA3_2 = "llama3.2"
 
     @property
-    def title(self) -> str:
+    def model_title(self) -> str:
         match self:
             case MODEL_ARCH.MAMBA1 | MODEL_ARCH.MINIMAL_MAMBA1:
                 return "Mamba1"
@@ -69,7 +69,7 @@ class DatasetArgs:
 
     def __post_init__(self):
         if self.splits != "all" and isinstance(self.splits, str):
-            self.splits = [self.splits]
+            self.splits = [SPLIT(self.splits)]
 
     @property
     def dataset_name(self) -> str:
@@ -77,3 +77,9 @@ class DatasetArgs:
         if self.splits != "all":
             split_name = f"_{self.splits}"
         return self.name + split_name
+
+
+if TYPE_CHECKING:
+    from transformers import PreTrainedTokenizer, PreTrainedTokenizerFast
+
+    TTokenizer = PreTrainedTokenizer | PreTrainedTokenizerFast

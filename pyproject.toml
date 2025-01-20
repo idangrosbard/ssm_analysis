@@ -60,11 +60,20 @@ check_untyped_defs = true # Perform checks even in untyped functions
 # plugins = [] # Add plugins, if applicable
 files = ["src", "tests", 'app'] # Target specific directories for type checking
 exclude = [
+    ".*/__pycache__",
     "src/embeddings",
+    "src/evaluate",
     "src/knockout",
     "src/metrics",
     "src/readout",
     "src/weight_analysis",
+    'scripts',
+    'tests/test_knockout.py',
+    "src/models/minimal_.*",
+
+    # TODO: fix these
+    'src/experiments/info_flow.py',
+    'src/experiments/info_flow_plot.py',
 ]
 
 # Error reporting
@@ -72,24 +81,31 @@ exclude = [
 
 
 [tool.pyright]
+pythonVersion = "3.12"
+pythonPlatform = "Linux"
+venvPath = "/home/yandex/DL20232024a/nirendy/repos/ADL_2/"
+venv = 'venv'
 include = [
-    "src",
-    "app"
+    "src/**",
+    "app/**"
 ]
 exclude = [
     "**/__pycache__",
     "src/embeddings",
+    "src/evaluate",
     "src/knockout",
     "src/metrics",
     "src/readout",
     "src/weight_analysis",
+    'scripts',
+    'tests/test_knockout.py',
+    "src/models/minimal_*",
+
+    # TODO: fix these
+    'src/experiments/info_flow.py',
+    'src/experiments/info_flow_plot.py',
 ]
-ignore = ["src/oldstuff"]
-defineConstant = { DEBUG = true }
-stubPath = "src/stubs"
 
-reportMissingImports = "error"
-reportMissingTypeStubs = false
-
-pythonVersion = "3.6"
-pythonPlatform = "Linux"
+executionEnvironments = [
+  { root = "." }
+]

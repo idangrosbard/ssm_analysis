@@ -65,7 +65,7 @@ def render_llm_pipeline_hyperparameters():
     model_arch = st.selectbox(
         "Choose a model architecture",
         options=list(MODELS.keys()),
-        format_func=lambda x: x.title if isinstance(x, MODEL_ARCH) else x,
+        format_func=lambda x: x.model_title if isinstance(x, MODEL_ARCH) else x,
         key=SessionKeys.selected_model_arch.key,
     )
 

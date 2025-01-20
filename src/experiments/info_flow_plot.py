@@ -143,7 +143,7 @@ def main_local(args: InfoFlowConfig):
                     "\n"
                     f"{args.model_arch} - size {args.model_size}, window size={window_size}"
                     "\n"
-                    f"{plot_metadata["title"]}",
+                    f"{plot_metadata['title']}",
                     fontsize=12,
                 )
 
