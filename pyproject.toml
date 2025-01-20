@@ -91,6 +91,8 @@ include = [
 ]
 exclude = [
     "**/__pycache__",
+]
+ignore = [
     "src/embeddings",
     "src/evaluate",
     "src/knockout",

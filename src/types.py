@@ -1,7 +1,8 @@
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Iterable, Literal, NewType
+from typing import Iterable, Literal, NewType
 
 import pandas as pd
+from transformers import PreTrainedTokenizer, PreTrainedTokenizerFast
 
 from src.utils.types_utils import STREnum
 
@@ -79,7 +80,4 @@ class DatasetArgs:
         return self.name + split_name
 
 
-if TYPE_CHECKING:
-    from transformers import PreTrainedTokenizer, PreTrainedTokenizerFast
-
-    TTokenizer = PreTrainedTokenizer | PreTrainedTokenizerFast
+TTokenizer = PreTrainedTokenizer | PreTrainedTokenizerFast

@@ -58,7 +58,7 @@ def get_tokenizer_and_model(
     | MambaForCausalLM
     | Mamba
     | LlamaForCausalLM
-    | MambaLMHeadModel,
+    | "MambaLMHeadModel",
 ]:
     if os.getenv("HUGGINGFACE_TOKEN") is not None:
         login(token=os.getenv("HUGGINGFACE_TOKEN"))
@@ -78,7 +78,7 @@ def get_tokenizer_and_model(
         case MODEL_ARCH.MINIMAL_MAMBA2:
             model = minimal_mamba2.Mamba2LMHeadModel.from_pretrained(model_id, **minimal_kwargs)  # type: ignore
         case MODEL_ARCH.MINIMAL_MAMBA2_new:
-            model = minimal_mamba2_new.Mamba2LMHeadModel.from_pretrained(model_id, **minimal_kwargs)
+            model = minimal_mamba2_new.Mamba2LMHeadModel.from_pretrained(model_id, **minimal_kwargs)  # type: ignore
         case MODEL_ARCH.MAMBA1:
             if device:
                 model = MambaForCausalLM.from_pretrained(model_id)
