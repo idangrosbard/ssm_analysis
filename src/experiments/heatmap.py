@@ -1,5 +1,17 @@
+"""
+HeatmapExperiment: Single prompt-level experiment showing how different layers affect the model's token predictions
+
+In this experiment implementation:
+The sub-task is a prompt index ( notice - this experiment is not standard, we are not iterating over the dataset)
+The inner loop is masking a sliding window over the model layers
+The sub task result is a heatmap of the token probabilities for each layer in the window
+The combined result is a dictionary of prompt index -> heatmap
+
+"""
+
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Optional
 
 import numpy as np
 import pyrallis
@@ -7,8 +19,8 @@ import torch
 from tqdm import tqdm
 
 from src.consts import PATHS
+from src.experiment_infra.base_config import BaseConfig
 from src.experiment_infra.base_experiment import BaseExperiment
-from src.experiment_infra.config import BaseConfig
 from src.utils.logits import get_prompt_row
 
 
@@ -31,21 +43,38 @@ class HeatmapConfig(BaseConfig):
         )
 
 
-class HeatmapExperiment(BaseExperiment[HeatmapConfig, tuple[int, list[int]], np.ndarray, list[np.ndarray]]):
+class HeatmapExperiment(
+    BaseExperiment[
+        HeatmapConfig,  # TConfig
+        list[int],  # TInnerLoopData - window
+        np.ndarray,  # TInnerLoopResult - probabilities of a window
+        int,  # TSubTasksData - prompt_idx
+        np.ndarray,  # TSubTasksResult - 2D array of probabilities representing a prompt heatmap
+        dict[int, np.ndarray],  # TCombinedResult - prompt index -> heatmap
+    ]
+):
     @property
     def _n_layers(self) -> int:
         return len(self.model_interface.model.backbone.layers)
 
-    def evaluation_data(self):
+    def get_index_out_file(self, prompt_idx: int) -> Path:
+        return self.config.output_path / f"idx={prompt_idx}.npy"
+
+    def sub_tasks(self):
+        """Get prompt indices as sub-tasks"""
+        for prompt_idx in tqdm(self.config.prompt_indices, desc="Prompts"):
+            yield prompt_idx
+
+    def inner_loop(self, data: int):
+        """Get windows for each prompt"""
         windows = [
             list(range(i, i + self.config.window_size)) for i in range(0, self._n_layers - self.config.window_size + 1)
         ]
+        for window in tqdm(windows, desc="Windows"):
+            yield window
 
-        for prompt_idx in tqdm(self.config.prompt_indices, desc="Prompts"):
-            for window in windows:
-                yield (prompt_idx, window)
-
-    def run_single_evaluation(self, data: tuple[int, list[int]]):
+    def run_single_inner_evaluation(self, data: tuple[int, list[int]]) -> np.ndarray:
+        """Run evaluation for a single window"""
         prompt_idx, window = data
         prompt = get_prompt_row(self.dataset, prompt_idx)
         true_id = prompt.true_id(self.model_interface.tokenizer, "cpu")
@@ -68,32 +97,29 @@ class HeatmapExperiment(BaseExperiment[HeatmapConfig, tuple[int, list[int]], np.
             torch.cuda.empty_cache()
         return probs
 
-    def combine_results(self, results):
-        prompt_prob_mats: list[np.ndarray] = []
-        prev_prompt_idx = -1
+    def combine_inner_results(self, results: list[tuple[list[int], np.ndarray]]) -> np.ndarray:
+        """Combine results for a single prompt"""
+        return np.array([result for _, result in results]).T
 
-        combined_results = []
+    def combine_sub_task_results(self, results: list[tuple[int, np.ndarray]]) -> dict[int, np.ndarray]:
+        """Combine results from all prompts"""
+        return {prompt_idx: prompt_results for prompt_idx, prompt_results in results}
 
-        for (prompt_idx, _), probs in results:
-            if prev_prompt_idx != prompt_idx:
-                prompt_prob_mats = []
-                combined_results.append(prompt_prob_mats)
-            prompt_prob_mats.append(probs)
-            prev_prompt_idx = prompt_idx
+    def save_results(self, results: dict[int, np.ndarray]):
+        """Save final results"""
+        for prompt_idx, prompt_results in results.items():
+            np.save(self.get_index_out_file(prompt_idx), prompt_results)
 
-        return combined_results
+    def save_sub_task_results(self, results: list[tuple[int, np.ndarray]]):
+        """Save intermediate results for each prompt"""
+        for prompt_idx, prompt_results in results:
+            np.save(self.get_index_out_file(prompt_idx), np.array(prompt_results).T)
 
-    def save_results(self, results):
-        for prompt_idx, prompt_results in enumerate(results):
-            np.save(self.config.output_path / f"idx={prompt_idx}.npy", np.array(prompt_results).T)
+    def load_sub_task_result(self, data: int) -> Optional[np.ndarray]:
+        """Load results for a single prompt if they exist"""
+        prompt_idx = data
 
-    def save_single_results(self, results):
-        pass
-
-    def get_results(self):
-        results = []
-        for prompt_idx in self.config.prompt_indices:
-            prompt_path = self.config.output_path / f"idx={prompt_idx}.npy"
-            if prompt_path.exists():
-                results.append(np.load(prompt_path))
-        return results
+        prompt_path = self.get_index_out_file(prompt_idx)
+        if prompt_path.exists():
+            return np.load(prompt_path)
+        return None

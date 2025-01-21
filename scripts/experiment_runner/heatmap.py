@@ -54,7 +54,7 @@ def main(args: HeatmapConfig):
                 print(f"{job}: {job_name}")
     else:
         args.experiment_name = "debug"
-        args.prompt_indices = [1, 2]
+        args.prompt_indices = [1, 2, 3, 4, 5]
         HeatmapExperiment(args).run_local()
 
 
