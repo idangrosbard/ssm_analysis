@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from pathlib import Path
 
-from src.experiment_infra.config import BaseConfig
+from src.experiment_infra.base_config import BaseConfig
 from src.utils.tests_utils import run_mypy_check_on_function
 
 EXPERIMENT_NAME_BEFORE = "simple"
