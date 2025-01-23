@@ -1,7 +1,5 @@
-from __future__ import annotations
-
 import os
-from typing import TYPE_CHECKING, Optional, Tuple, assert_never
+from typing import TYPE_CHECKING, Optional, Tuple, Union, assert_never
 
 import torch
 from huggingface_hub import login
@@ -53,14 +51,16 @@ def get_tokenizer_and_model(
     model_arch: MODEL_ARCH, model_size: str, device: Optional[torch.device] = None
 ) -> tuple[
     PreTrainedTokenizer | PreTrainedTokenizerFast,
-    Mamba
-    | minimal_mamba2.Mamba2LMHeadModel
-    | minimal_mamba2_new.Mamba2LMHeadModel
-    | PreTrainedModel
-    | MambaForCausalLM
-    | Mamba
-    | LlamaForCausalLM
-    | "MambaLMHeadModel",
+    Union[
+        Mamba,
+        minimal_mamba2.Mamba2LMHeadModel,
+        minimal_mamba2_new.Mamba2LMHeadModel,
+        PreTrainedModel,
+        MambaForCausalLM,
+        Mamba,
+        LlamaForCausalLM,
+        "MambaLMHeadModel",
+    ],
 ]:
     if os.getenv("HUGGINGFACE_TOKEN") is not None:
         login(token=os.getenv("HUGGINGFACE_TOKEN"))

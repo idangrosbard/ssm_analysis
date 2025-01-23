@@ -15,7 +15,6 @@ known-first-party = []
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["E402", "F401"]
 "src/models/*.py" = ["E501", "E721", "E741"]
-"tests/*.py" = ["F821", "F841"]
 "src/knockout/**/*.py" = ["E501"]
 "src/readout/*.py" = ["E501", "F841"]
 "src/metrics/matrix/ssm_operator_values_map.py" = ["E721"]
@@ -26,6 +25,7 @@ known-first-party = []
 "src/knockout/adapted_model/adaptation_evaluator.py" = ["F841"]
 "src/knockout/attention_knockout/mamba_mixer_knockout.py" = ["F841"]
 "src/models/minimal_mamba1.py" = ["F821"]
+"src/knockout/attention_knockout/knockout_scan.py" = ["F722"]
 # TODO: fix these
 "scripts/evaluate_tokenization.py" = ["ALL"]
 "scripts/evaluate_interference.py" = ["ALL"]
@@ -68,7 +68,6 @@ exclude = [
     "src/readout",
     "src/weight_analysis",
     'scripts',
-    'tests/test_knockout.py',
     "src/models/minimal_.*",
 
     # TODO: fix these
@@ -100,7 +99,6 @@ ignore = [
     "src/readout",
     "src/weight_analysis",
     'scripts',
-    'tests/test_knockout.py',
     "src/models/minimal_*",
 
     # TODO: fix these
@@ -111,3 +109,7 @@ ignore = [
 executionEnvironments = [
   { root = "." }
 ]
+
+[tool.pytest.ini_options]
+# addopts = "-vv --rich"
+addopts = "-vv"

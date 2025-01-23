@@ -4,7 +4,19 @@ setup(
     name="ssm_analysis",
     version="0.1",
     packages=find_packages(),
-    install_requires=["pyrallis", "submitit"],
+    install_requires=[
+        "pyrallis",
+        "submitit",
+        "torch",
+        "numpy",
+        "pandas",
+        "scipy",
+        "tqdm",
+        "beartype",
+        "jaxtyping",
+        "transformers",
+        "datasets",
+    ],
     extras_require={
         "dev": [
             "pre-commit",

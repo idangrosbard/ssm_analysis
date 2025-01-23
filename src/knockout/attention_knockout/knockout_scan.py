@@ -1,40 +1,44 @@
 from typing import Iterable, List
 
 import torch
+from jaxtyping import Float
 from torch import Tensor, matmul, zeros_like
 
 from src.knockout.knockout_mode import KnockoutMode
+from src.types import TSSM_A, TSSM_B, TSSM_C, TSSM_Bu, TSSMInput, TSSMState
+from src.utils.type_checking import tensor_type_check
 
 
+@tensor_type_check
 def knockout_scan(
     seq_len: int,
-    ssm_state: Tensor,
-    discrete_A: Tensor,
-    deltaB_u: Tensor,
-    C: Tensor,
+    ssm_state: TSSMState,
+    discrete_A: TSSM_A,
+    deltaB_u: TSSM_Bu,
+    C: TSSM_C,
     knocked_out_inputs: Iterable[int],
     affected_outputs: Iterable[int],
     knockout_mode: KnockoutMode,
-    dtype,
-) -> List[Tensor]:
-    knockout_state = zeros_like(ssm_state)
+    dtype: torch.dtype,
+) -> List[Float[Tensor, "batch hidden_size"]]:
+    knockout_state: TSSMState = zeros_like(ssm_state)
     scan_outputs = []
     for i in range(seq_len):
-        ssm_state = discrete_A[:, :, i, :] * ssm_state + deltaB_u[:, :, i, :]  # [batch, intermediade_size, ssm_state]
+        ssm_state = discrete_A[:, :, i, :] * ssm_state + deltaB_u[:, :, i, :]
         if i not in knocked_out_inputs:
-            knockout_state = (
-                discrete_A[:, :, i, :] * knockout_state + deltaB_u[:, :, i, :]
-            )  # [batch, intermediade_size, ssm_state]
-        elif i in knocked_out_inputs:
+            knockout_state = discrete_A[:, :, i, :] * knockout_state + deltaB_u[:, :, i, :]
+        else:
             if knockout_mode == KnockoutMode.ZERO_ATTENTION:
                 knockout_state = discrete_A[:, :, i, :] * knockout_state
             elif knockout_mode == KnockoutMode.ZERO_DELTA:
                 knockout_state = knockout_state
-        if i in affected_outputs:
-            scan_output = matmul(knockout_state.to(dtype), C[:, i, :].unsqueeze(-1))  # [batch, intermediade_size, 1]
-        else:
-            scan_output = matmul(ssm_state.to(dtype), C[:, i, :].unsqueeze(-1))  # [batch, intermediade_size, 1]
-        scan_outputs.append(scan_output[:, :, 0])
+
+        scan_output = torch.einsum(
+            "bij,bj->bi",
+            (knockout_state if (i in affected_outputs) else ssm_state).to(dtype),
+            C[:, i, :],
+        )
+        scan_outputs.append(scan_output)
 
     return scan_outputs
 
@@ -68,7 +72,15 @@ def materialize_ssm_attention(
     return torch.tril(out)
 
 
-def compute_attn_matrix_fn(dA, dB, C, L, x_shape, dtype=torch.float16):
+@tensor_type_check
+def compute_attn_matrix_fn(
+    dA: TSSM_A,
+    dB: TSSM_B,
+    C: TSSM_C,
+    L: int,
+    x_shape: tuple,
+    dtype: torch.dtype = torch.float16,
+) -> Float[Tensor, "batch hidden_size seq_len seq_len"]:
     # dA = torch.exp(torch.einsum("bdl,dn->bldn", dt, A))
     # dB = torch.einsum("bdl,bnl->bldn", dt, B.squeeze(1))
     AttnMatrixOverCLS = (
@@ -86,21 +98,22 @@ def compute_attn_matrix_fn(dA, dB, C, L, x_shape, dtype=torch.float16):
     return AttnMatrixOverCLS
 
 
+@tensor_type_check
 def knockout_matrix(
     seq_len: int,
-    discrete_A: Tensor,
-    discrete_B: Tensor,
-    u: Tensor,
-    C: Tensor,
+    discrete_A: TSSM_A,
+    discrete_B: TSSM_B,
+    u: TSSMInput,
+    C: TSSM_C,
     knocked_out_inputs: Iterable[int],
     affected_outputs: Iterable[int],
     dtype,
-) -> List[Tensor]:
+) -> Float[Tensor, "batch hidden_size seq_len"]:
     attn = compute_attn_matrix_fn(discrete_A, discrete_B, C, seq_len, u.shape, dtype)
     for i in affected_outputs:
         for j in knocked_out_inputs:
             attn[:, :, i, j] = 0
-    outputs = (attn @ u).squeeze(-1)
+    outputs = torch.einsum("bdtx,bdx->bdt", attn, u)
     return outputs
 
 

@@ -2,6 +2,8 @@ from dataclasses import dataclass
 from typing import Iterable, Literal, NewType
 
 import pandas as pd
+from jaxtyping import Float
+from torch import Tensor
 from transformers import PreTrainedTokenizer, PreTrainedTokenizerFast
 
 from src.utils.types_utils import STREnum
@@ -81,3 +83,10 @@ class DatasetArgs:
 
 
 TTokenizer = PreTrainedTokenizer | PreTrainedTokenizerFast
+
+TSSMState = Float[Tensor, "batch hidden_size ssm_dim"]
+TSSMInput = Float[Tensor, "batch hidden_size seq_len"]
+TSSM_A = Float[Tensor, "batch hidden_size seq_len ssm_dim"]
+TSSM_B = Float[Tensor, "batch hidden_size seq_len ssm_dim"]
+TSSM_Bu = Float[Tensor, "batch hidden_size seq_len ssm_dim"]
+TSSM_C = Float[Tensor, "batch seq_len ssm_dim"]
