@@ -1,6 +1,10 @@
 [tool.ruff]
 line-length = 120
 target-version = "py312"
+extend-include = [
+    "src",
+    "app"
+]
 
 [tool.ruff.lint]
 select = ["E", "F", "I"]
@@ -55,7 +59,55 @@ check_untyped_defs = true # Perform checks even in untyped functions
 # Plugin and path settings
 # plugins = [] # Add plugins, if applicable
 files = ["src", "tests", 'app'] # Target specific directories for type checking
-# exclude = "" # Exclude specific files or patterns
+exclude = [
+    ".*/__pycache__",
+    "src/embeddings",
+    "src/evaluate",
+    "src/knockout",
+    "src/metrics",
+    "src/readout",
+    "src/weight_analysis",
+    'scripts',
+    'tests/test_knockout.py',
+    "src/models/minimal_.*",
+
+    # TODO: fix these
+    'src/experiments/info_flow.py',
+    'src/experiments/info_flow_plot.py',
+]
 
 # Error reporting
 # pretty = true # Make output more readable
+
+
+[tool.pyright]
+pythonVersion = "3.12"
+pythonPlatform = "Linux"
+venvPath = "/home/yandex/DL20232024a/nirendy/repos/ADL_2/"
+venv = 'venv'
+include = [
+    "src/**",
+    "app/**"
+]
+exclude = [
+    "**/__pycache__",
+]
+ignore = [
+    "src/embeddings",
+    "src/evaluate",
+    "src/knockout",
+    "src/metrics",
+    "src/readout",
+    "src/weight_analysis",
+    'scripts',
+    'tests/test_knockout.py',
+    "src/models/minimal_*",
+
+    # TODO: fix these
+    'src/experiments/info_flow.py',
+    'src/experiments/info_flow_plot.py',
+]
+
+executionEnvironments = [
+  { root = "." }
+]

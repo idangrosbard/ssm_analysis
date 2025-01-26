@@ -1,4 +1,4 @@
-from typing import Callable, Optional
+from typing import Iterable, Optional
 
 from torch import Tensor, nn
 
@@ -7,13 +7,13 @@ from src.knockout.knockout_mode import KnockoutMode
 from .mamba_mixer_knockout import slow_forward_for_ssm_materializing_knockout
 
 
-class SSMInterfereHook(Callable):
+class SSMInterfereHook:
     def __init__(self, layer: int | str | nn.Module, knockout_type: KnockoutMode):
         self.counter = 0
         self.layer = layer
         self.knockout_type = knockout_type
-        self.knockout_indices = {}
-        self.affected_outputs = {}
+        self.knockout_indices: Iterable[int] = []
+        self.affected_outputs: Iterable[int] = []
 
     def hook(self, module: nn.Module, inp: Tensor, out: Tensor) -> Optional[Tensor]:
         """

@@ -1,7 +1,6 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
 
 import pyrallis
 
@@ -22,7 +21,6 @@ class BaseConfig(ABC):
     )
     filteration: str = FILTERATIONS.all_correct
     _batch_size: int = 16  # Adjust based on GPU memory
-    output_file: Optional[Path] = None
     with_slurm: bool = False
 
     @property

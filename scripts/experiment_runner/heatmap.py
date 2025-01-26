@@ -1,7 +1,7 @@
 import pyrallis
 
 from src.consts import PATHS
-from src.experiments.heatmap import HeatmapConfig, main_local
+from src.experiments.heatmap import HeatmapConfig, HeatmapExperiment
 from src.types import DATASETS, MODEL_ARCH, DatasetArgs
 from src.utils.slurm import submit_job
 
@@ -32,11 +32,13 @@ def main(args: HeatmapConfig):
             for window_size in window_sizes:
                 args.window_size = window_size
 
+                experiment = HeatmapExperiment(args)
                 job_name = (
                     f"{experiment_name}/{model_arch}_{model_size}_ws={window_size}_{args.dataset_args.dataset_name}"
                 )
+
                 job = submit_job(
-                    main_local,
+                    experiment.run_local,
                     args,
                     log_folder=str(PATHS.SLURM_DIR / job_name / "%j"),
                     job_name=job_name,
@@ -52,10 +54,9 @@ def main(args: HeatmapConfig):
                 print(f"{job}: {job_name}")
     else:
         args.experiment_name = "debug"
-        args.prompt_indices = [1]
-        main_local(args)
+        args.prompt_indices = [1, 2, 3, 4, 5]
+        HeatmapExperiment(args).run_local()
 
 
 if __name__ == "__main__":
-    args = HeatmapConfig()
-    main(args)
+    main()

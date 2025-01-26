@@ -61,38 +61,38 @@ class ISlurmArgs(NamedTuple):
 
 MODEL_SIZES_PER_ARCH_TO_MODEL_ID: dict[MODEL_ARCH, dict[str, TModelID]] = {
     MODEL_ARCH.MAMBA1: {
-        "130M": "state-spaces/mamba-130M-hf",
-        "1.4B": "state-spaces/mamba-1.4B-hf",
-        "2.8B": "state-spaces/mamba-2.8B-hf",
+        "130M": TModelID("state-spaces/mamba-130M-hf"),
+        "1.4B": TModelID("state-spaces/mamba-1.4B-hf"),
+        "2.8B": TModelID("state-spaces/mamba-2.8B-hf"),
     },
     MODEL_ARCH.MINIMAL_MAMBA1: {
-        "130M": "state-spaces/mamba-130M",
-        "1.4B": "state-spaces/mamba-1.4B",
-        "2.8B": "state-spaces/mamba-2.8B",
+        "130M": TModelID("state-spaces/mamba-130M"),
+        "1.4B": TModelID("state-spaces/mamba-1.4B"),
+        "2.8B": TModelID("state-spaces/mamba-2.8B"),
     },
     MODEL_ARCH.MINIMAL_MAMBA2: {
-        "130M": "state-spaces/mamba2-130M",
-        "1.3B": "state-spaces/mamba2-1.3b",
-        "2.7B": "state-spaces/mamba2-2.7B",
+        "130M": TModelID("state-spaces/mamba2-130M"),
+        "1.3B": TModelID("state-spaces/mamba2-1.3b"),
+        "2.7B": TModelID("state-spaces/mamba2-2.7B"),
     },
     MODEL_ARCH.MINIMAL_MAMBA2_new: {
-        "130M": "state-spaces/mamba2-130M",
-        "1.3B": "state-spaces/mamba2-1.3b",
-        "2.7B": "state-spaces/mamba2-2.7B",
+        "130M": TModelID("state-spaces/mamba2-130M"),
+        "1.3B": TModelID("state-spaces/mamba2-1.3b"),
+        "2.7B": TModelID("state-spaces/mamba2-2.7B"),
     },
     MODEL_ARCH.MAMBA2: {
-        "130M": "state-spaces/mamba2-130M",
-        "1.3B": "state-spaces/mamba2-1.3b",
-        "2.7B": "state-spaces/mamba2-2.7B",
+        "130M": TModelID("state-spaces/mamba2-130M"),
+        "1.3B": TModelID("state-spaces/mamba2-1.3b"),
+        "2.7B": TModelID("state-spaces/mamba2-2.7B"),
     },
     MODEL_ARCH.LLAMA2: {
-        "7B": "meta-llama/Llama-2-7b-hf",
+        "7B": TModelID("meta-llama/Llama-2-7b-hf"),
     },
     MODEL_ARCH.LLAMA3_2: {
-        "1B": "meta-llama/Llama-3.2-1B",
-        "3B": "meta-llama/Llama-3.2-3B",
+        "1B": TModelID("meta-llama/Llama-3.2-1B"),
+        "3B": TModelID("meta-llama/Llama-3.2-3B"),
     },
-}  # type: ignore
+}
 
 GRAPHS_ORDER = [
     (MODEL_ARCH.MAMBA1, "130M"),

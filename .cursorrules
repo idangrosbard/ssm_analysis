@@ -7,16 +7,6 @@ General Objectives of the project:
 - Create a good codebase for the project, with a focus on modularity, readability, and maintainability.
 - Compare Mamba, Mamba2, and Transformers in order to understand the differences and similarities between them.
 
-Next steps:
-
-- Refactor the codebase to be more modular and readable.
-  - Have a better reusability of the arguments to the script.
-- Add confidence intervals to the info_flow results.
-- clustering info_flow outputs in order to find connections between the layers and between models (architectures and sizes)
-- implement feature knockout to mamba2 (currently only implemented for mamba1, and requires refactoring)
-  - implement feature knockout per target/source roles of sentences
-- projecting logits back to the dictionary space in order to reveal semantic meanings
-
 Key Principles:
 
 - Write concise, technical responses with accurate Python examples.
@@ -36,7 +26,12 @@ Project Structure: (For reference, may not be 1-1 with the actual codebase, so u
     - minimal_mamba2.py # Minimal implementation of Mamba2
     - minimal_mamba2_new.py # Updated implementation of Mamba2
   - datasets/ # Data loading and preprocessing utilities
-  - experiments/ # Experiment runners and analysis scripts (New experiments should be added here)
+  - experiment_infra/ # Experiment infrastructure
+    - base_experiment.py # Base experiment class
+    - base_config.py # Base experiment configuration
+  - experiments/ # Specific experiments definitions (New experiments should be added here)
+    - heatmap.py # Experiment showing how different layers affect the model's performance on a single prompt
+    - info_flow.py # Experiment showing how layers and semantic information affect the model's performance on a dataset-level
   - embeddings/ # Embedding extraction and analysis tools
   - evaluate/ # Model evaluation frameworks
   - glove/ # GloVe embeddings related utilities
@@ -69,7 +64,7 @@ Project Structure: (For reference, may not be 1-1 with the actual codebase, so u
   - compare_heatmaps.ipynb # Heatmap comparison analysis
   - plotting_probs.ipynb # Probability visualization
 
-# Non-code files:
+# Non-code files
 
 - data/ # Data storage
 

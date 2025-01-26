@@ -4,7 +4,7 @@ from typing import assert_never
 
 import torch
 
-from src.types import TNum2Mask, TokenType, TPromptData
+from src.types import TNum2Mask, TokenType, TPromptData, TTokenizer
 
 
 def get_last_token_logits(logits: torch.Tensor) -> torch.Tensor:
@@ -15,7 +15,7 @@ def logits_to_probs(logits: torch.Tensor) -> torch.Tensor:
     return torch.softmax(logits, dim=-1)
 
 
-def get_top_k_outputs_and_probs(logits: torch.Tensor, tokenizer, top_k: int) -> list[tuple[int, str, float]]:
+def get_top_k_outputs_and_probs(logits: torch.Tensor, tokenizer, top_k: int):
     next_probs = logits_to_probs(get_last_token_logits(logits))
     top_probs, top_indices = torch.topk(next_probs, top_k)
     top_outputs = [
@@ -44,7 +44,7 @@ def get_top_outputs(probs, tokenizer, top_k):
 
 
 # Taken from https://github.com/google-research/google-research/blob/master/dissecting_factual_predictions/utils.py
-def decode_tokens(tokenizer, token_array):
+def decode_tokens(tokenizer: TTokenizer, token_array: torch.Tensor):
     if hasattr(token_array, "shape") and len(token_array.shape) > 1:
         return [decode_tokens(tokenizer, row) for row in token_array]
     return [tokenizer.decode([t]) for t in token_array]
@@ -57,7 +57,7 @@ def find_token_range(
 ) -> tuple[int, int]:
     """Find the tokens corresponding to the given substring in token_array."""
     toks = decode_tokens(tokenizer, token_array)
-    whole_string = "".join(toks)
+    whole_string = "".join(toks)  # type: ignore
     char_loc = whole_string.index(substring)
     loc = 0
     tok_start, tok_end = None, None
@@ -68,6 +68,7 @@ def find_token_range(
         if tok_end is None and loc >= char_loc + len(substring):
             tok_end = i + 1
             break
+    assert tok_start is not None and tok_end is not None, "Token range not found"
     return (tok_start, tok_end)
 
 
@@ -107,7 +108,7 @@ def get_num_to_masks(
     device,
 ) -> tuple[TNum2Mask, bool]:
     input_ids = prompt.input_ids(tokenizer, device)
-    num_to_masks: TNum2Mask = defaultdict(list)
+    num_to_masks = TNum2Mask(defaultdict(list))
     first_token = False
 
     last_idx = input_ids.shape[1] - 1
@@ -142,4 +143,4 @@ def get_num_to_masks(
 
 
 def get_prompt_row(data: TPromptData, prompt_idx: int) -> Prompt:
-    return Prompt(prompt_row=data.loc[prompt_idx])
+    return Prompt(prompt_row=data.loc[prompt_idx])  # type: ignore

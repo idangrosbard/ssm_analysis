@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 import os
-from typing import Optional, Tuple, assert_never
+from typing import TYPE_CHECKING, Optional, Tuple, assert_never
 
 import torch
 from huggingface_hub import login
@@ -17,6 +19,9 @@ import src.models.minimal_mamba2_new as minimal_mamba2_new
 from src.consts import MODEL_SIZES_PER_ARCH_TO_MODEL_ID
 from src.models.minimal_mamba1 import Mamba
 from src.types import MODEL_ARCH
+
+if TYPE_CHECKING:
+    from mamba_ssm.models.mixer_seq_simple import MambaLMHeadModel
 
 
 def setup_mamba_model(
@@ -48,12 +53,14 @@ def get_tokenizer_and_model(
     model_arch: MODEL_ARCH, model_size: str, device: Optional[torch.device] = None
 ) -> tuple[
     PreTrainedTokenizer | PreTrainedTokenizerFast,
-    PreTrainedModel
-    | MambaForCausalLM
-    | Mamba
+    Mamba
     | minimal_mamba2.Mamba2LMHeadModel
     | minimal_mamba2_new.Mamba2LMHeadModel
-    | LlamaForCausalLM,
+    | PreTrainedModel
+    | MambaForCausalLM
+    | Mamba
+    | LlamaForCausalLM
+    | "MambaLMHeadModel",
 ]:
     if os.getenv("HUGGINGFACE_TOKEN") is not None:
         login(token=os.getenv("HUGGINGFACE_TOKEN"))
@@ -69,15 +76,15 @@ def get_tokenizer_and_model(
 
     match model_arch:
         case MODEL_ARCH.MINIMAL_MAMBA1:
-            model = Mamba.from_pretrained(model_id, **minimal_kwargs)
+            model = Mamba.from_pretrained(model_id, **minimal_kwargs)  # type: ignore
         case MODEL_ARCH.MINIMAL_MAMBA2:
-            model = minimal_mamba2.Mamba2LMHeadModel.from_pretrained(model_id, **minimal_kwargs)
+            model = minimal_mamba2.Mamba2LMHeadModel.from_pretrained(model_id, **minimal_kwargs)  # type: ignore
         case MODEL_ARCH.MINIMAL_MAMBA2_new:
-            model = minimal_mamba2_new.Mamba2LMHeadModel.from_pretrained(model_id, **minimal_kwargs)
+            model = minimal_mamba2_new.Mamba2LMHeadModel.from_pretrained(model_id, **minimal_kwargs)  # type: ignore
         case MODEL_ARCH.MAMBA1:
             if device:
                 model = MambaForCausalLM.from_pretrained(model_id)
-                model.to(device)
+                model.to(device)  # type: ignore
             else:
                 model = MambaForCausalLM.from_pretrained(model_id, device_map="auto")
         case MODEL_ARCH.MAMBA2:
@@ -89,7 +96,7 @@ def get_tokenizer_and_model(
         case MODEL_ARCH.LLAMA2 | MODEL_ARCH.LLAMA3_2:
             if device:
                 model = LlamaForCausalLM.from_pretrained(model_id)
-                model.to(device)
+                model.to(device)  # type: ignore
             else:
                 model = LlamaForCausalLM.from_pretrained(model_id, device_map="auto")
         case _:

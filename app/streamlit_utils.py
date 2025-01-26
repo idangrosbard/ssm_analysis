@@ -1,7 +1,6 @@
 import sys
 from contextlib import contextmanager
 from io import StringIO
-from threading import current_thread
 from typing import Callable, Generic, TypeVar
 
 import streamlit as st
@@ -15,7 +14,7 @@ class SessionKey(Generic[TSessionKey]):
 
     @staticmethod
     def with_default(key, default_value: TSessionKey) -> "SessionKey[TSessionKey]":
-        session_key = SessionKey(key)
+        session_key: "SessionKey[TSessionKey]" = SessionKey(key)
         session_key.init(default_value)
         return session_key
 
@@ -64,11 +63,12 @@ def st_redirect(src, dst, placeholder, overwrite):
             buffer.write(b + "\r\n")
 
             # Without this condition, will cause infinite loop because we can't write to the streamlit from thread
-            if getattr(current_thread(), st.script_run_context.SCRIPT_RUN_CONTEXT_ATTR_NAME, None) is None:
-                if overwrite:
-                    buffer.truncate(0)
-                    buffer.seek(0)
-                return
+            # TODO: st.script_run_context not found, fix this
+            # if getattr(current_thread(), st.script_run_context.SCRIPT_RUN_CONTEXT_ATTR_NAME, None) is None:
+            #     if overwrite:
+            #         buffer.truncate(0)
+            #         buffer.seek(0)
+            #     return
 
             output_func(buffer.getvalue())
 
