@@ -1,17 +1,19 @@
-from .. import KnockoutEvaluator
-from .. import KnockoutMode
-from typing import Iterable, Tuple, Dict
+from typing import Dict, Iterable, Tuple
+
 import pandas as pd
-from tqdm import tqdm
-from ..attention_knockout.knockout_target_calc import choose_knockout_target, is_last_token_subj
-from transformers import AutoTokenizer, MambaForCausalLM, MambaModel
 import torch
+from tqdm import tqdm
+from transformers import AutoTokenizer, MambaForCausalLM
+
+from src.knockout.knockout_evaluator import KnockoutEvaluator
+from src.knockout.knockout_mode import KnockoutMode
+
 from .adapted_mixer import AdaptedMixer
 
 
 def indices2khot(indices: Iterable[int], len: int, flip: bool = True) -> torch.Tensor:
     if type(indices) is not torch.Tensor:
-        if type(indices) is not list:
+        if not isinstance(indices, list):
             indices = list(indices)
         print(indices)
         indices = torch.tensor(indices, dtype=torch.long)
@@ -22,7 +24,12 @@ def indices2khot(indices: Iterable[int], len: int, flip: bool = True) -> torch.T
     return k_hot
 
 
-def build_delta_factor_map(layers: Dict[str, Iterable[int]], factor: Dict[str, float], size: int, layer_index: int) -> Dict[str, float]:
+def build_delta_factor_map(
+    layers: Dict[str, Iterable[int]],
+    factor: Dict[str, float],
+    size: int,
+    layer_index: int,
+) -> Dict[str, float]:
     factor_maps = []
     for layer, indices in layers.items():
         feature_map = indices2khot(indices[layer_index], size, flip=False)
@@ -33,7 +40,16 @@ def build_delta_factor_map(layers: Dict[str, Iterable[int]], factor: Dict[str, f
 
 
 class AdaptationEvaluator(KnockoutEvaluator):
-    def __init__(self, model: MambaForCausalLM, tokenizer: AutoTokenizer, device: torch.device, feature_map: Dict[str, Iterable[int]], factor: Dict[str, float], feature_mask: Dict[str, int], show_progress: bool = False):
+    def __init__(
+        self,
+        model: MambaForCausalLM,
+        tokenizer: AutoTokenizer,
+        device: torch.device,
+        feature_map: Dict[str, Iterable[int]],
+        factor: Dict[str, float],
+        feature_mask: Dict[str, int],
+        show_progress: bool = False,
+    ):
         self.model = model
         self.tokenizer = tokenizer
         self.device = device
@@ -54,12 +70,14 @@ class AdaptationEvaluator(KnockoutEvaluator):
                 adapted_mixer = AdaptedMixer(moi, feature_factor_map, feature_mask)
                 self.model.backbone.layers[i].mixer = adapted_mixer
 
-    def knockout_eval(self, dataset: pd.DataFrame, layers: Iterable[int], knockout_mode: KnockoutMode) -> Tuple[pd.DataFrame, int]:
+    def knockout_eval(
+        self, dataset: pd.DataFrame, layers: Iterable[int], knockout_mode: KnockoutMode
+    ) -> Tuple[pd.DataFrame, int]:
         acc = 0
-        
-        dataset['correct'] = False
+
+        dataset["correct"] = False
         self.setup_model(layers)
-                
+
         # Evaluate model
         pbar = tqdm(dataset.index, total=len(dataset), disable=not self.show_progress)
         for idx in pbar:
@@ -67,19 +85,18 @@ class AdaptationEvaluator(KnockoutEvaluator):
             input = dataset.loc[idx, "prompt"]
             target = dataset.loc[idx, "attribute"]
             subj = dataset.loc[idx, "subject"]
-            
 
             input_ids = self.tokenizer(input, return_tensors="pt")["input_ids"].to(self.device)
-            
+
             out = self.model(input_ids)
 
             # get last decoded word
             decoded = self.tokenizer.decode(out.logits.argmax(dim=-1).squeeze())
-            last_word = decoded.split(' ')[-1]
+            last_word = decoded.split(" ")[-1]
 
-            correct = last_word == target[:len(last_word)]
+            correct = last_word == target[: len(last_word)]
             # Update performance
             acc += float(correct) / len(dataset)
-            dataset.loc[idx, 'correct'] = correct
+            dataset.loc[idx, "correct"] = correct
 
         return dataset, acc

@@ -1,6 +1,7 @@
-from .matrix_metric import MatrixMetric
 import numpy as np
 from scipy.stats import entropy
+
+from .matrix_metric import MatrixMetric
 
 
 class SSMOperatorEntropy(MatrixMetric):
@@ -8,6 +9,6 @@ class SSMOperatorEntropy(MatrixMetric):
         self.variance_calculation = variance_calculation
 
     def calc(self, **kwargs) -> np.ndarray:
-        mat = kwargs['mat']
+        mat = kwargs["mat"]
         variances = self.variance_calculation.calc(mat=mat)
         return entropy(variances.flatten(), axis=-1)

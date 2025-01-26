@@ -1,9 +1,8 @@
 from typing import Optional
-from torch import nn
-import torch
-from typing import Iterable
-from transformers.cache_utils import MambaCache
 
+import torch
+from torch import nn
+from transformers.cache_utils import MambaCache
 
 
 def get_factored_mask(mask: torch.Tensor, factor: float, factored_tokens: torch.Tensor):
@@ -16,8 +15,6 @@ def get_factored_mask(mask: torch.Tensor, factor: float, factored_tokens: torch.
     mask = mask[None, :, None] * factored_tokens[None, None, :]
     mask = mask * factor + (1 - mask)
     return mask
-
-    
 
 
 # fmt: off

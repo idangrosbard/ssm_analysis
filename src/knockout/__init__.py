@@ -1,2 +1,0 @@
-from .knockout_mode import KnockoutMode
-from .knockout_evaluator import KnockoutEvaluator

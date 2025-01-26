@@ -1,6 +1,5 @@
-from dataclasses import dataclass
-from hmac import new
 import json
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional, assert_never
 
@@ -12,16 +11,13 @@ from transformers import (
     AutoTokenizer,
 )
 
-from scripts.create_slurm_file import run_slurm
 from src.consts import (
     MODEL_SIZES_PER_ARCH_TO_MODEL_ID,
     PATHS,
 )
 from src.datasets.download_dataset import load_dataset
-from src.datasets.download_dataset import load_knowns_pd
-from src.logit_utils import get_last_token_logits, logits_to_probs
-from src.types import DATASETS
-from src.types import MODEL_ARCH, SPLIT, DatasetArgs, TModelID
+from src.types import DATASETS, MODEL_ARCH, DatasetArgs, TModelID
+from src.utils.logits import get_last_token_logits, logits_to_probs
 from src.utils.setup_models import get_tokenizer_and_model
 from src.utils.slurm import submit_job
 
@@ -48,9 +44,7 @@ def generate_next_tokens(model, input_ids, num_tokens_to_generate, model_arch):
         if first_logits is None:
             first_logits = next_tokens
 
-        input_ids = torch.cat(
-            [input_ids, torch.argmax(next_tokens, dim=-1, keepdim=True)], dim=-1
-        )
+        input_ids = torch.cat([input_ids, torch.argmax(next_tokens, dim=-1, keepdim=True)], dim=-1)
 
     return logits, first_logits, input_ids[:, -num_tokens_to_generate:]
 
@@ -107,26 +101,26 @@ def _get_logits(out, model_arch: MODEL_ARCH):
 def trim_left_and_right_pad(tensor, trim_value=2, pad_value=0):
     """
     Trims leading specified values from each row and pads rows on the right to equalize their lengths.
-    
+
     Args:
         tensor (torch.Tensor): The input tensor.
         trim_value (int): The value to trim from the start of each row (default is 2).
         pad_value (int): The value to use for padding on the right (default is 0).
-    
+
     Returns:
         torch.Tensor: The processed tensor with trimmed rows and right padding.
     """
     # Remove leading trim_value from each row
-    trimmed_rows = [row[torch.nonzero(row != trim_value, as_tuple=True)[0][0]:] for row in tensor]
-    
+    trimmed_rows = [row[torch.nonzero(row != trim_value, as_tuple=True)[0][0] :] for row in tensor]
+
     # Determine the maximum length after trimming
     max_length = max(len(row) for row in trimmed_rows)
-    
+
     # Pad each row from the right to make all rows equal to the max length
-    padded_tensor = torch.stack([
-        torch.cat([row, torch.full((max_length - len(row),), pad_value)]) for row in trimmed_rows
-    ])
-    
+    padded_tensor = torch.stack(
+        [torch.cat([row, torch.full((max_length - len(row),), pad_value)]) for row in trimmed_rows]
+    )
+
     return padded_tensor
 
 
@@ -197,7 +191,16 @@ def main_local(args: Args):
                 json.dumps,
                 map(
                     lambda x: tokenizer.batch_decode(x, skip_special_tokens=True),
-                    [lst[:next((i for i in range(len(lst)-1, -1, -1) if lst[i] != tokenizer.pad_token_id), -1) + 1] for lst in target_token_idx_padded.tolist()],
+                    [
+                        lst[
+                            : next(
+                                (i for i in range(len(lst) - 1, -1, -1) if lst[i] != tokenizer.pad_token_id),
+                                -1,
+                            )
+                            + 1
+                        ]
+                        for lst in target_token_idx_padded.tolist()
+                    ],
                 ),
             )
         )
@@ -209,9 +212,7 @@ def main_local(args: Args):
         elif args.drop_subj_last_token:
             subj_idx = get_subj_idx(input_prompt, df.loc[idx, "subject"], tokenizer)
 
-        input_ids = tokenizer(
-            input_prompt.to_list(), return_tensors="pt", padding=True
-        )["input_ids"]
+        input_ids = tokenizer(input_prompt.to_list(), return_tensors="pt", padding=True)["input_ids"]
 
         if args.drop_subj_last_token:
             input_ids = input_ids[:subj_idx] + input_ids[subj_idx + 1 :]
@@ -219,17 +220,13 @@ def main_local(args: Args):
         input_ids = input_ids.to(device)
 
         # TODO: the logits of the next token is different for different the amount token generated, understand why
-        _, first_logits, new_input_ids = generate_next_tokens(
-            model, input_ids, args.new_max_tokens, args.model_arch
-        )
+        _, first_logits, new_input_ids = generate_next_tokens(model, input_ids, args.new_max_tokens, args.model_arch)
 
         # Get the next token probs
         next_probs = logits_to_probs(first_logits)
 
         # Get the top 5 outputs and their probs
-        top_probs, top_indices = map(
-            torch.Tensor.tolist, torch.topk(next_probs, args.top_k_tokens)
-        )
+        top_probs, top_indices = map(torch.Tensor.tolist, torch.topk(next_probs, args.top_k_tokens))
         top_tokens = list(map(tokenizer.batch_decode, top_indices))
         top_outputs = list(
             map(
@@ -257,9 +254,7 @@ def main_local(args: Args):
         df.loc[idx, "target_probs"] = target_probs.squeeze(1).tolist()
         df.loc[idx, "model_correct"] = (target_rank == 1).tolist()
         df.loc[idx, "model_output"] = list(map(lambda x: x[0], top_tokens))
-        df.loc[idx, "model_top_output_confidence"] = list(
-            map(lambda x: x[0], top_probs)
-        )
+        df.loc[idx, "model_top_output_confidence"] = list(map(lambda x: x[0], top_probs))
         df.loc[idx, "model_top_outputs"] = list(map(json.dumps, top_outputs))
         df.loc[idx, "model_generation"] = tokenizer.batch_decode(new_input_ids)
 
@@ -267,12 +262,7 @@ def main_local(args: Args):
 
     print(acc / len(df))
     if not args.output_file:
-        args.output_file = (
-            PATHS.OUTPUT_DIR
-            / args.model_id
-            / "evaluate"
-            / f"{args.dataset_args.dataset_name}.csv"
-        )
+        args.output_file = PATHS.OUTPUT_DIR / args.model_id / "evaluate" / f"{args.dataset_args.dataset_name}.csv"
 
     args.output_file.parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(args.output_file)
@@ -308,7 +298,7 @@ def main(args: Args):
             #     args.dataset_args = DatasetArgs(name=DATASETS.COUNTER_FACT, splits=f"train{i+1}")
             # args.dataset_args = DatasetArgs(name=DATASETS.COUNTER_FACT, splits=f"train1")
             # args.dataset_args = DatasetArgs(name=DATASETS.KNOWN_1000, splits=f"all")
-            args.dataset_args = DatasetArgs(name=DATASETS.COUNTER_FACT, splits=f"all")
+            args.dataset_args = DatasetArgs(name=DATASETS.COUNTER_FACT, splits="all")
             # args.dataset_args = DatasetArgs(name=DATASETS.COUNTER_FACT, splits=f"test")
 
             job_name = f"evaluate_model/{model_arch}_{model_size}_{args.dataset_args.dataset_name}"

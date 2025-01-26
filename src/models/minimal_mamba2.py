@@ -13,18 +13,12 @@ A minimal, single-file implementation of the Mamba-2 model in PyTorch.
 
 import json
 from dataclasses import dataclass
-from typing import Iterable, Optional
-from typing import NamedTuple
-from typing import TypeAlias
-from typing import cast
+from typing import Iterable, NamedTuple, Optional, TypeAlias, cast
 
 import torch
 import torch.nn.functional as F
-from einops import rearrange
-from einops import repeat
-from torch import LongTensor
-from torch import Tensor
-from torch import nn
+from einops import rearrange, repeat
+from torch import LongTensor, Tensor, nn
 
 Device: TypeAlias = str | torch.device | None
 
@@ -46,10 +40,7 @@ class Mamba2Config:
         assert self.d_inner % self.headdim == 0
         self.nheads = self.d_inner // self.headdim
         if self.vocab_size % self.pad_vocab_size_multiple != 0:
-            self.vocab_size += (
-                    self.pad_vocab_size_multiple
-                    - self.vocab_size % self.pad_vocab_size_multiple
-            )
+            self.vocab_size += self.pad_vocab_size_multiple - self.vocab_size % self.pad_vocab_size_multiple
 
 
 class InferenceCache(NamedTuple):
@@ -59,12 +50,8 @@ class InferenceCache(NamedTuple):
     @staticmethod
     def alloc(batch_size: int, args: Mamba2Config, device: Device = None):
         return InferenceCache(
-            torch.zeros(
-                batch_size, args.d_inner + 2 * args.d_state, args.d_conv, device=device
-            ),
-            torch.zeros(
-                batch_size, args.nheads, args.headdim, args.d_state, device=device
-            ),
+            torch.zeros(batch_size, args.d_inner + 2 * args.d_state, args.d_conv, device=device),
+            torch.zeros(batch_size, args.nheads, args.headdim, args.d_state, device=device),
         )
 
 
@@ -91,13 +78,15 @@ class Mamba2LMHeadModel(nn.Module):
                 norm_f=RMSNorm(args.d_model, device=device),
             )
         )
-        self.lm_head = nn.Linear(
-            args.d_model, args.vocab_size, bias=False, device=device
-        )
+        self.lm_head = nn.Linear(args.d_model, args.vocab_size, bias=False, device=device)
         self.lm_head.weight = self.backbone.embedding.weight
 
     @staticmethod
-    def from_pretrained(huggingface_model_id: str, device: Device = None, device_map: Optional[str] = None):
+    def from_pretrained(
+        huggingface_model_id: str,
+        device: Device = None,
+        device_map: Optional[str] = None,
+    ):
         from transformers.utils import CONFIG_NAME, WEIGHTS_NAME
         from transformers.utils.hub import cached_file
 
@@ -116,18 +105,16 @@ class Mamba2LMHeadModel(nn.Module):
 
         if device_map == "auto":
             device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-            
+
         map_location = "cpu" if device is None else device
-        state_dict = torch.load(
-            state_dict_path, weights_only=True, map_location=map_location, mmap=True
-        )
+        state_dict = torch.load(state_dict_path, weights_only=True, map_location=map_location, mmap=True)
         model = Mamba2LMHeadModel(args, device=device)
         model.load_state_dict(state_dict)
         model.eval()
         return model
 
     def forward(
-            self, input_ids: LongTensor, h: list[InferenceCache] | list[None] | None = None
+        self, input_ids: LongTensor, h: list[InferenceCache] | list[None] | None = None
     ) -> tuple[LongTensor, list[InferenceCache]]:
         """
         Arguments
@@ -156,12 +143,9 @@ class Mamba2LMHeadModel(nn.Module):
                 h = [None for _ in range(self.args.n_layer)]
                 _, h = self(prefix[:n_chunked].unsqueeze(0), h)
             else:
-                h = [
-                    InferenceCache.alloc(1, self.args, device=self.device)
-                    for _ in range(self.args.n_layer)
-                ]
+                h = [InferenceCache.alloc(1, self.args, device=self.device) for _ in range(self.args.n_layer)]
             for i in range(n_chunked, prefix.shape[0]):
-                _, h = self(prefix[i: i + 1].unsqueeze(0), h)
+                _, h = self(prefix[i : i + 1].unsqueeze(0), h)
 
         x = self.backbone.embedding(input_ids)
         for i, layer in enumerate(self.backbone.layers):
@@ -173,20 +157,23 @@ class Mamba2LMHeadModel(nn.Module):
         return logits[:, :seqlen], cast(list[InferenceCache], h)
 
     def generate(
-            self,
-            input_ids: LongTensor,
-            max_new_length: int = 20,
-            temperature: float = 1.0,
-            top_k: int = 50,
-            top_p: float = 1.0,
-            eos_token_id: int = 0,
-            max_length: Optional[int] = None,
-            num_return_sequences: int = 1,
-            return_inference_cache: bool = False,
+        self,
+        input_ids: LongTensor,
+        max_new_length: int = 20,
+        temperature: float = 1.0,
+        top_k: int = 50,
+        top_p: float = 1.0,
+        eos_token_id: int = 0,
+        max_length: Optional[int] = None,
+        num_return_sequences: int = 1,
+        return_inference_cache: bool = False,
     ) -> Iterable[tuple[int, list[InferenceCache]]]:
-        assert len(input_ids.shape) in (1, 2), "input_ids should have shape (seqlen,) or (1, seqlen)"
+        assert len(input_ids.shape) in (
+            1,
+            2,
+        ), "input_ids should have shape (seqlen,) or (1, seqlen)"
         assert input_ids.shape[0] == 1, "Only one prompt can be processed at a time"
-        
+
         if num_return_sequences != 1:
             raise ValueError("num_return_sequences > 1 is not supported")
         if max_length is not None:
@@ -194,8 +181,7 @@ class Mamba2LMHeadModel(nn.Module):
 
         if len(input_ids.shape) == 1:
             input_ids = input_ids.unsqueeze(0)
-        
-            
+
         tokens = input_ids
         h = None
         # Generate
@@ -280,16 +266,12 @@ class Mamba2(nn.Module):
         dt = F.softplus(dt + self.dt_bias)  # (batch, seqlen, nheads)
 
         # Pad or truncate xBC seqlen to d_conv
-        conv_state = F.pad(
-            rearrange(xBC, "b l d -> b d l"), (self.args.d_conv - u.shape[1], 0)
-        )
+        conv_state = F.pad(rearrange(xBC, "b l d -> b d l"), (self.args.d_conv - u.shape[1], 0))
 
         xBC = silu(
             self.conv1d(xBC.transpose(1, 2)).transpose(1, 2)[:, : u.shape[1], :]
         )  # (batch, seqlen, d_inner + 2 * d_state))
-        x, B, C = torch.split(
-            xBC, [self.args.d_inner, self.args.d_state, self.args.d_state], dim=-1
-        )
+        x, B, C = torch.split(xBC, [self.args.d_inner, self.args.d_state, self.args.d_state], dim=-1)
         x = rearrange(x, "b l (h p) -> b l h p", p=self.args.headdim)
         y, ssm_state = ssd(
             x * dt.unsqueeze(-1),
@@ -342,15 +324,11 @@ class Mamba2(nn.Module):
         h.conv_state.copy_(torch.roll(h.conv_state, shifts=-1, dims=-1))
         h.conv_state[:, :, -1] = xBC
         # Convolution step
-        xBC = torch.sum(
-            h.conv_state * rearrange(self.conv1d.weight, "d 1 w -> d w"), dim=-1
-        )
+        xBC = torch.sum(h.conv_state * rearrange(self.conv1d.weight, "d 1 w -> d w"), dim=-1)
         xBC += self.conv1d.bias
         xBC = silu(xBC)
 
-        x, B, C = torch.split(
-            xBC, [self.args.d_inner, self.args.d_state, self.args.d_state], dim=-1
-        )
+        x, B, C = torch.split(xBC, [self.args.d_inner, self.args.d_state, self.args.d_state], dim=-1)
         A = -torch.exp(self.A_log)  # (nheads,)
 
         # SSM step
@@ -408,9 +386,7 @@ def ssd(x, A, B, C, chunk_size, initial_states=None, device: Device = None):
     # Rearrange into chunks
     # Step 1, 2 and 4 of SSD can be computed in parallel for each chunk across devices (sequence parallel)
     # This is not implemented and left as an exercise for the reader 😜
-    x, A, B, C = [
-        rearrange(m, "b (c l) ... -> b c l ...", l=chunk_size) for m in (x, A, B, C)
-    ]
+    x, A, B, C = [rearrange(m, "b (c l) ... -> b c l ...", l=chunk_size) for m in (x, A, B, C)]
 
     A = rearrange(A, "b c l h -> b h c l")
     A_cumsum = torch.cumsum(A, dim=-1)

@@ -1,45 +1,26 @@
-from dataclasses import dataclass
-from re import split
-import sys
 import os
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Iterable, Optional
 
-from src.consts import MODEL_SIZES_PER_ARCH_TO_MODEL_ID, PATHS
-
-is_nir = os.getenv("USER") == "nirendy"
-if is_nir:
-    import pyrallis
-    from src.utils.slurm import submit_job
-else:
-    sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
+import numpy as np
 import pandas as pd
-from transformers import AutoTokenizer, MambaForCausalLM
+import pyrallis
 import torch
 from tqdm import tqdm
-from pathlib import Path
-from src.datasets.download_dataset import load_knowns_pd
-from src.knockout import KnockoutMode, KnockoutEvaluator
-from src.knockout.attention_knockout import (
-    KnockoutTarget,
-    AttentionKnockoutEvaluator,
-    is_last_token_subj,
-)
-from src.knockout.layer_knockout import LayerKnockoutEvaluator
+from transformers import AutoTokenizer, MambaForCausalLM
+
+from src.consts import MODEL_SIZES_PER_ARCH_TO_MODEL_ID, PATHS
+from src.datasets.download_dataset import get_hit_dataset
+from src.knockout.knockout_evaluator import KnockoutEvaluator
+from src.knockout.knockout_mode import KnockoutMode
 from src.knockout.ssm_knockout import SSMKnockoutEvaluator
 from src.knockout.ssm_knockout.ssm_classifier import (
-    SSMClassifier,
     DecayNormClassifier,
-    SSMClassifierStub,
 )
-from src.knockout.increase_delta import IncreaseDeltaEvaluator
-from argparse import ArgumentParser, Namespace
-import numpy as np
+from src.types import DATASETS, MODEL_ARCH, DatasetArgs, TModelID
 from src.utils.setup_models import setup_mamba_model
-from typing import Optional, Iterable
-
-from src.datasets.download_dataset import load_dataset
-from src.types import MODEL_ARCH, DatasetArgs, TModelID
-from src.types import DATASETS
+from src.utils.slurm import submit_job
 
 
 @dataclass
@@ -60,26 +41,6 @@ class Args:
     @property
     def model_id(self) -> TModelID:
         return MODEL_SIZES_PER_ARCH_TO_MODEL_ID[self.model_arch][self.model_size]
-
-
-if not is_nir:
-
-    def get_args():
-        parser = ArgumentParser()
-        parser.add_argument("--model_size", type=str, choices={'130M','370M', '790M', '1.4B', '2.8B'}, default="130M")
-        parser.add_argument("--show_eval_progress", action="store_true")
-        parser.add_argument("--output_dir", type=Path, default=Path("resources"))
-        parser.add_argument("--layer_checkpoint", type=Path, default=None)
-        parser.add_argument("--norm", type=str, default="1", choices=["1", "inf"])
-        parser.add_argument(
-            "--affected_output",
-            type=str,
-            choices={"last", "subj", "all"},
-            default="all",
-        )
-        parser.add_argument("--layer_window_length", type=int, default=9)
-
-        return parser.parse_args()
 
 
 def binary_search(
@@ -132,9 +93,7 @@ def binary_search(
                 knockout_target_layers = early
             else:
                 knockout_target_layers = late
-            pbar.set_description(
-                f"Binary search for optimal layer. Curr acc: {min(acc_early, acc_late)}"
-            )
+            pbar.set_description(f"Binary search for optimal layer. Curr acc: {min(acc_early, acc_late)}")
 
     df = pd.DataFrame(performance)
 
@@ -153,9 +112,7 @@ def layer_by_layer(
     with torch.no_grad():
         # evaluate every single layer
         for i in tqdm(range(n), desc="Iterating layers for knockout..."):
-            _, acc = evaluator.knockout_eval(
-                dataset, [j for j in range(i, min(n, i + n_layers))], knockout_mode
-            )
+            _, acc = evaluator.knockout_eval(dataset, [j for j in range(i, min(n, i + n_layers))], knockout_mode)
             performance["layer"].append(i)
             performance["acc"].append(acc)
 
@@ -175,33 +132,22 @@ def ssm_knockout_evaluate(
 ):
     ssm_classifier = DecayNormClassifier()
     out_df = None
-    layer_df = None
     ssm_classifier.norm = norm
 
     categorized_ssms = ssm_classifier.classify_model(model.backbone)
     for category in categorized_ssms:
-        evaluator = SSMKnockoutEvaluator(
-            model, tokenizer, device, categorized_ssms[category], False
-        )
-        curr = layer_by_layer(
-            evaluator, knowns_df, KnockoutMode.IGNORE_SSM, n_layers
-        )
+        evaluator = SSMKnockoutEvaluator(model, tokenizer, device, categorized_ssms[category], False)
+        curr = layer_by_layer(evaluator, knowns_df, KnockoutMode.IGNORE_SSM, n_layers)
         curr["category"] = category
         curr["norm"] = norm
         out_df = pd.concat([out_df, curr])
 
-        out_fname = (
-            args.output_dir
-            / f"{args.model_size}_norm_{norm}_bin_search.csv"
-        )
+        out_fname = args.output_dir / f"{args.model_size}_norm_{norm}_bin_search.csv"
         if out_fname.exists():
             os.remove(out_fname)
         out_df.to_csv(out_fname)
 
-    out_df.to_csv(
-        args.output_dir
-        / f"{args.model_size}_norm_{norm}_output.csv"
-    )
+    out_df.to_csv(args.output_dir / f"{args.model_size}_norm_{norm}_output.csv")
 
 
 def get_checkpoint(pth: Optional[Path]) -> Optional[pd.DataFrame]:
@@ -220,33 +166,7 @@ def main_local(args: Args) -> None:
     # print(bin_search_checkpoint)
     print(layer_checkpoint)
 
-    if is_nir:
-        args.output_dir = (
-            PATHS.OUTPUT_DIR
-            / args.model_id
-            / "evaluate_context_interference"
-            / f"ds={args.dataset_args.dataset_name}"
-        )
-
-        args.output_dir.mkdir(parents=True, exist_ok=True)
-        original_res, attn_res = [
-            pd.read_parquet(
-                PATHS.OUTPUT_DIR
-                / args.model_id
-                / "data_construction"
-                / f"ds={args.dataset_args.dataset_name}"
-                / f"entire_results_{"attention" if attention else "original"}.parquet"
-            )
-            for attention in [True, False]
-        ]
-
-        mask = (original_res["hit"] == attn_res["hit"]) & (attn_res["hit"] == True)
-        knowns_df = attn_res[mask]
-    else:
-        # If we do SSM knockout
-        # knowns_df = pd.DataFrame(load_dataset(DatasetArgs(name=DATASETS.KNOWN_1000, splits=[args.split_name])))
-        knowns_df = pd.read_parquet("./entire_results_attention.parquet")
-
+    knowns_df = get_hit_dataset(model_id=args.model_id, dataset_args=args.dataset_args)
     # drop the first character in the attribute string
     # knowns_df['attribute'] = knowns_df['attribute'].apply(lambda x: x[1:])
     if args.norm == "inf":
@@ -265,8 +185,8 @@ def main_local(args: Args) -> None:
     )
 
 
-if is_nir:
-
+@pyrallis.wrap()
+def main(args: Args):
     def get_experiment_configs():
         """Generate configurations for different experiment variations."""
         base_config = {
@@ -306,45 +226,38 @@ if is_nir:
 
         return configs
 
-    @pyrallis.wrap()
-    def main(args: Args):
-        if args.with_slurm:
-            gpu_type = "a100"
-            # gpu_type = "titan_xp-studentkillable"
+    if args.with_slurm:
+        gpu_type = "a100"
+        # gpu_type = "titan_xp-studentkillable"
 
-            for model_arch, model_size in [
-                (MODEL_ARCH.MAMBA1, "130M"),
-                (MODEL_ARCH.MAMBA1, "1.4B"),
-                (MODEL_ARCH.MAMBA1, "2.8B"),
-                # (MODEL_ARCH.MINIMAL_MAMBA2_new, "130M"),
-                # (MODEL_ARCH.MINIMAL_MAMBA2_new, "1.3B"),
-                # (MODEL_ARCH.MINIMAL_MAMBA2_new, "2.7B"),
-            ]:
-                args.model_arch = model_arch
-                args.model_size = model_size
-                args.dataset_args = DatasetArgs(
-                    name=DATASETS.COUNTER_FACT, splits=f"all"
-                )
+        for model_arch, model_size in [
+            (MODEL_ARCH.MAMBA1, "130M"),
+            (MODEL_ARCH.MAMBA1, "1.4B"),
+            (MODEL_ARCH.MAMBA1, "2.8B"),
+            # (MODEL_ARCH.MINIMAL_MAMBA2_new, "130M"),
+            # (MODEL_ARCH.MINIMAL_MAMBA2_new, "1.3B"),
+            # (MODEL_ARCH.MINIMAL_MAMBA2_new, "2.7B"),
+        ]:
+            args.model_arch = model_arch
+            args.model_size = model_size
+            args.dataset_args = DatasetArgs(name=DATASETS.COUNTER_FACT, splits="all")
 
-                job_name = f"evaluate_context_interference/{model_arch}_{model_size}_{args.dataset_args.dataset_name}"
+            job_name = f"evaluate_context_interference/{model_arch}_{model_size}_{args.dataset_args.dataset_name}"
 
-                job = submit_job(
-                    main_local,
-                    args,
-                    log_folder=str(PATHS.SLURM_DIR / job_name / "%j"),
-                    job_name=job_name,
-                    # timeout_min=1200,
-                    gpu_type=gpu_type,
-                    slurm_gpus_per_node=1,
-                )
+            job = submit_job(
+                main_local,
+                args,
+                log_folder=str(PATHS.SLURM_DIR / job_name / "%j"),
+                job_name=job_name,
+                # timeout_min=1200,
+                gpu_type=gpu_type,
+                slurm_gpus_per_node=1,
+            )
 
-                print(f"{job}: {job_name}")
-        else:
-            main_local(args)
+            print(f"{job}: {job_name}")
+    else:
+        main_local(args)
+
 
 if __name__ == "__main__":
-    if is_nir:
-        main()
-    else:
-        args = get_args()
-        main_local(args)
+    main()

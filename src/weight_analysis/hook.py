@@ -1,6 +1,8 @@
+from typing import Callable, Optional
+
+from torch import Tensor, nn
+
 from .mamba_mixer_context_split import slow_forward_for_ssm_materializing_listener
-from torch import nn, Tensor
-from typing import Optional, Callable
 
 
 class Hook(Callable):

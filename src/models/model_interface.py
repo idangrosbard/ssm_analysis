@@ -1,19 +1,17 @@
 from abc import ABC, abstractmethod
-from typing import Optional, Tuple, Dict, List, Union, assert_never
-import torch.nn.functional as F
+from typing import Dict, List, Optional, Tuple, Union, assert_never
 
 import torch
+import torch.nn.functional as F
 from torch import Tensor
-from transformers import PreTrainedTokenizer, PreTrainedTokenizerFast
+from transformers import MambaForCausalLM, PreTrainedTokenizer, PreTrainedTokenizerFast
 
+import src.models.minimal_mamba2_new as minimal_mamba2_new
+from src.knockout.attention_knockout.ssm_interfere import SSMInterfereHook
+from src.knockout.knockout_mode import KnockoutMode
 from src.types import MODEL_ARCH
 from src.utils.setup_models import get_tokenizer_and_model
 
-import src.models.minimal_mamba2_new as minimal_mamba2_new
-from transformers import MambaForCausalLM
-
-from src.knockout.attention_knockout.ssm_interfere import SSMInterfereHook
-from src.knockout.knockout_mode import KnockoutMode
 
 class ModelInterface(ABC):
     """Abstract interface for language models with attention knockout capability."""
@@ -27,9 +25,7 @@ class ModelInterface(ABC):
     ):
         """Initialize the model with given size and device."""
         # x = get_tokenizer_and_model()
-        self.tokenizer, self.model = get_tokenizer_and_model(
-            model_arch, model_size, device
-        )
+        self.tokenizer, self.model = get_tokenizer_and_model(model_arch, model_size, device)
         if tokenizer is not None:
             self.tokenizer = tokenizer
 
@@ -109,14 +105,10 @@ class Mamba1Interface(ModelInterface):
         if num_to_masks is not None:
             source_indices = []
             target_indices = []
-            
+
             for layer in num_to_masks:
-                source_indices = [
-                    num_to_masks[layer][i][1] for i in range(len(num_to_masks[layer]))
-                ]
-                target_indices = [
-                    num_to_masks[layer][i][0] for i in range(len(num_to_masks[layer]))
-                ]
+                source_indices = [num_to_masks[layer][i][1] for i in range(len(num_to_masks[layer]))]
+                target_indices = [num_to_masks[layer][i][0] for i in range(len(num_to_masks[layer]))]
                 break
 
             for hook in self.hooks:
@@ -128,7 +120,7 @@ class Mamba1Interface(ModelInterface):
 
         logits = out.logits
         probs = F.softmax(logits, dim=-1)
-        
+
         return probs[:, -1, :].detach().cpu().numpy()
 
 

@@ -1,8 +1,8 @@
-from datasets import load_dataset, DatasetDict
-
-from src.consts import COLUMNS, DATASETS_IDS, PATHS
-from src.types import DATASETS
 import random
+
+from datasets import DatasetDict
+
+from src.consts import COLUMNS
 
 
 def split_dataset(dataset, num_splits, split_ratio, seed):
@@ -27,9 +27,7 @@ def split_dataset(dataset, num_splits, split_ratio, seed):
     random.shuffle(indices)
     dataset = dataset.select(indices)
     # Add original indices as a feature
-    dataset = dataset.map(
-        lambda example, idx: {COLUMNS.ORIGINAL_IDX: indices[idx]}, with_indices=True
-    )
+    dataset = dataset.map(lambda example, idx: {COLUMNS.ORIGINAL_IDX: indices[idx]}, with_indices=True)
     # Calculate sizes
     num_examples = len(dataset)
     split_size = int(split_ratio * num_examples)
@@ -40,14 +38,10 @@ def split_dataset(dataset, num_splits, split_ratio, seed):
         start_idx = i * split_size
         end_idx = start_idx + split_size
         split_name = f"train{i+1}"
-        splits[split_name] = dataset.select(range(start_idx, end_idx)).map(
-            lambda x: {"split": split_name}
-        )
+        splits[split_name] = dataset.select(range(start_idx, end_idx)).map(lambda x: {"split": split_name})
 
     # Remaining data for test split
     remaining_start_idx = num_splits * split_size
-    splits["test"] = dataset.select(range(remaining_start_idx, num_examples)).map(
-        lambda x: {"split": "test"}
-    )
+    splits["test"] = dataset.select(range(remaining_start_idx, num_examples)).map(lambda x: {"split": "test"})
 
     return DatasetDict(splits)

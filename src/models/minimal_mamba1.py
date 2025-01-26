@@ -30,9 +30,7 @@ from typing import Optional, cast
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from einops import einsum
-from einops import rearrange
-from einops import repeat
+from einops import einsum, rearrange, repeat
 
 
 @dataclass
@@ -55,10 +53,7 @@ class ModelArgs:
             self.dt_rank = math.ceil(self.d_model / 16)
 
         if self.vocab_size % self.pad_vocab_size_multiple != 0:
-            self.vocab_size += (
-                self.pad_vocab_size_multiple
-                - self.vocab_size % self.pad_vocab_size_multiple
-            )
+            self.vocab_size += self.pad_vocab_size_multiple - self.vocab_size % self.pad_vocab_size_multiple
 
 
 class Mamba(nn.Module):
@@ -72,9 +67,7 @@ class Mamba(nn.Module):
         self.norm_f = RMSNorm(args.d_model)
 
         self.lm_head = nn.Linear(args.d_model, args.vocab_size, bias=False)
-        self.lm_head.weight = (
-            self.embedding.weight
-        )  # Tie output projection to embedding weights.
+        self.lm_head.weight = self.embedding.weight  # Tie output projection to embedding weights.
         # See "Weight Tying" paper
 
     def forward(self, input_ids):
@@ -100,7 +93,11 @@ class Mamba(nn.Module):
         return logits, None
 
     @staticmethod
-    def from_pretrained(pretrained_model_name: str, device: Optional[torch.device] = None, device_map: Optional[str] = None):
+    def from_pretrained(
+        pretrained_model_name: str,
+        device: Optional[torch.device] = None,
+        device_map: Optional[str] = None,
+    ):
         """Load pretrained weights from HuggingFace into model.
 
         Args:
@@ -116,22 +113,16 @@ class Mamba(nn.Module):
             model: Mamba model with weights loaded
 
         """
-        from transformers.utils import WEIGHTS_NAME, CONFIG_NAME
+        from transformers.utils import CONFIG_NAME, WEIGHTS_NAME
         from transformers.utils.hub import cached_file
 
         def load_config_hf(model_name):
-            resolved_archive_file = cached_file(
-                model_name, CONFIG_NAME, _raise_exceptions_for_missing_entries=False
-            )
+            resolved_archive_file = cached_file(model_name, CONFIG_NAME, _raise_exceptions_for_missing_entries=False)
             return json.load(open(resolved_archive_file))
 
         def load_state_dict_hf(model_name, device=None, dtype=None):
-            resolved_archive_file = cached_file(
-                model_name, WEIGHTS_NAME, _raise_exceptions_for_missing_entries=False
-            )
-            return torch.load(
-                resolved_archive_file, weights_only=True, map_location="cpu", mmap=True
-            )
+            resolved_archive_file = cached_file(model_name, WEIGHTS_NAME, _raise_exceptions_for_missing_entries=False)
+            return torch.load(resolved_archive_file, weights_only=True, map_location="cpu", mmap=True)
 
         config_data = load_config_hf(pretrained_model_name)
         args = ModelArgs(
@@ -170,14 +161,17 @@ class Mamba(nn.Module):
         if max_length is not None:
             max_new_length = max(0, max_length - input_ids.shape[0])
 
-        assert len(input_ids.shape) in (1, 2), "input_ids should have shape (seqlen,) or (1, seqlen)"
+        assert len(input_ids.shape) in (
+            1,
+            2,
+        ), "input_ids should have shape (seqlen,) or (1, seqlen)"
         assert input_ids.shape[0] == 1, "Only one prompt can be processed at a time"
-        
+
         if len(input_ids.shape) == 1:
             input_ids = input_ids.unsqueeze(0)
-                    
+
         tokens = input_ids
-        
+
         for _ in range(max_new_length):
             with torch.no_grad():
                 out, _ = self(tokens)
@@ -200,7 +194,7 @@ class Mamba(nn.Module):
             if next_token.item() == eos_token_id:
                 return
             tokens = torch.cat([tokens, next_token.unsqueeze(0)], dim=1)
-            
+
             yield cast(int, next_token.item())
 
 
@@ -255,9 +249,7 @@ class MambaBlock(nn.Module):
         )
 
         # x_proj takes in `x` and outputs the input-specific Δ, B, C
-        self.x_proj = nn.Linear(
-            args.d_inner, args.dt_rank + args.d_state * 2, bias=False
-        )
+        self.x_proj = nn.Linear(args.d_inner, args.dt_rank + args.d_state * 2, bias=False)
 
         # dt_proj projects Δ from dt_rank to d_in
         self.dt_proj = nn.Linear(args.dt_rank, args.d_inner, bias=True)
@@ -284,9 +276,7 @@ class MambaBlock(nn.Module):
         (b, l, d) = x.shape
 
         x_and_res = self.in_proj(x)  # shape (b, l, 2 * d_in)
-        (x, res) = x_and_res.split(
-            split_size=[self.args.d_inner, self.args.d_inner], dim=-1
-        )
+        (x, res) = x_and_res.split(split_size=[self.args.d_inner, self.args.d_inner], dim=-1)
 
         x = rearrange(x, "b l d_in -> b d_in l")
         x = self.conv1d(x)[:, :, :l]
@@ -334,9 +324,7 @@ class MambaBlock(nn.Module):
         )  # delta: (b, l, dt_rank). B, C: (b, l, n)
         delta = F.softplus(self.dt_proj(delta))  # (b, l, d_in)
 
-        y = self.selective_scan(
-            x, delta, A, B, C, D
-        )  # This is similar to run_SSM(A, B, C, u) in The Annotated S4 [2]
+        y = self.selective_scan(x, delta, A, B, C, D)  # This is similar to run_SSM(A, B, C, u) in The Annotated S4 [2]
 
         return y
 
@@ -400,8 +388,6 @@ class RMSNorm(nn.Module):
         self.weight = nn.Parameter(torch.ones(d_model))
 
     def forward(self, x):
-        output = (
-            x * torch.rsqrt(x.pow(2).mean(-1, keepdim=True) + self.eps) * self.weight
-        )
+        output = x * torch.rsqrt(x.pow(2).mean(-1, keepdim=True) + self.eps) * self.weight
 
         return output

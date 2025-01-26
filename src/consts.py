@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 from typing import NamedTuple
 
-from src.types import DATASETS, MODEL_ARCH, TModelID, TDatasetID
+from src.types import DATASETS, MODEL_ARCH, MODEL_SIZE_CAT, TDatasetID, TModelID
 
 
 class PATHS:
@@ -94,15 +94,41 @@ MODEL_SIZES_PER_ARCH_TO_MODEL_ID: dict[MODEL_ARCH, dict[str, TModelID]] = {
     },
 }  # type: ignore
 
+GRAPHS_ORDER = [
+    (MODEL_ARCH.MAMBA1, "130M"),
+    (MODEL_ARCH.MINIMAL_MAMBA2_new, "130M"),
+    (MODEL_ARCH.MAMBA1, "1.4B"),
+    (MODEL_ARCH.MINIMAL_MAMBA2_new, "1.3B"),
+    (MODEL_ARCH.MAMBA1, "2.8B"),
+    (MODEL_ARCH.MINIMAL_MAMBA2_new, "2.7B"),
+]
+
+
+def get_model_by_cat_size(cat_size: MODEL_SIZE_CAT) -> list[tuple[MODEL_ARCH, str]]:
+    if isinstance(cat_size, str):
+        cat_size = MODEL_SIZE_CAT[cat_size.upper()]
+
+    for i, size in enumerate(MODEL_SIZE_CAT):
+        if size == cat_size:
+            return GRAPHS_ORDER[2 * i : 2 * i + 2]
+    raise ValueError(f"Model size {cat_size} not found in GRAPHS_ORDER")
+
+
+def reverse_model_id(model_id: str) -> tuple[MODEL_ARCH, str]:
+    for arch, model_size in GRAPHS_ORDER:
+        for model_id_prefix in ["", "state-spaces/"]:
+            if MODEL_SIZES_PER_ARCH_TO_MODEL_ID[arch][model_size] == f"{model_id_prefix}{model_id}":
+                return arch, model_size
+    raise ValueError(f"Model id {model_id} not found in MODEL_SIZES_PER_ARCH_TO_MODEL_ID")
+
 
 class FILTERATIONS:
     all_correct = "all_correct"
     all_any_correct = "all_any_correct"
 
 
-DATASETS_IDS: dict[DATASETS, TDatasetID] = {
-    DATASETS.COUNTER_FACT: "NeelNanda/counterfact-tracing"
-}  # type: ignore
+DATASETS_IDS: dict[DATASETS, TDatasetID] = {DATASETS.COUNTER_FACT: TDatasetID("NeelNanda/counterfact-tracing")}  # type: ignore
+
 
 class COLUMNS:
     ORIGINAL_IDX = "original_idx"

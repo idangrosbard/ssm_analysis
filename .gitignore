@@ -180,5 +180,6 @@ data/raw/
 /data/preprocessed/
 /slurm/
 /output/
+/results/
 /output_2/
 .envrc

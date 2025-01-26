@@ -1,6 +1,7 @@
-from torch import nn, Tensor
+from typing import Callable, Optional
+
 import torch
-from typing import Optional, Callable, Iterable
+from torch import Tensor, nn
 
 
 class LLMEmbeddingInterefere(Callable):
@@ -8,7 +9,6 @@ class LLMEmbeddingInterefere(Callable):
         self.layer = layer
         self.E = embedding_matrix
         self.k_closest = k_closest
-
 
     def hook(self, module: nn.Module, inp: Tensor, out: Tensor) -> Optional[Tensor]:
         # project to token space
@@ -20,18 +20,17 @@ class LLMEmbeddingInterefere(Callable):
 
         use_softmax = False
         if use_softmax:
-          token_logits[token_logits < thresholds] = -float('inf')
+            token_logits[token_logits < thresholds] = -float("inf")
 
-          # normalize to get a distribution
-          distribution = torch.softmax(token_logits, dim=-1)
+            # normalize to get a distribution
+            distribution = torch.softmax(token_logits, dim=-1)
         else:
-          token_logits[token_logits < thresholds] = 0
-          distribution = token_logits
+            token_logits[token_logits < thresholds] = 0
+            distribution = token_logits
 
         # project back to embedding space
         new_out = distribution @ self.E / torch.norm(self.E, dim=-1)
         return new_out
 
-        
     def __call__(self, module: nn.Module, inp: Tensor, out: Tensor) -> Optional[Tensor]:
         return self.hook(module, inp, out)

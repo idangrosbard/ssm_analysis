@@ -1,0 +1,61 @@
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
+
+[tool.ruff.lint.isort]
+known-first-party = []
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["E402", "F401"]
+"src/models/*.py" = ["E501", "E721", "E741"]
+"tests/*.py" = ["F821", "F841"]
+"src/knockout/**/*.py" = ["E501"]
+"src/readout/*.py" = ["E501", "F841"]
+"src/metrics/matrix/ssm_operator_values_map.py" = ["E721"]
+"src/metrics/matrix/ssm_operator_variances.py" = ["E721"]
+"src/utils/argparse_utils.py" = ["E721", "F811"]
+"src/weight_analysis/model_low_rank_approx.py" = ["E721"]
+"src/weight_analysis/mamba_mixer_context_split.py" = ["E501"]
+"src/knockout/adapted_model/adaptation_evaluator.py" = ["F841"]
+"src/knockout/attention_knockout/mamba_mixer_knockout.py" = ["F841"]
+"src/models/minimal_mamba1.py" = ["F821"]
+# TODO: fix these
+"scripts/evaluate_tokenization.py" = ["ALL"]
+"scripts/evaluate_interference.py" = ["ALL"]
+"scripts/analyze_ssm.py" = ["ALL"]
+# notebooks
+"notebooks/*.ipynb" = ["E501", 'E712', 'E402', 'F841', 'E701', 'F811', 'E731']
+"notebooks/feature_knockout_plots.ipynb" = ["F821"]
+"notebooks/tmp*.ipynb" = ["ALL"]
+"notebooks/test_knockout.ipynb" = ["ALL"]
+
+[tool.mypy]
+# General settings
+python_version = "3.12"
+ignore_missing_imports = true # Ignore unresolved imports to avoid excessive errors
+show_error_codes = true # Display error codes to identify issues easily
+
+# Type checking behavior
+# strict_optional = true # Enforce strict None checking
+# disallow_untyped_defs = true # Require types for function definitions
+# disallow_incomplete_defs = true # Prevent incomplete type annotations
+# disallow_untyped_calls = true # Avoid calling untyped functions
+# warn_unused_ignores = true # Warn about ignored errors that aren't necessary
+warn_no_return = true # Ensure all functions return a value if expected
+warn_redundant_casts = true # Alert on unnecessary type casts
+warn_unreachable = true # Highlight unreachable code
+
+# Incremental improvements
+check_untyped_defs = true # Perform checks even in untyped functions
+# allow_redefinition = false # Prevent redefinition of variables with different types
+
+# Plugin and path settings
+# plugins = [] # Add plugins, if applicable
+files = ["src", "tests", 'app'] # Target specific directories for type checking
+# exclude = "" # Exclude specific files or patterns
+
+# Error reporting
+# pretty = true # Make output more readable

@@ -1,7 +1,5 @@
 from dataclasses import dataclass
-from typing import Iterable
-from typing import Literal
-from typing import NewType
+from typing import Iterable, Literal, NewType
 
 import pandas as pd
 
@@ -26,6 +24,21 @@ class MODEL_ARCH(STREnum):
     LLAMA2 = "llama2"
     LLAMA3_2 = "llama3.2"
 
+    @property
+    def title(self) -> str:
+        match self:
+            case MODEL_ARCH.MAMBA1 | MODEL_ARCH.MINIMAL_MAMBA1:
+                return "Mamba1"
+            case MODEL_ARCH.MAMBA2 | MODEL_ARCH.MINIMAL_MAMBA2 | MODEL_ARCH.MINIMAL_MAMBA2_new:
+                return "Mamba2"
+        return self.value
+
+
+class MODEL_SIZE_CAT(STREnum):
+    SMALL = "small"
+    MEDIUM = "medium"
+    LARGE = "large"
+
 
 class DATASETS(STREnum):
     KNOWN_1000 = "known_1000"
@@ -34,7 +47,7 @@ class DATASETS(STREnum):
 
 TModelID = NewType("TModelID", str)
 TDatasetID = NewType("TDatasetID", str)
-TSplit = SPLIT | Iterable[SPLIT] | Literal['all']
+TSplit = SPLIT | Iterable[SPLIT] | Literal["all"]
 
 TNum2Mask = NewType("TNum2Mask", dict[int, list[tuple[int, int]]])
 TWindow = NewType("TWindow", list[int])
@@ -52,10 +65,10 @@ class TokenType(STREnum):
 @dataclass
 class DatasetArgs:
     name: DATASETS
-    splits: TSplit = 'all'
+    splits: TSplit = "all"
 
     def __post_init__(self):
-        if self.splits != 'all' and isinstance(self.splits, str):
+        if self.splits != "all" and isinstance(self.splits, str):
             self.splits = [self.splits]
 
     @property

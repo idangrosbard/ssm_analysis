@@ -1,42 +1,43 @@
-from typing import Optional, assert_never
-from typing import Tuple
+import os
+from typing import Optional, Tuple, assert_never
 
 import torch
-from transformers import AutoTokenizer
-from transformers import LlamaForCausalLM
-from transformers import MambaForCausalLM
-from transformers import PreTrainedModel
-from transformers import PreTrainedTokenizer
-from transformers import PreTrainedTokenizerFast
+from huggingface_hub import login
+from transformers import (
+    AutoTokenizer,
+    LlamaForCausalLM,
+    MambaForCausalLM,
+    PreTrainedModel,
+    PreTrainedTokenizer,
+    PreTrainedTokenizerFast,
+)
 
-
-from src.consts import MODEL_SIZES_PER_ARCH_TO_MODEL_ID
-from src.models.minimal_mamba1 import Mamba
 import src.models.minimal_mamba2 as minimal_mamba2
 import src.models.minimal_mamba2_new as minimal_mamba2_new
-
+from src.consts import MODEL_SIZES_PER_ARCH_TO_MODEL_ID
+from src.models.minimal_mamba1 import Mamba
 from src.types import MODEL_ARCH
 
-from huggingface_hub import login
-import os
 
 def setup_mamba_model(
     model_size: str = "2.8B",
-) -> Tuple[
-    MambaForCausalLM, PreTrainedTokenizer | PreTrainedTokenizerFast, torch.device
-]:
+) -> Tuple[MambaForCausalLM, PreTrainedTokenizer | PreTrainedTokenizerFast, torch.device]:
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    tokenizer, model = get_tokenizer_and_model(
-        MODEL_ARCH.MAMBA1, model_size
-    )
+    tokenizer, model = get_tokenizer_and_model(MODEL_ARCH.MAMBA1, model_size)
     assert isinstance(model, MambaForCausalLM)
     return model, tokenizer, device
 
 
 def _get_tokenizer_id(model_arch: MODEL_ARCH, model_id: str) -> str:
     match model_arch:
-        case  MODEL_ARCH.MAMBA1 | MODEL_ARCH.MAMBA2 | MODEL_ARCH.MINIMAL_MAMBA1 | MODEL_ARCH.MINIMAL_MAMBA2 | MODEL_ARCH.MINIMAL_MAMBA2_new:
-            return f"EleutherAI/gpt-neox-20b"
+        case (
+            MODEL_ARCH.MAMBA1
+            | MODEL_ARCH.MAMBA2
+            | MODEL_ARCH.MINIMAL_MAMBA1
+            | MODEL_ARCH.MINIMAL_MAMBA2
+            | MODEL_ARCH.MINIMAL_MAMBA2_new
+        ):
+            return "EleutherAI/gpt-neox-20b"
         case MODEL_ARCH.LLAMA2 | MODEL_ARCH.LLAMA3_2:
             return model_id
         case _:
@@ -47,11 +48,16 @@ def get_tokenizer_and_model(
     model_arch: MODEL_ARCH, model_size: str, device: Optional[torch.device] = None
 ) -> tuple[
     PreTrainedTokenizer | PreTrainedTokenizerFast,
-    PreTrainedModel | MambaForCausalLM | Mamba | minimal_mamba2.Mamba2LMHeadModel | minimal_mamba2_new.Mamba2LMHeadModel | LlamaForCausalLM,
+    PreTrainedModel
+    | MambaForCausalLM
+    | Mamba
+    | minimal_mamba2.Mamba2LMHeadModel
+    | minimal_mamba2_new.Mamba2LMHeadModel
+    | LlamaForCausalLM,
 ]:
     if os.getenv("HUGGINGFACE_TOKEN") is not None:
         login(token=os.getenv("HUGGINGFACE_TOKEN"))
-    
+
     minimal_kwargs = {
         "device": device,
         "device_map": "auto" if device is None else None,
@@ -60,7 +66,7 @@ def get_tokenizer_and_model(
     model_id = MODEL_SIZES_PER_ARCH_TO_MODEL_ID[model_arch][model_size]
     tokenizer = AutoTokenizer.from_pretrained(_get_tokenizer_id(model_arch, model_id))
     tokenizer.pad_token = tokenizer.eos_token
-    
+
     match model_arch:
         case MODEL_ARCH.MINIMAL_MAMBA1:
             model = Mamba.from_pretrained(model_id, **minimal_kwargs)
@@ -78,6 +84,7 @@ def get_tokenizer_and_model(
             if not device:
                 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
             from mamba_ssm.models.mixer_seq_simple import MambaLMHeadModel
+
             model = MambaLMHeadModel.from_pretrained(model_id, device=device)
         case MODEL_ARCH.LLAMA2 | MODEL_ARCH.LLAMA3_2:
             if device:
