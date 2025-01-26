@@ -4,11 +4,11 @@ from pathlib import Path
 import numpy as np
 import pyrallis
 import torch
-from src.experiment_infra.config import BaseConfig
 from tqdm import tqdm
 
 from src.consts import PATHS
 from src.datasets.download_dataset import get_hit_dataset
+from src.experiment_infra.base_config import BaseConfig
 from src.models.model_interface import get_model_interface
 from src.utils.logits import get_prompt_row
 
@@ -24,11 +24,11 @@ class HeatmapConfig(BaseConfig):
     @property
     def output_path(self) -> Path:
         return (
-                PATHS.OUTPUT_DIR
-                / self.model_id
-                / self.experiment_name
-                / f"ds={self.dataset_args.dataset_name}"
-                / f"ws={self.window_size}"
+            PATHS.OUTPUT_DIR
+            / self.model_id
+            / self.experiment_name
+            / f"ds={self.dataset_args.dataset_name}"
+            / f"ws={self.window_size}"
         )
 
 
