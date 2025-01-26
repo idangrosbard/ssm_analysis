@@ -1,40 +1,57 @@
+import json
 from collections import defaultdict
 from dataclasses import dataclass
-from hmac import new
-import json
 from pathlib import Path
-from typing import Optional, assert_never, Dict, List, Tuple
-from torch import Tensor
-from matplotlib import pyplot as plt
-import numpy as np
+from typing import Optional
 
+import numpy as np
 import pandas as pd
 import pyrallis
 import torch
+from matplotlib import pyplot as plt
 from tqdm import tqdm
-from transformers import (
-    AutoTokenizer,
-)
 
-from scripts.create_slurm_file import run_slurm
-from src.consts import (
-    FILTERATIONS,
-    MODEL_SIZES_PER_ARCH_TO_MODEL_ID,
-    PATHS,
-)
-from src.datasets.download_dataset import load_dataset, load_splitted_counter_fact
-from src.datasets.download_dataset import load_knowns_pd
-from src.logit_utils import get_last_token_logits, logits_to_probs
+from src.consts import FILTERATIONS
+from src.consts import MODEL_SIZES_PER_ARCH_TO_MODEL_ID
+from src.consts import PATHS
+from src.datasets.download_dataset import get_hit_dataset
+from src.logit_utils import get_num_to_masks
+from src.logit_utils import get_prompt_row
 from src.models.model_interface import get_model_interface
 from src.types import DATASETS
-from src.types import MODEL_ARCH, SPLIT, DatasetArgs, TModelID
-from src.utils.setup_models import get_tokenizer_and_model
+from src.types import DatasetArgs
+from src.types import MODEL_ARCH
+from src.types import TModelID
+from src.types import TokenType
 from src.utils.slurm import submit_job
+
+
+def get_top_outputs(probs, tokenizer, top_k):
+    # Get the top 5 outputs and their probs
+    top_probs, top_indices = map(
+        torch.Tensor.tolist, torch.topk(torch.Tensor(probs), top_k)
+    )
+    top_tokens = list(map(tokenizer.batch_decode, top_indices))
+    return list(
+        map(
+            list,
+            map(
+                lambda x: zip(*x),
+                zip(
+                    top_indices,
+                    top_tokens,
+                    top_probs,
+                ),
+            ),
+        )
+    )
 
 
 @dataclass
 class Args:
-    model_arch: MODEL_ARCH = MODEL_ARCH.MINIMAL_MAMBA2_new
+    # model_arch: MODEL_ARCH = MODEL_ARCH.MINIMAL_MAMBA2_new
+    model_arch: MODEL_ARCH = MODEL_ARCH.MAMBA1
+    experiment_name: str = "info_flow"
     model_size: str = "130M"
     dataset_args: DatasetArgs = pyrallis.field(
         default=DatasetArgs(name=DATASETS.COUNTER_FACT, splits="all"), is_mutable=True
@@ -43,12 +60,14 @@ class Args:
     _batch_size: int = 16  # Adjust based on GPU memory
     output_file: Optional[Path] = None
     with_slurm: bool = False
-    temperature = 1
-    top_k = 0
-    top_p = 1
     window_size = 9
-    knockout_map = {'last': ['last', 'first', "subject", "relation"], 
-                    'subject': ['context', 'subject']}
+    DEBUG_LAST_WINDOWS: Optional[int] = None
+    overwrite: bool = False
+    knockout_map = {
+        TokenType.last: [TokenType.last, TokenType.first, TokenType.subject, TokenType.relation, ],
+        TokenType.subject: [TokenType.context, TokenType.subject, ],
+        TokenType.relation: [TokenType.context, TokenType.subject, TokenType.relation, ],
+    }
 
     output_dir: Optional[Path] = None
 
@@ -57,8 +76,8 @@ class Args:
         return (
             1
             if (
-                self.model_arch == MODEL_ARCH.MINIMAL_MAMBA2
-                or self.model_arch == MODEL_ARCH.MINIMAL_MAMBA2_new
+                    self.model_arch == MODEL_ARCH.MINIMAL_MAMBA2
+                    or self.model_arch == MODEL_ARCH.MINIMAL_MAMBA2_new
             )
             else self._batch_size
         )
@@ -70,32 +89,17 @@ class Args:
 
 def main_local(args: Args):
     print(args)
-    original_res, attn_res = [
-        pd.read_parquet(
-            PATHS.OUTPUT_DIR
-            / args.model_id
-            / "data_construction"
-            / f"ds={args.dataset_args.dataset_name}"
-            / f"entire_results_{"attention" if attention else "original"}.parquet"
-        )
-        for attention in [True, False]
-    ]
+    data = get_hit_dataset(model_id=args.model_id, dataset_args=args.dataset_args)
 
-    mask = (original_res["hit"] == attn_res["hit"]) & (attn_res["hit"] == True)
-    data = attn_res[mask]
-
-    temperature = args.temperature
-    top_k = args.top_k
-    top_p = args.top_p
     window_size = args.window_size
 
     if not args.output_file:
         args.output_file = (
-            PATHS.OUTPUT_DIR
-            / args.model_id
-            / "info_flow"
-            / f"ds={args.dataset_args.dataset_name}"
-            / f"ws={args.window_size}"
+                PATHS.OUTPUT_DIR
+                / args.model_id
+                / args.experiment_name
+                / f"ds={args.dataset_args.dataset_name}"
+                / f"ws={args.window_size}"
         )
 
     args.output_file.mkdir(parents=True, exist_ok=True)
@@ -107,222 +111,251 @@ def main_local(args: Args):
 
     n_layers = len(model_interface.model.backbone.layers)
 
-    # Taken from https://github.com/google-research/google-research/blob/master/dissecting_factual_predictions/utils.py
-    def decode_tokens(tokenizer, token_array):
-        if hasattr(token_array, "shape") and len(token_array.shape) > 1:
-            return [decode_tokens(tokenizer, row) for row in token_array]
-        return [tokenizer.decode([t]) for t in token_array]
-
-    def find_token_range(tokenizer, token_array, substring):
-        """Find the tokens corresponding to the given substring in token_array."""
-        toks = decode_tokens(tokenizer, token_array)
-        whole_string = "".join(toks)
-        char_loc = whole_string.index(substring)
-        loc = 0
-        tok_start, tok_end = None, None
-        for i, t in enumerate(toks):
-            loc += len(t)
-            if tok_start is None and loc > char_loc:
-                tok_start = i
-            if tok_end is None and loc >= char_loc + len(substring):
-                tok_end = i + 1
-                break
-        return (tok_start, tok_end)
-    
-
-    def get_num_to_masks(prompt_idx: int, window: List[int], knockout_src: str, knockout_target: str) -> Tuple[Dict[int, List[Tuple[int, int]]], bool]:
-        prompt = data.loc[prompt_idx, 'prompt']
-        tokens = tokenizer(prompt, return_tensors="pt", padding=True)
-        input_ids = tokens.input_ids.to(device=device)
-        last_idx = input_ids.shape[1] - 1
-        num_to_masks = {}
-        first_token = False
-
-        last_idx = input_ids.shape[1] - 1
-        tok_start, tok_end = find_token_range(tokenizer, input_ids[0], data.loc[prompt_idx, 'subject'])
-        subject_tokens = list(range(tok_start, tok_end))
-        if 0 in subject_tokens:
-            first_token = True
-        if knockout_src == 'first':
-            src_idx = [0]
-        elif knockout_src == 'last':
-            src_idx = [last_idx]
-        elif knockout_src == 'subject':
-            src_idx = subject_tokens
-        elif knockout_src == 'relation':
-            src_idx = [i for i in range(last_idx + 1) if i not in subject_tokens]
-        elif knockout_src == 'context':
-            src_idx = [i for i in range(subject_tokens[0])]
-        else:
-            src_idx = [last_idx]
-
-
-        if knockout_target == 'last':
-            target_idx = [last_idx]
-        elif knockout_target == 'subject':
-            target_idx = subject_tokens
-        else:
-            target_idx = [last_idx]
-            
-        for layer in window:
-            for src in src_idx:
-                for target in target_idx:
-                    if layer not in num_to_masks:
-                        num_to_masks[layer] = []
-                    num_to_masks[layer].append((target, src))
-
-        return num_to_masks, first_token
-
-
-    def forward_eval(temperature, top_k, top_p, prompt_idx, window, knockout_src: str, knockout_target: str):
-        prompt = data.loc[prompt_idx, "prompt"]
-        true_word = data.loc[prompt_idx, "target_true"]
-        base_prob = data.loc[prompt_idx, "true_prob"]
-        true_token = tokenizer(true_word, return_tensors="pt", padding=True)
-        true_id = true_token.input_ids.to(device="cpu")
-        tokens = tokenizer(prompt, return_tensors="pt", padding=True)
-        input_ids = tokens.input_ids.to(device=device)
-
-        num_to_masks, first_token = get_num_to_masks(prompt_idx, window, knockout_src, knockout_target)
+    def forward_eval(
+            prompt_idx,
+            window,
+            knockout_src: TokenType,
+            knockout_target: TokenType,
+    ):
+        prompt = get_prompt_row(data, prompt_idx)
+        num_to_masks, first_token = get_num_to_masks(
+            prompt, tokenizer, window, knockout_src, knockout_target, device
+        )
 
         next_token_probs = model_interface.generate_logits(
-            input_ids=input_ids,
+            input_ids=prompt.input_ids(tokenizer, device),
             attention=True,
             num_to_masks=num_to_masks,
         )
+
         max_prob = np.max(next_token_probs, axis=1)[0]
+        true_id = prompt.true_id(tokenizer, 'cpu')
+        base_prob = prompt.base_prob
         true_prob = next_token_probs[0, true_id[:, 0]]
         torch.cuda.empty_cache()
         return (
             true_prob == max_prob,
-            (true_prob - base_prob) * 100.0 / base_prob,
+            ((true_prob - base_prob) / base_prob) * 100.0,
             first_token,
+            (true_prob - base_prob),
+            true_prob,
         )
 
     def evaluate(
-        temperature, top_k, top_p, prompt_indices, windows, knockout_src: str = None, knockout_target: str = None, print_period=500
+            prompt_indices,
+            windows,
+            knockout_src: TokenType,
+            knockout_target: TokenType,
+            print_period=100,
     ):
         counts_w_first = np.zeros((len(windows)))
         counts_wo_first = np.zeros((len(windows)))
         diffs_w_first = np.zeros((len(windows)))
         diffs_wo_first = np.zeros((len(windows)))
+        diffs_unnorm_w_first = np.zeros((len(windows)))
+        diffs_unnorm_wo_first = np.zeros((len(windows)))
+        windows_true_probs = {}
         w_first = 0
-        for i, window in enumerate(windows):
-            print("---------------------------------------------------------------")
-            print(f"Starting window {i}: {window}")
-            for j, prompt_idx in enumerate(prompt_indices):
-                hit, diff, first = forward_eval(
-                    temperature, top_k, top_p, prompt_idx, window, knockout_src, knockout_target
+        for i, window in enumerate(tqdm(windows, desc="Windows")):
+            outputs = []
+            windows_true_probs[i] = outputs
+            model_interface.setup(layers=window)
+            for _, prompt_idx in enumerate(
+                    tqdm(prompt_indices, desc="Prompts", miniters=print_period)
+            ):
+                hit, diff, first, diff_unnorm, true_prob = forward_eval(
+                    prompt_idx,
+                    window,
+                    knockout_src,
+                    knockout_target,
                 )
+                outputs.append(float(true_prob))
                 if first:
                     if i == 0:
                         w_first += 1
                     counts_w_first[i] += hit
                     diffs_w_first[i] += diff
+                    diffs_unnorm_w_first[i] += diff_unnorm
                 else:
                     counts_wo_first[i] += hit
                     diffs_wo_first[i] += diff
-                if (j + 1) % print_period == 0:
-                    print(f"Finished prompt {j}")
+                    diffs_unnorm_wo_first[i] += diff_unnorm
         counts = counts_w_first + counts_wo_first
         diffs = diffs_w_first + diffs_wo_first
+        diffs_unnorm = diffs_unnorm_w_first + diffs_unnorm_wo_first
         return {
             f"acc": counts / n_prompts,
             f"diff": diffs / n_prompts,
+            f"diff_unnorm": diffs_unnorm / n_prompts,
             f"wf_acc": counts_w_first / w_first,
             f"wf_diff": diffs_w_first / w_first,
+            f"wf_diff_unnorm": diffs_unnorm_w_first / w_first,
             f"wof_acc": counts_wo_first / (n_prompts - w_first),
             f"wof_diff": diffs_wo_first / (n_prompts - w_first),
-        }
+            f"wof_diff_unnorm": diffs_unnorm_wo_first / (n_prompts - w_first),
+        }, windows_true_probs
 
-    prompt_indices = list(data.index)
-    windows = [[]]
-    no_block_acc, no_block_diff, _, _, _, _ = evaluate(
-        temperature, top_k, top_p, prompt_indices, windows
-    )
+    # prompt_indices = list(data.index)
+    # windows = [[]]
+    # no_block_acc, no_block_diff, _, _, _, _ = evaluate(
+    #     temperature, top_k, top_p, prompt_indices, windows
+    # )
 
-    print(no_block_acc)
-    print(no_block_diff)
+    # print(no_block_acc)
+    # print(no_block_diff)
 
-    # # Experiments - window size = 9
     prompt_indices = list(data.index)
     windows = [
         list(range(i, i + window_size)) for i in range(0, n_layers - window_size + 1)
     ]
 
-    combined_results = defaultdict(dict)
+    if args.DEBUG_LAST_WINDOWS:
+        windows = windows[-args.DEBUG_LAST_WINDOWS:]
+
+    combined_results: dict[str, dict] = defaultdict(lambda: defaultdict(dict))
 
     for key in args.knockout_map:
         for block in args.knockout_map[key]:
-            if ((args.output_file / f"block_{block}.parquet".exists()) and (key == 'last')):
-                (args.output_file / f"block_{block}.parquet").rename(args.output_file / f"block_{block}_target_{key}.parquet")
+            print(f"Knocking out flow to {key} from {block}")
+            metrics = [
+                "acc",
+                "diff",
+                "wf_acc",
+                "wf_diff",
+                "wof_acc",
+                "wof_diff",
+                "diff_unnorm",
+                "wf_diff_unnorm",
+                "wof_diff_unnorm",
+            ]
+            block_outdir = args.output_file / f"block_{block}_target_{key}"
+            block_outdir.mkdir(parents=True, exist_ok=True)
 
-            if (args.output_file / f"block_{block}_target_{key}.parquet".exists()):
-                res = pd.read_parquet(args.output_file / f"block_{block}_target_{key}.parquet")
-                
+            res = {}
+            if (block_outdir / f"{metrics[0]}.csv").exists() and not args.overwrite:
+                print(f"Reading from existing file")
+                for metric in metrics:
+                    res[metric] = pd.read_csv(block_outdir / f"{metric}.csv")
             else:
-                res = evaluate(temperature, top_k, top_p, prompt_indices, windows, knockout_src=block, knockout_target=key)
-            
-            for key, value in res.items():
+                res, window_outputs = evaluate(
+                    prompt_indices,
+                    windows,
+                    knockout_src=block,
+                    knockout_target=key,
+                )
+                if args.DEBUG_LAST_WINDOWS:
+                    window_outputs = {
+                        k + (n_layers - window_size + 1 - args.DEBUG_LAST_WINDOWS): v
+                        for k, v in window_outputs.items()
+                    }
+                json.dump(window_outputs, (block_outdir / "outputs.json").open('w'))
+
+            for metric, value in res.items():
                 df = pd.DataFrame(value)
-                df.to_parquet(args.output_file / f"block_{block}_target_{key}.parquet")
-                combined_results[block][key] = value
+                if len(df.columns) > 1:
+                    df = df[df.columns[-1]]
+                df.to_csv(block_outdir / f"{metric}.csv", index=False)
+                combined_results[key][block][metric] = value
 
         layers = list(range(n_layers - window_size + 1))
-        fig, ax = plt.subplots(1, 2, figsize=(8, 3))
-        colors = ["orange", "green", "purple", "blue"]
-        line_styles = [":", '-', "--", '-.']
+        if args.DEBUG_LAST_WINDOWS:
+            layers = layers[-args.DEBUG_LAST_WINDOWS:]
+        fig, ax = plt.subplots(1, 3, figsize=(15, 3))
+        colors = {
+            "last": "orange",
+            "first": "blue",
+            "subject": "green",
+            "relation": "purple",
+            "context": "cyan",
+        }
+        line_styles = {
+            "last": ":",
+            "first": "-.",
+            "subject": "-",
+            "relation": "--",
+            "context": ":",
+        }
 
-        for block, color, line_style in zip(args.knockout_map[key], colors, line_styles):
-            block = block if block is not None else "last"
-            block_acc = combined_results[block]["acc"]
-            block_diff = combined_results[block]["diff"]
-            ax[0].plot(layers, block_acc * 100, label=block, color=color, linestyle=line_style)
-            ax[1].plot(layers, block_diff, label=block, color=color, linestyle=line_style)
+        for block in args.knockout_map[key]:
+            color = colors[block]
+            line_style = line_styles[block]
+            block_acc = combined_results[key][block]["acc"]
+            block_diff = combined_results[key][block]["diff"]
+            block_diff_unnorm = combined_results[key][block]["diff_unnorm"]
+            ax[0].plot(
+                layers, block_acc * 100, label=block, color=color, linestyle=line_style
+            )
+            ax[1].plot(
+                layers, block_diff, label=block, color=color, linestyle=line_style
+            )
+            ax[2].plot(
+                layers,
+                block_diff_unnorm,
+                label=block,
+                color=color,
+                linestyle=line_style,
+            )
+
+        for i in range(len(ax)):
+            ax[i].grid(True, which="both", linestyle="--", linewidth=0.5)
+            ax[i].set_xlabel("Layers")
+            ax[i].legend(loc="lower left", fontsize=8)
 
         ax[0].axhline(100, color="gray", linewidth=1)
-        ax[0].grid(True, which="both", linestyle="--", linewidth=0.5)
-        ax[0].set_xlabel("Layers")
         ax[0].set_ylabel("% accuracy")
         ax[0].set_title(f"Accuracy - knocking out flow to {key}", fontsize=10)
-        ax[0].legend(loc="lower left", fontsize=8)
 
         ax[1].axhline(0, color="gray", linewidth=1)
-        ax[1].grid(True, which="both", linestyle="--", linewidth=0.5)
-        ax[1].set_xlabel("Layers")
-        ax[1].set_ylabel("% change in prediction probability")
-        ax[1].set_title(f"Change in prediction probability - knocking out flow to {key}", fontsize=10)
-        ax[1].legend(loc="lower left", fontsize=8)
+        ax[1].set_ylabel("normalized change")
+        ax[1].set_title(f"Change in prediction probability", fontsize=10)
 
-        plt.suptitle(f"Results with {args.model_id} and window size={window_size}")
+        ax[2].axhline(0, color="gray", linewidth=1)
+        ax[2].set_ylabel("change")
+        ax[2].set_title(f"Change in prediction probability (unnormalized)", fontsize=10)
+
+        plt.suptitle(
+            f"Knocking out flow to {key} - {args.model_id.split('/')[1]}, window size={window_size}"
+        )
         plt.tight_layout(pad=1, w_pad=3.0)
-        plt.savefig(args.output_file /f"results_ws={window_size}_knockout_target={key}.pdf", format="pdf")
+        plt.savefig(
+            args.output_file / f"results_ws={window_size}_knockout_target={key}.png"
+        )
         plt.show()
 
 
 @pyrallis.wrap()
 def main(args: Args):
     # args.with_slurm = True
-
     if args.with_slurm:
         gpu_type = "a100"
         # gpu_type = "titan_xp-studentrun"
 
+        args.experiment_name += f"_v6"
+        # window_sizes =[3,5,7]
+        window_sizes = [9, 15]
+
+        # window_sizes =[1,2,3,4,5,6,7,8,9]
+
+        # args.experiment_name += f"_test_top_outputs_5_last_windows"
+        # args.knockout_map = {"last": ["last", "subject", "relation"]}
+        # args.DEBUG_LAST_WINDOWS = 5
+        # window_sizes = [9]
+
         for model_arch, model_size in [
             # (MODEL_ARCH.MAMBA1, "130M"),
-            # (MODEL_ARCH.MAMBA1, "1.4B"),
-            # (MODEL_ARCH.MAMBA1, "2.8B"),
+            (MODEL_ARCH.MAMBA1, "1.4B"),
+            (MODEL_ARCH.MAMBA1, "2.8B"),
             # (MODEL_ARCH.MINIMAL_MAMBA2_new, "130M"),
             (MODEL_ARCH.MINIMAL_MAMBA2_new, "1.3B"),
-            # (MODEL_ARCH.MINIMAL_MAMBA2_new, "2.7B"),
+            (MODEL_ARCH.MINIMAL_MAMBA2_new, "2.7B"),
         ]:
             args.model_arch = model_arch
             args.model_size = model_size
             args.dataset_args = DatasetArgs(name=DATASETS.COUNTER_FACT, splits=f"all")
-            for window_size in [9, 15]:
+            for window_size in window_sizes:
                 args.window_size = window_size
 
-                job_name = f"info_flow_{model_arch}_{model_size}_ws={window_size}_{args.dataset_args.dataset_name}"
+                job_name = f"{args.experiment_name}/{model_arch}_{model_size}_ws={window_size}_{args.dataset_args.dataset_name}"
                 job = submit_job(
                     main_local,
                     args,
@@ -335,6 +368,11 @@ def main(args: Args):
 
                 print(f"{job}: {job_name}")
     else:
+        args.experiment_name += f"_debug"
+        args.overwrite = True
+        args.knockout_map = {"last": ["last", "subject", "relation"]}
+        args.DEBUG_LAST_WINDOWS = 1
+        window_sizes = [9]
         main_local(args)
 
 

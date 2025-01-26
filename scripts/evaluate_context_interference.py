@@ -492,7 +492,7 @@ if is_nir:
                             log_folder=str(PATHS.SLURM_DIR / job_name1 / job_name / "%j"),
                             job_name=job_name,
                             gpu_type=gpu_type,
-                            slurm_gpus_per_node=2,
+                            slurm_gpus_per_node=1,
                         )
 
                         print(f"{job}: {job_name}")

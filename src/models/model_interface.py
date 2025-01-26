@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
-from typing import Optional, Tuple, Dict, List, Union
+from typing import Optional, Tuple, Dict, List, Union, assert_never
+import torch.nn.functional as F
 
 import torch
 from torch import Tensor
@@ -11,9 +12,8 @@ from src.utils.setup_models import get_tokenizer_and_model
 import src.models.minimal_mamba2_new as minimal_mamba2_new
 from transformers import MambaForCausalLM
 
-from src.knockout.ssm_knockout.ssm_interfere_hook import SSMInterfereHook
+from src.knockout.attention_knockout.ssm_interfere import SSMInterfereHook
 from src.knockout.knockout_mode import KnockoutMode
-
 
 class ModelInterface(ABC):
     """Abstract interface for language models with attention knockout capability."""
@@ -34,6 +34,9 @@ class ModelInterface(ABC):
             self.tokenizer = tokenizer
 
         self.device = self.model.device
+
+    def setup(self, layers: Optional[list[int]] = None):
+        self.model.eval()
 
     @abstractmethod
     def generate_logits(
@@ -56,11 +59,6 @@ class ModelInterface(ABC):
         """
         pass
 
-    @abstractmethod
-    def clean(self) -> None:
-        """Clean up any resources or states if needed."""
-        pass
-
 
 class Mamba1Interface(ModelInterface):
     model: MambaForCausalLM
@@ -74,8 +72,33 @@ class Mamba1Interface(ModelInterface):
         super().__init__(MODEL_ARCH.MAMBA1, model_size, device, tokenizer)
 
         self.handles = []
+        self.hooks = []
 
         self.knockout_mode = KnockoutMode.ZERO_ATTENTION
+
+    def setup(self, layers: Optional[list[int]] = None):
+        super().setup(layers)
+
+        for handle in self.handles:
+            handle.remove()
+
+        # Assert that no hooks are left
+        for m in self.model.modules():
+            assert len(list(m._forward_hooks.items())) == 0
+
+        self.handles = []
+        self.hooks = []
+
+        if layers is not None:
+            # set up hooks
+            for i in range(len(self.model.backbone.layers)):
+                if i in layers:
+                    # "mixer of interest" - moi
+                    moi = self.model.backbone.layers[i].mixer
+
+                    self.hooks.append(SSMInterfereHook(i, self.knockout_mode))
+
+                    self.handles.append(moi.register_forward_hook(self.hooks[-1]))
 
     def generate_logits(
         self,
@@ -83,35 +106,30 @@ class Mamba1Interface(ModelInterface):
         attention: bool = False,
         num_to_masks: Optional[Dict[int, List[Tuple[int, int]]]] = None,
     ) -> torch.Tensor:
-        self.model.eval()
-        hooks = []
         if num_to_masks is not None:
-            # set up hooks
-            for i in range(len(self.model.backbone.layers)):
-                if i in num_to_masks:
-                    # "mixer of interest" - moi
-                    moi = self.model.backbone.layers[i].mixer
-
-                    hooks.append(SSMInterfereHook(i, self.knockout_mode))
-
-                    self.handles.append(moi.register_forward_hook(hooks[-1]))
-
+            source_indices = []
+            target_indices = []
+            
             for layer in num_to_masks:
-                source_indices = [num_to_masks[layer][i][1] for i in range(len(num_to_masks[layer]))]
-                target_indices = [num_to_masks[layer][i][1] for i in range(len(num_to_masks[layer]))]
+                source_indices = [
+                    num_to_masks[layer][i][1] for i in range(len(num_to_masks[layer]))
+                ]
+                target_indices = [
+                    num_to_masks[layer][i][0] for i in range(len(num_to_masks[layer]))
+                ]
                 break
 
-            for hook in hooks:
+            for hook in self.hooks:
                 hook.knockout_indices = source_indices
                 hook.affected_outputs = target_indices
 
-        out = self.model(input_ids)
+        with torch.no_grad():
+            out = self.model(input_ids)
 
-        return out.logits[-1]
-
-    def clean(self) -> None:
-        for handle in self.handles:
-            handle.remove()
+        logits = out.logits
+        probs = F.softmax(logits, dim=-1)
+        
+        return probs[:, -1, :].detach().cpu().numpy()
 
 
 class Mamba2Interface(ModelInterface):
@@ -131,7 +149,7 @@ class Mamba2Interface(ModelInterface):
         attention: bool = False,
         num_to_masks: Optional[Dict[int, List[Tuple[int, int]]]] = None,
     ) -> torch.Tensor:
-        self.model.eval()
+        self.setup(num_to_masks)
         with torch.no_grad():
             out = self.model.generate_single(
                 input_ids=input_ids,
@@ -143,12 +161,7 @@ class Mamba2Interface(ModelInterface):
                 num_to_masks=num_to_masks,
             )
 
-        next_token_probs = out[-1].detach().cpu().numpy()
-
-        return next_token_probs
-
-    def clean(self) -> None:
-        pass
+        return out[-1].detach().cpu().numpy()
 
 
 def get_model_interface(

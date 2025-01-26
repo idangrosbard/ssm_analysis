@@ -289,13 +289,13 @@ def main(args: Args):
 
         for model_arch, model_size in [
             # (MODEL_ARCH.MAMBA1, "130M"),
-            (MODEL_ARCH.MAMBA1, "1.4B"),
+            # (MODEL_ARCH.MAMBA1, "1.4B"),
             # (MODEL_ARCH.MAMBA1, "2.8B"),
             # (MODEL_ARCH.MAMBA2, "130M"),
             # (MODEL_ARCH.MAMBA2, "1.3B"),
             # (MODEL_ARCH.MAMBA2, "2.7B"),
             # (MODEL_ARCH.MINIMAL_MAMBA2, "130M"),
-            # (MODEL_ARCH.MINIMAL_MAMBA2, "2.7B"),
+            (MODEL_ARCH.MINIMAL_MAMBA2, "2.7B"),
             # (MODEL_ARCH.LLAMA2, "7B"),
             # (MODEL_ARCH.LLAMA3_2, "1B"),
             # (MODEL_ARCH.LLAMA3_2, "3B"),
@@ -311,7 +311,7 @@ def main(args: Args):
             args.dataset_args = DatasetArgs(name=DATASETS.COUNTER_FACT, splits=f"all")
             # args.dataset_args = DatasetArgs(name=DATASETS.COUNTER_FACT, splits=f"test")
 
-            job_name = f"evaluate_model_{model_arch}_{model_size}_{args.dataset_args.dataset_name}"
+            job_name = f"evaluate_model/{model_arch}_{model_size}_{args.dataset_args.dataset_name}"
             job = submit_job(
                 main_local,
                 args,

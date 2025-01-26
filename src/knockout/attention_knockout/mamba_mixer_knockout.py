@@ -4,7 +4,7 @@ import torch
 
 from transformers.cache_utils import MambaCache
 from ..knockout_mode import KnockoutMode
-from .knockout_scan import knockout_scan
+from .knockout_scan import knockout_scan, knockout_matrix
 
 # fmt: off
 def slow_forward_for_ssm_materializing_knockout(module, input_states, cache_params: Optional[MambaCache]=None, cache_position:Optional[torch.LongTensor]=None, attention_mask: Optional[torch.LongTensor] = None, knockout_indices: Optional[Iterable[int]] = None, affected_outputs: Optional[Iterable[int]] = None, knockout_mode: Optional[KnockoutMode] = None):
@@ -76,9 +76,14 @@ def slow_forward_for_ssm_materializing_knockout(module, input_states, cache_para
 
     # 3.c perform the recurrence y ← SSM(A, B, C)(x)
     # Here is the call to the knockout_scan functions
-    scan_outputs = knockout_scan(seq_len, ssm_state, discrete_A, deltaB_u, C, knockout_indices, affected_outputs, knockout_mode, dtype)
     
-    scan_output = torch.stack(scan_outputs, dim=-1)                                # [batch, seq_len, intermediade_size]
+    USE_MATRIX = False
+    if USE_MATRIX:
+        u = hidden_states[:, :, :, None].float()
+        scan_output = knockout_matrix(seq_len, discrete_A, discrete_B, u, C, knockout_indices, affected_outputs, dtype)
+    else:
+        scan_outputs = knockout_scan(seq_len, ssm_state, discrete_A, deltaB_u, C, knockout_indices, affected_outputs, knockout_mode, dtype)
+        scan_output = torch.stack(scan_outputs, dim=-1)                                # [batch, seq_len, intermediade_size]
     scan_output = scan_output + (hidden_states * module.D[None, :, None])
     scan_output = (scan_output * module.act(gate))
 

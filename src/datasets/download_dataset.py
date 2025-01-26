@@ -1,15 +1,24 @@
+import tempfile
 from pathlib import Path
 from typing import Optional
 
 import pandas as pd
 import wget
+from datasets import Dataset
+from datasets import concatenate_datasets
+from datasets import load_dataset as huggingface_load_dataset
+from datasets import load_from_disk
 
 from scripts.counterfact.splitting import split_dataset
-from src.consts import COLUMNS, DATASETS_IDS, FILTERATIONS, PATHS
-import tempfile
-from datasets import Dataset, DatasetDict, load_from_disk, concatenate_datasets
-from src.types import DATASETS, SPLIT, DatasetArgs, TSplit
-from datasets import load_dataset as huggingface_load_dataset
+from src.consts import COLUMNS
+from src.consts import DATASETS_IDS
+from src.consts import FILTERATIONS
+from src.consts import PATHS
+from src.types import DATASETS
+from src.types import DatasetArgs
+from src.types import SPLIT
+from src.types import TPromptData
+from src.types import TSplit
 
 
 def load_knowns() -> Dataset:
@@ -31,9 +40,9 @@ def load_knowns() -> Dataset:
 
 
 def load_splitted_knowns(
-    split: TSplit = (SPLIT.TRAIN1,),
-    add_split_name_column: bool = False,
-    filteration: Optional[FILTERATIONS] = None,
+        split: TSplit = (SPLIT.TRAIN1,),
+        add_split_name_column: bool = False,
+        filteration: Optional[FILTERATIONS] = None,
 ) -> Dataset:
     splitted_path = PATHS.PROCESSED_KNOWN_DIR / "splitted"
 
@@ -62,11 +71,11 @@ def load_splitted_knowns(
             datasets[i] = dataset
 
     dataset = concatenate_datasets(datasets)
-    
+
     if filteration is not None:
         original_idx = pd.read_csv(PATHS.KNOWN_1000_FILTERATIONS_DIR / f"{filteration}.csv")[COLUMNS.ORIGINAL_IDX]
         dataset = dataset.filter(lambda x: x[COLUMNS.ORIGINAL_IDX] in original_idx)
-    
+
     return dataset
 
 
@@ -75,10 +84,10 @@ def load_knowns_pd() -> pd.DataFrame:
 
 
 def load_splitted_counter_fact(
-    split: TSplit = (SPLIT.TRAIN1,),
-    add_split_name_column: bool = False,
-    filteration: Optional[FILTERATIONS] = None,
-    align_to_known: bool = True,
+        split: TSplit = (SPLIT.TRAIN1,),
+        add_split_name_column: bool = False,
+        filteration: Optional[FILTERATIONS] = None,
+        align_to_known: bool = True,
 ) -> Dataset:
     splitted_path = PATHS.COUNTER_FACT_DIR / "splitted"
 
@@ -109,7 +118,7 @@ def load_splitted_counter_fact(
             datasets[i] = dataset
 
     dataset = concatenate_datasets(datasets)
-    
+
     if align_to_known:
         # rename 'target_true' -> 'attribute',
         dataset = dataset.rename_column("target_true", "attribute")
@@ -117,11 +126,12 @@ def load_splitted_counter_fact(
         dataset = dataset.remove_columns(
             ["target_false", "target_false_id", "target_true_id"]
         )
-    
+
     if filteration is not None:
-        original_idx = pd.read_csv(PATHS.COUNTER_FACT_FILTERATIONS_DIR / f"{filteration}.csv")[COLUMNS.ORIGINAL_IDX].to_list()
+        original_idx = pd.read_csv(PATHS.COUNTER_FACT_FILTERATIONS_DIR / f"{filteration}.csv")[
+            COLUMNS.ORIGINAL_IDX].to_list()
         dataset = dataset.filter(lambda x: x[COLUMNS.ORIGINAL_IDX] in original_idx)
-    
+
     return dataset
 
 
@@ -132,3 +142,19 @@ def load_dataset(dataset_args: DatasetArgs) -> Dataset:
         return load_splitted_counter_fact(dataset_args.splits)
     else:
         raise ValueError(f"Unknown dataset name: {dataset_args.name}")
+
+
+def get_hit_dataset(model_id: str, dataset_args: DatasetArgs) -> TPromptData:
+    original_res, attn_res = [
+        pd.read_parquet(
+            PATHS.OUTPUT_DIR
+            / model_id
+            / "data_construction"
+            / f"ds={dataset_args.dataset_name}"
+            / f"entire_results_{"attention" if attention else "original"}.parquet"
+        )
+        for attention in [True, False]
+    ]
+
+    mask = (original_res["hit"] == attn_res["hit"]) & (attn_res["hit"] == True)
+    return attn_res[mask]
