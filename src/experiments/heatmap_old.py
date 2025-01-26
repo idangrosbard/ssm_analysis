@@ -4,11 +4,11 @@ from pathlib import Path
 import numpy as np
 import pyrallis
 import torch
+from src.experiment_infra.config import BaseConfig
 from tqdm import tqdm
 
 from src.consts import PATHS
 from src.datasets.download_dataset import get_hit_dataset
-from src.experiment_infra.config import BaseConfig
 from src.models.model_interface import get_model_interface
 from src.utils.logits import get_prompt_row
 
@@ -24,11 +24,11 @@ class HeatmapConfig(BaseConfig):
     @property
     def output_path(self) -> Path:
         return (
-            PATHS.OUTPUT_DIR
-            / self.model_id
-            / self.experiment_name
-            / f"ds={self.dataset_args.dataset_name}"
-            / f"ws={self.window_size}"
+                PATHS.OUTPUT_DIR
+                / self.model_id
+                / self.experiment_name
+                / f"ds={self.dataset_args.dataset_name}"
+                / f"ws={self.window_size}"
         )
 
 
@@ -36,16 +36,7 @@ def main_local(args: HeatmapConfig):
     print(args)
     data = get_hit_dataset(model_id=args.model_id, dataset_args=args.dataset_args)
 
-    if not args.output_file:
-        args.output_file = (
-            PATHS.OUTPUT_DIR
-            / args.model_id
-            / args.experiment_name
-            / f"ds={args.dataset_args.dataset_name}"
-            / f"ws={args.window_size}"
-        )
-
-    args.output_file.mkdir(parents=True, exist_ok=True)
+    args.output_path.mkdir(parents=True, exist_ok=True)
 
     model_interface = get_model_interface(args.model_arch, args.model_size)
     tokenizer = model_interface.tokenizer
@@ -82,4 +73,4 @@ def main_local(args: HeatmapConfig):
             prob_mat.append(forward_eval(prompt_idx, window))
 
         prob_mat = np.array(prob_mat).T
-        np.save(args.output_file / f"idx={prompt_idx}.npy", prob_mat)
+        np.save(args.output_path / f"idx={prompt_idx}.npy", prob_mat)
