@@ -187,47 +187,8 @@ def main_local(args: Args) -> None:
 
 @pyrallis.wrap()
 def main(args: Args):
-    def get_experiment_configs():
-        """Generate configurations for different experiment variations."""
-        base_config = {
-            "model_size": "2.8B",
-            "output_dir": "",
-        }
-
-        # Standard configurations
-        configs = [
-            {**base_config, "interfere_mode": "ZERO_ATTENTION"},
-            {**base_config, "interfere_mode": "IGNORE_SSM"},
-            {
-                **base_config,
-                "interfere_mode": "IGNORE_SSM",
-                "early_layers_ssm_knockout": True,
-            },
-        ]
-
-        # Delta configurations
-        delta_variations = [
-            {"delta_factor_root": 0.5, "delta_start_layer": 40, "delta_end_layer": 48},
-            {"delta_factor_root": 1.5, "delta_start_layer": 40, "delta_end_layer": 48},
-            {"delta_factor_root": 0.5, "delta_start_layer": 56, "delta_end_layer": 64},
-            {"delta_factor_root": 1.5, "delta_start_layer": 56, "delta_end_layer": 64},
-        ]
-
-        # Add delta configurations
-        for delta_config in delta_variations:
-            configs.append(
-                {
-                    **base_config,
-                    "interfere_mode": "INCREASE_DELTA",
-                    "increase_delta_target": "LAST",
-                    **delta_config,
-                }
-            )
-
-        return configs
-
     if args.with_slurm:
-        gpu_type = "a100"
+        gpu_type = "l40s"
         # gpu_type = "titan_xp-studentkillable"
 
         for model_arch, model_size in [

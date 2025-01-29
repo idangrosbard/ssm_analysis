@@ -1,5 +1,20 @@
 import submitit
 
+"""
+| GPU                       | Speed (TFLOPS) | Memory (GB) |
+|---------------------------|----------------|-------------|
+| NVIDIA H100-80GB HBM3     | 65.0           | 80          |
+| NVIDIA A100-SXM-80GB      | 19.5           | 80          |
+| L40S                      | 32.0           | 48          |
+| A6000                     | 22.3           | 48          |
+| Quadro RTX 8000           | 16.3           | 48          |
+| NVIDIA GeForce RTX 3090   | 35.6           | 24          |
+| A5000                     | 24.0           | 24          |
+| Tesla V100-SXM2-32GB      | 15.7           | 32          |
+| NVIDIA GeForce RTX 2080 Ti| 13.4           | 11          |
+| Nvidia Titan XP           | 12.1           | 12          |
+"""
+
 
 def submit_job(
     func,

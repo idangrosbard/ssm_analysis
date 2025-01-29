@@ -1,35 +1,11 @@
-from dataclasses import dataclass
-from pathlib import Path
-
 import numpy as np
-import pyrallis
 import torch
 from tqdm import tqdm
 
-from src.consts import PATHS
 from src.datasets.download_dataset import get_hit_dataset
-from src.experiment_infra.base_config import BaseConfig
+from src.experiments.heatmap import HeatmapConfig
 from src.models.model_interface import get_model_interface
 from src.utils.logits import get_prompt_row
-
-
-@dataclass
-class HeatmapConfig(BaseConfig):
-    """Configuration for heatmap generation."""
-
-    experiment_name: str = "heatmap"
-    window_size: int = 5
-    prompt_indices: list[int] = pyrallis.field(default_factory=lambda: [1, 2, 3, 4, 5])
-
-    @property
-    def output_path(self) -> Path:
-        return (
-            PATHS.OUTPUT_DIR
-            / self.model_id
-            / self.experiment_name
-            / f"ds={self.dataset_args.dataset_name}"
-            / f"ws={self.window_size}"
-        )
 
 
 def main_local(args: HeatmapConfig):

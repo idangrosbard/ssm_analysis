@@ -64,6 +64,9 @@ MODEL_SIZES_PER_ARCH_TO_MODEL_ID: dict[MODEL_ARCH, dict[str, TModelID]] = {
         "130M": TModelID("state-spaces/mamba-130M-hf"),
         "1.4B": TModelID("state-spaces/mamba-1.4B-hf"),
         "2.8B": TModelID("state-spaces/mamba-2.8B-hf"),
+        "7B": TModelID("TRI-ML/mamba-7b-rw"),
+        "7B-falcon": TModelID("tiiuae/falcon-mamba-7b"),
+        "7B-falcon-base": TModelID("tiiuae/Falcon3-Mamba-7B-Base"),
     },
     MODEL_ARCH.MINIMAL_MAMBA1: {
         "130M": TModelID("state-spaces/mamba-130M"),
@@ -74,6 +77,7 @@ MODEL_SIZES_PER_ARCH_TO_MODEL_ID: dict[MODEL_ARCH, dict[str, TModelID]] = {
         "130M": TModelID("state-spaces/mamba2-130M"),
         "1.3B": TModelID("state-spaces/mamba2-1.3b"),
         "2.7B": TModelID("state-spaces/mamba2-2.7B"),
+        "8B": TModelID("nvidia/mamba2-8b-3t-4k"),
     },
     MODEL_ARCH.MINIMAL_MAMBA2_new: {
         "130M": TModelID("state-spaces/mamba2-130M"),
@@ -101,6 +105,10 @@ GRAPHS_ORDER = [
     (MODEL_ARCH.MINIMAL_MAMBA2_new, "1.3B"),
     (MODEL_ARCH.MAMBA1, "2.8B"),
     (MODEL_ARCH.MINIMAL_MAMBA2_new, "2.7B"),
+    (MODEL_ARCH.MAMBA1, "7B"),
+    (MODEL_ARCH.MAMBA1, "7B-falcon"),
+    (MODEL_ARCH.MAMBA1, "7B-falcon-base"),
+    (MODEL_ARCH.MINIMAL_MAMBA2_new, "8B"),
 ]
 
 
@@ -116,10 +124,14 @@ def get_model_by_cat_size(cat_size: MODEL_SIZE_CAT) -> list[tuple[MODEL_ARCH, st
 
 def reverse_model_id(model_id: str) -> tuple[MODEL_ARCH, str]:
     for arch, model_size in GRAPHS_ORDER:
-        for model_id_prefix in ["", "state-spaces/"]:
+        for model_id_prefix in ["", "state-spaces/", "tiiuae/"]:
             if MODEL_SIZES_PER_ARCH_TO_MODEL_ID[arch][model_size] == f"{model_id_prefix}{model_id}":
                 return arch, model_size
     raise ValueError(f"Model id {model_id} not found in MODEL_SIZES_PER_ARCH_TO_MODEL_ID")
+
+
+def is_falcon(model_size: str) -> bool:
+    return "falcon" in model_size
 
 
 class FILTERATIONS:

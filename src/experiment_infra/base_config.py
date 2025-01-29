@@ -39,3 +39,8 @@ class BaseConfig(ABC):
     @abstractmethod
     def output_path(self) -> Path:
         pass
+
+    @property
+    def output_file(self) -> Path:
+        # TOOD: remove
+        return self.output_path

@@ -3,6 +3,10 @@ from typing import Callable, Iterable, Optional
 import torch
 from torch import Tensor, nn
 
+from src.knockout.attention_knockout.mamba_mixer_knockout_falcon import (
+    slow_forward_for_ssm_materializing_knockout_falcon,
+)
+
 from .mamba_mixer_ssm_knockout import slow_forward_for_ssm_knockout
 
 
@@ -23,6 +27,7 @@ class SSMKnockoutHook(Callable):
         knockout_indices: Iterable[int],
         device: torch.device,
         d: int,
+        is_falcon: bool = False,
     ):
         self.counter = 0
         self.layer = layer
@@ -36,7 +41,11 @@ class SSMKnockoutHook(Callable):
         out - the current layer output ssm state (in mamba 1 \ 2 - this is Y)
         """
         # TODO make the knockout more efficient - maybe replace the module.forward with a custom forward
-        contextualized_states = slow_forward_for_ssm_knockout(module, inp[0], mask=self.knockout_indices)
+
+        slow_forward = (
+            slow_forward_for_ssm_materializing_knockout_falcon if self.is_falcon else slow_forward_for_ssm_knockout
+        )
+        contextualized_states = slow_forward(module, inp[0], mask=self.knockout_indices)
         return contextualized_states
 
     def __call__(self, module: nn.Module, inp: Tensor, out: Tensor) -> Optional[Tensor]:

@@ -10,7 +10,7 @@ import torch
 from tqdm import tqdm
 from transformers import AutoTokenizer, MambaForCausalLM
 
-from src.consts import PATHS
+from src.consts import PATHS, is_falcon
 from src.datasets.download_dataset import load_dataset, load_knowns_pd
 from src.knockout.attention_knockout import (
     AttentionKnockoutEvaluator,
@@ -154,12 +154,13 @@ def attention_knockout_evaluate(
     tokenizer: AutoTokenizer,
     device: torch.device,
     knowns_df: pd.DataFrame,
+    is_falcon: bool,
     layer_checkpoint: Optional[pd.DataFrame] = None,
     bin_search_checkpoint: Optional[pd.DataFrame] = None,
     affected_output: str = "all",
 ):
     evaluator = AttentionKnockoutEvaluator(
-        model, tokenizer, device, -1, -1, args.drop_subj_last, args.show_eval_progress
+        model, tokenizer, device, -1, -1, is_falcon, args.drop_subj_last, args.show_eval_progress
     )
 
     bin_search_df = bin_search_checkpoint
@@ -448,6 +449,7 @@ def main_local(args: Args) -> None:
             tokenizer,
             device,
             knowns_df,
+            is_falcon=is_falcon(args.model_size),
             layer_checkpoint=layer_checkpoint,
             bin_search_checkpoint=bin_search_checkpoint,
             affected_output=args.affected_output,

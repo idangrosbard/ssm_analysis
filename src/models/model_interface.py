@@ -7,6 +7,7 @@ from torch import Tensor
 from transformers import MambaForCausalLM, PreTrainedTokenizer, PreTrainedTokenizerFast
 
 import src.models.minimal_mamba2_new as minimal_mamba2_new
+from src.consts import is_falcon
 from src.knockout.attention_knockout.ssm_interfere import SSMInterfereHook
 from src.knockout.knockout_mode import KnockoutMode
 from src.types import MODEL_ARCH
@@ -64,11 +65,17 @@ class Mamba1Interface(ModelInterface):
         model_size: str,
         device: Optional[torch.device] = None,
         tokenizer: Optional[Union[PreTrainedTokenizer, PreTrainedTokenizerFast]] = None,
+        is_falcon: bool = False,
     ):
         super().__init__(MODEL_ARCH.MAMBA1, model_size, device, tokenizer)
 
         self.hooks: list[SSMInterfereHook] = []
         self.handles: list[torch.utils.hooks.RemovableHandle] = []
+        self.is_falcon = is_falcon
+        if is_falcon:
+            print("using falcon")
+        else:
+            print("not using falcon")
 
         self.knockout_mode = KnockoutMode.ZERO_ATTENTION
 
@@ -92,7 +99,7 @@ class Mamba1Interface(ModelInterface):
                     # "mixer of interest" - moi
                     moi = self.model.backbone.layers[i].mixer
 
-                    self.hooks.append(SSMInterfereHook(i, self.knockout_mode))
+                    self.hooks.append(SSMInterfereHook(i, self.knockout_mode, is_falcon=self.is_falcon))
 
                     self.handles.append(moi.register_forward_hook(self.hooks[-1]))
 
@@ -163,7 +170,7 @@ def get_model_interface(
         case MODEL_ARCH.MINIMAL_MAMBA2_new:
             return Mamba2Interface(model_size, device)
         case MODEL_ARCH.MAMBA1:
-            return Mamba1Interface(model_size, device)
+            return Mamba1Interface(model_size, device, is_falcon=is_falcon(model_size))
         case _:
             # assert_never(model_arch)
             raise ValueError(f"Unknown model architecture: {model_arch}")

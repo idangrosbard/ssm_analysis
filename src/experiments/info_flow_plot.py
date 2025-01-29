@@ -46,12 +46,16 @@ def main_local(args: InfoFlowConfig):
                 print("Reading from existing file")
                 for metric in metrics:
                     res[metric] = pd.read_csv(block_outdir / f"{metric}.csv")
-
-            if (block_outdir / f"{metrics[0]}.parquet").exists():
+            elif (block_outdir / f"{metrics[0]}.parquet").exists():
                 print("Reading from existing file")
                 for metric in metrics:
                     res[metric] = pd.read_parquet(block_outdir / f"{metric}.parquet")
                     (block_outdir / f"{metric}.parquet").unlink()
+            elif (block_outdir / "metrics.csv").exists():
+                print("Reading from existing file")
+                res = pd.read_csv(block_outdir / "metrics.csv")
+            else:
+                raise FileNotFoundError(f"No metrics file found in {block_outdir}")
 
             for metric, value in res.items():
                 df = pd.DataFrame(value)

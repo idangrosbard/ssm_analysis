@@ -274,7 +274,7 @@ def main(args: Args):
     # args.with_slurm = True
 
     if args.with_slurm:
-        gpu_type = "a100"
+        gpu_type = "l40s"
         # gpu_type = "titan_xp-studentrun"
 
         for model_arch, model_size in [
@@ -285,7 +285,10 @@ def main(args: Args):
             # (MODEL_ARCH.MAMBA2, "1.3B"),
             # (MODEL_ARCH.MAMBA2, "2.7B"),
             # (MODEL_ARCH.MINIMAL_MAMBA2, "130M"),
-            (MODEL_ARCH.MINIMAL_MAMBA2, "2.7B"),
+            # (MODEL_ARCH.MINIMAL_MAMBA2, "2.7B"),
+            (MODEL_ARCH.MAMBA1, "7B"),
+            # (MODEL_ARCH.MAMBA1, "7B-falcon"),
+            # (MODEL_ARCH.MAMBA1, "7B-falcon-base"),
             # (MODEL_ARCH.LLAMA2, "7B"),
             # (MODEL_ARCH.LLAMA3_2, "1B"),
             # (MODEL_ARCH.LLAMA3_2, "3B"),

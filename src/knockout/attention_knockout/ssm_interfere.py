@@ -2,15 +2,19 @@ from typing import Iterable, Optional
 
 from torch import Tensor, nn
 
+from src.knockout.attention_knockout.mamba_mixer_knockout_falcon import (
+    slow_forward_for_ssm_materializing_knockout_falcon,
+)
 from src.knockout.knockout_mode import KnockoutMode
 
 from .mamba_mixer_knockout import slow_forward_for_ssm_materializing_knockout
 
 
 class SSMInterfereHook:
-    def __init__(self, layer: int | str | nn.Module, knockout_type: KnockoutMode):
+    def __init__(self, layer: int | str | nn.Module, knockout_type: KnockoutMode, is_falcon: bool):
         self.counter = 0
         self.layer = layer
+        self.is_falcon = is_falcon
         self.knockout_type = knockout_type
         self.knockout_indices: Iterable[int] = []
         self.affected_outputs: Iterable[int] = []
@@ -22,7 +26,12 @@ class SSMInterfereHook:
         out - the current layer output ssm state (in mamba 1 \ 2 - this is Y)
         """
         # TODO make the knockout more efficient - maybe replace the module.forward with a custom forward
-        curr_out = slow_forward_for_ssm_materializing_knockout(
+        slow_forward = (
+            slow_forward_for_ssm_materializing_knockout_falcon
+            if self.is_falcon
+            else slow_forward_for_ssm_materializing_knockout
+        )
+        curr_out = slow_forward(
             module,
             inp[0],
             knockout_indices=self.knockout_indices,

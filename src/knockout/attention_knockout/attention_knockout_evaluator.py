@@ -21,6 +21,7 @@ class AttentionKnockoutEvaluator(KnockoutEvaluator):
         device: torch.device,
         knockout_target: KnockoutTarget,
         affected_target: KnockoutTarget,
+        is_falcon: bool,
         drop_subj_last: bool = False,
         show_progress: bool = False,
     ):
@@ -29,6 +30,7 @@ class AttentionKnockoutEvaluator(KnockoutEvaluator):
         self.device = device
         self.knockout_target = knockout_target
         self.affected_target = affected_target
+        self.is_falcon = is_falcon
         self.drop_subj_last = drop_subj_last
         self.show_progress = show_progress
 
@@ -46,7 +48,7 @@ class AttentionKnockoutEvaluator(KnockoutEvaluator):
                 # "mixer of interest" - moi
                 moi = self.model.backbone.layers[i].mixer
 
-                hooks.append(SSMInterfereHook(i, knockout_mode))
+                hooks.append(SSMInterfereHook(i, knockout_mode, self.is_falcon))
 
                 handles.append(moi.register_forward_hook(hooks[-1]))
 

@@ -1,6 +1,7 @@
 import json
 from collections import defaultdict
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Optional
 
 import numpy as np
@@ -46,19 +47,20 @@ class InfoFlowConfig(BaseConfig):
         }
     )
 
+    @property
+    def output_path(self) -> Path:
+        return (
+            PATHS.OUTPUT_DIR
+            / self.model_id
+            / self.experiment_name
+            / f"ds={self.dataset_args.dataset_name}"
+            / f"ws={self.window_size}"
+        )
+
 
 def main_local(args: InfoFlowConfig):
     print(args)
     data = get_hit_dataset(model_id=args.model_id, dataset_args=args.dataset_args)
-
-    if not args.output_file:
-        args.output_file = (
-            PATHS.OUTPUT_DIR
-            / args.model_id
-            / args.experiment_name
-            / f"ds={args.dataset_args.dataset_name}"
-            / f"ws={args.window_size}"
-        )
 
     args.output_file.mkdir(parents=True, exist_ok=True)
 

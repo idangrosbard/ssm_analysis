@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, Optional, Tuple, Union, assert_never
 import torch
 from huggingface_hub import login
 from transformers import (
+    AutoModelForCausalLM,
     AutoTokenizer,
     LlamaForCausalLM,
     MambaForCausalLM,
@@ -14,7 +15,7 @@ from transformers import (
 
 import src.models.minimal_mamba2 as minimal_mamba2
 import src.models.minimal_mamba2_new as minimal_mamba2_new
-from src.consts import MODEL_SIZES_PER_ARCH_TO_MODEL_ID
+from src.consts import MODEL_SIZES_PER_ARCH_TO_MODEL_ID, is_falcon
 from src.models.minimal_mamba1 import Mamba
 from src.types import MODEL_ARCH
 
@@ -32,19 +33,10 @@ def setup_mamba_model(
 
 
 def _get_tokenizer_id(model_arch: MODEL_ARCH, model_id: str) -> str:
-    match model_arch:
-        case (
-            MODEL_ARCH.MAMBA1
-            | MODEL_ARCH.MAMBA2
-            | MODEL_ARCH.MINIMAL_MAMBA1
-            | MODEL_ARCH.MINIMAL_MAMBA2
-            | MODEL_ARCH.MINIMAL_MAMBA2_new
-        ):
-            return "EleutherAI/gpt-neox-20b"
-        case MODEL_ARCH.LLAMA2 | MODEL_ARCH.LLAMA3_2:
-            return model_id
-        case _:
-            assert_never(model_arch)
+    if model_id.startswith("state-spaces/"):
+        return "EleutherAI/gpt-neox-20b"
+    else:
+        return model_id
 
 
 def get_tokenizer_and_model(
@@ -82,11 +74,15 @@ def get_tokenizer_and_model(
         case MODEL_ARCH.MINIMAL_MAMBA2_new:
             model = minimal_mamba2_new.Mamba2LMHeadModel.from_pretrained(model_id, **minimal_kwargs)  # type: ignore
         case MODEL_ARCH.MAMBA1:
-            if device:
-                model = MambaForCausalLM.from_pretrained(model_id)
-                model.to(device)  # type: ignore
+            if is_falcon(model_size):
+                model = AutoModelForCausalLM.from_pretrained(model_id, device_map="auto")
             else:
-                model = MambaForCausalLM.from_pretrained(model_id, device_map="auto")
+                if device:
+                    model = MambaForCausalLM.from_pretrained(model_id)
+                    model.to(device)  # type: ignore
+                else:
+                    model = MambaForCausalLM.from_pretrained(model_id, device_map="auto")
+
         case MODEL_ARCH.MAMBA2:
             if not device:
                 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")

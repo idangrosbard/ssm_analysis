@@ -1,6 +1,5 @@
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
 
 import numpy as np
 import pandas as pd
@@ -9,45 +8,32 @@ import torch
 from tqdm import tqdm
 
 from src.consts import (
-    FILTERATIONS,
     MODEL_SIZES_PER_ARCH_TO_MODEL_ID,
     PATHS,
 )
 from src.datasets.download_dataset import load_splitted_counter_fact
+from src.experiment_infra.base_config import BaseConfig
 from src.models.model_interface import get_model_interface
 from src.types import DATASETS, MODEL_ARCH, DatasetArgs, TModelID
 from src.utils.slurm import submit_job
 
 
 @dataclass
-class Args:
-    # model_arch: MODEL_ARCH = MODEL_ARCH.MINIMAL_MAMBA2_new
-    model_arch: MODEL_ARCH = MODEL_ARCH.MAMBA1
-    model_size: str = "130M"
-    dataset_args: DatasetArgs = pyrallis.field(
-        default=DatasetArgs(name=DATASETS.COUNTER_FACT, splits="all"), is_mutable=True
-    )
-    filteration: str = FILTERATIONS.all_correct
-    _batch_size: int = 16  # Adjust based on GPU memory
-    output_file: Optional[Path] = None
-    with_slurm: bool = False
+class Args(BaseConfig):
     temperature = 1
     top_k = 0
     top_p = 1
-    output_dir: Optional[Path] = None
     attention: bool = False
 
-    @property
-    def batch_size(self) -> int:
-        return (
-            1
-            if (self.model_arch == MODEL_ARCH.MINIMAL_MAMBA2 or self.model_arch == MODEL_ARCH.MINIMAL_MAMBA2_new)
-            else self._batch_size
-        )
+    experiment_name: str = "data_construction"
 
     @property
     def model_id(self) -> TModelID:
         return MODEL_SIZES_PER_ARCH_TO_MODEL_ID[self.model_arch][self.model_size]
+
+    @property
+    def output_path(self) -> Path:
+        return PATHS.OUTPUT_DIR / self.model_id / "data_construction" / f"ds={self.dataset_args.dataset_name}"
 
 
 def main_local(args: Args):
@@ -58,11 +44,6 @@ def main_local(args: Args):
     top_k = args.top_k
     top_p = args.top_p
     attention = args.attention
-
-    if not args.output_file:
-        args.output_file = (
-            PATHS.OUTPUT_DIR / args.model_id / "data_construction" / f"ds={args.dataset_args.dataset_name}"
-        )
 
     args.output_file.mkdir(parents=True, exist_ok=True)
 
@@ -118,16 +99,19 @@ def main(args: Args):
     # args.with_slurm = True
 
     if args.with_slurm:
-        gpu_type = "a100"
+        gpu_type = "l40s"
         # gpu_type = "titan_xp-studentrun"
 
         for model_arch, model_size in [
             # (MODEL_ARCH.MAMBA1, "130M"),
             # (MODEL_ARCH.MAMBA1, "1.4B"),
             # (MODEL_ARCH.MAMBA1, "2.8B"),
+            (MODEL_ARCH.MAMBA1, "7B"),
+            (MODEL_ARCH.MAMBA1, "7B-falcon"),
+            (MODEL_ARCH.MAMBA1, "7B-falcon-base"),
             # (MODEL_ARCH.MINIMAL_MAMBA2_new, "130M"),
             # (MODEL_ARCH.MINIMAL_MAMBA2_new, "1.3B"),
-            (MODEL_ARCH.MINIMAL_MAMBA2_new, "2.7B"),
+            # (MODEL_ARCH.MINIMAL_MAMBA2_new, "2.7B"),
         ]:
             args.model_arch = model_arch
             args.model_size = model_size
@@ -146,7 +130,7 @@ def main(args: Args):
                     job_name=job_name,
                     # timeout_min=1200,
                     gpu_type=gpu_type,
-                    slurm_gpus_per_node=3,
+                    slurm_gpus_per_node=1,
                 )
 
                 print(f"{job}: {job_name}")
