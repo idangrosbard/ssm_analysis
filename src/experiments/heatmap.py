@@ -11,11 +11,13 @@ The combined result is a dictionary of prompt index -> heatmap
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
+from typing import Optional, cast
 
 import numpy as np
 import pyrallis
 import torch
+
+# from pydantic.dataclasses import dataclass
 from tqdm import tqdm
 
 from src.consts import PATHS
@@ -30,7 +32,10 @@ class HeatmapConfig(BaseConfig):
 
     experiment_name: str = "heatmap"
     window_size: int = 5
-    prompt_indices: list[int] = pyrallis.field(default_factory=lambda: [1, 2, 3, 4, 5])
+    prompt_indices: list[int] = cast(
+        list[int],
+        pyrallis.field(default_factory=lambda: [1, 2, 3, 4, 5]),
+    )
 
     @property
     def output_path(self) -> Path:

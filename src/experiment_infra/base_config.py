@@ -1,9 +1,11 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
+from typing import cast
 
 import pyrallis
 
+# from pydantic.dataclasses import dataclass
 from src.consts import FILTERATIONS, MODEL_SIZES_PER_ARCH_TO_MODEL_ID
 from src.types import DATASETS, MODEL_ARCH, DatasetArgs, TModelID
 
@@ -16,8 +18,9 @@ class BaseConfig(ABC):
 
     model_arch: MODEL_ARCH = MODEL_ARCH.MAMBA1
     model_size: str = "130M"
-    dataset_args: DatasetArgs = pyrallis.field(
-        default=DatasetArgs(name=DATASETS.COUNTER_FACT, splits="all"), is_mutable=True
+    dataset_args: DatasetArgs = cast(
+        DatasetArgs,
+        pyrallis.field(default=DatasetArgs(name=DATASETS.COUNTER_FACT, splits="all"), is_mutable=True),
     )
     filteration: str = FILTERATIONS.all_correct
     _batch_size: int = 16  # Adjust based on GPU memory

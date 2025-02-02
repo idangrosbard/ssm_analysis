@@ -4,6 +4,7 @@ from src.consts import PATHS
 from src.experiments.heatmap import HeatmapConfig, HeatmapExperiment
 from src.types import DATASETS, MODEL_ARCH, DatasetArgs
 from src.utils.slurm import submit_job
+from src.zenml.pipelines.heatmap import heatmap_pipeline
 
 
 @pyrallis.wrap()
@@ -53,9 +54,13 @@ def main(args: HeatmapConfig):
 
                 print(f"{job}: {job_name}")
     else:
-        args.experiment_name = "debug"
+        args.experiment_name = "debug_with_zenml"
         args.prompt_indices = [1, 2, 3, 4, 5]
-        HeatmapExperiment(args).run_local()
+        # HeatmapExperiment(args).run_local()
+        print("Running pipeline")
+
+        # Run the pipeline with the config object directly
+        heatmap_pipeline(config=args)
 
 
 if __name__ == "__main__":
