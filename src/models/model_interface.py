@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Dict, Iterable, List, Optional, Tuple, Union
+from typing import Dict, Iterable, List, Optional, Tuple, Union, cast
 
 import torch
 import torch.nn.functional as F
@@ -17,20 +17,35 @@ from src.utils.setup_models import get_tokenizer_and_model
 class ModelInterface(ABC):
     """Abstract interface for language models with attention knockout capability."""
 
+    _model_cache: Dict[Tuple, "ModelInterface"] = {}
+
     def __init__(
         self,
-        model_arch: MODEL_ARCH,
-        model_size: str,
-        device: Optional[torch.device] = None,
-        tokenizer: Optional[Union[PreTrainedTokenizer, PreTrainedTokenizerFast]] = None,
+        model: torch.nn.Module,
+        tokenizer: Union[PreTrainedTokenizer, PreTrainedTokenizerFast],
     ):
-        """Initialize the model with given size and device."""
-        # x = get_tokenizer_and_model()
-        self.tokenizer, self.model = get_tokenizer_and_model(model_arch, model_size, device)
-        if tokenizer is not None:
-            self.tokenizer = tokenizer
+        self.model = model
+        self.tokenizer = tokenizer
 
-        self.device = self.model.device
+    @classmethod
+    def from_arch_and_size(
+        cls, model_arch: MODEL_ARCH, model_size: str, device: Optional[torch.device] = None
+    ) -> "ModelInterface":
+        cache_key = (model_arch, model_size)
+        tokenizer, model = get_tokenizer_and_model(model_arch, model_size, device)
+        if cache_key not in cls._model_cache:
+            cls._model_cache[cache_key] = cls(model=model, tokenizer=tokenizer)
+        return cls._model_cache[cache_key]
+
+    def to_config(self) -> dict:
+        if len(self._model_cache) == 1:
+            model_arch, model_size = next(iter(self._model_cache.keys()))
+            return {
+                "model_arch": model_arch,
+                "model_size": model_size,
+            }
+        else:
+            raise ValueError("Can only convert to config for single model per runtime.")
 
     def setup(self, layers: Optional[Iterable[int]] = None):
         self.model.eval()
@@ -62,22 +77,26 @@ class Mamba1Interface(ModelInterface):
 
     def __init__(
         self,
-        model_size: str,
-        device: Optional[torch.device] = None,
-        tokenizer: Optional[Union[PreTrainedTokenizer, PreTrainedTokenizerFast]] = None,
-        is_falcon: bool = False,
+        model: torch.nn.Module,
+        tokenizer: Union[PreTrainedTokenizer, PreTrainedTokenizerFast],
     ):
-        super().__init__(MODEL_ARCH.MAMBA1, model_size, device, tokenizer)
-
+        super().__init__(model, tokenizer)
+        self.is_falcon = False
+        self.knockout_mode = KnockoutMode.ZERO_ATTENTION
         self.hooks: list[SSMInterfereHook] = []
         self.handles: list[torch.utils.hooks.RemovableHandle] = []
-        self.is_falcon = is_falcon
-        if is_falcon:
-            print("using falcon")
-        else:
-            print("not using falcon")
 
-        self.knockout_mode = KnockoutMode.ZERO_ATTENTION
+    def set_is_falcon(self, _is_falcon: bool):
+        self.is_falcon = _is_falcon
+
+    @classmethod
+    def from_arch_and_size(
+        cls, model_arch: MODEL_ARCH, model_size: str, device: Optional[torch.device] = None
+    ) -> "ModelInterface":
+        instance = cast(Mamba1Interface, super(Mamba1Interface, cls).from_arch_and_size(model_arch, model_size, device))
+
+        instance.set_is_falcon(is_falcon(model_size))
+        return instance
 
     def setup(self, layers: Optional[Iterable[int]] = None):
         super().setup(layers)
@@ -134,14 +153,6 @@ class Mamba1Interface(ModelInterface):
 class Mamba2Interface(ModelInterface):
     model: minimal_mamba2_new.Mamba2LMHeadModel
 
-    def __init__(
-        self,
-        model_size: str,
-        device: Optional[torch.device] = None,
-        tokenizer: Optional[Union[PreTrainedTokenizer, PreTrainedTokenizerFast]] = None,
-    ):
-        super().__init__(MODEL_ARCH.MINIMAL_MAMBA2_new, model_size, device, tokenizer)
-
     def generate_logits(
         self,
         input_ids: Tensor,
@@ -168,9 +179,9 @@ def get_model_interface(
 ) -> ModelInterface:
     match model_arch:
         case MODEL_ARCH.MINIMAL_MAMBA2_new:
-            return Mamba2Interface(model_size, device)
+            return Mamba2Interface.from_arch_and_size(model_arch, model_size, device)
         case MODEL_ARCH.MAMBA1:
-            return Mamba1Interface(model_size, device, is_falcon=is_falcon(model_size))
+            return Mamba1Interface.from_arch_and_size(model_arch, model_size, device)
         case _:
             # assert_never(model_arch)
             raise ValueError(f"Unknown model architecture: {model_arch}")

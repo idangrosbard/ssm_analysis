@@ -187,3 +187,4 @@ data/raw/
 .cursorrules
 .cursorrules.old
 .cursor/
+.mlflow/

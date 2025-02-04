@@ -10,8 +10,11 @@ from src.experiments.heatmap import HeatmapConfig
 from src.models.model_interface import ModelInterface, get_model_interface
 from src.types import MODEL_ARCH, DatasetArgs, TPromptData
 from src.utils.logits import get_prompt_row
+from src.zenml.materializers.model_interface_materializer import ModelInterfaceMaterializer
 from src.zenml.materializers.numpy_array_materializer import NumpyArrayMaterializer
+from src.zenml.orchestrators.slurm_orchestrator import SlurmOrchestratorSettings
 from zenml import pipeline
+from zenml.client import Client
 from zenml.logger import get_logger
 from zenml.steps import step
 
@@ -27,7 +30,7 @@ def get_dataset(
     return get_hit_dataset(model_id=model_id, dataset_args=dataset_args)
 
 
-@step
+@step(output_materializers=ModelInterfaceMaterializer)
 def setup_model_interface(model_arch: MODEL_ARCH, model_size: str) -> ModelInterface:
     """Setup the model interface."""
     return get_model_interface(model_arch, model_size)
@@ -43,7 +46,7 @@ def process_window_step(
     """Process a single window of layers for a given prompt."""
     prompt = get_prompt_row(dataset, prompt_idx)
     true_id = prompt.true_id(model_interface.tokenizer, "cpu")
-    input_ids = prompt.input_ids(model_interface.tokenizer, model_interface.device)
+    input_ids = prompt.input_ids(model_interface.tokenizer, model_interface.model.device)
 
     last_idx = input_ids.shape[1] - 1
     probs = np.zeros((input_ids.shape[1]))
@@ -88,12 +91,13 @@ def process_prompt_heatmap_step(
     for window in windows:
         result = process_window_step(window, prompt_idx, model_interface, dataset)
         window_results.append(result)
-        # prompt_result = combine_windows_step(window_results, model_interface)
-    # save_prompt_result_step(config.output_path, prompt_idx, prompt_result)
     return np.array(window_results).T
 
 
-@pipeline(enable_cache=True)
+@pipeline(
+    enable_cache=True,
+    settings={"orchestrator.slurm": SlurmOrchestratorSettings()},
+)
 def heatmap_pipeline(config: HeatmapConfig):
     """Pipeline for running the heatmap experiment."""
     dataset = get_dataset(model_id=config.model_id, dataset_args=config.dataset_args)
@@ -112,23 +116,24 @@ if __name__ == "__main__":
 
     def func():
         return heatmap_pipeline(
-            HeatmapConfig(experiment_name="debug_with_zenml", window_size=10, prompt_indices=[3, 4, 5])
+            HeatmapConfig(experiment_name="debug_with_zenml", window_size=10, prompt_indices=[1, 2, 3, 4, 5])
         )
 
-    WITH_SLURM = False
+    job_name = "debug_with_zenml"
+    gpu_type = "titan_xp-studentrun"
+    client = Client()
+
+    WITH_SLURM = True
     if WITH_SLURM:
-        from src.consts import PATHS
-        from src.utils.slurm import submit_job
+        # settings = SlurmOrchestratorSettings(
+        #     job_name=job_name,
+        #     gpu_type=gpu_type,
+        #     slurm_gpus_per_node=1,
+        # )
+        client.activate_stack("slurm_stack")
 
-        job_name = "debug_with_zenml"
-        gpu_type = "titan_xp-studentrun"
-
-        submit_job(
-            func,
-            log_folder=str(PATHS.SLURM_DIR / job_name / "%j"),
-            job_name=job_name,
-            gpu_type=gpu_type,
-            slurm_gpus_per_node=1,
-        )
+        # heatmap_pipeline.with_options(pipeline_settings={"orchestrator.config": settings})
+        func()
+        client.activate_stack("slurm_stack")
     else:
         func()

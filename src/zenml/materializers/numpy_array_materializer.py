@@ -1,9 +1,7 @@
 import os
 from typing import Any, Type
 
-import matplotlib.pyplot as plt
 import numpy as np
-import seaborn as sns
 
 from zenml.enums import ArtifactType, VisualizationType
 from zenml.materializers.base_materializer import BaseMaterializer
@@ -33,28 +31,6 @@ class NumpyArrayMaterializer(BaseMaterializer):
     def save_visualizations(self, data: np.ndarray) -> dict[str, VisualizationType]:
         """Generate and save visualizations for the array."""
         visualizations = {}
-
-        # Generate and save visualization
-        plt.figure(figsize=(10, 6))
-
-        # If the array is 1D, create a line plot
-        if data.ndim == 1:
-            plt.plot(data)
-            plt.title("Array Values")
-            plt.xlabel("Index")
-            plt.ylabel("Value")
-
-        # If the array is 2D, create a heatmap
-        elif data.ndim == 2:
-            sns.heatmap(data, cmap="RdYlGn", center=0)
-            plt.title("Array Heatmap")
-
-        # Save the plot
-        plt.tight_layout()
-        p = os.path.join(self.uri, "visualization.png")
-        plt.savefig(p)
-        visualizations[p] = VisualizationType.IMAGE
-        plt.close()
 
         p = os.path.join(self.uri, "array_info.txt")
         # Save array info
