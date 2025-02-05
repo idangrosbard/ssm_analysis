@@ -184,3 +184,7 @@ data/raw/
 /output_2/
 .envrc
 .zen/
+.cursorrules
+.cursorrules.old
+.cursor/
+.mlflow/

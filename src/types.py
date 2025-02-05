@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Iterable, Literal, NewType
+from typing import Literal, NewType, Sequence, Union
 
 import pandas as pd
 from jaxtyping import Float
@@ -50,7 +50,7 @@ class DATASETS(STREnum):
 
 TModelID = NewType("TModelID", str)
 TDatasetID = NewType("TDatasetID", str)
-TSplit = SPLIT | Iterable[SPLIT] | Literal["all"]
+TSplit = Union[SPLIT, Sequence[SPLIT], Literal["all"]]
 
 TNum2Mask = NewType("TNum2Mask", dict[int, list[tuple[int, int]]])
 TWindow = NewType("TWindow", list[int])
