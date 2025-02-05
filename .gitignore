@@ -186,5 +186,6 @@ data/raw/
 .zen/
 .cursorrules
 .cursorrules.old
-.cursor/
+.cursor/rules/*
+!.cursor/rules/project-strucutre.mdc
 .mlflow/

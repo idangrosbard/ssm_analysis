@@ -1,0 +1,66 @@
+---
+description: Adherence to project structure
+globs: 
+---
+Adhere to Project Structure, make sure to update it if somethign changes:
+
+- src/
+  - models/ # Model architectures and implementations
+    - model_interface.py # Unified generic interface for model interactions
+    - minimal_mamba2.py # Minimal implementation of Mamba2
+  - datasets/ # Data loading and preprocessing utilities
+    - download_dataset.py # Script for downloading datasets
+  - experiment_infra/ # Experiment infrastructure
+    - base_config.py # Base experiment configuration
+    - model_interface.py # Unified generic interface for model interactions
+  - experiments/ # Specific experiments definitions (New experiments should be added here)
+    - heatmap.py # Experiment showing how different layers affect the model's performance on a single prompt
+    - info_flow.py # Experiment showing how layers and semantic information affect the model's performance on a dataset-level
+    - info_flow_plot.py # Plotting for info flow experiments
+  - knockout/ # Feature knockout implementation and analysis
+    - attention_knockout/ # Attention-based knockout methods
+      - knockout_scan.py # Scanning for knockout effects
+      - mamba_mixer_knockout_falcon.py # Falcon variant of Mamba Mixer Knockout
+      - mamba_mixer_knockout.py # Mamba Mixer Knockout implementation
+      - ssm_interfere.py # SSM interference analysis
+  - plots/ # Plotting utilities
+    - heatmaps.py # Heatmap plotting utilities
+    - info_flow_confidence.py # Info flow confidence plotting
+  - utils/ # General utility functions
+    - experiment_helper.py # Helper functions for experiments
+    - logits.py # Logit manipulation utilities
+    - seed.py # Random seed utilities
+    - setup_models.py # Model setup utilities
+    - slurm.py # Slurm job utilities
+    - tests_utils.py # Utilities for testing
+    - type_checking.py # Type checking utilities
+    - types_utils.py # Type-related utilities
+  - consts.py # Project-wide constants
+  - types.py # Type definitions and interfaces
+
+- scripts/ # Experiment runners and analysis scripts
+  - counterfact/ # Counterfactual analysis scripts
+    - splitting.py # Script for splitting data
+  - experiment_runner/ # Scripts for running experiments
+    - heatmap.py # Runner for heatmap experiments
+    - info_flow.py # Runner for info flow experiments
+  - data_construction.py # Data construction script
+  - evaluate_model.py # Model evaluation script
+
+- notebooks/ # Analysis and visualization notebooks
+  - compare_flows.ipynb # Notebook for comparing flows
+  - compare_heatmaps.ipynb # Notebook for comparing heatmaps
+  - create_info_flows_with_confidence_margin.ipynb # Notebook for creating info flows with confidence margin
+  - info_flow_condence.ipynb # Notebook for info flow confidence analysis
+  - test-counterfact_correct.ipynb # Notebook for testing counterfactual corrections
+
+# Non-code files
+
+- data/ # Data storage
+  - raw/ # Original datasets
+  - preprocessed/ # Processed datasets
+
+- output/ # Experiment outputs
+- results/ # Processed results for paper
+- runs/ # Legacy outputs (to be deprecated)
+- slurm/ # Slurm job outputs and logs
