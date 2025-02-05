@@ -11,11 +11,8 @@ class PATHS:
     RAW_DATA_DIR = DATA_DIR / "raw"
     OTHER_DATA_DIR = DATA_DIR / "other"
     PREPROCESSED_DATA_DIR = DATA_DIR / "preprocessed"
-    RAW_KNOWN_1000_DIR = RAW_DATA_DIR / "spaced" / DATASETS.KNOWN_1000
     COUNTER_FACT_DIR = PREPROCESSED_DATA_DIR / DATASETS.COUNTER_FACT
     COUNTER_FACT_FILTERATIONS_DIR = COUNTER_FACT_DIR / "filterations"
-    PROCESSED_KNOWN_DIR = PREPROCESSED_DATA_DIR / DATASETS.KNOWN_1000
-    KNOWN_1000_FILTERATIONS_DIR = PROCESSED_KNOWN_DIR / "filterations"
     DATA_SHARED_DIR = PROJECT_DIR / "shared"
     RUNS_DIR = PROJECT_DIR / "runs"
     TENSORBOARD_DIR = PROJECT_DIR / "tensorboard"
@@ -68,26 +65,11 @@ MODEL_SIZES_PER_ARCH_TO_MODEL_ID: dict[MODEL_ARCH, dict[str, TModelID]] = {
         "7B-falcon": TModelID("tiiuae/falcon-mamba-7b"),
         "7B-falcon-base": TModelID("tiiuae/Falcon3-Mamba-7B-Base"),
     },
-    MODEL_ARCH.MINIMAL_MAMBA1: {
-        "130M": TModelID("state-spaces/mamba-130M"),
-        "1.4B": TModelID("state-spaces/mamba-1.4B"),
-        "2.8B": TModelID("state-spaces/mamba-2.8B"),
-    },
     MODEL_ARCH.MINIMAL_MAMBA2: {
         "130M": TModelID("state-spaces/mamba2-130M"),
         "1.3B": TModelID("state-spaces/mamba2-1.3b"),
         "2.7B": TModelID("state-spaces/mamba2-2.7B"),
         "8B": TModelID("nvidia/mamba2-8b-3t-4k"),
-    },
-    MODEL_ARCH.MINIMAL_MAMBA2_new: {
-        "130M": TModelID("state-spaces/mamba2-130M"),
-        "1.3B": TModelID("state-spaces/mamba2-1.3b"),
-        "2.7B": TModelID("state-spaces/mamba2-2.7B"),
-    },
-    MODEL_ARCH.MAMBA2: {
-        "130M": TModelID("state-spaces/mamba2-130M"),
-        "1.3B": TModelID("state-spaces/mamba2-1.3b"),
-        "2.7B": TModelID("state-spaces/mamba2-2.7B"),
     },
     MODEL_ARCH.LLAMA2: {
         "7B": TModelID("meta-llama/Llama-2-7b-hf"),
@@ -100,15 +82,15 @@ MODEL_SIZES_PER_ARCH_TO_MODEL_ID: dict[MODEL_ARCH, dict[str, TModelID]] = {
 
 GRAPHS_ORDER = [
     (MODEL_ARCH.MAMBA1, "130M"),
-    (MODEL_ARCH.MINIMAL_MAMBA2_new, "130M"),
+    (MODEL_ARCH.MINIMAL_MAMBA2, "130M"),
     (MODEL_ARCH.MAMBA1, "1.4B"),
-    (MODEL_ARCH.MINIMAL_MAMBA2_new, "1.3B"),
+    (MODEL_ARCH.MINIMAL_MAMBA2, "1.3B"),
     (MODEL_ARCH.MAMBA1, "2.8B"),
-    (MODEL_ARCH.MINIMAL_MAMBA2_new, "2.7B"),
+    (MODEL_ARCH.MINIMAL_MAMBA2, "2.7B"),
     (MODEL_ARCH.MAMBA1, "7B"),
     (MODEL_ARCH.MAMBA1, "7B-falcon"),
     (MODEL_ARCH.MAMBA1, "7B-falcon-base"),
-    (MODEL_ARCH.MINIMAL_MAMBA2_new, "8B"),
+    (MODEL_ARCH.MINIMAL_MAMBA2, "8B"),
 ]
 
 

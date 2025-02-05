@@ -4,8 +4,8 @@ import torch
 from torch import nn
 from transformers.cache_utils import MambaCache
 
-from ..knockout_mode import KnockoutMode
-from .knockout_scan import knockout_matrix, knockout_scan
+from src.knockout.attention_knockout.knockout_scan import knockout_matrix, knockout_scan
+from src.knockout.knockout_mode import KnockoutMode
 
 
 # fmt: off
@@ -32,6 +32,7 @@ def slow_forward_for_ssm_materializing_knockout(
 
     # 2. Convolution sequence transformation
     if cache_params is not None:
+        assert cache_position is not None
         ssm_state = cache_params.ssm_states[module.layer_idx].clone()
         ssm_state = ssm_state.to(hidden_states.device)
         # use `cache_position.shape[0]` to check whether we are in prefill
@@ -94,9 +95,9 @@ def slow_forward_for_ssm_materializing_knockout(
 
     if with_materialized_attention_matrix:
         u = hidden_states[:, :, :, None].float()
-        scan_output = knockout_matrix(seq_len, discrete_A, discrete_B, u, C, knockout_indices, affected_outputs, dtype)
+        scan_output = knockout_matrix(seq_len, discrete_A, discrete_B, u, C, knockout_indices, affected_outputs, dtype) # type: ignore
     else:
-        scan_outputs = knockout_scan(seq_len, ssm_state, discrete_A, deltaB_u, C, knockout_indices, affected_outputs, knockout_mode, dtype)
+        scan_outputs = knockout_scan(seq_len, ssm_state, discrete_A, deltaB_u, C, knockout_indices, affected_outputs, knockout_mode, dtype) # type: ignore
         scan_output = torch.stack(scan_outputs, dim=-1)  # [batch, seq_len, intermediade_size]
     scan_output = scan_output + (hidden_states * module.D[None, :, None])
     scan_output = (scan_output * module.act(gate))

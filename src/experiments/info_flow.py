@@ -13,7 +13,7 @@ from tqdm import tqdm
 from src.consts import PATHS
 from src.datasets.download_dataset import get_hit_dataset
 from src.experiment_infra.base_config import BaseConfig
-from src.models.model_interface import get_model_interface
+from src.experiment_infra.model_interface import get_model_interface
 from src.types import TokenType
 from src.utils.logits import get_num_to_masks, get_prompt_row
 
@@ -45,7 +45,7 @@ class InfoFlowConfig(BaseConfig):
                 TokenType.relation,
             ],
         }
-    )
+    )  # type: ignore
 
     @property
     def output_path(self) -> Path:

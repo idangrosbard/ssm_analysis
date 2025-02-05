@@ -37,9 +37,9 @@ def main(args: InfoFlowConfig, main_local: Callable[[InfoFlowConfig], None]):
             (MODEL_ARCH.MAMBA1, "7B"),
             # (MODEL_ARCH.MAMBA1, "7B-falcon"),
             (MODEL_ARCH.MAMBA1, "7B-falcon-base"),
-            # (MODEL_ARCH.MINIMAL_MAMBA2_new, "130M"),
-            # (MODEL_ARCH.MINIMAL_MAMBA2_new, "1.3B"),
-            # (MODEL_ARCH.MINIMAL_MAMBA2_new, "2.7B"),
+            # (MODEL_ARCH.MINIMAL_MAMBA2, "130M"),
+            # (MODEL_ARCH.MINIMAL_MAMBA2, "1.3B"),
+            # (MODEL_ARCH.MINIMAL_MAMBA2, "2.7B"),
         ]:
             args.model_arch = model_arch
             args.model_size = model_size
@@ -72,5 +72,4 @@ def main(args: InfoFlowConfig, main_local: Callable[[InfoFlowConfig], None]):
 
 
 if __name__ == "__main__":
-    main(main_local_info_flow)
-    # main(main_local_info_flow_plot)
+    main(main_local_info_flow)  # type: ignore

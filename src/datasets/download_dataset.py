@@ -1,76 +1,12 @@
-import tempfile
-from pathlib import Path
 from typing import Optional
 
 import pandas as pd
-import wget
 
 from datasets import Dataset, DatasetDict, concatenate_datasets, load_from_disk
 from datasets import load_dataset as huggingface_load_dataset
 from scripts.counterfact.splitting import split_dataset
 from src.consts import COLUMNS, DATASETS_IDS, FILTERATIONS, PATHS
 from src.types import DATASETS, SPLIT, DatasetArgs, TPromptData, TSplit
-
-
-def load_knowns() -> Dataset:
-    if not PATHS.RAW_KNOWN_1000_DIR.exists():
-        with tempfile.TemporaryDirectory() as tmpdirname:
-            wget.download("https://rome.baulab.info/data/dsets/known_1000.json", out=tmpdirname)
-            knowns_df = (
-                pd.read_json(Path(tmpdirname) / "known_1000.json")
-                .set_index("known_id")
-                # add space before values in the 'attribute' col to match counterfact
-                .assign(**{"attribute": lambda x: " " + x["attribute"]})
-            )
-
-            dataset = Dataset.from_pandas(knowns_df)
-            dataset.save_to_disk(str(PATHS.RAW_KNOWN_1000_DIR))
-
-    return load_from_disk(str(PATHS.RAW_KNOWN_1000_DIR))  # type: ignore
-
-
-def load_splitted_knowns(
-    split: TSplit = (SPLIT.TRAIN1,),
-    add_split_name_column: bool = False,
-    filteration: Optional[FILTERATIONS] = None,
-) -> Dataset:
-    splitted_path = PATHS.PROCESSED_KNOWN_DIR / "splitted"
-
-    if not splitted_path.exists():
-        dataset = load_knowns()
-
-        num_splits = 3
-        split_ratio = 0.2
-        seed = 42
-
-        splitted_dataset = split_dataset(dataset, num_splits, split_ratio, seed)
-        splitted_dataset.save_to_disk(str(splitted_path))
-
-    data: DatasetDict = load_from_disk(str(splitted_path))  # type: ignore
-
-    if split == "all":
-        split = list(data.keys())
-    if isinstance(split, str):
-        split = [SPLIT(split)]
-
-    datasets = [data[split_name] for split_name in split]
-
-    if add_split_name_column:
-        for i, (split_name, dataset) in enumerate(zip(split, datasets)):
-            dataset = dataset.add_column("split_name", [split_name] * len(dataset))  # type: ignore
-            datasets[i] = dataset
-
-    dataset = concatenate_datasets(datasets)
-
-    if filteration is not None:
-        original_idx = pd.read_csv(PATHS.KNOWN_1000_FILTERATIONS_DIR / f"{filteration}.csv")[COLUMNS.ORIGINAL_IDX]
-        dataset = dataset.filter(lambda x: x[COLUMNS.ORIGINAL_IDX] in original_idx)
-
-    return dataset
-
-
-def load_knowns_pd() -> pd.DataFrame:
-    return pd.DataFrame(load_knowns())  # type: ignore
 
 
 def load_splitted_counter_fact(
@@ -125,9 +61,7 @@ def load_splitted_counter_fact(
 
 
 def load_dataset(dataset_args: DatasetArgs) -> Dataset:
-    if dataset_args.name == DATASETS.KNOWN_1000:
-        return load_splitted_knowns(dataset_args.splits)
-    elif dataset_args.name == DATASETS.COUNTER_FACT:
+    if dataset_args.name == DATASETS.COUNTER_FACT:
         return load_splitted_counter_fact(dataset_args.splits)
     else:
         raise ValueError(f"Unknown dataset name: {dataset_args.name}")

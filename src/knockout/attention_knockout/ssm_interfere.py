@@ -2,12 +2,11 @@ from typing import Iterable, Optional
 
 from torch import Tensor, nn
 
+from src.knockout.attention_knockout.mamba_mixer_knockout import slow_forward_for_ssm_materializing_knockout
 from src.knockout.attention_knockout.mamba_mixer_knockout_falcon import (
     slow_forward_for_ssm_materializing_knockout_falcon,
 )
 from src.knockout.knockout_mode import KnockoutMode
-
-from .mamba_mixer_knockout import slow_forward_for_ssm_materializing_knockout
 
 
 class SSMInterfereHook:
@@ -23,7 +22,7 @@ class SSMInterfereHook:
         """
         module - the actual layer
         inp - previous layer ssm state (in mamba 1 - this is X)
-        out - the current layer output ssm state (in mamba 1 \ 2 - this is Y)
+        out - the current layer output ssm state (in mamba 1 / 2 - this is Y)
         """
         # TODO make the knockout more efficient - maybe replace the module.forward with a custom forward
         slow_forward = (
@@ -44,4 +43,9 @@ class SSMInterfereHook:
         return self.hook(module, inp, out)
 
     def __str__(self):
-        return f"SSMInterfereHook for layer {self.layer} with knockout type {self.knockout_type}, knockout indices {self.knockout_indices}, affected outputs {self.affected_outputs}"
+        return (
+            f"SSMInterfereHook for layer {self.layer} "
+            f"with knockout type {self.knockout_type}, "
+            f"knockout indices {self.knockout_indices}, "
+            f"affected outputs {self.affected_outputs}"
+        )

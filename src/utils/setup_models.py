@@ -14,9 +14,7 @@ from transformers import (
 )
 
 import src.models.minimal_mamba2 as minimal_mamba2
-import src.models.minimal_mamba2_new as minimal_mamba2_new
 from src.consts import MODEL_SIZES_PER_ARCH_TO_MODEL_ID, is_falcon
-from src.models.minimal_mamba1 import Mamba
 from src.types import MODEL_ARCH
 
 if TYPE_CHECKING:
@@ -44,12 +42,9 @@ def get_tokenizer_and_model(
 ) -> tuple[
     PreTrainedTokenizer | PreTrainedTokenizerFast,
     Union[
-        Mamba,
         minimal_mamba2.Mamba2LMHeadModel,
-        minimal_mamba2_new.Mamba2LMHeadModel,
         PreTrainedModel,
         MambaForCausalLM,
-        Mamba,
         LlamaForCausalLM,
         "MambaLMHeadModel",
     ],
@@ -67,12 +62,8 @@ def get_tokenizer_and_model(
     tokenizer.pad_token = tokenizer.eos_token
 
     match model_arch:
-        case MODEL_ARCH.MINIMAL_MAMBA1:
-            model = Mamba.from_pretrained(model_id, **minimal_kwargs)  # type: ignore
         case MODEL_ARCH.MINIMAL_MAMBA2:
             model = minimal_mamba2.Mamba2LMHeadModel.from_pretrained(model_id, **minimal_kwargs)  # type: ignore
-        case MODEL_ARCH.MINIMAL_MAMBA2_new:
-            model = minimal_mamba2_new.Mamba2LMHeadModel.from_pretrained(model_id, **minimal_kwargs)  # type: ignore
         case MODEL_ARCH.MAMBA1:
             if is_falcon(model_size):
                 model = AutoModelForCausalLM.from_pretrained(model_id, device_map="auto")
@@ -82,13 +73,6 @@ def get_tokenizer_and_model(
                     model.to(device)  # type: ignore
                 else:
                     model = MambaForCausalLM.from_pretrained(model_id, device_map="auto")
-
-        case MODEL_ARCH.MAMBA2:
-            if not device:
-                device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-            from mamba_ssm.models.mixer_seq_simple import MambaLMHeadModel
-
-            model = MambaLMHeadModel.from_pretrained(model_id, device=device)
         case MODEL_ARCH.LLAMA2 | MODEL_ARCH.LLAMA3_2:
             if device:
                 model = LlamaForCausalLM.from_pretrained(model_id)

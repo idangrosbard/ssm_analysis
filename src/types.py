@@ -20,20 +20,21 @@ class SPLIT(STREnum):
 
 class MODEL_ARCH(STREnum):
     MAMBA1 = "mamba"
-    MAMBA2 = "mamba2"
-    MINIMAL_MAMBA1 = "minimal_mamba1"
     MINIMAL_MAMBA2 = "minimal_mamba2"
-    MINIMAL_MAMBA2_new = "minimal_mamba2_new"
     LLAMA2 = "llama2"
     LLAMA3_2 = "llama3.2"
 
     @property
     def model_title(self) -> str:
         match self:
-            case MODEL_ARCH.MAMBA1 | MODEL_ARCH.MINIMAL_MAMBA1:
+            case MODEL_ARCH.MAMBA1:
                 return "Mamba1"
-            case MODEL_ARCH.MAMBA2 | MODEL_ARCH.MINIMAL_MAMBA2 | MODEL_ARCH.MINIMAL_MAMBA2_new:
+            case MODEL_ARCH.MINIMAL_MAMBA2:
                 return "Mamba2"
+            case MODEL_ARCH.LLAMA2:
+                return "Llama2"
+            case MODEL_ARCH.LLAMA3_2:
+                return "Llama3.2"
         return self.value
 
 
@@ -44,7 +45,6 @@ class MODEL_SIZE_CAT(STREnum):
 
 
 class DATASETS(STREnum):
-    KNOWN_1000 = "known_1000"
     COUNTER_FACT = "counter_fact"
 
 

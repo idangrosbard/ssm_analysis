@@ -6,7 +6,7 @@ import torch.nn.functional as F
 from torch import Tensor
 from transformers import MambaForCausalLM, PreTrainedTokenizer, PreTrainedTokenizerFast
 
-import src.models.minimal_mamba2_new as minimal_mamba2_new
+import src.models.minimal_mamba2 as minimal_mamba2
 from src.consts import is_falcon
 from src.knockout.attention_knockout.ssm_interfere import SSMInterfereHook
 from src.knockout.knockout_mode import KnockoutMode
@@ -132,7 +132,7 @@ class Mamba1Interface(ModelInterface):
 
 
 class Mamba2Interface(ModelInterface):
-    model: minimal_mamba2_new.Mamba2LMHeadModel
+    model: minimal_mamba2.Mamba2LMHeadModel
 
     def __init__(
         self,
@@ -140,7 +140,7 @@ class Mamba2Interface(ModelInterface):
         device: Optional[torch.device] = None,
         tokenizer: Optional[Union[PreTrainedTokenizer, PreTrainedTokenizerFast]] = None,
     ):
-        super().__init__(MODEL_ARCH.MINIMAL_MAMBA2_new, model_size, device, tokenizer)
+        super().__init__(MODEL_ARCH.MINIMAL_MAMBA2, model_size, device, tokenizer)
 
     def generate_logits(
         self,
@@ -167,7 +167,7 @@ def get_model_interface(
     model_arch: MODEL_ARCH, model_size: str, device: Optional[torch.device] = None
 ) -> ModelInterface:
     match model_arch:
-        case MODEL_ARCH.MINIMAL_MAMBA2_new:
+        case MODEL_ARCH.MINIMAL_MAMBA2:
             return Mamba2Interface(model_size, device)
         case MODEL_ARCH.MAMBA1:
             return Mamba1Interface(model_size, device, is_falcon=is_falcon(model_size))

@@ -28,11 +28,7 @@ class BaseConfig(ABC):
 
     @property
     def batch_size(self) -> int:
-        return (
-            1
-            if (self.model_arch == MODEL_ARCH.MINIMAL_MAMBA2 or self.model_arch == MODEL_ARCH.MINIMAL_MAMBA2_new)
-            else self._batch_size
-        )
+        return 1 if (self.model_arch == MODEL_ARCH.MINIMAL_MAMBA2) else self._batch_size
 
     @property
     def model_id(self) -> TModelID:
