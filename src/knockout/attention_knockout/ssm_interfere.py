@@ -6,7 +6,7 @@ from src.knockout.attention_knockout.mamba_mixer_knockout import slow_forward_fo
 from src.knockout.attention_knockout.mamba_mixer_knockout_falcon import (
     slow_forward_for_ssm_materializing_knockout_falcon,
 )
-from src.knockout.knockout_mode import KnockoutMode
+from src.types import KnockoutMode
 
 
 class SSMInterfereHook:

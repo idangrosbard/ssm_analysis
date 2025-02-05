@@ -25,7 +25,7 @@ known-first-party = []
 # "src/knockout/adapted_model/adaptation_evaluator.py" = ["F841"]
 # "src/knockout/attention_knockout/mamba_mixer_knockout.py" = ["F841"]
 # "src/models/minimal_mamba1.py" = ["F821"]
-# "src/knockout/attention_knockout/knockout_scan.py" = ["F722"]
+"src/knockout/attention_knockout/knockout_scan.py" = ["F722"]
 # # TODO: fix these
 # "scripts/evaluate_tokenization.py" = ["ALL"]
 # "scripts/evaluate_interference.py" = ["ALL"]

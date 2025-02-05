@@ -3,8 +3,7 @@ import pytest
 import torch
 
 from src.knockout.attention_knockout.knockout_scan import knockout_matrix, knockout_scan
-from src.knockout.knockout_mode import KnockoutMode
-from src.types import TSSM_A, TSSM_B, TSSM_C, TSSM_Bu, TSSMInput, TSSMState
+from src.types import TSSM_A, TSSM_B, TSSM_C, KnockoutMode, TSSM_Bu, TSSMInput, TSSMState
 from src.utils.type_checking import tensor_type_check
 
 B_D = 1  # Batch dimension

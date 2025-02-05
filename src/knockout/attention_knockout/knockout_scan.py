@@ -4,8 +4,7 @@ import torch
 from jaxtyping import Float
 from torch import Tensor, matmul, zeros_like
 
-from src.knockout.knockout_mode import KnockoutMode
-from src.types import TSSM_A, TSSM_B, TSSM_C, TSSM_Bu, TSSMInput, TSSMState
+from src.types import TSSM_A, TSSM_B, TSSM_C, KnockoutMode, TSSM_Bu, TSSMInput, TSSMState
 from src.utils.type_checking import tensor_type_check
 
 
@@ -94,7 +93,7 @@ def compute_attn_matrix_fn(
                 for i in range(r - c):
                     currA = currA * dA[:, :, r - i, :]
             currB = dB[:, :, c, :]
-            AttnMatrixOverCLS[:, :, r, c] = torch.sum(curr_C * currA * currB, axis=-1)
+            AttnMatrixOverCLS[:, :, r, c] = torch.sum(curr_C * currA * currB, axis=-1)  # type: ignore
     return AttnMatrixOverCLS
 
 

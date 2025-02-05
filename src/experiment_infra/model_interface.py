@@ -9,8 +9,7 @@ from transformers import MambaForCausalLM, PreTrainedTokenizer, PreTrainedTokeni
 import src.models.minimal_mamba2 as minimal_mamba2
 from src.consts import is_falcon
 from src.knockout.attention_knockout.ssm_interfere import SSMInterfereHook
-from src.knockout.knockout_mode import KnockoutMode
-from src.types import MODEL_ARCH
+from src.types import MODEL_ARCH, KnockoutMode
 from src.utils.setup_models import get_tokenizer_and_model
 
 

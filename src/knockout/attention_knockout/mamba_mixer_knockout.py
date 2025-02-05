@@ -5,7 +5,7 @@ from torch import nn
 from transformers.cache_utils import MambaCache
 
 from src.knockout.attention_knockout.knockout_scan import knockout_matrix, knockout_scan
-from src.knockout.knockout_mode import KnockoutMode
+from src.types import KnockoutMode
 
 
 # fmt: off

@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from enum import Enum
 from typing import Literal, NewType, Sequence, Union
 
 import pandas as pd
@@ -90,3 +91,13 @@ TSSM_A = Float[Tensor, "batch hidden_size seq_len ssm_dim"]
 TSSM_B = Float[Tensor, "batch hidden_size seq_len ssm_dim"]
 TSSM_Bu = Float[Tensor, "batch hidden_size seq_len ssm_dim"]
 TSSM_C = Float[Tensor, "batch seq_len ssm_dim"]
+
+
+class KnockoutMode(Enum):
+    ZERO_ATTENTION = 0
+    ZERO_DELTA = 1
+    IGNORE_CONTEXT = 2
+    ONLY_CONTEXT = 3
+    IGNORE_LAYER = 4
+    IGNORE_SSM = 5
+    INCREASE_DELTA = 6

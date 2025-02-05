@@ -4,7 +4,8 @@ import torch
 from torch import nn
 from transformers.cache_utils import MambaCache
 
-from ..knockout_mode import KnockoutMode
+from src.types import KnockoutMode
+
 from .knockout_scan import knockout_matrix, knockout_scan
 
 
@@ -60,7 +61,11 @@ def slow_forward_for_ssm_materializing_knockout_falcon(
             cache_params.update_conv_state(self.layer_idx, conv_state, cache_position)
             hidden_states = self.act(self.conv1d(hidden_states)[..., :seq_len])  # [batch, intermediate_size, seq_len]
         else:
-            conv_state = cache_params.update_conv_state(self.layer_idx, hidden_states, cache_position)
+            conv_state = cache_params.update_conv_state(
+                self.layer_idx,
+                hidden_states,
+                cache_position,  # type: ignore
+            )
             hidden_states = torch.sum(conv_state * self.conv1d.weight[:, 0, :], dim=-1)
             if self.use_conv_bias:
                 hidden_states += self.conv1d.bias
@@ -103,10 +108,18 @@ def slow_forward_for_ssm_materializing_knockout_falcon(
     # 3. SSM Interference
     if with_materialized_attention_matrix:
         u = hidden_states[:, :, :, None].float()
-        scan_output = knockout_matrix(seq_len, discrete_A, discrete_B, u, C, knockout_indices, affected_outputs, dtype)
+        scan_output = knockout_matrix(seq_len, discrete_A, discrete_B, u, C, knockout_indices, affected_outputs, dtype)  # type: ignore
     else:
         scan_outputs = knockout_scan(
-            seq_len, ssm_state, discrete_A, deltaB_u, C, knockout_indices, affected_outputs, knockout_mode, dtype
+            seq_len,
+            ssm_state,
+            discrete_A,
+            deltaB_u,
+            C,
+            knockout_indices,  # type: ignore
+            affected_outputs,  # type: ignore
+            knockout_mode,  # type: ignore
+            dtype,
         )
         scan_output = torch.stack(scan_outputs, dim=-1)  # [batch, seq_len, intermediade_size]
     scan_output = scan_output + (hidden_states * self.D[None, :, None])
