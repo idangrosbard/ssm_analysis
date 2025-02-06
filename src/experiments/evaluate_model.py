@@ -1,28 +1,75 @@
+"""
+EvaluateModelExperiment: Experiment for evaluating model performance on datasets
+
+In this experiment implementation:
+The sub-task is a batch of prompts
+The inner loop is running the model on each prompt and collecting detailed metrics
+The sub task result is a DataFrame with model predictions and metrics
+The combined result is saved as a CSV file
+"""
+
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional, assert_never
+from typing import Any, assert_never, cast
 
 import pandas as pd
-import pyrallis
 import torch
 from tqdm import tqdm
-from transformers import (
-    AutoTokenizer,
-)
+from transformers import PreTrainedTokenizer, PreTrainedTokenizerFast
 
-from src.consts import (
-    MODEL_SIZES_PER_ARCH_TO_MODEL_ID,
-    PATHS,
-)
+from src.consts import PATHS
 from src.datasets.download_dataset import load_dataset
-from src.types import DATASETS, MODEL_ARCH, DatasetArgs, TModelID
+from src.experiment_infra.base_config import BaseConfig
+from src.experiment_infra.model_interface import get_model_interface
+from src.types import MODEL_ARCH
 from src.utils.logits import get_last_token_logits, logits_to_probs
-from src.utils.setup_models import get_tokenizer_and_model
-from src.utils.slurm import submit_job
 
 
-def generate_next_tokens(model, input_ids, num_tokens_to_generate, model_arch):
+@dataclass
+class EvaluateModelConfig(BaseConfig):
+    """Configuration for model evaluation."""
+
+    experiment_name: str = "evaluate"
+    drop_subject: bool = False
+    drop_subj_last_token: bool = False
+    with_3_dots: bool = False
+    new_max_tokens: int = 5
+    top_k_tokens: int = 5
+
+    @property
+    def output_path(self) -> Path:
+        return PATHS.OUTPUT_DIR / self.model_id / self.experiment_name
+
+
+def get_subj_idx(
+    input: str,
+    subj: str,
+    tokenizer: PreTrainedTokenizer | PreTrainedTokenizerFast,
+    last: bool = True,
+) -> int:
+    prefix = input.split(subj)[0]
+    sent2subj = prefix
+    if last:
+        sent2subj = prefix + subj
+
+    sent2subj_tokens = tokenizer(sent2subj)["input_ids"]
+    return len(sent2subj_tokens) - 1  # type: ignore
+
+
+def _get_logits(out, model_arch: MODEL_ARCH):
+    match model_arch:
+        case MODEL_ARCH.MINIMAL_MAMBA2:
+            logits, _ = out
+        case MODEL_ARCH.MAMBA1 | MODEL_ARCH.LLAMA2 | MODEL_ARCH.LLAMA3_2:
+            logits = out.logits
+        case _:
+            assert_never(model_arch)
+
+    return logits
+
+
+def generate_next_tokens(model: Any, input_ids: torch.Tensor, num_tokens_to_generate: int, model_arch: MODEL_ARCH):
     """
     Generate the next `num_tokens_to_generate` tokens and collect their logits for each input in the batch.
 
@@ -30,12 +77,14 @@ def generate_next_tokens(model, input_ids, num_tokens_to_generate, model_arch):
         model: The language model (e.g., LLaMA) used for token generation.
         input_ids: Tokenized input IDs (torch.Tensor) with shape [batch_size, sequence_length].
         num_tokens_to_generate: Number of tokens to generate for each input in the batch.
+        model_arch: The architecture of the model.
     Returns:
         all_logits: with shape [batch_size, num_tokens_to_generate, vocab_size].
         first_next_logits: with shape [batch_size, vocab_size].
         new_input_ids: with shape [batch_size, num_tokens_to_generate].
     """
     first_logits = None
+    logits = None
     for _ in range(num_tokens_to_generate):
         with torch.no_grad():
             out = model(input_ids)
@@ -46,56 +95,8 @@ def generate_next_tokens(model, input_ids, num_tokens_to_generate, model_arch):
 
         input_ids = torch.cat([input_ids, torch.argmax(next_tokens, dim=-1, keepdim=True)], dim=-1)
 
+    assert first_logits is not None
     return logits, first_logits, input_ids[:, -num_tokens_to_generate:]
-
-
-@dataclass
-class Args:
-    model_arch: MODEL_ARCH = MODEL_ARCH.LLAMA2
-    model_size: str = "7B"
-    # model_arch: MODEL_ARCH = MODEL_ARCH.LLAMA3_2
-    # model_size: str = "1B"
-    drop_subject: bool = False
-    drop_subj_last_token: bool = False
-    with_3_dots: bool = False
-    new_max_tokens: int = 5
-    top_k_tokens: int = 5
-    dataset_args: DatasetArgs = pyrallis.field(
-        default=DatasetArgs(name=DATASETS.KNOWN_1000, splits="all"), is_mutable=True
-    )
-    _batch_size: int = 16  # Adjust based on GPU memory
-    output_file: Optional[Path] = None
-    with_slurm: bool = False
-
-    @property
-    def batch_size(self) -> int:
-        return 1 if self.model_arch == MODEL_ARCH.MINIMAL_MAMBA2 else self._batch_size
-
-    @property
-    def model_id(self) -> TModelID:
-        return MODEL_SIZES_PER_ARCH_TO_MODEL_ID[self.model_arch][self.model_size]
-
-
-def get_subj_idx(input: str, subj: str, tokenizer: AutoTokenizer, last: bool = True):
-    prefix = input.split(subj)[0]
-    sent2subj = prefix
-    if last:
-        sent2subj = prefix + subj
-
-    sent2subj_tokens = tokenizer(sent2subj)["input_ids"]
-    return len(sent2subj_tokens) - 1
-
-
-def _get_logits(out, model_arch: MODEL_ARCH):
-    match model_arch:
-        case MODEL_ARCH.MINIMAL_MAMBA1 | MODEL_ARCH.MINIMAL_MAMBA2:
-            logits, _ = out
-        case MODEL_ARCH.MAMBA1 | MODEL_ARCH.LLAMA2 | MODEL_ARCH.LLAMA3_2 | MODEL_ARCH.MAMBA1 | MODEL_ARCH.MAMBA2:
-            logits = out.logits
-        case _:
-            assert_never(model_arch)
-
-    return logits
 
 
 def trim_left_and_right_pad(tensor, trim_value=2, pad_value=0):
@@ -141,15 +142,20 @@ def _generate_few_tokens(model, tokenizer, input_ids, new_max_tokens):
     return "".join(generated_text)
 
 
-def main_local(args: Args):
+def main_local(args: EvaluateModelConfig):
     print(args)
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    df = pd.DataFrame(load_dataset(args.dataset_args))
+    dataset = load_dataset(args.dataset_args)
+    df = pd.DataFrame(cast(dict, dataset))
 
-    tokenizer, model = get_tokenizer_and_model(args.model_arch, args.model_size)
+    args.output_path.mkdir(parents=True, exist_ok=True)
+
+    model_interface = get_model_interface(args.model_arch, args.model_size)
+    model = model_interface.model
+    tokenizer = model_interface.tokenizer
     tokenizer.padding_side = "left"
     tokenizer.pad_token = tokenizer.eos_token
     model.eval()
+    device = model_interface.device
 
     acc = 0
 
@@ -163,7 +169,6 @@ def main_local(args: Args):
     if "target_true" in df.columns:
         df["attribute"] = df["target_true"]
 
-    # pbar = tqdm(df.index, total=len(df))
     pbar = tqdm(range(0, len(df), args.batch_size), total=len(df) // args.batch_size)
     for start_idx in pbar:
         idx = df.index[start_idx : start_idx + args.batch_size]
@@ -175,17 +180,17 @@ def main_local(args: Args):
             add_special_tokens=False,
             return_tensors="pt",
             padding=True,
-            padding_side="right",
+            padding_side="right",  # type: ignore
         )["input_ids"]
 
         if args.model_arch == MODEL_ARCH.LLAMA2:
             target_token_idx_padded = trim_left_and_right_pad(
                 target_token_idx_padded,
                 trim_value=29871,
-                pad_value=tokenizer.pad_token_id,
+                pad_value=tokenizer.pad_token_id,  # type: ignore
             )
 
-        target_first_token_idx = target_token_idx_padded[:, 0].unsqueeze(1)
+        target_first_token_idx = target_token_idx_padded[:, 0].unsqueeze(1)  # type: ignore
         df.loc[idx, "target_tokens"] = list(
             map(
                 json.dumps,
@@ -199,7 +204,7 @@ def main_local(args: Args):
                             )
                             + 1
                         ]
-                        for lst in target_token_idx_padded.tolist()
+                        for lst in target_token_idx_padded.tolist()  # type: ignore
                     ],
                 ),
             )
@@ -210,14 +215,14 @@ def main_local(args: Args):
         if args.drop_subject:
             input_prompt = input_prompt.replace(df.loc[idx, "subject"], "")
         elif args.drop_subj_last_token:
-            subj_idx = get_subj_idx(input_prompt, df.loc[idx, "subject"], tokenizer)
+            subj_idx = get_subj_idx(input_prompt, df.loc[idx, "subject"], tokenizer)  # type: ignore
 
-        input_ids = tokenizer(input_prompt.to_list(), return_tensors="pt", padding=True)["input_ids"]
+            input_ids = tokenizer(input_prompt.to_list(), return_tensors="pt", padding=True)["input_ids"]
 
         if args.drop_subj_last_token:
-            input_ids = input_ids[:subj_idx] + input_ids[subj_idx + 1 :]
+            input_ids = input_ids[:subj_idx] + input_ids[subj_idx + 1 :]  # type: ignore
 
-        input_ids = input_ids.to(device)
+        input_ids = input_ids.to(device)  # type: ignore
 
         # TODO: the logits of the next token is different for different the amount token generated, understand why
         _, first_logits, new_input_ids = generate_next_tokens(model, input_ids, args.new_max_tokens, args.model_arch)
@@ -225,9 +230,9 @@ def main_local(args: Args):
         # Get the next token probs
         next_probs = logits_to_probs(first_logits)
 
-        # Get the top 5 outputs and their probs
+        # Get the top k outputs and their probs
         top_probs, top_indices = map(torch.Tensor.tolist, torch.topk(next_probs, args.top_k_tokens))
-        top_tokens = list(map(tokenizer.batch_decode, top_indices))
+        top_tokens = list(map(tokenizer.batch_decode, top_indices))  # type: ignore
         top_outputs = list(
             map(
                 list,
@@ -261,64 +266,6 @@ def main_local(args: Args):
         acc += df.loc[idx, "model_correct"].sum()
 
     print(acc / len(df))
-    if not args.output_file:
-        args.output_file = PATHS.OUTPUT_DIR / args.model_id / "evaluate" / f"{args.dataset_args.dataset_name}.csv"
-
-    args.output_file.parent.mkdir(parents=True, exist_ok=True)
-    df.to_csv(args.output_file)
-
-
-@pyrallis.wrap()
-def main(args: Args):
-    assert not (args.drop_subject and args.drop_subj_last_token)
-    # args.with_slurm = True
-
-    if args.with_slurm:
-        gpu_type = "l40s"
-        # gpu_type = "titan_xp-studentrun"
-
-        for model_arch, model_size in [
-            # (MODEL_ARCH.MAMBA1, "130M"),
-            # (MODEL_ARCH.MAMBA1, "1.4B"),
-            # (MODEL_ARCH.MAMBA1, "2.8B"),
-            # (MODEL_ARCH.MAMBA2, "130M"),
-            # (MODEL_ARCH.MAMBA2, "1.3B"),
-            # (MODEL_ARCH.MAMBA2, "2.7B"),
-            # (MODEL_ARCH.MINIMAL_MAMBA2, "130M"),
-            # (MODEL_ARCH.MINIMAL_MAMBA2, "2.7B"),
-            (MODEL_ARCH.MAMBA1, "7B"),
-            # (MODEL_ARCH.MAMBA1, "7B-falcon"),
-            # (MODEL_ARCH.MAMBA1, "7B-falcon-base"),
-            # (MODEL_ARCH.LLAMA2, "7B"),
-            # (MODEL_ARCH.LLAMA3_2, "1B"),
-            # (MODEL_ARCH.LLAMA3_2, "3B"),
-        ]:
-            args.model_arch = model_arch
-            args.model_size = model_size
-            # args._batch_size = 16
-
-            # for i in range(5):
-            #     args.dataset_args = DatasetArgs(name=DATASETS.COUNTER_FACT, splits=f"train{i+1}")
-            # args.dataset_args = DatasetArgs(name=DATASETS.COUNTER_FACT, splits=f"train1")
-            # args.dataset_args = DatasetArgs(name=DATASETS.KNOWN_1000, splits=f"all")
-            args.dataset_args = DatasetArgs(name=DATASETS.COUNTER_FACT, splits="all")
-            # args.dataset_args = DatasetArgs(name=DATASETS.COUNTER_FACT, splits=f"test")
-
-            job_name = f"evaluate_model/{model_arch}_{model_size}_{args.dataset_args.dataset_name}"
-            job = submit_job(
-                main_local,
-                args,
-                log_folder=str(PATHS.SLURM_DIR / job_name / "%j"),
-                job_name=job_name,
-                # timeout_min=1200,
-                gpu_type=gpu_type,
-                slurm_gpus_per_node=1,
-            )
-
-            print(f"{job}: {job_name}")
-    else:
-        main_local(args)
-
-
-if __name__ == "__main__":
-    main()
+    output_file = args.output_path / f"{args.dataset_args.dataset_name}.csv"
+    output_file.parent.mkdir(parents=True, exist_ok=True)
+    df.to_csv(output_file)

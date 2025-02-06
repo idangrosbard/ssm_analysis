@@ -3,7 +3,7 @@ line-length = 120
 target-version = "py312"
 extend-include = [
     "src",
-    "app"
+    # "app"
 ]
 
 [tool.ruff.lint]
@@ -67,7 +67,11 @@ check_untyped_defs = true # Perform checks even in untyped functions
 
 # Plugin and path settings
 # plugins = [] # Add plugins, if applicable
-files = ["src", "tests", 'app'] # Target specific directories for type checking
+files = [
+    "src", 
+    "tests", 
+    # 'app'
+] # Target specific directories for type checking
 exclude = [
     ".*/__pycache__",
     # "src/embeddings",
@@ -95,7 +99,7 @@ venvPath = "/home/yandex/DL20232024a/nirendy/repos/ADL_2/"
 venv = 'venv'
 include = [
     "src/**",
-    "app/**"
+    # "app/**"
 ]
 exclude = [
     "**/__pycache__",
