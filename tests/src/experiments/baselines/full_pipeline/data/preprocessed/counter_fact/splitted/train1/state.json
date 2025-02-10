@@ -1,0 +1,26 @@
+{
+  "_data_files": [
+    {
+      "filename": "data-00000-of-00001.arrow"
+    }
+  ],
+  "_fingerprint": "f13802e963f43c51",
+  "_format_columns": [
+    "original_idx",
+    "prompt",
+    "relation",
+    "relation_id",
+    "relation_prefix",
+    "relation_suffix",
+    "split",
+    "subject",
+    "target_false",
+    "target_false_id",
+    "target_true",
+    "target_true_id"
+  ],
+  "_format_kwargs": {},
+  "_format_type": null,
+  "_output_all_columns": false,
+  "_split": null
+}

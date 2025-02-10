@@ -2,11 +2,18 @@ from typing import Optional
 
 import pandas as pd
 
-from datasets import Dataset, DatasetDict, concatenate_datasets, load_from_disk
-from datasets import load_dataset as huggingface_load_dataset
+from datasets import (
+    Dataset,
+    DatasetDict,
+    concatenate_datasets,
+    load_from_disk,
+)
+from datasets import (
+    load_dataset as huggingface_load_dataset,
+)
 from scripts.counterfact.splitting import split_dataset
-from src.consts import COLUMNS, DATASETS_IDS, FILTERATIONS, PATHS
-from src.types import DATASETS, SPLIT, DatasetArgs, TPromptData, TSplit
+from src.consts import COLUMNS, DATASETS_IDS, PATHS
+from src.types import DATASETS, FILTERATIONS, SPLIT, DatasetArgs, TPromptData, TSplit
 
 
 def load_splitted_counter_fact(
@@ -73,7 +80,7 @@ def get_hit_dataset(model_id: str, dataset_args: DatasetArgs) -> TPromptData:
             PATHS.OUTPUT_DIR
             / model_id
             / "data_construction"
-            / f"ds={dataset_args.dataset_name}"
+            / f"ds={dataset_args.display_name}"
             / f"entire_results_{'attention' if attention else 'original'}.parquet"
         )
         for attention in [True, False]

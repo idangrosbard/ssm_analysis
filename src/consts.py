@@ -1,24 +1,67 @@
 import os
+from dataclasses import dataclass
 from pathlib import Path
-from typing import NamedTuple
 
-from src.types import DATASETS, MODEL_ARCH, MODEL_SIZE_CAT, TDatasetID, TModelID
+from src.types import DATASETS, MODEL_ARCH, MODEL_SIZE_CAT, TDatasetID, TModelID, TokenType
 
 
-class PATHS:
-    PROJECT_DIR = Path(__file__).parent.parent.resolve()
-    DATA_DIR = PROJECT_DIR / "data"
-    RAW_DATA_DIR = DATA_DIR / "raw"
-    OTHER_DATA_DIR = DATA_DIR / "other"
-    PREPROCESSED_DATA_DIR = DATA_DIR / "preprocessed"
-    COUNTER_FACT_DIR = PREPROCESSED_DATA_DIR / DATASETS.COUNTER_FACT
-    COUNTER_FACT_FILTERATIONS_DIR = COUNTER_FACT_DIR / "filterations"
-    DATA_SHARED_DIR = PROJECT_DIR / "shared"
-    RUNS_DIR = PROJECT_DIR / "runs"
-    TENSORBOARD_DIR = PROJECT_DIR / "tensorboard"
-    RESULTS_DIR = PROJECT_DIR / "results"
-    OUTPUT_DIR = PROJECT_DIR / "output"
-    SLURM_DIR = PROJECT_DIR / "slurm"
+@dataclass
+class PathsConfig:
+    """Configuration for project paths that can be easily mocked."""
+
+    PROJECT_DIR: Path = Path(__file__).parent.parent.resolve()
+
+    @property
+    def DATA_DIR(self) -> Path:
+        return self.PROJECT_DIR / "data"
+
+    @property
+    def RAW_DATA_DIR(self) -> Path:
+        return self.DATA_DIR / "raw"
+
+    @property
+    def OTHER_DATA_DIR(self) -> Path:
+        return self.DATA_DIR / "other"
+
+    @property
+    def PREPROCESSED_DATA_DIR(self) -> Path:
+        return self.DATA_DIR / "preprocessed"
+
+    @property
+    def COUNTER_FACT_DIR(self) -> Path:
+        return self.PREPROCESSED_DATA_DIR / DATASETS.COUNTER_FACT
+
+    @property
+    def COUNTER_FACT_FILTERATIONS_DIR(self) -> Path:
+        return self.COUNTER_FACT_DIR / "filterations"
+
+    @property
+    def DATA_SHARED_DIR(self) -> Path:
+        return self.PROJECT_DIR / "shared"
+
+    @property
+    def RUNS_DIR(self) -> Path:
+        return self.PROJECT_DIR / "runs"
+
+    @property
+    def TENSORBOARD_DIR(self) -> Path:
+        return self.PROJECT_DIR / "tensorboard"
+
+    @property
+    def RESULTS_DIR(self) -> Path:
+        return self.PROJECT_DIR / "results"
+
+    @property
+    def OUTPUT_DIR(self) -> Path:
+        return self.PROJECT_DIR / "output"
+
+    @property
+    def SLURM_DIR(self) -> Path:
+        return self.PROJECT_DIR / "slurm"
+
+
+# Global instance
+PATHS = PathsConfig()
 
 
 class ENV_VARS:
@@ -40,22 +83,6 @@ class DDP:
     NUM_WORKERS = 0
 
 
-class ISlurmArgs(NamedTuple):
-    with_parallel: bool
-    partition: str = "gpu-a100-killable"
-    time: int = 1200
-    singal: str = "USR1@120"
-    nodes: int = 1
-    ntasks: int = 1
-    mem: int = int(5e4)
-    cpus_per_task: int = 1
-    gpus: int = 1
-    account: str = "gpu-research"
-    workspace: Path = PATHS.PROJECT_DIR
-    outputs_relative_path: Path = PATHS.TENSORBOARD_DIR.relative_to(PATHS.PROJECT_DIR)
-    master_port: str = DDP.MASTER_PORT
-
-
 MODEL_SIZES_PER_ARCH_TO_MODEL_ID: dict[MODEL_ARCH, dict[str, TModelID]] = {
     MODEL_ARCH.MAMBA1: {
         "130M": TModelID("state-spaces/mamba-130M-hf"),
@@ -65,7 +92,7 @@ MODEL_SIZES_PER_ARCH_TO_MODEL_ID: dict[MODEL_ARCH, dict[str, TModelID]] = {
         "7B-falcon": TModelID("tiiuae/falcon-mamba-7b"),
         "7B-falcon-base": TModelID("tiiuae/Falcon3-Mamba-7B-Base"),
     },
-    MODEL_ARCH.MINIMAL_MAMBA2: {
+    MODEL_ARCH.MAMBA2: {
         "130M": TModelID("state-spaces/mamba2-130M"),
         "1.3B": TModelID("state-spaces/mamba2-1.3b"),
         "2.7B": TModelID("state-spaces/mamba2-2.7B"),
@@ -82,15 +109,15 @@ MODEL_SIZES_PER_ARCH_TO_MODEL_ID: dict[MODEL_ARCH, dict[str, TModelID]] = {
 
 GRAPHS_ORDER = [
     (MODEL_ARCH.MAMBA1, "130M"),
-    (MODEL_ARCH.MINIMAL_MAMBA2, "130M"),
+    (MODEL_ARCH.MAMBA2, "130M"),
     (MODEL_ARCH.MAMBA1, "1.4B"),
-    (MODEL_ARCH.MINIMAL_MAMBA2, "1.3B"),
+    (MODEL_ARCH.MAMBA2, "1.3B"),
     (MODEL_ARCH.MAMBA1, "2.8B"),
-    (MODEL_ARCH.MINIMAL_MAMBA2, "2.7B"),
+    (MODEL_ARCH.MAMBA2, "2.7B"),
     (MODEL_ARCH.MAMBA1, "7B"),
     (MODEL_ARCH.MAMBA1, "7B-falcon"),
     (MODEL_ARCH.MAMBA1, "7B-falcon-base"),
-    (MODEL_ARCH.MINIMAL_MAMBA2, "8B"),
+    (MODEL_ARCH.MAMBA2, "8B"),
 ]
 
 
@@ -116,13 +143,25 @@ def is_falcon(model_size: str) -> bool:
     return "falcon" in model_size
 
 
-class FILTERATIONS:
-    all_correct = "all_correct"
-    all_any_correct = "all_any_correct"
-
-
 DATASETS_IDS: dict[DATASETS, TDatasetID] = {DATASETS.COUNTER_FACT: TDatasetID("NeelNanda/counterfact-tracing")}  # type: ignore
 
 
 class COLUMNS:
     ORIGINAL_IDX = "original_idx"
+
+
+TOKEN_TYPE_COLORS: dict[TokenType, str] = {
+    TokenType.last: "#D2691E",  # orange
+    TokenType.first: "#0000FF",  # blue
+    TokenType.subject: "#008000",  # green
+    TokenType.relation: "#800080",  # purple
+    TokenType.context: "#FF0000",  # red
+}
+
+TOKEN_TYPE_LINE_STYLES: dict[TokenType, str] = {
+    TokenType.last: "-.",
+    TokenType.first: ":",
+    TokenType.subject: "-",
+    TokenType.relation: "--",
+    TokenType.context: "--",
+}

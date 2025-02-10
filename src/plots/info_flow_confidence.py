@@ -11,6 +11,7 @@ from matplotlib.figure import Figure
 from numpy.typing import NDArray
 from scipy import stats
 
+from src.consts import TOKEN_TYPE_COLORS, TOKEN_TYPE_LINE_STYLES
 from src.types import TokenType
 
 
@@ -40,7 +41,7 @@ class PlotMetadata(TypedDict):
     ylim: Optional[tuple[float, float]]
 
 
-def load_window_outputs(file_path: Path) -> dict:
+def load_window_outputs(file_path: Path) -> dict[str, dict[str, list[float]]]:
     """Load the raw window outputs from json file."""
     with open(file_path) as f:
         return json.load(f)
@@ -176,7 +177,7 @@ def calculate_confidence(
 
 
 def calculate_metrics_with_confidence(
-    window_outputs: dict,
+    window_outputs: dict[str, dict[str, list[float]]],
     metric_types: list[str],
     confidence_level: float = 0.95,
     confidence_method: Literal["CI", "PI", "bootstrap", "SE"] = "CI",
@@ -250,12 +251,9 @@ def plot_with_confidence(
 
 
 def create_confidence_plot(
-    target_key: TokenType,
-    knockout_map: dict[TokenType, tuple[dict, Path]],
-    colors: dict[TokenType, str],
-    line_styles: dict[TokenType, str],
+    targets_window_outputs: dict[TokenType, dict[str, dict[str, list[float]]]],
     confidence_level: float,
-    for_multi_plot: bool = False,
+    title: str,
     metric_types: list[str] = ["acc", "diff"],
 ) -> Figure:
     """Create plots with confidence intervals for all metrics.
@@ -298,16 +296,15 @@ def create_confidence_plot(
         ax = axes[i]
 
         # Plot data for each block
-        for block, (details, file_path) in knockout_map.items():
-            window_outputs = load_window_outputs(file_path)
+        for block, window_outputs in targets_window_outputs.items():
             metrics = calculate_metrics_with_confidence(window_outputs, metric_types, confidence_level)
 
             plot_with_confidence(
                 metrics=metrics,
                 metric_type=metric_type,
                 block=block,
-                color=colors[block],
-                linestyle=line_styles[block],
+                color=TOKEN_TYPE_COLORS[block],
+                linestyle=TOKEN_TYPE_LINE_STYLES[block],
                 ax=ax,
             )
 
@@ -317,7 +314,7 @@ def create_confidence_plot(
         ax.legend(
             loc="upper center",
             bbox_to_anchor=(0.5, 1.2),
-            ncol=len(colors),
+            ncol=len(targets_window_outputs),
             fontsize=10,
             frameon=False,
         )
@@ -328,24 +325,12 @@ def create_confidence_plot(
         ax.tick_params(axis="both", which="major", labelsize=10)
         ax.set_title(plot_metadata["title"], pad=30)
 
-    # Get model details from the first file
-    first_details = next(iter(knockout_map.values()))[0]
-    model_id = first_details["model_id"]
-    window_size = first_details["window_size"]
-
     # Set overall title
-    if for_multi_plot:
-        fig.suptitle(
-            f"{model_id}, window size={window_size}",
-            fontsize=12,
-            y=1.05,
-        )
-    else:
-        fig.suptitle(
-            f"Knocking out flow to {target_key}\n{model_id}, window size={window_size}",
-            fontsize=12,
-            y=1.05,
-        )
+    fig.suptitle(
+        title,
+        fontsize=12,
+        y=1.05,
+    )
 
     fig.tight_layout()
     return fig
@@ -479,8 +464,6 @@ def process_info_flow_files(
     from_blocks: dict[TokenType, tuple[dict, Path]],
     target_block: TokenType,
     confidence_level: float = 0.95,
-    colors: Optional[dict[TokenType, str]] = None,
-    line_styles: Optional[dict[TokenType, str]] = None,
     save_fig: bool = True,
     show_fig: bool = True,
 ) -> Figure:
@@ -499,35 +482,17 @@ def process_info_flow_files(
     Returns:
         The matplotlib figure containing the plots
     """
-    if colors is None:
-        colors = {
-            TokenType.last: "#D2691E",
-            TokenType.first: "blue",
-            TokenType.subject: "green",
-            TokenType.relation: "purple",
-            TokenType.context: "red",
-        }
-
-    if line_styles is None:
-        line_styles = {
-            TokenType.last: "-.",
-            TokenType.first: ":",
-            TokenType.subject: "-",
-            TokenType.relation: "--",
-            TokenType.context: "--",
-        }
-
-    # Convert string-based dictionaries to TokenType-based
-    colors_typed = {TokenType(k): v for k, v in colors.items()}
-    line_styles_typed = {TokenType(k): v for k, v in line_styles.items()}
-
+    targets_window_outputs = {target: load_window_outputs(file_path) for target, (_, file_path) in from_blocks.items()}
     # Create plots
+    first_details = next(iter(from_blocks.values()))[0]
+    model_id = first_details["model_id"]
+    window_size = first_details["window_size"]
+    title = f"Knocking out flow to {target_block}\n{model_id}, window size={window_size}"
+
     fig = create_confidence_plot(
-        target_key=target_block,
-        knockout_map=from_blocks,
-        colors=colors_typed,
-        line_styles=line_styles_typed,
+        targets_window_outputs=targets_window_outputs,
         confidence_level=confidence_level,
+        title=title,
     )
 
     if save_fig:

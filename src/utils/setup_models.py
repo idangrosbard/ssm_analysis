@@ -62,7 +62,7 @@ def get_tokenizer_and_model(
     tokenizer.pad_token = tokenizer.eos_token
 
     match model_arch:
-        case MODEL_ARCH.MINIMAL_MAMBA2:
+        case MODEL_ARCH.MAMBA2:
             model = minimal_mamba2.Mamba2LMHeadModel.from_pretrained(model_id, **minimal_kwargs)  # type: ignore
         case MODEL_ARCH.MAMBA1:
             if is_falcon(model_size):

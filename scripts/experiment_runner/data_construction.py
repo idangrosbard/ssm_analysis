@@ -1,7 +1,7 @@
 import pyrallis
 
 from src.consts import PATHS
-from src.experiments.data_construction import DataConstructionConfig, main_local
+from src.experiments.data_construction import DataConstructionConfig, run
 from src.types import DATASETS, MODEL_ARCH, DatasetArgs
 from src.utils.slurm import submit_job
 
@@ -29,22 +29,19 @@ def main(args: DataConstructionConfig):
             for attention in [True, False]:
                 args.attention = attention
 
-                job_name = (
-                    f"data_construction/{model_arch}_{model_size}"
-                    f"_attention={attention}_{args.dataset_args.dataset_name}"
-                )
                 job = submit_job(
-                    main_local,
+                    run,
                     args,
-                    log_folder=str(PATHS.SLURM_DIR / job_name / "%j"),
-                    job_name=job_name,
+                    log_folder=str(PATHS.SLURM_DIR / args.job_name / "%j"),
+                    job_name=args.job_name,
                     gpu_type=gpu_type,
                     slurm_gpus_per_node=1,
                 )
 
-                print(f"{job}: {job_name}")
+                print(f"{job}: {args.job_name}")
     else:
-        main_local(args)
+        args.variation = "v1"
+        run(args)
 
 
 if __name__ == "__main__":

@@ -1,7 +1,7 @@
 import pyrallis
 
 from src.consts import PATHS
-from src.experiments.heatmap import HeatmapConfig, main_local
+from src.experiments.heatmap import HeatmapConfig, run
 from src.types import DATASETS, MODEL_ARCH, DatasetArgs
 from src.utils.slurm import submit_job
 
@@ -12,10 +12,8 @@ def main(args: HeatmapConfig):
         gpu_type = "l40s"
         # gpu_type = "titan_xp-studentrun"
         window_sizes = [1, 3, 5, 9, 12, 15]
-        experiment_name = args.experiment_name
         # experiment_name = "heatmap_debug_use_matrix"
-        variation_name = "_v8"
-        args.experiment_name = experiment_name + variation_name
+        args.variation = "v8"
         # window_sizes = [1, 5]
         # window_sizes = [1, 5, 9]
 
@@ -36,15 +34,11 @@ def main(args: HeatmapConfig):
             for window_size in window_sizes:
                 args.window_size = window_size
 
-                job_name = (
-                    f"{experiment_name}/{model_arch}_{model_size}_ws={window_size}_{args.dataset_args.dataset_name}"
-                )
-
                 job = submit_job(
-                    main_local,
+                    run,
                     args,
-                    log_folder=str(PATHS.SLURM_DIR / job_name / "%j"),
-                    job_name=job_name,
+                    log_folder=str(PATHS.SLURM_DIR / args.job_name / "%j"),
+                    job_name=args.job_name,
                     # timeout_min=1200,
                     gpu_type=(
                         "l40s" if (model_size == "2.7B" and model_arch == MODEL_ARCH.MINIMAL_MAMBA2) else gpu_type
@@ -54,11 +48,11 @@ def main(args: HeatmapConfig):
                     ),
                 )
 
-                print(f"{job}: {job_name}")
+                print(f"{job}: {args.job_name}")
     else:
-        args.experiment_name = "debug"
+        args.variation = "debug"
         args.prompt_indices = [1, 2, 3, 4, 5]
-        main_local(args)
+        run(args)
 
 
 if __name__ == "__main__":

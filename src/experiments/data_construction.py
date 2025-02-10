@@ -10,45 +10,47 @@ The combined result is saved as a parquet file
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import cast
 
 import numpy as np
 import pandas as pd
 import torch
 from tqdm import tqdm
 
-from src.consts import FILTERATIONS, PATHS
-from src.datasets.download_dataset import load_splitted_counter_fact
-from src.experiment_infra.base_config import BaseConfig
+from src.experiment_infra.base_config import BaseConfig, OutputKey
 from src.experiment_infra.model_interface import get_model_interface
 
 
 @dataclass
-class DataConstructionConfig(BaseConfig):
+class DataConstructionConfig(BaseConfig[pd.DataFrame]):
     """Configuration for data construction."""
 
-    experiment_name: str = "data_construction"
-    temperature: float = 1
-    top_k: int = 0
-    top_p: float = 1
+    experiment_base_name: str = "data_construction"
     attention: bool = False
 
     @property
-    def output_path(self) -> Path:
-        return PATHS.OUTPUT_DIR / self.model_id / self.experiment_name / f"ds={self.dataset_args.dataset_name}"
+    def experiment_output_keys(self):
+        return super().experiment_output_keys + [OutputKey[bool]("attention", key_display_name="attn=")]
+
+    @property
+    def output_result_path(self) -> Path:
+        return self.outputs_path / f"entire_results_{self.attention}.csv"
+
+    def get_outputs(self):
+        return pd.read_csv(self.output_result_path, index_col=False)
 
 
-def main_local(args: DataConstructionConfig):
+def run(args: DataConstructionConfig):
     print(args)
-    dataset = load_splitted_counter_fact(
-        "all", align_to_known=False, filteration=getattr(FILTERATIONS, args.filteration)
-    )
-    original_data = pd.DataFrame(cast(dict, dataset))
+    if args.output_result_path.exists() and not args.overwrite_existing_outputs:
+        print(f"Output file {args.output_result_path} already exists")
+        return
 
-    args.output_path.mkdir(parents=True, exist_ok=True)
-
+    args.create_output_path()
+    original_data = args.get_raw_data(align_to_known=False)
     model_interface = get_model_interface(args.model_arch, args.model_size)
     tokenizer = model_interface.tokenizer
+    tokenizer.padding_side = "left"
+    tokenizer.pad_token = tokenizer.eos_token
     device = model_interface.device
 
     original_data["true_prob"] = 0.0
@@ -56,7 +58,7 @@ def main_local(args: DataConstructionConfig):
     original_data["hit"] = False
     original_data["pred"] = ""
 
-    def forward_eval(temperature, top_k, top_p, batch_start, batch_end, attention, print_period=10000):
+    def forward_eval(batch_start, batch_end, attention, print_period=10000):
         prompts = list(original_data.loc[batch_start : batch_end - 1, "prompt"].values)
         true_word = list(original_data.loc[batch_start : batch_end - 1, "target_true"].values)
         true_token = tokenizer(true_word, return_tensors="pt", padding=True)
@@ -88,9 +90,12 @@ def main_local(args: DataConstructionConfig):
     batches = list(np.arange(0, N, batch_size)) + [N]
 
     for i in tqdm(range(len(batches) - 1)):
-        forward_eval(args.temperature, args.top_k, args.top_p, batches[i], batches[i + 1], args.attention)
+        forward_eval(
+            batch_start=batches[i],
+            batch_end=batches[i + 1],
+            attention=args.attention,
+        )
 
     print(original_data.pipe(lambda df: df[~df["hit"]]))
     print(original_data["hit"].mean())
-    attention_str = "attention" if args.attention else "original"
-    original_data.to_parquet(args.output_path / f"entire_results_{attention_str}.parquet")
+    original_data.to_csv(args.output_result_path, index=False)

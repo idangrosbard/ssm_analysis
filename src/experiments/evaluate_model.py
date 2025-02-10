@@ -11,18 +11,16 @@ The combined result is saved as a CSV file
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, assert_never, cast
+from typing import Any, assert_never
 
 import pandas as pd
 import torch
 from tqdm import tqdm
 from transformers import PreTrainedTokenizer, PreTrainedTokenizerFast
 
-from src.consts import PATHS
-from src.datasets.download_dataset import load_dataset
-from src.experiment_infra.base_config import BaseConfig
+from src.experiment_infra.base_config import BaseConfig, create_mutable_field
 from src.experiment_infra.model_interface import get_model_interface
-from src.types import MODEL_ARCH
+from src.types import DATASETS, MODEL_ARCH, DatasetArgs
 from src.utils.logits import get_last_token_logits, logits_to_probs
 
 
@@ -30,16 +28,27 @@ from src.utils.logits import get_last_token_logits, logits_to_probs
 class EvaluateModelConfig(BaseConfig):
     """Configuration for model evaluation."""
 
-    experiment_name: str = "evaluate"
+    experiment_base_name: str = "evaluate"
     drop_subject: bool = False
     drop_subj_last_token: bool = False
     with_3_dots: bool = False
     new_max_tokens: int = 5
     top_k_tokens: int = 5
 
+    dataset_args: DatasetArgs = create_mutable_field(
+        lambda: DatasetArgs(name=DATASETS.COUNTER_FACT, splits="all", filteration=None),
+    )
+
     @property
-    def output_path(self) -> Path:
-        return PATHS.OUTPUT_DIR / self.model_id / self.experiment_name
+    def experiment_output_keys(self):
+        return super().experiment_output_keys[:-1]
+
+    @property
+    def output_result_path(self) -> Path:
+        return self.outputs_path / f"{self.dataset_args.display_name}.csv"
+
+    def get_outputs(self) -> pd.DataFrame:
+        return pd.read_csv(self.output_result_path, index_col=False)
 
 
 def get_subj_idx(
@@ -59,7 +68,7 @@ def get_subj_idx(
 
 def _get_logits(out, model_arch: MODEL_ARCH):
     match model_arch:
-        case MODEL_ARCH.MINIMAL_MAMBA2:
+        case MODEL_ARCH.MAMBA2:
             logits, _ = out
         case MODEL_ARCH.MAMBA1 | MODEL_ARCH.LLAMA2 | MODEL_ARCH.LLAMA3_2:
             logits = out.logits
@@ -142,12 +151,14 @@ def _generate_few_tokens(model, tokenizer, input_ids, new_max_tokens):
     return "".join(generated_text)
 
 
-def main_local(args: EvaluateModelConfig):
+def run(args: EvaluateModelConfig):
     print(args)
-    dataset = load_dataset(args.dataset_args)
-    df = pd.DataFrame(cast(dict, dataset))
+    if args.output_result_path.exists() and not args.overwrite_existing_outputs:
+        print(f"Output file {args.output_result_path} already exists")
+        return
 
-    args.output_path.mkdir(parents=True, exist_ok=True)
+    args.create_output_path()
+    df = args.get_raw_data(align_to_known=True)
 
     model_interface = get_model_interface(args.model_arch, args.model_size)
     model = model_interface.model
@@ -217,7 +228,7 @@ def main_local(args: EvaluateModelConfig):
         elif args.drop_subj_last_token:
             subj_idx = get_subj_idx(input_prompt, df.loc[idx, "subject"], tokenizer)  # type: ignore
 
-            input_ids = tokenizer(input_prompt.to_list(), return_tensors="pt", padding=True)["input_ids"]
+        input_ids = tokenizer(input_prompt.to_list(), return_tensors="pt", padding=True)["input_ids"]
 
         if args.drop_subj_last_token:
             input_ids = input_ids[:subj_idx] + input_ids[subj_idx + 1 :]  # type: ignore
@@ -266,6 +277,4 @@ def main_local(args: EvaluateModelConfig):
         acc += df.loc[idx, "model_correct"].sum()
 
     print(acc / len(df))
-    output_file = args.output_path / f"{args.dataset_args.dataset_name}.csv"
-    output_file.parent.mkdir(parents=True, exist_ok=True)
-    df.to_csv(output_file)
+    df.to_csv(args.output_result_path, index=False)

@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Dict, Iterable, List, Optional, Tuple, Union
+from typing import Dict, Iterable, List, Optional, Tuple, Union, assert_never
 
 import torch
 import torch.nn.functional as F
@@ -139,7 +139,7 @@ class Mamba2Interface(ModelInterface):
         device: Optional[torch.device] = None,
         tokenizer: Optional[Union[PreTrainedTokenizer, PreTrainedTokenizerFast]] = None,
     ):
-        super().__init__(MODEL_ARCH.MINIMAL_MAMBA2, model_size, device, tokenizer)
+        super().__init__(MODEL_ARCH.MAMBA2, model_size, device, tokenizer)
 
     def generate_logits(
         self,
@@ -162,14 +162,26 @@ class Mamba2Interface(ModelInterface):
         return out[-1].detach().cpu().numpy()  # type: ignore
 
 
+MODEL_INTERFACES_CACHE: dict[tuple[MODEL_ARCH, str], ModelInterface] = {}
+
+
 def get_model_interface(
     model_arch: MODEL_ARCH, model_size: str, device: Optional[torch.device] = None
 ) -> ModelInterface:
+    key = (model_arch, model_size)
+    if key in MODEL_INTERFACES_CACHE:
+        return MODEL_INTERFACES_CACHE[key]
+
+    model_interface: Optional[ModelInterface] = None
     match model_arch:
-        case MODEL_ARCH.MINIMAL_MAMBA2:
-            return Mamba2Interface(model_size, device)
+        case MODEL_ARCH.MAMBA2:
+            model_interface = Mamba2Interface(model_size, device)
         case MODEL_ARCH.MAMBA1:
-            return Mamba1Interface(model_size, device, is_falcon=is_falcon(model_size))
+            model_interface = Mamba1Interface(model_size, device, is_falcon=is_falcon(model_size))
+        case MODEL_ARCH.LLAMA2 | MODEL_ARCH.LLAMA3_2:
+            raise NotImplementedError("LLama models are not supported yet")
         case _:
-            # assert_never(model_arch)
-            raise ValueError(f"Unknown model architecture: {model_arch}")
+            assert_never(model_arch)
+
+    MODEL_INTERFACES_CACHE[key] = model_interface
+    return model_interface

@@ -1,6 +1,6 @@
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import assert_never
+from typing import assert_never, cast
 
 import torch
 
@@ -44,9 +44,9 @@ def get_top_outputs(probs, tokenizer, top_k):
 
 
 # Taken from https://github.com/google-research/google-research/blob/master/dissecting_factual_predictions/utils.py
-def decode_tokens(tokenizer: TTokenizer, token_array: torch.Tensor):
+def decode_tokens(tokenizer: TTokenizer, token_array: torch.Tensor) -> list[str | list[str]]:
     if hasattr(token_array, "shape") and len(token_array.shape) > 1:
-        return [decode_tokens(tokenizer, row) for row in token_array]
+        return [cast(list[str], decode_tokens(tokenizer, row)) for row in token_array]
     return [tokenizer.decode([t]) for t in token_array]
 
 

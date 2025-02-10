@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from enum import Enum
-from typing import Literal, NewType, Sequence, Union
+from typing import Literal, NewType, Optional, Sequence, Union, assert_never
 
 import pandas as pd
 from jaxtyping import Float
@@ -20,8 +20,8 @@ class SPLIT(STREnum):
 
 
 class MODEL_ARCH(STREnum):
-    MAMBA1 = "mamba"
-    MINIMAL_MAMBA2 = "minimal_mamba2"
+    MAMBA1 = "mamba1"
+    MAMBA2 = "mamba2"
     LLAMA2 = "llama2"
     LLAMA3_2 = "llama3.2"
 
@@ -30,13 +30,13 @@ class MODEL_ARCH(STREnum):
         match self:
             case MODEL_ARCH.MAMBA1:
                 return "Mamba1"
-            case MODEL_ARCH.MINIMAL_MAMBA2:
+            case MODEL_ARCH.MAMBA2:
                 return "Mamba2"
             case MODEL_ARCH.LLAMA2:
                 return "Llama2"
             case MODEL_ARCH.LLAMA3_2:
                 return "Llama3.2"
-        return self.value
+        assert_never(self.value)
 
 
 class MODEL_SIZE_CAT(STREnum):
@@ -66,20 +66,28 @@ class TokenType(STREnum):
     context = "context"
 
 
+class FILTERATIONS(STREnum):
+    all_correct = "all_correct"
+    all_any_correct = "all_any_correct"
+
+
 @dataclass
 class DatasetArgs:
     name: DATASETS
     splits: TSplit = "all"
+    filteration: Optional[FILTERATIONS] = FILTERATIONS.all_correct
 
     def __post_init__(self):
         if self.splits != "all" and isinstance(self.splits, str):
             self.splits = [SPLIT(self.splits)]
 
     @property
-    def dataset_name(self) -> str:
+    def display_name(self) -> str:
         split_name = ""
         if self.splits != "all":
             split_name = f"_{self.splits}"
+        if self.filteration is not None:
+            split_name = f"_{self.filteration}"
         return self.name + split_name
 
 

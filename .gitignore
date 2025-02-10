@@ -161,8 +161,6 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 
-**/*.html
-**/*.json
 /.idea/inspectionProfiles/profiles_settings.xml
 /.idea/inspectionProfiles/Project_Default.xml
 /.idea/.gitignore
@@ -172,18 +170,18 @@ cython_debug/
 /.idea/modules.xml
 /.idea/ssm_analysis.iml
 /.idea/vcs.xml
-*.csv
-**/*.csv
 /.idea/
 /runs/
 data/raw/
 /data/preprocessed/
 /slurm/
 /output/
+/output.old/
 /results/
 /output_2/
 .envrc
 .zen/
+.vscode/
 .cursorrules
 .cursorrules.old
 .cursor/rules/*

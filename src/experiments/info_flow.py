@@ -4,16 +4,14 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
+import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
-import pyrallis
 import torch
 from tqdm import tqdm
 
-from src.consts import PATHS
-from src.datasets.download_dataset import get_hit_dataset
-from src.experiment_infra.base_config import BaseConfig
+from src.experiment_infra.base_config import BASE_OUTPUT_KEYS, BaseConfig, OutputKey, create_mutable_field
 from src.experiment_infra.model_interface import get_model_interface
+from src.plots.info_flow_confidence import create_confidence_plot
 from src.types import TokenType
 from src.utils.logits import get_num_to_masks, get_prompt_row
 
@@ -22,13 +20,11 @@ from src.utils.logits import get_num_to_masks, get_prompt_row
 class InfoFlowConfig(BaseConfig):
     """Configuration for information flow analysis."""
 
-    experiment_name: str = "info_flow"
+    experiment_base_name: str = "info_flow"
     window_size: int = 9
     DEBUG_LAST_WINDOWS: Optional[int] = None
-    overwrite: bool = False
-    for_multi_plot: bool = False
-    knockout_map: dict[TokenType, list[TokenType]] = pyrallis.field(
-        default_factory=lambda: {
+    knockout_map: dict[TokenType, list[TokenType]] = create_mutable_field(
+        lambda: {
             TokenType.last: [
                 TokenType.last,
                 TokenType.first,
@@ -45,26 +41,77 @@ class InfoFlowConfig(BaseConfig):
                 TokenType.relation,
             ],
         }
-    )  # type: ignore
+    )
 
     @property
-    def output_path(self) -> Path:
-        return (
-            PATHS.OUTPUT_DIR
-            / self.model_id
-            / self.experiment_name
-            / f"ds={self.dataset_args.dataset_name}"
-            / f"ws={self.window_size}"
+    def experiment_output_keys(self):
+        debug_last_windows_output_key = OutputKey[Optional[int]](
+            "DEBUG_LAST_WINDOWS", key_display_name="debug_last_windows_count=", skip_condition=lambda x: x is None
         )
+        return super().experiment_output_keys + [
+            [BASE_OUTPUT_KEYS.WINDOW_SIZE, debug_last_windows_output_key],
+        ]
+
+    def output_block_target_path(self, target: TokenType) -> Path:
+        return self.outputs_path / f"target={target}"
+
+    def output_block_target_source_path(self, target: TokenType, source: TokenType) -> Path:
+        return self.output_block_target_path(target) / f"source={source}.csv"
+
+    def get_block_target_outputs(self, target: TokenType) -> dict[TokenType, dict[str, dict[str, list[float]]]]:
+        return {
+            source: json.load(self.output_block_target_source_path(target, source).open("r"))
+            for source in self.knockout_map[target]
+        }
+
+    def get_outputs(self) -> dict[TokenType, dict[TokenType, dict[str, dict[str, list[float]]]]]:
+        return {target: self.get_block_target_outputs(target) for target in self.knockout_map}
+
+    def get_plot_output_path(self, target: TokenType, plot_name: str) -> Path:
+        return self.plots_path / f"target={target}{plot_name}.png"
+
+    def plot_block_target(self, target: TokenType, save: bool = False, confidence_level: float = 0.95):
+        """Plot information flow from a target block to its source blocks.
+
+        Args:
+            target: The target TokenType to analyze flows from
+            save: Whether to save the figure
+        """
+        data = self.get_block_target_outputs(target)
+
+        fig = create_confidence_plot(
+            targets_window_outputs=data,
+            confidence_level=confidence_level,
+            title=f"Knocking out flow to {target}",
+        )
+        if save:
+            fig.savefig(self.get_plot_output_path(target, ""))
+            plt.close(fig)
+        return fig
 
 
-def main_local(args: InfoFlowConfig):
+def plot(args: InfoFlowConfig):
+    knockout_map_outputs = args.get_outputs()
+    for target in knockout_map_outputs:
+        print(f"Plotting {target}")
+        args.plot_block_target(target, save=True)
+
+
+def run(args: InfoFlowConfig):
     print(args)
-    data = get_hit_dataset(model_id=args.model_id, dataset_args=args.dataset_args)
+    remaining_knockout_map: list[tuple[TokenType, TokenType]] = [
+        (target, source)
+        for target in args.knockout_map
+        for source in args.knockout_map[target]
+        if (not args.output_block_target_source_path(target, source).exists() or args.overwrite_existing_outputs)
+    ]
+    if not remaining_knockout_map:
+        print("All outputs already exist")
+        return
 
-    args.output_file.mkdir(parents=True, exist_ok=True)
+    args.create_output_path()
+    data = args.get_prompt_data()
 
-    n_prompts = len(data)
     model_interface = get_model_interface(args.model_arch, args.model_size)
     tokenizer = model_interface.tokenizer
     device = model_interface.device
@@ -75,10 +122,10 @@ def main_local(args: InfoFlowConfig):
         prompt_idx,
         window,
         knockout_src: TokenType,
-        knockout_target: TokenType,
+        knockout_source: TokenType,
     ):
         prompt = get_prompt_row(data, prompt_idx)
-        num_to_masks, first_token = get_num_to_masks(prompt, tokenizer, window, knockout_src, knockout_target, device)
+        num_to_masks, first_token = get_num_to_masks(prompt, tokenizer, window, knockout_src, knockout_source, device)
 
         next_token_probs = model_interface.generate_logits(
             input_ids=prompt.input_ids(tokenizer, device),
@@ -103,17 +150,10 @@ def main_local(args: InfoFlowConfig):
         prompt_indices,
         windows,
         knockout_src: TokenType,
-        knockout_target: TokenType,
+        knockout_source: TokenType,
         print_period=100,
     ):
-        counts_w_first = np.zeros((len(windows)))
-        counts_wo_first = np.zeros((len(windows)))
-        diffs_w_first = np.zeros((len(windows)))
-        diffs_wo_first = np.zeros((len(windows)))
-        diffs_unnorm_w_first = np.zeros((len(windows)))
-        diffs_unnorm_wo_first = np.zeros((len(windows)))
-        windows_true_probs = defaultdict(lambda: defaultdict(list))
-        w_first = 0
+        windows_true_probs: dict[int, dict[str, list[float]]] = defaultdict(lambda: defaultdict(list))
         for i, window in enumerate(tqdm(windows, desc="Windows")):
             windows_true_probs[i] = defaultdict(list)
             model_interface.setup(layers=window)
@@ -122,35 +162,12 @@ def main_local(args: InfoFlowConfig):
                     prompt_idx,
                     window,
                     knockout_src,
-                    knockout_target,
+                    knockout_source,
                 )
                 windows_true_probs[i]["hit"].append(bool(hit))
                 windows_true_probs[i]["true_probs"].append(float(true_prob))
                 windows_true_probs[i]["diffs"].append(float(diff))
-                if first:
-                    if i == 0:
-                        w_first += 1
-                    counts_w_first[i] += hit
-                    diffs_w_first[i] += diff
-                    diffs_unnorm_w_first[i] += diff_unnorm
-                else:
-                    counts_wo_first[i] += hit
-                    diffs_wo_first[i] += diff
-                    diffs_unnorm_wo_first[i] += diff_unnorm
-        counts = counts_w_first + counts_wo_first
-        diffs = diffs_w_first + diffs_wo_first
-        diffs_unnorm = diffs_unnorm_w_first + diffs_unnorm_wo_first
-        return {
-            "acc": counts / n_prompts,
-            "diff": diffs / n_prompts,
-            "diff_unnorm": diffs_unnorm / n_prompts,
-            "wf_acc": counts_w_first / w_first,
-            "wf_diff": diffs_w_first / w_first,
-            "wf_diff_unnorm": diffs_unnorm_w_first / w_first,
-            "wof_acc": counts_wo_first / (n_prompts - w_first),
-            "wof_diff": diffs_wo_first / (n_prompts - w_first),
-            "wof_diff_unnorm": diffs_unnorm_wo_first / (n_prompts - w_first),
-        }, windows_true_probs
+        return windows_true_probs
 
     prompt_indices = list(data.index)
     windows = [list(range(i, i + args.window_size)) for i in range(0, n_layers - args.window_size + 1)]
@@ -158,35 +175,18 @@ def main_local(args: InfoFlowConfig):
     if args.DEBUG_LAST_WINDOWS:
         windows = windows[-args.DEBUG_LAST_WINDOWS :]
 
-    combined_results: dict[str, dict] = defaultdict(lambda: defaultdict(dict))
+    for target, source in remaining_knockout_map:
+        print(f"Knocking out flow to {target} from {source}")
 
-    for key in args.knockout_map:
-        for block in args.knockout_map[key]:
-            print(f"Knocking out flow to {key} from {block}")
-            block_outdir = args.output_file / f"block_{block}_target_{key}"
-            block_outdir.mkdir(parents=True, exist_ok=True)
-
-            output_file = block_outdir / "metrics.csv"
-            if output_file.exists() and not args.overwrite:
-                print("Reading from existing file")
-                metrics_df = pd.read_csv(output_file)
-                res = {metric: metrics_df[metric].values for metric in metrics_df.columns}
-            else:
-                res, window_outputs = evaluate(
-                    prompt_indices,
-                    windows,
-                    knockout_src=block,
-                    knockout_target=key,
-                )
-                if args.DEBUG_LAST_WINDOWS:
-                    window_outputs = {
-                        k + (n_layers - args.window_size + 1 - args.DEBUG_LAST_WINDOWS): v
-                        for k, v in window_outputs.items()
-                    }
-                json.dump(window_outputs, (block_outdir / "outputs.json").open("w"))
-
-                # Combine all metrics into a single DataFrame and save
-                metrics_df = pd.DataFrame({metric: value for metric, value in res.items()})
-                metrics_df.to_csv(output_file, index=False)
-
-            combined_results[key][block] = res
+        window_outputs = evaluate(
+            prompt_indices,
+            windows,
+            knockout_src=source,
+            knockout_source=target,
+        )
+        if args.DEBUG_LAST_WINDOWS:
+            window_outputs = {
+                k + (n_layers - args.window_size + 1 - args.DEBUG_LAST_WINDOWS): v for k, v in window_outputs.items()
+            }
+        args.output_block_target_source_path(target, source).parent.mkdir(parents=True, exist_ok=True)
+        json.dump(window_outputs, (args.output_block_target_source_path(target, source)).open("w"))

@@ -9,47 +9,102 @@ The combined result is a dictionary of prompt index -> heatmap
 
 """
 
+import functools
 from dataclasses import dataclass
 from pathlib import Path
-from typing import cast
+from typing import Callable, cast
 
+import matplotlib.pyplot as plt
 import numpy as np
-import pyrallis
+import pandas as pd
 import torch
 from tqdm import tqdm
 
-from src.consts import PATHS
-from src.datasets.download_dataset import get_hit_dataset
-from src.experiment_infra.base_config import BaseConfig
+from src.consts import MODEL_SIZES_PER_ARCH_TO_MODEL_ID
+from src.experiment_infra.base_config import BASE_OUTPUT_KEYS, BaseConfig, create_mutable_field
 from src.experiment_infra.model_interface import get_model_interface
-from src.utils.logits import get_prompt_row
+from src.plots.heatmaps import simple_diff_fixed
+from src.utils.logits import decode_tokens, get_prompt_row
+from src.utils.types_utils import STREnum
+
+
+class HEATMAP_PLOT_FUNCS(STREnum):
+    _simple_diff_fixed_0_3 = "_simple_diff_fixed_0.3"
+
+
+IHeatmap = pd.DataFrame
+
+plot_suffix_to_function: dict[HEATMAP_PLOT_FUNCS, Callable] = {
+    HEATMAP_PLOT_FUNCS._simple_diff_fixed_0_3: functools.partial(simple_diff_fixed, fixed_diff=0.3),
+}
 
 
 @dataclass
 class HeatmapConfig(BaseConfig):
     """Configuration for heatmap generation."""
 
-    experiment_name: str = "heatmap"
+    experiment_base_name: str = "heatmap"
     window_size: int = 5
-    prompt_indices: list[int] = cast(list[int], pyrallis.field(default_factory=lambda: [1, 2, 3, 4, 5]))
+    prompt_indices: list[int] = create_mutable_field(lambda: [1, 2, 3, 4, 5])
 
     @property
-    def output_path(self) -> Path:
-        return (
-            PATHS.OUTPUT_DIR
-            / self.model_id
-            / self.experiment_name
-            / f"ds={self.dataset_args.dataset_name}"
-            / f"ws={self.window_size}"
+    def experiment_output_keys(self):
+        return super().experiment_output_keys + [
+            BASE_OUTPUT_KEYS.WINDOW_SIZE,
+        ]
+
+    def output_heatmap_path(self, prompt_idx: int) -> Path:
+        return self.outputs_path / f"idx={prompt_idx}.csv"
+
+    def get_outputs(self) -> dict[int, IHeatmap]:
+        return {idx: pd.read_csv(self.output_heatmap_path(idx)) for idx in self.prompt_indices}
+
+    def get_plot_output_path(self, prompt_idx: int, plot_name: str) -> Path:
+        return self.plots_path / f"idx={prompt_idx}{plot_name}.png"
+
+
+def plot(args: HeatmapConfig):
+    data = args.get_prompt_data()
+    model_interface = get_model_interface(args.model_arch, args.model_size)
+    model_id = MODEL_SIZES_PER_ARCH_TO_MODEL_ID[args.model_arch][args.model_size]
+
+    prob_mats = args.get_outputs()
+    for prompt_idx, prob_mat in tqdm(prob_mats.items(), desc="Plotting heatmaps"):
+        prompt = get_prompt_row(data, prompt_idx)
+        tokenizer = model_interface.tokenizer
+        input_ids = prompt.input_ids(tokenizer, "cpu")
+        toks = cast(list[str], decode_tokens(tokenizer, input_ids[0]))
+        last_tok = toks[-1]
+        toks[-1] = toks[-1] + "*"
+
+        fig, ax = simple_diff_fixed(
+            prob_mat=prob_mat,
+            model_id=model_id,
+            window_size=args.window_size,
+            last_tok=last_tok,
+            base_prob=prompt.base_prob,
+            true_word=prompt.true_word,
+            toks=toks,
+            fixed_diff=0.3,
         )
+        output_path = args.get_plot_output_path(prompt_idx, HEATMAP_PLOT_FUNCS._simple_diff_fixed_0_3)
+        plt.savefig(output_path, bbox_inches="tight")
+        plt.close(fig)
 
 
-def main_local(args: HeatmapConfig):
+def run(args: HeatmapConfig):
     print(args)
-    data = get_hit_dataset(model_id=args.model_id, dataset_args=args.dataset_args)
+    remaining_idx = [
+        idx
+        for idx in args.prompt_indices
+        if not args.output_heatmap_path(idx).exists() or args.overwrite_existing_outputs
+    ]
+    if not remaining_idx:
+        print("All heatmaps already exist")
+        return
 
-    args.output_path.mkdir(parents=True, exist_ok=True)
-
+    args.create_output_path()
+    data = args.get_prompt_data()
     model_interface = get_model_interface(args.model_arch, args.model_size)
     tokenizer = model_interface.tokenizer
     device = model_interface.device
@@ -78,11 +133,11 @@ def main_local(args: HeatmapConfig):
 
     windows = [list(range(i, i + args.window_size)) for i in range(0, n_layers - args.window_size + 1)]
 
-    for prompt_idx in tqdm(args.prompt_indices, desc="Prompts"):
+    for prompt_idx in tqdm(remaining_idx, desc="Prompts"):
         prob_mat = []
         for window in windows:
             model_interface.setup(layers=window)
             prob_mat.append(forward_eval(prompt_idx, window))
 
         prob_mat = np.array(prob_mat).T
-        np.save(args.output_path / f"idx={prompt_idx}.npy", prob_mat)
+        pd.DataFrame(prob_mat).to_csv(args.output_heatmap_path(prompt_idx), index=False)
