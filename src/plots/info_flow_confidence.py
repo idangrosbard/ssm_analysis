@@ -37,7 +37,6 @@ class PlotMetadata(TypedDict):
     ylabel: str
     ylabel_loc: Literal["bottom", "center", "top"]
     axhline_value: float
-    filename_suffix: str
     ylim: Optional[tuple[float, float]]
 
 
@@ -178,7 +177,7 @@ def calculate_confidence(
 
 def calculate_metrics_with_confidence(
     window_outputs: dict[str, dict[str, list[float]]],
-    metric_types: list[str],
+    metric_types: list[Literal["acc", "diff"]],
     confidence_level: float = 0.95,
     confidence_method: Literal["CI", "PI", "bootstrap", "SE"] = "CI",
 ) -> MetricsDict:
@@ -208,7 +207,7 @@ def calculate_metrics_with_confidence(
                 confidence_level=confidence_level,
             )
             for key in confidence:
-                metrics[metric_type][key].append(float(confidence[key]))
+                metrics[metric_type][key].append(float(confidence[key]))  # type: ignore
 
     return cast(
         MetricsDict,
@@ -254,7 +253,7 @@ def create_confidence_plot(
     targets_window_outputs: dict[TokenType, dict[str, dict[str, list[float]]]],
     confidence_level: float,
     title: str,
-    metric_types: list[str] = ["acc", "diff"],
+    plots_meta_data: dict[Literal["acc", "diff"], PlotMetadata],
 ) -> Figure:
     """Create plots with confidence intervals for all metrics.
 
@@ -269,24 +268,6 @@ def create_confidence_plot(
     Returns:
         The matplotlib figure containing the plots
     """
-    plots_meta_data: dict[Literal["acc", "diff"], PlotMetadata] = {
-        "acc": {
-            "title": "Accuracy",
-            "ylabel": "% accuracy",
-            "ylabel_loc": "center",
-            "axhline_value": 100.0,
-            "filename_suffix": "accuracy_with_confidence",
-            "ylim": (60.0, 105.0),
-        },
-        "diff": {
-            "title": "Normalized change in prediction probability",
-            "ylabel": "% probability change",
-            "ylabel_loc": "top",
-            "axhline_value": 0.0,
-            "filename_suffix": "norm_change_with_confidence",
-            "ylim": (-50.0, 50.0),
-        },
-    }
 
     # Create figure with two subplots side by side
     fig, axes = plt.subplots(1, 2, figsize=(12, 5))
@@ -297,7 +278,7 @@ def create_confidence_plot(
 
         # Plot data for each block
         for block, window_outputs in targets_window_outputs.items():
-            metrics = calculate_metrics_with_confidence(window_outputs, metric_types, confidence_level)
+            metrics = calculate_metrics_with_confidence(window_outputs, list(plots_meta_data.keys()), confidence_level)
 
             plot_with_confidence(
                 metrics=metrics,
@@ -323,13 +304,13 @@ def create_confidence_plot(
         if plot_metadata["ylim"]:
             ax.set_ylim(plot_metadata["ylim"])
         ax.tick_params(axis="both", which="major", labelsize=10)
-        ax.set_title(plot_metadata["title"], pad=30)
+        ax.set_title(plot_metadata["title"])
 
     # Set overall title
     fig.suptitle(
         title,
         fontsize=12,
-        y=1.05,
+        # y=1.05,
     )
 
     fig.tight_layout()
@@ -463,6 +444,7 @@ def combine_confidence_plots(
 def process_info_flow_files(
     from_blocks: dict[TokenType, tuple[dict, Path]],
     target_block: TokenType,
+    plots_meta_data: dict[Literal["acc", "diff"], PlotMetadata],
     confidence_level: float = 0.95,
     save_fig: bool = True,
     show_fig: bool = True,
@@ -493,6 +475,7 @@ def process_info_flow_files(
         targets_window_outputs=targets_window_outputs,
         confidence_level=confidence_level,
         title=title,
+        plots_meta_data=plots_meta_data,
     )
 
     if save_fig:

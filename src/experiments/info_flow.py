@@ -79,16 +79,37 @@ class InfoFlowConfig(BaseConfig):
             save: Whether to save the figure
         """
         data = self.get_block_target_outputs(target)
-
-        fig = create_confidence_plot(
-            targets_window_outputs=data,
-            confidence_level=confidence_level,
-            title=f"Knocking out flow to {target}",
-        )
-        if save:
-            fig.savefig(self.get_plot_output_path(target, ""))
-            plt.close(fig)
-        return fig
+        figs = {}
+        for with_fixed_limits in [True, False]:
+            sub_title = "_fixed_limits" if with_fixed_limits else ""
+            figs[sub_title] = create_confidence_plot(
+                targets_window_outputs=data,
+                confidence_level=confidence_level,
+                title=(
+                    f"{self.model_arch} - {self.model_size} - window_size={self.window_size}"
+                    + f"\nKnocking out flow to {target}"
+                ),
+                plots_meta_data={
+                    "acc": {
+                        "title": "Accuracy",
+                        "ylabel": "% accuracy",
+                        "ylabel_loc": "center",
+                        "axhline_value": 100.0,
+                        "ylim": (60.0, 105.0) if with_fixed_limits else None,
+                    },
+                    "diff": {
+                        "title": "Normalized change in prediction probability",
+                        "ylabel": "% probability change",
+                        "ylabel_loc": "top",
+                        "axhline_value": 0.0,
+                        "ylim": (-50.0, 50.0) if with_fixed_limits else None,
+                    },
+                },
+            )
+            if save:
+                figs[sub_title].savefig(self.get_plot_output_path(target, sub_title))
+                plt.close(figs[sub_title])
+        return figs
 
 
 def plot(args: InfoFlowConfig):
