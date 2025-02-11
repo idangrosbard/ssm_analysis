@@ -9,6 +9,7 @@ from transformers import MambaForCausalLM, PreTrainedTokenizer, PreTrainedTokeni
 import src.models.minimal_mamba2 as minimal_mamba2
 from src.consts import is_falcon
 from src.knockout.attention_knockout.ssm_interfere import SSMInterfereHook
+from src.knockout.attention_knockout import gpt2_knockout_utils
 from src.types import MODEL_ARCH, KnockoutMode
 from src.utils.setup_models import get_tokenizer_and_model
 
@@ -160,6 +161,64 @@ class Mamba2Interface(ModelInterface):
             )
 
         return out[-1].detach().cpu().numpy()  # type: ignore
+    
+
+
+
+class GPT2Interface(ModelInterface):
+    model: MambaForCausalLM
+
+    def __init__(
+        self,
+        model_size: str,
+        device: Optional[torch.device] = None,
+        tokenizer: Optional[Union[PreTrainedTokenizer, PreTrainedTokenizerFast]] = None,
+    ):
+        super().__init__(MODEL_ARCH.GPT2, model_size, device, tokenizer)
+
+        self.knockout_mode = KnockoutMode.ZERO_ATTENTION
+
+    def _trace_with_attn_block(
+        self,
+        model,
+        inp,
+        from_to_index_per_layer,   # A list of (source index, target index) to block
+    ):
+        with torch.no_grad():
+            # set hooks
+            block_attn_hooks = gpt2_knockout_utils.set_block_attn_hooks(model, from_to_index_per_layer)
+            
+            # get prediction
+            outputs_exp = model(**inp)
+            
+            # remove hooks
+            gpt2_knockout_utils.remove_wrapper(model, block_attn_hooks)
+        
+        probs = torch.softmax(outputs_exp.logits[:, -1, :], dim=-1)
+        
+        return probs
+
+
+    def generate_logits(
+        self,
+        input_ids: Tensor,
+        attention: bool = False,
+        num_to_masks: Optional[Dict[int, List[Tuple[int, int]]]] = None,
+    ) -> torch.Tensor:
+        
+        assert input_ids.shape[0] == 1
+        max_len = input_ids.shape[1]
+        attention_mask = [
+            [1] * len(max_len)
+            ]
+        inp = dict(
+            input_ids=input_ids.to(self.model.device),
+            attention_mask=torch.tensor(attention_mask).to(self.model.device),
+            )
+
+        probs = self._trace_with_attn_block(self.model, inp, num_to_masks)
+
+        return probs.detach().cpu().numpy()  # type: ignore
 
 
 MODEL_INTERFACES_CACHE: dict[tuple[MODEL_ARCH, str], ModelInterface] = {}
@@ -178,6 +237,8 @@ def get_model_interface(
             model_interface = Mamba2Interface(model_size, device)
         case MODEL_ARCH.MAMBA1:
             model_interface = Mamba1Interface(model_size, device, is_falcon=is_falcon(model_size))
+        case MODEL_ARCH.GPT2:
+            model_interface = GPT2Interface(model_size, device)
         case MODEL_ARCH.LLAMA2 | MODEL_ARCH.LLAMA3_2:
             raise NotImplementedError("LLama models are not supported yet")
         case _:

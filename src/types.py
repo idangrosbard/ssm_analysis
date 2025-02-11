@@ -22,6 +22,7 @@ class SPLIT(STREnum):
 class MODEL_ARCH(STREnum):
     MAMBA1 = "mamba1"
     MAMBA2 = "mamba2"
+    GPT2 = "gpt2"
     LLAMA2 = "llama2"
     LLAMA3_2 = "llama3.2"
 
@@ -36,6 +37,8 @@ class MODEL_ARCH(STREnum):
                 return "Llama2"
             case MODEL_ARCH.LLAMA3_2:
                 return "Llama3.2"
+            case MODEL_ARCH.GPT2:
+                return "GPT2"
         assert_never(self.value)
 
 
