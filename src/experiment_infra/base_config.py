@@ -2,75 +2,25 @@ import json
 from abc import ABC, abstractmethod
 from dataclasses import asdict, dataclass, fields
 from pathlib import Path
-from typing import Any, Callable, Generic, Optional, Type, TypeVar, Union, cast, final
+from typing import Any, Callable, Generic, Type, TypeVar, cast, final
 
 import pandas as pd
 import pyrallis
 
 from src.consts import MODEL_SIZES_PER_ARCH_TO_MODEL_ID, PATHS
 from src.datasets.download_dataset import load_splitted_counter_fact
+from src.experiment_infra.output_path import _ATTRIBUTE_TYPE, OutputKey, combine_output_keys
 from src.types import DATASETS, FILTERATIONS, MODEL_ARCH, DatasetArgs, TModelID, TPromptData
 from src.utils.experiment_helper import create_run_id
 
-_T = TypeVar("_T")
 _TBaseConfig = TypeVar("_TBaseConfig", bound="BaseConfig")
 
 
-def create_mutable_field(default_factory: Callable[[], _T]) -> _T:
+def create_mutable_field(default_factory: Callable[[], _ATTRIBUTE_TYPE]) -> _ATTRIBUTE_TYPE:
     # Pyralis need mutable fields to be defined with field but it's typing is not complete.
     # This is a fix to make it work.
 
-    return cast(_T, pyrallis.field(default_factory=default_factory, is_mutable=True))
-
-
-class OutputKey(Generic[_T]):
-    def __init__(
-        self,
-        key_name: str,
-        convert_to_str: Callable[[_T], str] = str,
-        key_display_name: Optional[str] = None,
-        skip_condition: Optional[Callable[[_T], bool]] = None,
-    ):
-        """
-
-        Args:
-            key_name: key name in the config
-            convert_to_str: function to convert the value to a string. Defaults to str.
-            key_display_name: display name of the key. Defaults to None.
-            skip_condition: condition to skip the key. Defaults to no skipping.
-        """
-        self.key_name = key_name
-        self.convert_to_str = convert_to_str
-        self.key_display_name = f"{key_name}=" if key_display_name is None else key_display_name
-        self.skip_condition = skip_condition
-
-    def should_skip(self, config: "BaseConfig") -> bool:
-        if self.skip_condition is None:
-            return False
-        return self.skip_condition(self.get_value(config))
-
-    def get_value(self, config: "BaseConfig") -> _T:
-        assert hasattr(config, self.key_name)
-        return cast(_T, getattr(config, self.key_name))
-
-    def display(self, config: "BaseConfig") -> str:
-        value = getattr(config, self.key_name)
-        return f"{self.key_display_name}{self.convert_to_str(value)}"
-
-    @staticmethod
-    def combine_output_keys(
-        config: "BaseConfig",
-        keys: list[Union["OutputKey", list["OutputKey"]]],
-        sep: str = "/",
-        secondary_sep: str = "_",
-    ) -> str:
-        res = []
-        for output_key in keys:
-            if isinstance(output_key, list):
-                res.append(secondary_sep.join(output_key.display(config) for output_key in output_key))
-            else:
-                res.append(output_key.display(config))
-        return sep.join(res)
+    return cast(_ATTRIBUTE_TYPE, pyrallis.field(default_factory=default_factory, is_mutable=True))
 
 
 class BASE_OUTPUT_KEYS:
@@ -122,25 +72,23 @@ class BaseConfig(ABC, Generic[_TConfigOutputs]):
     @property
     def experiment_name(self) -> str:
         name = f"{self.experiment_base_name}"
-        if self.variation:
-            name += f"/{self.variation}"
         return name
 
     @property
     @abstractmethod
     def experiment_output_keys(self) -> list[OutputKey | list[OutputKey]]:
         return [
-            BASE_OUTPUT_KEYS.MODEL_ARCH,
-            BASE_OUTPUT_KEYS.MODEL_SIZE,
             BASE_OUTPUT_KEYS.EXPERIMENT_NAME,
             BASE_OUTPUT_KEYS.VARIATION,
+            BASE_OUTPUT_KEYS.MODEL_ARCH,
+            BASE_OUTPUT_KEYS.MODEL_SIZE,
             BASE_OUTPUT_KEYS.DATASET_NAME,
         ]
 
     @final
     @property
     def experiment_variation_base_path(self) -> Path:
-        return PATHS.OUTPUT_DIR / OutputKey.combine_output_keys(
+        return PATHS.OUTPUT_DIR / combine_output_keys(
             self,
             self.experiment_output_keys,
             sep="/",
@@ -148,7 +96,7 @@ class BaseConfig(ABC, Generic[_TConfigOutputs]):
 
     @property
     def job_name(self) -> str:
-        return OutputKey.combine_output_keys(
+        return combine_output_keys(
             self,
             self.experiment_output_keys,
             sep="_",

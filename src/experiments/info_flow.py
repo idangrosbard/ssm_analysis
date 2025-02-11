@@ -9,8 +9,9 @@ import numpy as np
 import torch
 from tqdm import tqdm
 
-from src.experiment_infra.base_config import BASE_OUTPUT_KEYS, BaseConfig, OutputKey, create_mutable_field
+from src.experiment_infra.base_config import BASE_OUTPUT_KEYS, BaseConfig, create_mutable_field
 from src.experiment_infra.model_interface import get_model_interface
+from src.experiment_infra.output_path import OutputKey
 from src.plots.info_flow_confidence import create_confidence_plot
 from src.types import TokenType
 from src.utils.logits import get_num_to_masks, get_prompt_row

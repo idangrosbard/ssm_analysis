@@ -16,8 +16,9 @@ import pandas as pd
 import torch
 from tqdm import tqdm
 
-from src.experiment_infra.base_config import BaseConfig, OutputKey
+from src.experiment_infra.base_config import BaseConfig
 from src.experiment_infra.model_interface import get_model_interface
+from src.experiment_infra.output_path import OutputKey
 
 
 @dataclass
