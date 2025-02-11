@@ -176,6 +176,7 @@ data/raw/
 /data/preprocessed/
 /slurm/
 /output/
+/output.temp/
 /output.old/
 /results/
 /output_2/

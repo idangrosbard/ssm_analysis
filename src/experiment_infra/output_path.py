@@ -35,7 +35,7 @@ class OutputKey(Generic[_ATTRIBUTE_TYPE]):
         return cast(_ATTRIBUTE_TYPE, getattr(obj, self.key_name))
 
     def display(self, obj: object) -> str:
-        value = getattr(obj, self.key_name)
+        value = self.get_value(obj)
         converted_value = self.convert_to_str(value) if self.convert_to_str is not None else str(value)
         return f"{self.key_display_name}{converted_value}"
 
@@ -73,9 +73,14 @@ def combine_output_keys(
     res = []
     for output_key in keys:
         if isinstance(output_key, list):
-            res.append(secondary_sep.join(output_key.display(obj) for output_key in output_key))
+            res.append(
+                secondary_sep.join(
+                    [output_key.display(obj) for output_key in output_key if not output_key.should_skip(obj)]
+                )
+            )
         else:
-            res.append(output_key.display(obj))
+            if not output_key.should_skip(obj):
+                res.append(output_key.display(obj))
     return sep.join(res)
 
 

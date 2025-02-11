@@ -1,6 +1,6 @@
 import shutil
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from src.consts import PATHS
 from src.experiment_infra.base_config import BASE_OUTPUT_KEYS
@@ -8,9 +8,14 @@ from src.experiment_infra.output_path import OutputKey, OutputPath
 from src.utils.file_system import remove_dirs_with_only_dirs
 
 
+def is_filtered(values: Dict[str, str], filter_values: Dict[str, list[str]]) -> bool:
+    return all(values[key] in filter_values[key] for key in filter_values)
+
+
 def reorganize_files(
     old_path_structure: OutputPath,
     new_path_structure: OutputPath,
+    filter_values: Optional[Dict[str, list[str]]] = None,
     dry_run: bool = True,
     verbose: bool = True,
 ) -> None:
@@ -89,13 +94,14 @@ def reorganize_files(
     elif not moves:
         print("No files found to move.")
     else:
-        print(f"Found {len(moves)} files to move:")
-        for old_path, new_path, _ in moves:
+        print(f"Found {len(moves)} files to move:{' (dry run)' if dry_run else ''}")
+        for old_path, new_path, values in moves:
+            should_skip = not ((filter_values is None) or is_filtered(values, filter_values))
             if verbose or dry_run:
                 relative_old_path = old_path.relative_to(old_path_structure.base_path)
                 relative_new_path = new_path.relative_to(new_path_structure.base_path)
-                print(f"  {relative_old_path} -> {relative_new_path}")
-            if not dry_run:
+                print(f"  ({'Skipped' if should_skip else ''}) {relative_old_path} -> {relative_new_path}")
+            if not dry_run and not should_skip:
                 shutil.move(str(old_path), str(new_path))
 
         if not dry_run:
@@ -103,7 +109,8 @@ def reorganize_files(
 
 
 if __name__ == "__main__":
-    base_path = PATHS.PROJECT_DIR / "tests/src/experiments/baselines/full_pipeline/output"
+    base_path = PATHS.OUTPUT_DIR
+    # base_path = PATHS.PROJECT_DIR / "tests/src/experiments/baselines/full_pipeline/output"
     old_path_structure = OutputPath(
         base_path,
         [
@@ -115,7 +122,8 @@ if __name__ == "__main__":
         ],
     )
     new_path_structure = OutputPath(
-        base_path,
+        base_path.parent / "output.temp",
+        # base_path,
         [
             BASE_OUTPUT_KEYS.EXPERIMENT_NAME,
             BASE_OUTPUT_KEYS.VARIATION,
@@ -123,6 +131,13 @@ if __name__ == "__main__":
             BASE_OUTPUT_KEYS.MODEL_SIZE,
         ],
     )
-    dry_run = False
-    reorganize_files(old_path_structure, new_path_structure, dry_run=dry_run)
-    # reorganize_files(new_path_structure, old_path_structure, dry_run=dry_run)
+    dry_run = True
+    # dry_run = True
+    filter_values = {
+        BASE_OUTPUT_KEYS.MODEL_ARCH.key_name: ["mamba1"],
+        BASE_OUTPUT_KEYS.MODEL_SIZE.key_name: ["130M"],
+        BASE_OUTPUT_KEYS.EXPERIMENT_NAME.key_name: ["evaluate"],
+    }
+    # filter_values = None
+    reorganize_files(old_path_structure, new_path_structure, filter_values=filter_values, dry_run=dry_run)
+    # reorganize_files(new_path_structure, old_path_structure, filter_values=filter_values, dry_run=dry_run)
