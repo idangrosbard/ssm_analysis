@@ -105,13 +105,23 @@ MODEL_SIZES_PER_ARCH_TO_MODEL_ID: dict[MODEL_ARCH, dict[str, TModelID]] = {
         "1B": TModelID("meta-llama/Llama-3.2-1B"),
         "3B": TModelID("meta-llama/Llama-3.2-3B"),
     },
+    MODEL_ARCH.GPT2: {
+        "124M": TModelID("openai-community/gpt2"),
+        "355M": TModelID("openai-community/gpt2-medium"),
+        "774M": TModelID("openai-community/gpt2-large"),
+        "1.5B": TModelID("openai-community/gpt2-xl"),
+    },
 }
 
 GRAPHS_ORDER = [
+    (MODEL_ARCH.GPT2, "124M"),
     (MODEL_ARCH.MAMBA1, "130M"),
     (MODEL_ARCH.MAMBA2, "130M"),
+    (MODEL_ARCH.GPT2, "355M"),
+    (MODEL_ARCH.GPT2, "774M"),
     (MODEL_ARCH.MAMBA1, "1.4B"),
     (MODEL_ARCH.MAMBA2, "1.3B"),
+    (MODEL_ARCH.GPT2, "1.5B"),
     (MODEL_ARCH.MAMBA1, "2.8B"),
     (MODEL_ARCH.MAMBA2, "2.7B"),
     (MODEL_ARCH.MAMBA1, "7B"),

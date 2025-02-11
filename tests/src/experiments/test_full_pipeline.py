@@ -16,14 +16,15 @@ DATA_SIZE = 10
 HEATMAP_SIZE = 5
 
 
-def get_config(variation_name: str, model_arch: MODEL_ARCH) -> FullPipelineConfig:
+def get_config(variation_name: str, model_arch: MODEL_ARCH, model_size: str) -> FullPipelineConfig:
     return FullPipelineConfig(
         variation=variation_name,
         model_arch=model_arch,
-        model_size="130M",
+        model_size=model_size,
         _batch_size=1,
-        window_size=3,
+        window_size=15,
         prompt_indices=list(range(HEATMAP_SIZE)),
+        with_plotting=True,
     )
 
 
@@ -62,7 +63,11 @@ if __name__ == "__main__":
     # Create test data and run pipeline with mocked paths
     with pytest.MonkeyPatch().context() as mp:
         mp.setattr("src.consts.PATHS.PROJECT_DIR", test_base_path)
-        for model_arch in [MODEL_ARCH.MAMBA1, MODEL_ARCH.MAMBA2]:
-            config = get_config(variation_name="test_baseline", model_arch=model_arch)
+        for model_arch, model_size in [
+            (MODEL_ARCH.MAMBA1, "130M"),
+            (MODEL_ARCH.MAMBA2, "130M"),
+            (MODEL_ARCH.GPT2, "355M"),
+        ]:
+            config = get_config(variation_name="test_baseline", model_arch=model_arch, model_size=model_size)
             main_local(config)
             print(f"Baseline updated at: {test_base_path}")

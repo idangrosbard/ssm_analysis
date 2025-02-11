@@ -32,6 +32,8 @@ class FullPipelineConfig(BaseConfig):
 
     experiment_base_name: str = "full_pipeline"
 
+    with_plotting: bool = False
+
     # EvaluateModelConfig
     drop_subject: bool = EvaluateModelConfig.drop_subject
     drop_subj_last_token: bool = EvaluateModelConfig.drop_subj_last_token
@@ -97,14 +99,16 @@ def main_local(args: FullPipelineConfig):
     print("\nRunning Heatmap Analysis Experiment...")
     heatmap_config = args.heatmap_config()
     heatmap.run(heatmap_config)
-    print("\nPlotting all heatmaps...")
-    heatmap.plot(heatmap_config)
+    if args.with_plotting:
+        print("\nPlotting all heatmaps...")
+        heatmap.plot(heatmap_config)
 
     # Step 4: Information Flow Analysis
     info_flow_config = args.info_flow_config()
     print("\nRunning Information Flow Analysis Experiment...")
     info_flow.run(info_flow_config)
-    print("\nPlotting all info flow blocks...")
-    info_flow.plot(info_flow_config)
+    if args.with_plotting:
+        print("\nPlotting all info flow blocks...")
+        info_flow.plot(info_flow_config)
 
     print("\nFull Pipeline Experiment Complete!")

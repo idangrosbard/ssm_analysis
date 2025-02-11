@@ -8,8 +8,8 @@ from transformers import MambaForCausalLM, PreTrainedTokenizer, PreTrainedTokeni
 
 import src.models.minimal_mamba2 as minimal_mamba2
 from src.consts import is_falcon
-from src.knockout.attention_knockout.ssm_interfere import SSMInterfereHook
 from src.knockout.attention_knockout import gpt2_knockout_utils
+from src.knockout.attention_knockout.ssm_interfere import SSMInterfereHook
 from src.types import MODEL_ARCH, KnockoutMode
 from src.utils.setup_models import get_tokenizer_and_model
 
@@ -54,6 +54,10 @@ class ModelInterface(ABC):
         Returns:
             Tuple of (next_token_logits, all_logits)
         """
+        pass
+
+    @abstractmethod
+    def n_layers(self) -> int:
         pass
 
 
@@ -130,6 +134,9 @@ class Mamba1Interface(ModelInterface):
 
         return probs[:, -1, :].detach().cpu().numpy()  # type: ignore
 
+    def n_layers(self) -> int:
+        return len(self.model.backbone.layers)
+
 
 class Mamba2Interface(ModelInterface):
     model: minimal_mamba2.Mamba2LMHeadModel
@@ -161,8 +168,9 @@ class Mamba2Interface(ModelInterface):
             )
 
         return out[-1].detach().cpu().numpy()  # type: ignore
-    
 
+    def n_layers(self) -> int:
+        return len(self.model.backbone.layers)
 
 
 class GPT2Interface(ModelInterface):
@@ -182,22 +190,21 @@ class GPT2Interface(ModelInterface):
         self,
         model,
         inp,
-        from_to_index_per_layer,   # A list of (source index, target index) to block
+        from_to_index_per_layer,  # A list of (source index, target index) to block
     ):
         with torch.no_grad():
             # set hooks
             block_attn_hooks = gpt2_knockout_utils.set_block_attn_hooks(model, from_to_index_per_layer)
-            
+
             # get prediction
             outputs_exp = model(**inp)
-            
+
             # remove hooks
             gpt2_knockout_utils.remove_wrapper(model, block_attn_hooks)
-        
-        probs = torch.softmax(outputs_exp.logits[:, -1, :], dim=-1)
-        
-        return probs
 
+        probs = torch.softmax(outputs_exp.logits[:, -1, :], dim=-1)
+
+        return probs
 
     def generate_logits(
         self,
@@ -205,20 +212,21 @@ class GPT2Interface(ModelInterface):
         attention: bool = False,
         num_to_masks: Optional[Dict[int, List[Tuple[int, int]]]] = None,
     ) -> torch.Tensor:
-        
         assert input_ids.shape[0] == 1
+        num_to_masks = num_to_masks or {}
         max_len = input_ids.shape[1]
-        attention_mask = [
-            [1] * len(max_len)
-            ]
+        attention_mask = [[1] * max_len]
         inp = dict(
             input_ids=input_ids.to(self.model.device),
             attention_mask=torch.tensor(attention_mask).to(self.model.device),
-            )
+        )
 
         probs = self._trace_with_attn_block(self.model, inp, num_to_masks)
 
         return probs.detach().cpu().numpy()  # type: ignore
+
+    def n_layers(self) -> int:
+        return len(self.model.transformer.h)
 
 
 MODEL_INTERFACES_CACHE: dict[tuple[MODEL_ARCH, str], ModelInterface] = {}

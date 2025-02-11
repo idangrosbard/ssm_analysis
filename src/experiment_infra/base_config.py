@@ -102,7 +102,7 @@ class BaseConfig(ABC, Generic[_TConfigOutputs]):
             filteration=FILTERATIONS.all_correct,
         ),
     )
-    _batch_size: int = 16  # Adjust based on GPU memory
+    _batch_size: int = 1  # Adjust based on GPU memory
     with_slurm: bool = False
     overwrite_existing_outputs: bool = False
 

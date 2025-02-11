@@ -109,7 +109,7 @@ def run(args: HeatmapConfig):
     tokenizer = model_interface.tokenizer
     device = model_interface.device
 
-    n_layers = len(model_interface.model.backbone.layers)
+    n_layers = model_interface.n_layers()
 
     def forward_eval(prompt_idx, window):
         prompt = get_prompt_row(data, prompt_idx)

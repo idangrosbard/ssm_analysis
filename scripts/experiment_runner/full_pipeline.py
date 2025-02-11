@@ -10,17 +10,18 @@ from src.utils.slurm import submit_job
 def main(args: FullPipelineConfig):
     args.with_slurm = True
     if args.with_slurm:
-        # gpu_type = "l40s"
-        gpu_type = "titan_xp-studentrun"
+        gpu_type = "l40s"
+        # gpu_type = "titan_xp-studentrun"
         window_sizes = [9]
         # window_sizes = [1, 3, 5, 9, 12, 15]
         # experiment_name = "heatmap_debug_use_matrix"
-        args.variation = "v1_titan_xp"
+        # args.variation = "v1_titan_xp"
+        args.variation = "v1"
         # window_sizes = [1, 5]
         # window_sizes = [1, 5, 9]
 
         for model_arch, model_size in [
-            (MODEL_ARCH.MAMBA1, "130M"),
+            # (MODEL_ARCH.MAMBA1, "130M"),
             # (MODEL_ARCH.MAMBA1, "1.4B"),
             # (MODEL_ARCH.MAMBA1, "2.8B"),
             # (MODEL_ARCH.MAMBA1, "7B"),
@@ -29,6 +30,10 @@ def main(args: FullPipelineConfig):
             # (MODEL_ARCH.MINIMAL_MAMBA2, "130M"),
             # (MODEL_ARCH.MINIMAL_MAMBA2, "1.3B"),
             # (MODEL_ARCH.MINIMAL_MAMBA2, "2.7B"),
+            (MODEL_ARCH.GPT2, "124M"),
+            # (MODEL_ARCH.GPT2, "355M"),
+            (MODEL_ARCH.GPT2, "774M"),
+            (MODEL_ARCH.GPT2, "1.5B"),
         ]:
             args.model_arch = model_arch
             args.model_size = model_size
@@ -42,9 +47,7 @@ def main(args: FullPipelineConfig):
                     log_folder=str(PATHS.SLURM_DIR / args.job_name / "%j"),
                     job_name=args.job_name,
                     # timeout_min=1200,
-                    gpu_type=(
-                        "l40s" if (model_size == "2.7B" and model_arch == MODEL_ARCH.MINIMAL_MAMBA2) else gpu_type
-                    ),
+                    gpu_type=("l40s" if (model_size == "2.7B" and model_arch == MODEL_ARCH.MAMBA2) else gpu_type),
                     slurm_gpus_per_node=(
                         1 if (model_size in ["2.8B", "2.7B"] and gpu_type == "titan_xp-studentrun") else 1
                     ),

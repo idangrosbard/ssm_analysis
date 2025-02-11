@@ -79,6 +79,8 @@ def get_tokenizer_and_model(
                 model.to(device)  # type: ignore
             else:
                 model = LlamaForCausalLM.from_pretrained(model_id, device_map="auto")
+        case MODEL_ARCH.GPT2:
+            model = AutoModelForCausalLM.from_pretrained(model_id, device_map="auto")
         case _:
             assert_never(model_arch)
 
