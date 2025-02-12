@@ -41,7 +41,7 @@ class ModelInterface(ABC):
         input_ids: torch.Tensor,
         attention: bool = False,
         num_to_masks: Optional[Dict[int, List[Tuple[int, int]]]] = None,
-        feature_category: Optional[FeatureCategory] = None,
+        feature_category: FeatureCategory = FeatureCategory.ALL,
     ) -> torch.Tensor:
         """
         Generate logits for the input sequence with optional attention masking.
@@ -108,25 +108,45 @@ class Mamba1Interface(ModelInterface):
 
                     self.handles.append(moi.register_forward_hook(self.hooks[-1]))
 
+
+    def _get_feature_mask(self, layer: torch.nn.Module, feature_category: FeatureCategory) -> Tensor:
+        assert type(layer.A_log) == torch.Tensor
+
+        if feature_category == FeatureCategory.ALL:
+            return torch.zeros_like(layer.A_log)
+
+        if feature_category == FeatureCategory.NONE:
+            return torch.ones_like(layer.A_log)
+        
+        decay_matrices = torch.exp(-torch.exp(layer.A_log))
+        n_ssms = decay_matrices.shape[0]
+
+        # get the norms
+        norms = torch.norm(decay_matrices, p=1, dim=1)
+
+        sorted_indices = torch.argsort(norms, descending=(feature_category == FeatureCategory.SLOW_DECAY))
+        mask = torch.zeros_like(norms, dtype=torch.bool)
+        mask[sorted_indices[: n_ssms // 3]] = True
+        return mask
+
     def generate_logits(
         self,
         input_ids: Tensor,
         attention: bool = False,
         num_to_masks: Optional[Dict[int, List[Tuple[int, int]]]] = None,
-        feature_category: Optional[FeatureCategory] = None,
+        feature_category: FeatureCategory = FeatureCategory.ALL,
     ) -> torch.Tensor:
         if num_to_masks is not None:
             source_indices = []
             target_indices = []
 
-            for layer in num_to_masks:
+            for layer, hook in zip(num_to_masks, self.hooks):
                 source_indices = [num_to_masks[layer][i][1] for i in range(len(num_to_masks[layer]))]
                 target_indices = [num_to_masks[layer][i][0] for i in range(len(num_to_masks[layer]))]
-                break
 
-            for hook in self.hooks:
                 hook.knockout_indices = source_indices
                 hook.affected_outputs = target_indices
+                hook.feature_mask = self._get_feature_mask(self.model.backbone.layers[layer].mixer, feature_category)
 
         with torch.no_grad():
             out = self.model(input_ids)
@@ -148,18 +168,45 @@ class Mamba2Interface(ModelInterface):
         model_size: str,
         device: Optional[torch.device] = None,
         tokenizer: Optional[Union[PreTrainedTokenizer, PreTrainedTokenizerFast]] = None,
-        feature_category: Optional[FeatureCategory] = None,
     ):
         super().__init__(MODEL_ARCH.MAMBA2, model_size, device, tokenizer)
+
+    def _get_feature_mask(self, layer: torch.nn.Module, feature_category: FeatureCategory) -> Tensor:
+        assert type(layer.A_log) == torch.Tensor
+
+        if feature_category == FeatureCategory.ALL:
+            return torch.zeros_like(layer.A_log)
+
+        if feature_category == FeatureCategory.NONE:
+            return torch.ones_like(layer.A_log)
+        
+        decay_matrices = torch.exp(-torch.exp(layer.A_log))
+        n_ssms = decay_matrices.shape[0]
+
+        # get the norms
+        norms = torch.norm(decay_matrices, p=1, dim=1)
+
+        sorted_indices = torch.argsort(norms, descending=(feature_category == FeatureCategory.SLOW_DECAY))
+        mask = torch.zeros_like(norms, dtype=torch.bool)
+        mask[sorted_indices[: n_ssms // 3]] = True
+        return mask
 
     def generate_logits(
         self,
         input_ids: Tensor,
         attention: bool = False,
         num_to_masks: Optional[Dict[int, List[Tuple[int, int]]]] = None,
-        feature_category: Optional[FeatureCategory] = None,
+        feature_category: FeatureCategory = FeatureCategory.ALL,
     ) -> torch.Tensor:
         self.setup(num_to_masks)
+
+        feature_masks = {}
+        if num_to_masks is not None:
+            
+            for layer in num_to_masks:
+                feature_masks[layer] = self._get_feature_mask(self.model.backbone.layers[layer].mixer, feature_category)
+
+
         with torch.no_grad():
             out = self.model.generate_single(
                 input_ids=input_ids,  # type: ignore
@@ -169,6 +216,7 @@ class Mamba2Interface(ModelInterface):
                 top_p=1,
                 attention=attention,
                 num_to_masks=num_to_masks,
+                feature_masks=feature_masks,
             )
 
         return out[-1].detach().cpu().numpy()  # type: ignore
@@ -215,7 +263,7 @@ class GPT2Interface(ModelInterface):
         input_ids: Tensor,
         attention: bool = False,
         num_to_masks: Optional[Dict[int, List[Tuple[int, int]]]] = None,
-        feature_category: Optional[FeatureCategory] = None,
+        feature_category: FeatureCategory = FeatureCategory.ALL,
     ) -> torch.Tensor:
         assert input_ids.shape[0] == 1
         num_to_masks = num_to_masks or {}
