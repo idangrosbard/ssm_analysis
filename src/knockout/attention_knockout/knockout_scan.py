@@ -32,9 +32,13 @@ def knockout_scan(
                 knockout_state = discrete_A[:, :, i, :] * knockout_state
             elif knockout_mode in {KnockoutMode.ZERO_DELTA}:
                 knockout_state = knockout_state
-            
+
             if knockout_feature_mask is not None:
-                knockout_state = knockout_state + knockout_feature_mask.float().expand_as(deltaB_u) * deltaB_u[:, :, i, :]
+                knockout_state = (
+                    knockout_state
+                    + knockout_feature_mask.view(1, -1, 1).float().expand_as(deltaB_u[:, :, i, :])
+                    * deltaB_u[:, :, i, :]
+                )
 
         scan_output = torch.einsum(
             "bij,bj->bi",

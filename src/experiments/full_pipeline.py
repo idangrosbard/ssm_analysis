@@ -23,7 +23,7 @@ from src.experiments.data_construction import DataConstructionConfig
 from src.experiments.evaluate_model import EvaluateModelConfig
 from src.experiments.heatmap import HeatmapConfig
 from src.experiments.info_flow import InfoFlowConfig
-from src.types import DatasetArgs, TokenType
+from src.types import DatasetArgs, TInfoFlowSource, TokenType
 
 
 @dataclass
@@ -47,7 +47,7 @@ class FullPipelineConfig(BaseConfig):
     prompt_indices: list[int] = create_mutable_field(lambda: HeatmapConfig().prompt_indices)
 
     # InfoFlowConfig
-    knockout_map: dict[TokenType, list[TokenType]] = create_mutable_field(lambda: InfoFlowConfig().knockout_map)
+    knockout_map: dict[TokenType, list[TInfoFlowSource]] = create_mutable_field(lambda: InfoFlowConfig().knockout_map)
     DEBUG_LAST_WINDOWS: Optional[int] = InfoFlowConfig.DEBUG_LAST_WINDOWS
 
     @property

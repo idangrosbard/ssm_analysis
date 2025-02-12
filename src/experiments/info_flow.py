@@ -9,12 +9,17 @@ import numpy as np
 import torch
 from tqdm import tqdm
 
+from src.consts import COLUMNS, is_mamba_arch
 from src.experiment_infra.base_config import BASE_OUTPUT_KEYS, BaseConfig, create_mutable_field
 from src.experiment_infra.model_interface import get_model_interface
 from src.experiment_infra.output_path import OutputKey
 from src.plots.info_flow_confidence import create_confidence_plot
-from src.types import TokenType
+from src.types import MODEL_ARCH, FeatureCategory, TInfoFlowSource, TokenType
 from src.utils.logits import get_num_to_masks, get_prompt_row
+
+
+def skip_task(model_arch: MODEL_ARCH, source: TInfoFlowSource) -> bool:
+    return not (is_mamba_arch(model_arch) or not isinstance(source, tuple))
 
 
 @dataclass
@@ -24,10 +29,12 @@ class InfoFlowConfig(BaseConfig):
     experiment_base_name: str = "info_flow"
     window_size: int = 9
     DEBUG_LAST_WINDOWS: Optional[int] = None
-    knockout_map: dict[TokenType, list[TokenType]] = create_mutable_field(
+    knockout_map: dict[TokenType, list[TInfoFlowSource]] = create_mutable_field(
         lambda: {
             TokenType.last: [
                 TokenType.last,
+                (TokenType.subject, FeatureCategory.SLOW_DECAY),
+                (TokenType.subject, FeatureCategory.FAST_DECAY),
                 TokenType.first,
                 TokenType.subject,
                 TokenType.relation,
@@ -56,16 +63,23 @@ class InfoFlowConfig(BaseConfig):
     def output_block_target_path(self, target: TokenType) -> Path:
         return self.outputs_path / f"target={target}"
 
-    def output_block_target_source_path(self, target: TokenType, source: TokenType) -> Path:
-        return self.output_block_target_path(target) / f"source={source}.csv"
+    def output_block_target_source_path(self, target: TokenType, source: TInfoFlowSource) -> Path:
+        if isinstance(source, tuple):
+            feature_category_str = f"source={source[0]}_feature_category={source[1]}"
+        else:
+            feature_category_str = f"source={source}"
+        return self.output_block_target_path(target) / f"{feature_category_str}.csv"
 
-    def get_block_target_outputs(self, target: TokenType) -> dict[TokenType, dict[str, dict[str, list[float]]]]:
+    def get_block_target_outputs(self, target: TokenType) -> dict[TInfoFlowSource, dict[str, dict[str, list[float]]]]:
         return {
             source: json.load(self.output_block_target_source_path(target, source).open("r"))
             for source in self.knockout_map[target]
+            if not skip_task(self.model_arch, source)
         }
 
-    def get_outputs(self) -> dict[TokenType, dict[TokenType, dict[str, dict[str, list[float]]]]]:
+    def get_outputs(
+        self,
+    ) -> dict[TokenType, dict[TInfoFlowSource, dict[str, dict[str, list[float]]]]]:
         return {target: self.get_block_target_outputs(target) for target in self.knockout_map}
 
     def get_plot_output_path(self, target: TokenType, plot_name: str) -> Path:
@@ -121,11 +135,15 @@ def plot(args: InfoFlowConfig):
 
 def run(args: InfoFlowConfig):
     print(args)
-    remaining_knockout_map: list[tuple[TokenType, TokenType]] = [
+
+    remaining_knockout_map: list[tuple[TokenType, TInfoFlowSource]] = [
         (target, source)
         for target in args.knockout_map
         for source in args.knockout_map[target]
-        if (not args.output_block_target_source_path(target, source).exists() or args.overwrite_existing_outputs)
+        if (
+            (args.overwrite_existing_outputs or not args.output_block_target_source_path(target, source).exists())
+            and not skip_task(args.model_arch, source)
+        )
     ]
     if not remaining_knockout_map:
         print("All outputs already exist")
@@ -143,16 +161,25 @@ def run(args: InfoFlowConfig):
     def forward_eval(
         prompt_idx,
         window,
-        knockout_src: TokenType,
-        knockout_source: TokenType,
+        knockout_source: TInfoFlowSource,
+        knockout_target: TokenType,
     ):
         prompt = get_prompt_row(data, prompt_idx)
-        num_to_masks, first_token = get_num_to_masks(prompt, tokenizer, window, knockout_src, knockout_source, device)
+        source, feature_category = (
+            (
+                knockout_source,
+                FeatureCategory.ALL,
+            )
+            if isinstance(knockout_source, TokenType)
+            else knockout_source
+        )
+        num_to_masks, first_token = get_num_to_masks(prompt, tokenizer, window, source, knockout_target, device)
 
         next_token_probs = model_interface.generate_logits(
             input_ids=prompt.input_ids(tokenizer, device),
             attention=True,
             num_to_masks=num_to_masks,
+            feature_category=feature_category,
         )
 
         max_prob = np.max(next_token_probs, axis=1)[0]
@@ -171,8 +198,8 @@ def run(args: InfoFlowConfig):
     def evaluate(
         prompt_indices,
         windows,
-        knockout_src: TokenType,
-        knockout_source: TokenType,
+        knockout_source: TInfoFlowSource,
+        knockout_target: TokenType,
         print_period=100,
     ):
         windows_true_probs: dict[int, dict[str, list[float]]] = defaultdict(lambda: defaultdict(list))
@@ -183,12 +210,12 @@ def run(args: InfoFlowConfig):
                 hit, diff, first, diff_unnorm, true_prob = forward_eval(
                     prompt_idx,
                     window,
-                    knockout_src,
                     knockout_source,
+                    knockout_target,
                 )
-                windows_true_probs[i]["hit"].append(bool(hit))
-                windows_true_probs[i]["true_probs"].append(float(true_prob))
-                windows_true_probs[i]["diffs"].append(float(diff))
+                windows_true_probs[i][COLUMNS.HIT].append(bool(hit))
+                windows_true_probs[i][COLUMNS.IF_TRUE_PROBS].append(float(true_prob))
+                windows_true_probs[i][COLUMNS.IF_DIFFS].append(float(diff))
                 # # Store original index for traceability
                 # original_idx = pd.to_numeric(data.loc[prompt_idx, "original_idx"], downcast="integer")
                 # windows_true_probs[i]["original_idx"].append(int(original_idx))
@@ -206,12 +233,12 @@ def run(args: InfoFlowConfig):
         window_outputs = evaluate(
             prompt_indices,
             windows,
-            knockout_src=source,
-            knockout_source=target,
+            knockout_source=source,
+            knockout_target=target,
         )
         if args.DEBUG_LAST_WINDOWS:
             window_outputs = {
                 k + (n_layers - args.window_size + 1 - args.DEBUG_LAST_WINDOWS): v for k, v in window_outputs.items()
             }
         args.output_block_target_source_path(target, source).parent.mkdir(parents=True, exist_ok=True)
-        json.dump(window_outputs, (args.output_block_target_source_path(target, source)).open("w"))
+        json.dump(window_outputs, args.output_block_target_source_path(target, source).open("w"))

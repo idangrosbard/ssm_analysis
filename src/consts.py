@@ -2,7 +2,16 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
-from src.types import DATASETS, MODEL_ARCH, MODEL_SIZE_CAT, TDatasetID, TModelID, TokenType
+from src.types import (
+    DATASETS,
+    MODEL_ARCH,
+    MODEL_SIZE_CAT,
+    FeatureCategory,
+    TDatasetID,
+    TInfoFlowSource,
+    TModelID,
+    TokenType,
+)
 
 
 @dataclass
@@ -149,6 +158,10 @@ def reverse_model_id(model_id: str) -> tuple[MODEL_ARCH, str]:
     raise ValueError(f"Model id {model_id} not found in MODEL_SIZES_PER_ARCH_TO_MODEL_ID")
 
 
+def is_mamba_arch(model_arch: MODEL_ARCH) -> bool:
+    return model_arch in [MODEL_ARCH.MAMBA1, MODEL_ARCH.MAMBA2]
+
+
 def is_falcon(model_size: str) -> bool:
     return "falcon" in model_size
 
@@ -190,6 +203,11 @@ class COLUMNS:
     TRUE_PROB = "true_prob"
     PRED = "pred"
 
+    # Info Flow
+    IF_HIT = "hit"
+    IF_TRUE_PROBS = "true_probs"
+    IF_DIFFS = "diffs"
+
 
 COUNTER_FACT_2_KNOWN1000_COL_CONV = {
     COLUMNS.TARGET_TRUE: COLUMNS.ATTRIBUTE,
@@ -202,18 +220,24 @@ EVAL_MODEL_2_DATA_CONST_COL_CONV = {
     COLUMNS.MODEL_OUTPUT: COLUMNS.PRED,
 }
 
-TOKEN_TYPE_COLORS: dict[TokenType, str] = {
+TOKEN_TYPE_COLORS: dict[TInfoFlowSource, str] = {
     TokenType.last: "#D2691E",  # orange
     TokenType.first: "#0000FF",  # blue
     TokenType.subject: "#008000",  # green
     TokenType.relation: "#800080",  # purple
     TokenType.context: "#FF0000",  # red
+    TokenType.all: "#000000",  # black
+    (TokenType.subject, FeatureCategory.FAST_DECAY): "#000000",  # black
+    (TokenType.subject, FeatureCategory.SLOW_DECAY): "#000000",  # black
 }
 
-TOKEN_TYPE_LINE_STYLES: dict[TokenType, str] = {
+TOKEN_TYPE_LINE_STYLES: dict[TInfoFlowSource, str] = {
     TokenType.last: "-.",
     TokenType.first: ":",
     TokenType.subject: "-",
     TokenType.relation: "--",
     TokenType.context: "--",
+    TokenType.all: "-",
+    (TokenType.subject, FeatureCategory.FAST_DECAY): "--",
+    (TokenType.subject, FeatureCategory.SLOW_DECAY): ":",
 }

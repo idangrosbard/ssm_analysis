@@ -10,7 +10,13 @@ from src.types import KnockoutMode
 
 
 class SSMInterfereHook:
-    def __init__(self, layer: int | str | nn.Module, knockout_type: KnockoutMode, is_falcon: bool, feature_mask: Optional[FloatTensor | Tensor] = None):
+    def __init__(
+        self,
+        layer: int | str | nn.Module,
+        knockout_type: KnockoutMode,
+        is_falcon: bool,
+        feature_mask: Optional[FloatTensor | Tensor] = None,
+    ):
         self.counter = 0
         self.layer = layer
         self.is_falcon = is_falcon
@@ -31,6 +37,8 @@ class SSMInterfereHook:
             if self.is_falcon
             else slow_forward_for_ssm_materializing_knockout
         )
+        if self.feature_mask is not None:
+            self.feature_mask = self.feature_mask.to(inp[0].device)
         curr_out = slow_forward(
             module,
             inp[0],

@@ -10,7 +10,7 @@ import src.models.minimal_mamba2 as minimal_mamba2
 from src.consts import is_falcon
 from src.knockout.attention_knockout import gpt2_knockout_utils
 from src.knockout.attention_knockout.ssm_interfere import SSMInterfereHook
-from src.types import MODEL_ARCH, KnockoutMode, FeatureCategory
+from src.types import MODEL_ARCH, FeatureCategory, KnockoutMode
 from src.utils.setup_models import get_tokenizer_and_model
 
 
@@ -108,16 +108,15 @@ class Mamba1Interface(ModelInterface):
 
                     self.handles.append(moi.register_forward_hook(self.hooks[-1]))
 
-
     def _get_feature_mask(self, layer: torch.nn.Module, feature_category: FeatureCategory) -> Tensor:
-        assert type(layer.A_log) == torch.Tensor
+        assert isinstance(layer.A_log, torch.Tensor)
 
         if feature_category == FeatureCategory.ALL:
-            return torch.zeros_like(layer.A_log)
+            return torch.zeros(layer.A_log.shape[0])
 
         if feature_category == FeatureCategory.NONE:
-            return torch.ones_like(layer.A_log)
-        
+            return torch.ones(layer.A_log.shape[0])
+
         decay_matrices = torch.exp(-torch.exp(layer.A_log))
         n_ssms = decay_matrices.shape[0]
 
@@ -173,14 +172,14 @@ class Mamba2Interface(ModelInterface):
         super().__init__(MODEL_ARCH.MAMBA2, model_size, device, tokenizer)
 
     def _get_feature_mask(self, layer: torch.nn.Module, feature_category: FeatureCategory) -> Tensor:
-        assert type(layer.A_log) == torch.Tensor
+        assert isinstance(layer.A_log, torch.Tensor)
 
         if feature_category == FeatureCategory.ALL:
-            return torch.zeros_like(layer.A_log)
+            return torch.zeros(layer.A_log.shape[0])
 
         if feature_category == FeatureCategory.NONE:
-            return torch.ones_like(layer.A_log)
-        
+            return torch.ones(layer.A_log.shape[0])
+
         decay_matrices = torch.exp(-torch.exp(layer.A_log)).unsqueeze(-1)
         n_ssms = decay_matrices.shape[0]
 
@@ -203,10 +202,10 @@ class Mamba2Interface(ModelInterface):
 
         feature_masks = {}
         if num_to_masks is not None:
-            
             for layer in num_to_masks:
-                feature_masks[layer] = self._get_feature_mask(self.model.backbone.layers[layer].mixer, feature_category)
-
+                feature_masks[layer] = self._get_feature_mask(
+                    self.model.backbone.layers[layer].mixer, feature_category
+                ).to(self.model.device)
 
         with torch.no_grad():
             out = self.model.generate_single(
@@ -217,7 +216,7 @@ class Mamba2Interface(ModelInterface):
                 top_p=1,
                 attention=attention,
                 num_to_masks=num_to_masks,
-                feature_masks=feature_masks,
+                feature_mask=feature_masks,
             )
 
         return out[-1].detach().cpu().numpy()  # type: ignore

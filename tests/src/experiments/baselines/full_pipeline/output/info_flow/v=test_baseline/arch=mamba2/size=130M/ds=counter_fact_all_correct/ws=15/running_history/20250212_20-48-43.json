@@ -1,8 +1,8 @@
 {
     "experiment_base_name": "info_flow",
     "variation": "test_baseline",
-    "model_arch": "gpt2",
-    "model_size": "355M",
+    "model_arch": "mamba2",
+    "model_size": "130M",
     "dataset_args": {
         "name": "counter_fact",
         "splits": "all",
@@ -16,6 +16,14 @@
     "knockout_map": {
         "last": [
             "last",
+            [
+                "subject",
+                "SLOW_DECAY"
+            ],
+            [
+                "subject",
+                "FAST_DECAY"
+            ],
             "first",
             "subject",
             "relation"
