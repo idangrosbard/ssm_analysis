@@ -72,6 +72,7 @@ class TokenType(STREnum):
 
 class FILTERATIONS(STREnum):
     all_correct = "all_correct"
+    current_model_correct = "current_model_correct"
     all_any_correct = "all_any_correct"
 
 

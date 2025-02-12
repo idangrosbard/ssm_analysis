@@ -9,8 +9,9 @@ import numpy as np
 import torch
 from tqdm import tqdm
 
-from src.experiment_infra.base_config import BASE_OUTPUT_KEYS, BaseConfig, OutputKey, create_mutable_field
+from src.experiment_infra.base_config import BASE_OUTPUT_KEYS, BaseConfig, create_mutable_field
 from src.experiment_infra.model_interface import get_model_interface
+from src.experiment_infra.output_path import OutputKey
 from src.plots.info_flow_confidence import create_confidence_plot
 from src.types import TokenType
 from src.utils.logits import get_num_to_masks, get_prompt_row
@@ -78,16 +79,37 @@ class InfoFlowConfig(BaseConfig):
             save: Whether to save the figure
         """
         data = self.get_block_target_outputs(target)
-
-        fig = create_confidence_plot(
-            targets_window_outputs=data,
-            confidence_level=confidence_level,
-            title=f"Knocking out flow to {target}",
-        )
-        if save:
-            fig.savefig(self.get_plot_output_path(target, ""))
-            plt.close(fig)
-        return fig
+        figs = {}
+        for with_fixed_limits in [True, False]:
+            sub_title = "_fixed_limits" if with_fixed_limits else ""
+            figs[sub_title] = create_confidence_plot(
+                targets_window_outputs=data,
+                confidence_level=confidence_level,
+                title=(
+                    f"{self.model_arch} - {self.model_size} - window_size={self.window_size}"
+                    + f"\nKnocking out flow to {target}"
+                ),
+                plots_meta_data={
+                    "acc": {
+                        "title": "Accuracy",
+                        "ylabel": "% accuracy",
+                        "ylabel_loc": "center",
+                        "axhline_value": 100.0,
+                        "ylim": (60.0, 105.0) if with_fixed_limits else None,
+                    },
+                    "diff": {
+                        "title": "Normalized change in prediction probability",
+                        "ylabel": "% probability change",
+                        "ylabel_loc": "top",
+                        "axhline_value": 0.0,
+                        "ylim": (-50.0, 50.0) if with_fixed_limits else None,
+                    },
+                },
+            )
+            if save:
+                figs[sub_title].savefig(self.get_plot_output_path(target, sub_title))
+                plt.close(figs[sub_title])
+        return figs
 
 
 def plot(args: InfoFlowConfig):
@@ -167,6 +189,9 @@ def run(args: InfoFlowConfig):
                 windows_true_probs[i]["hit"].append(bool(hit))
                 windows_true_probs[i]["true_probs"].append(float(true_prob))
                 windows_true_probs[i]["diffs"].append(float(diff))
+                # # Store original index for traceability
+                # original_idx = pd.to_numeric(data.loc[prompt_idx, "original_idx"], downcast="integer")
+                # windows_true_probs[i]["original_idx"].append(int(original_idx))
         return windows_true_probs
 
     prompt_indices = list(data.index)

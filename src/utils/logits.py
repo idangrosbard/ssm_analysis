@@ -4,6 +4,7 @@ from typing import assert_never, cast
 
 import torch
 
+from src.consts import COLUMNS
 from src.types import TNum2Mask, TokenType, TPromptData, TTokenizer
 
 
@@ -78,19 +79,19 @@ class Prompt:
 
     @property
     def prompt(self):
-        return self.prompt_row["prompt"]
+        return self.prompt_row[COLUMNS.PROMPT]
 
     @property
     def subject(self):
-        return self.prompt_row["subject"]
+        return self.prompt_row[COLUMNS.SUBJECT]
 
     @property
     def true_word(self):
-        return self.prompt_row["target_true"]
+        return self.prompt_row[COLUMNS.TARGET_TRUE]
 
     @property
     def base_prob(self):
-        return self.prompt_row["true_prob"]
+        return self.prompt_row[COLUMNS.TRUE_PROB]
 
     def true_id(self, tokenizer, device) -> torch.Tensor:
         return tokenizer(self.true_word, return_tensors="pt", padding=True).input_ids.to(device="cpu")

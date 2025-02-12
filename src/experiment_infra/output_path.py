@@ -1,0 +1,165 @@
+from pathlib import Path
+from typing import Any, Callable, Generic, Optional, TypeVar, Union, cast
+
+_ATTRIBUTE_TYPE = TypeVar("_ATTRIBUTE_TYPE")
+
+
+class OutputKey(Generic[_ATTRIBUTE_TYPE]):
+    def __init__(
+        self,
+        key_name: str,
+        convert_to_str: Optional[Callable[[_ATTRIBUTE_TYPE], str]] = None,
+        key_display_name: Optional[str] = None,
+        skip_condition: Optional[Callable[[_ATTRIBUTE_TYPE], bool]] = None,
+    ):
+        """
+
+        Args:
+            key_name: key name in the object
+            convert_to_str: function to convert the value to a string. Defaults to str.
+            key_display_name: display name of the key. Defaults to None.
+            skip_condition: condition to skip the key. Defaults to no skipping.
+        """
+        self.key_name = key_name
+        self.convert_to_str = convert_to_str
+        self.key_display_name = f"{key_name}=" if key_display_name is None else key_display_name
+        self.skip_condition = skip_condition
+
+    def should_skip(self, obj: object) -> bool:
+        if self.skip_condition is None:
+            return False
+        return self.skip_condition(self.get_value(obj))
+
+    def get_value(self, obj: object) -> _ATTRIBUTE_TYPE:
+        assert hasattr(obj, self.key_name)
+        return cast(_ATTRIBUTE_TYPE, getattr(obj, self.key_name))
+
+    def display(self, obj: object) -> str:
+        value = self.get_value(obj)
+        converted_value = self.convert_to_str(value) if self.convert_to_str is not None else str(value)
+        return f"{self.key_display_name}{converted_value}"
+
+    def extract_value_from_str(self, value_str: str) -> str:
+        """Extract the original value from a path component string.
+
+        Args:
+            value_str: The string value from the path component
+
+        Returns:
+            The extracted value without the display name prefix
+
+        Raises:
+            NotImplementedError: If the key has custom conversion or skip condition
+            ValueError: If the value doesn't match the expected format
+        """
+        if self.convert_to_str is not None or self.skip_condition is not None:
+            raise NotImplementedError(
+                f"Cannot extract values for key {self.key_name} with custom conversion or skip condition"
+            )
+
+        # Remove the display name prefix if it exists
+        if value_str.startswith(self.key_display_name):
+            return value_str[len(self.key_display_name) :]
+        else:
+            raise ValueError(f"Value {value_str} does not start with {self.key_display_name}")
+
+
+def combine_output_keys(
+    obj: object,
+    keys: list[Union[OutputKey[Any], list[OutputKey[Any]]]],
+    sep: str = "/",
+    secondary_sep: str = "_",
+) -> str:
+    res = []
+    for output_key in keys:
+        if isinstance(output_key, list):
+            res.append(
+                secondary_sep.join(
+                    [output_key.display(obj) for output_key in output_key if not output_key.should_skip(obj)]
+                )
+            )
+        else:
+            if not output_key.should_skip(obj):
+                res.append(output_key.display(obj))
+    return sep.join(res)
+
+
+IPathComponent = Union[Path, str, OutputKey, list[OutputKey]]
+
+
+def resolve_path_component(component: IPathComponent, obj: object) -> Union[Path, str]:
+    if isinstance(component, Path) or isinstance(component, str):
+        return component
+    else:
+        return combine_output_keys(obj, [component])
+
+
+class OutputPath:
+    def __init__(self, base_path: Path, path_components: list[IPathComponent]):
+        self.base_path = base_path
+        self.path_components = path_components
+
+    def to_path(self, obj: object) -> Path:
+        path = self.base_path
+        for component in self.path_components:
+            path /= resolve_path_component(component, obj)
+        return path
+
+    def add(self, component: list[IPathComponent]) -> "OutputPath":
+        return OutputPath(self.base_path, self.path_components + component)
+
+    def get_key_names(self) -> list[str]:
+        """Extract all key names from path components."""
+        key_names = []
+        for component in self.path_components:
+            if isinstance(component, OutputKey):
+                key_names.append(component.key_name)
+            elif isinstance(component, list):
+                key_names.extend(k.key_name for k in component)
+        return key_names
+
+    def validate_path_exists(self, path: Path) -> bool:
+        """Check if a path exists and is under the base path."""
+        try:
+            path.relative_to(self.base_path)
+            return path.exists()
+        except ValueError:
+            return False
+
+    def extract_values_from_path(self, path: Path, allow_extra_parts: bool = True) -> dict[str, str]:
+        """Extract values from a path according to the path structure."""
+        if not self.validate_path_exists(path):
+            raise ValueError(f"Path {path} does not exist or is not under {self.base_path}")
+
+        relative_path = path.relative_to(self.base_path)
+        path_parts = list(relative_path.parts)
+
+        values = {}
+        current_part_idx = 0
+
+        for component in self.path_components:
+            if current_part_idx >= len(path_parts):
+                raise ValueError(f"Path {path} does not match the expected structure")
+
+            if isinstance(component, OutputKey):
+                values[component.key_name] = component.extract_value_from_str(path_parts[current_part_idx])
+                current_part_idx += 1
+            elif isinstance(component, list):
+                # For combined components, split by secondary separator
+                combined_value = path_parts[current_part_idx]
+                value_parts = combined_value.split("_")
+                if len(value_parts) != len(component):
+                    raise ValueError(
+                        f"Combined component {combined_value} does not match expected structure: "
+                        f"expected {len(component)} parts but got {len(value_parts)}"
+                    )
+                for key, value in zip(component, value_parts):
+                    values[key.key_name] = key.extract_value_from_str(value)
+                current_part_idx += 1
+
+        if not allow_extra_parts and current_part_idx < len(path_parts):
+            raise ValueError(
+                f"Path {path} has more components than expected: extra parts {path_parts[current_part_idx:]}"
+            )
+
+        return values

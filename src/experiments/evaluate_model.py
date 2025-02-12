@@ -18,6 +18,7 @@ import torch
 from tqdm import tqdm
 from transformers import PreTrainedTokenizer, PreTrainedTokenizerFast
 
+from src.consts import COLUMNS, COUNTER_FACT_2_KNOWN1000_COL_CONV
 from src.experiment_infra.base_config import BaseConfig, create_mutable_field
 from src.experiment_infra.model_interface import get_model_interface
 from src.types import DATASETS, MODEL_ARCH, DatasetArgs
@@ -45,7 +46,7 @@ class EvaluateModelConfig(BaseConfig):
 
     @property
     def output_result_path(self) -> Path:
-        return self.outputs_path / f"{self.dataset_args.display_name}.csv"
+        return self.outputs_path / f"{self.dataset_args.name}.csv"
 
     def get_outputs(self) -> pd.DataFrame:
         return pd.read_csv(self.output_result_path, index_col=False)
@@ -152,13 +153,14 @@ def _generate_few_tokens(model, tokenizer, input_ids, new_max_tokens):
 
 
 def run(args: EvaluateModelConfig):
+    assert args.batch_size == 1, "Batch size must be 1, unless we debug the issue"
     print(args)
     if args.output_result_path.exists() and not args.overwrite_existing_outputs:
         print(f"Output file {args.output_result_path} already exists")
         return
 
     args.create_output_path()
-    df = args.get_raw_data(align_to_known=True)
+    df = args.get_raw_data()
 
     model_interface = get_model_interface(args.model_arch, args.model_size)
     model = model_interface.model
@@ -170,21 +172,25 @@ def run(args: EvaluateModelConfig):
 
     acc = 0
 
-    df["model_correct"] = False
-    df["model_top_output_confidence"] = 0.0
-    df["target_rank"] = None
-    df["model_top_outputs"] = None
-    df["model_generation"] = None
-    df["target_probs"] = None
-    df["target_tokens"] = None
-    if "target_true" in df.columns:
-        df["attribute"] = df["target_true"]
+    df[COLUMNS.MODEL_CORRECT] = False
+    df[COLUMNS.MODEL_TOP_OUTPUT_CONFIDENCE] = 0.0
+    df[COLUMNS.TARGET_RANK] = None
+    df[COLUMNS.MODEL_TOP_OUTPUTS] = None
+    df[COLUMNS.MODEL_GENERATION] = None
+    df[COLUMNS.TARGET_PROBS] = 0.0
+    df[COLUMNS.TARGET_TOKENS] = None
+    for counter_fact_col, known1000_col in COUNTER_FACT_2_KNOWN1000_COL_CONV.items():
+        if known1000_col in df.columns:
+            df[counter_fact_col] = df[known1000_col]
+
+    if COLUMNS.TARGET_TRUE in df.columns:
+        df[COLUMNS.ATTRIBUTE] = df[COLUMNS.TARGET_TRUE]
 
     pbar = tqdm(range(0, len(df), args.batch_size), total=len(df) // args.batch_size)
     for start_idx in pbar:
         idx = df.index[start_idx : start_idx + args.batch_size]
-        input_prompt = df.loc[idx, "prompt"]
-        target = df.loc[idx, "attribute"]
+        input_prompt = df.loc[idx, COLUMNS.PROMPT]
+        target = df.loc[idx, COLUMNS.TARGET_TRUE]
 
         target_token_idx_padded = tokenizer(
             target.to_list(),
@@ -202,7 +208,7 @@ def run(args: EvaluateModelConfig):
             )
 
         target_first_token_idx = target_token_idx_padded[:, 0].unsqueeze(1)  # type: ignore
-        df.loc[idx, "target_tokens"] = list(
+        df.loc[idx, COLUMNS.TARGET_TOKENS] = list(
             map(
                 json.dumps,
                 map(
@@ -224,9 +230,9 @@ def run(args: EvaluateModelConfig):
         if args.with_3_dots:
             input_prompt += " ..."
         if args.drop_subject:
-            input_prompt = input_prompt.replace(df.loc[idx, "subject"], "")
+            input_prompt = input_prompt.replace(df.loc[idx, COLUMNS.SUBJECT], "")
         elif args.drop_subj_last_token:
-            subj_idx = get_subj_idx(input_prompt, df.loc[idx, "subject"], tokenizer)  # type: ignore
+            subj_idx = get_subj_idx(input_prompt, df.loc[idx, COLUMNS.SUBJECT], tokenizer)  # type: ignore
 
         input_ids = tokenizer(input_prompt.to_list(), return_tensors="pt", padding=True)["input_ids"]
 
@@ -266,15 +272,15 @@ def run(args: EvaluateModelConfig):
 
         # Get the rank of the target token
         target_rank = (next_probs > target_probs).sum(dim=-1) + 1
-        df.loc[idx, "target_rank"] = target_rank.tolist()
-        df.loc[idx, "target_probs"] = target_probs.squeeze(1).tolist()
-        df.loc[idx, "model_correct"] = (target_rank == 1).tolist()
-        df.loc[idx, "model_output"] = list(map(lambda x: x[0], top_tokens))
-        df.loc[idx, "model_top_output_confidence"] = list(map(lambda x: x[0], top_probs))
-        df.loc[idx, "model_top_outputs"] = list(map(json.dumps, top_outputs))
-        df.loc[idx, "model_generation"] = tokenizer.batch_decode(new_input_ids)
+        df.loc[idx, COLUMNS.TARGET_RANK] = target_rank.tolist()
+        df.loc[idx, COLUMNS.TARGET_PROBS] = target_probs.squeeze(1).tolist()
+        df.loc[idx, COLUMNS.MODEL_CORRECT] = (target_rank == 1).tolist()
+        df.loc[idx, COLUMNS.MODEL_OUTPUT] = list(map(lambda x: x[0], top_tokens))
+        df.loc[idx, COLUMNS.MODEL_TOP_OUTPUT_CONFIDENCE] = list(map(lambda x: x[0], top_probs))
+        df.loc[idx, COLUMNS.MODEL_TOP_OUTPUTS] = list(map(json.dumps, top_outputs))
+        df.loc[idx, COLUMNS.MODEL_GENERATION] = tokenizer.batch_decode(new_input_ids)
 
-        acc += df.loc[idx, "model_correct"].sum()
+        acc += df.loc[idx, COLUMNS.MODEL_CORRECT].sum()
 
     print(acc / len(df))
     df.to_csv(args.output_result_path, index=False)

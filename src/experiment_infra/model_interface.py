@@ -168,6 +168,7 @@ class Mamba2Interface(ModelInterface):
         model_size: str,
         device: Optional[torch.device] = None,
         tokenizer: Optional[Union[PreTrainedTokenizer, PreTrainedTokenizerFast]] = None,
+        feature_category: Optional[FeatureCategory] = None,
     ):
         super().__init__(MODEL_ARCH.MAMBA2, model_size, device, tokenizer)
 

@@ -12,15 +12,15 @@ from datasets import (
     load_dataset as huggingface_load_dataset,
 )
 from scripts.counterfact.splitting import split_dataset
-from src.consts import COLUMNS, DATASETS_IDS, PATHS
-from src.types import DATASETS, FILTERATIONS, SPLIT, DatasetArgs, TPromptData, TSplit
+from src.consts import COLUMNS, COUNTER_FACT_2_KNOWN1000_COL_CONV, DATASETS_IDS, PATHS
+from src.types import DATASETS, FILTERATIONS, SPLIT, DatasetArgs, TSplit
 
 
 def load_splitted_counter_fact(
     split: TSplit = (SPLIT.TRAIN1,),
     add_split_name_column: bool = False,
     filteration: Optional[FILTERATIONS] = None,
-    align_to_known: bool = True,
+    align_to_known: bool = False,
 ) -> Dataset:
     splitted_path = PATHS.COUNTER_FACT_DIR / "splitted"
 
@@ -53,10 +53,9 @@ def load_splitted_counter_fact(
     dataset = concatenate_datasets(datasets)
 
     if align_to_known:
-        # rename 'target_true' -> 'attribute',
-        dataset = dataset.rename_column("target_true", "attribute")
-        # remove: 'target_false', 'target_false_id', 'target_true_id'
-        dataset = dataset.remove_columns(["target_false", "target_false_id", "target_true_id"])
+        for counter_fact_col, known1000_col in COUNTER_FACT_2_KNOWN1000_COL_CONV.items():
+            dataset = dataset.rename_column(counter_fact_col, known1000_col)
+        dataset = dataset.remove_columns([COLUMNS.TARGET_FALSE, COLUMNS.TARGET_FALSE_ID])
 
     if filteration is not None:
         original_idx = pd.read_csv(PATHS.COUNTER_FACT_FILTERATIONS_DIR / f"{filteration}.csv")[
@@ -72,19 +71,3 @@ def load_dataset(dataset_args: DatasetArgs) -> Dataset:
         return load_splitted_counter_fact(dataset_args.splits)
     else:
         raise ValueError(f"Unknown dataset name: {dataset_args.name}")
-
-
-def get_hit_dataset(model_id: str, dataset_args: DatasetArgs) -> TPromptData:
-    original_res, attn_res = [
-        pd.read_parquet(
-            PATHS.OUTPUT_DIR
-            / model_id
-            / "data_construction"
-            / f"ds={dataset_args.display_name}"
-            / f"entire_results_{'attention' if attention else 'original'}.parquet"
-        )
-        for attention in [True, False]
-    ]
-
-    mask = (original_res["hit"] == attn_res["hit"]) & (attn_res["hit"])
-    return attn_res[mask]  # type: ignore
