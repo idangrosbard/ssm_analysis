@@ -10,7 +10,7 @@ import src.models.minimal_mamba2 as minimal_mamba2
 from src.consts import is_falcon
 from src.knockout.attention_knockout import gpt2_knockout_utils
 from src.knockout.attention_knockout.ssm_interfere import SSMInterfereHook
-from src.types import MODEL_ARCH, KnockoutMode
+from src.types import MODEL_ARCH, KnockoutMode, FeatureCategory
 from src.utils.setup_models import get_tokenizer_and_model
 
 
@@ -41,6 +41,7 @@ class ModelInterface(ABC):
         input_ids: torch.Tensor,
         attention: bool = False,
         num_to_masks: Optional[Dict[int, List[Tuple[int, int]]]] = None,
+        feature_category: Optional[FeatureCategory] = None,
     ) -> torch.Tensor:
         """
         Generate logits for the input sequence with optional attention masking.
@@ -112,6 +113,7 @@ class Mamba1Interface(ModelInterface):
         input_ids: Tensor,
         attention: bool = False,
         num_to_masks: Optional[Dict[int, List[Tuple[int, int]]]] = None,
+        feature_category: Optional[FeatureCategory] = None,
     ) -> torch.Tensor:
         if num_to_masks is not None:
             source_indices = []
@@ -146,6 +148,7 @@ class Mamba2Interface(ModelInterface):
         model_size: str,
         device: Optional[torch.device] = None,
         tokenizer: Optional[Union[PreTrainedTokenizer, PreTrainedTokenizerFast]] = None,
+        feature_category: Optional[FeatureCategory] = None,
     ):
         super().__init__(MODEL_ARCH.MAMBA2, model_size, device, tokenizer)
 
@@ -154,6 +157,7 @@ class Mamba2Interface(ModelInterface):
         input_ids: Tensor,
         attention: bool = False,
         num_to_masks: Optional[Dict[int, List[Tuple[int, int]]]] = None,
+        feature_category: Optional[FeatureCategory] = None,
     ) -> torch.Tensor:
         self.setup(num_to_masks)
         with torch.no_grad():
@@ -211,6 +215,7 @@ class GPT2Interface(ModelInterface):
         input_ids: Tensor,
         attention: bool = False,
         num_to_masks: Optional[Dict[int, List[Tuple[int, int]]]] = None,
+        feature_category: Optional[FeatureCategory] = None,
     ) -> torch.Tensor:
         assert input_ids.shape[0] == 1
         num_to_masks = num_to_masks or {}

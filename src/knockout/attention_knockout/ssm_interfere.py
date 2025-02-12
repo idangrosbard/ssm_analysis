@@ -1,6 +1,6 @@
 from typing import Iterable, Optional
 
-from torch import Tensor, nn
+from torch import FloatTensor, Tensor, nn
 
 from src.knockout.attention_knockout.mamba_mixer_knockout import slow_forward_for_ssm_materializing_knockout
 from src.knockout.attention_knockout.mamba_mixer_knockout_falcon import (
@@ -10,13 +10,14 @@ from src.types import KnockoutMode
 
 
 class SSMInterfereHook:
-    def __init__(self, layer: int | str | nn.Module, knockout_type: KnockoutMode, is_falcon: bool):
+    def __init__(self, layer: int | str | nn.Module, knockout_type: KnockoutMode, is_falcon: bool, feature_mask: Optional[FloatTensor | Tensor] = None):
         self.counter = 0
         self.layer = layer
         self.is_falcon = is_falcon
         self.knockout_type = knockout_type
         self.knockout_indices: Iterable[int] = []
         self.affected_outputs: Iterable[int] = []
+        self.feature_mask = feature_mask
 
     def hook(self, module: nn.Module, inp: Tensor, out: Tensor) -> Optional[Tensor]:
         """
@@ -36,6 +37,7 @@ class SSMInterfereHook:
             knockout_indices=self.knockout_indices,
             affected_outputs=self.affected_outputs,
             knockout_mode=self.knockout_type,
+            knockout_feature_mask=self.feature_mask,
         )
         return curr_out
 
@@ -47,5 +49,6 @@ class SSMInterfereHook:
             f"SSMInterfereHook for layer {self.layer} "
             f"with knockout type {self.knockout_type}, "
             f"knockout indices {self.knockout_indices}, "
-            f"affected outputs {self.affected_outputs}"
+            f"affected outputs {self.affected_outputs}, "
+            f"and feature mask {self.feature_mask}"
         )
