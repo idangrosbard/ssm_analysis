@@ -83,6 +83,7 @@ class Mamba1Interface(ModelInterface):
             print("not using falcon")
 
         self.knockout_mode = KnockoutMode.ZERO_ATTENTION
+        self.feature_masks = {}
 
     def setup(self, layers: Optional[Iterable[int]] = None):
         super().setup(layers)
@@ -112,7 +113,9 @@ class Mamba1Interface(ModelInterface):
         assert isinstance(layer.A_log, torch.Tensor)
 
         if feature_category == FeatureCategory.ALL:
-            return torch.zeros(layer.A_log.shape[0])
+            if layer not in self.feature_masks:
+                self.feature_masks[layer] = torch.zeros(layer.A_log.shape[0]).to(layer.A_log.device)
+            return self.feature_masks[layer]
 
         if feature_category == FeatureCategory.NONE:
             return torch.ones(layer.A_log.shape[0])
@@ -170,12 +173,15 @@ class Mamba2Interface(ModelInterface):
         feature_category: Optional[FeatureCategory] = None,
     ):
         super().__init__(MODEL_ARCH.MAMBA2, model_size, device, tokenizer)
+        self.feature_masks = {}
 
     def _get_feature_mask(self, layer: torch.nn.Module, feature_category: FeatureCategory) -> Tensor:
         assert isinstance(layer.A_log, torch.Tensor)
 
         if feature_category == FeatureCategory.ALL:
-            return torch.zeros(layer.A_log.shape[0])
+            if layer not in self.feature_masks:
+                self.feature_masks[layer] = torch.zeros(layer.A_log.shape[0]).to(layer.A_log.device)
+            return self.feature_masks[layer]
 
         if feature_category == FeatureCategory.NONE:
             return torch.ones(layer.A_log.shape[0])
