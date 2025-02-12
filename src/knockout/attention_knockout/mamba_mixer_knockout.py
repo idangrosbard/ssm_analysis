@@ -16,6 +16,7 @@ def slow_forward_for_ssm_materializing_knockout(
         cache_position: Optional[torch.LongTensor] = None, attention_mask: Optional[torch.LongTensor] = None,
         knockout_indices: Optional[Iterable[int]] = None, affected_outputs: Optional[Iterable[int]] = None,
         knockout_mode: Optional[KnockoutMode] = None,
+        knockout_feature_mask: Optional[torch.Tensor | torch.BoolTensor | torch.FloatTensor] = None,
         with_materialized_attention_matrix: Optional[bool] = False
 ):
     """
@@ -97,7 +98,7 @@ def slow_forward_for_ssm_materializing_knockout(
         u = hidden_states[:, :, :, None].float()
         scan_output = knockout_matrix(seq_len, discrete_A, discrete_B, u, C, knockout_indices, affected_outputs, dtype) # type: ignore
     else:
-        scan_outputs = knockout_scan(seq_len, ssm_state, discrete_A, deltaB_u, C, knockout_indices, affected_outputs, knockout_mode, dtype) # type: ignore
+        scan_outputs = knockout_scan(seq_len, ssm_state, discrete_A, deltaB_u, C, knockout_indices, affected_outputs, knockout_mode, dtype, knockout_feature_mask) # type: ignore
         scan_output = torch.stack(scan_outputs, dim=-1)  # [batch, seq_len, intermediade_size]
     scan_output = scan_output + (hidden_states * module.D[None, :, None])
     scan_output = (scan_output * module.act(gate))

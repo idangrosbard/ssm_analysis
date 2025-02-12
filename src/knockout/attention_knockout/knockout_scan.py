@@ -1,4 +1,4 @@
-from typing import Iterable, List
+from typing import Iterable, List, Optional
 
 import torch
 from jaxtyping import Float
@@ -19,6 +19,7 @@ def knockout_scan(
     affected_outputs: Iterable[int],
     knockout_mode: KnockoutMode,
     dtype: torch.dtype,
+    knockout_feature_mask: Optional[torch.FloatTensor | torch.Tensor] = None,
 ) -> List[Float[Tensor, "batch hidden_size"]]:
     knockout_state: TSSMState = zeros_like(ssm_state)
     scan_outputs = []
@@ -27,10 +28,13 @@ def knockout_scan(
         if i not in knocked_out_inputs:
             knockout_state = discrete_A[:, :, i, :] * knockout_state + deltaB_u[:, :, i, :]
         else:
-            if knockout_mode == KnockoutMode.ZERO_ATTENTION:
+            if knockout_mode in {KnockoutMode.ZERO_ATTENTION}:
                 knockout_state = discrete_A[:, :, i, :] * knockout_state
-            elif knockout_mode == KnockoutMode.ZERO_DELTA:
+            elif knockout_mode in {KnockoutMode.ZERO_DELTA}:
                 knockout_state = knockout_state
+            
+            if knockout_feature_mask is not None:
+                knockout_state = knockout_state + knockout_feature_mask.float().expand_as(deltaB_u) * deltaB_u[:, :, i, :]
 
         scan_output = torch.einsum(
             "bij,bj->bi",

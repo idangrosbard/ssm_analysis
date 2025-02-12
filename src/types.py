@@ -67,6 +67,7 @@ class TokenType(STREnum):
     subject = "subject"
     relation = "relation"
     context = "context"
+    all = "all"
 
 
 class FILTERATIONS(STREnum):
@@ -112,3 +113,10 @@ class KnockoutMode(Enum):
     IGNORE_LAYER = 4
     IGNORE_SSM = 5
     INCREASE_DELTA = 6
+
+
+class FeatureCategory(Enum):
+    ALL = 0
+    NONE = 1
+    FAST_DECAY = 2
+    SLOW_DECAY = 3

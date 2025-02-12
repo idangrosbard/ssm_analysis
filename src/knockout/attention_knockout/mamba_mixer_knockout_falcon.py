@@ -37,6 +37,7 @@ def slow_forward_for_ssm_materializing_knockout_falcon(
     knockout_indices: Optional[Iterable[int]] = None,
     affected_outputs: Optional[Iterable[int]] = None,
     knockout_mode: Optional[KnockoutMode] = None,
+    knockout_feature_mask: Optional[torch.Tensor | torch.BoolTensor | torch.FloatTensor] = None,
     with_materialized_attention_matrix: Optional[bool] = False,
 ):
     batch_size, seq_len, _ = input_states.shape
@@ -120,6 +121,7 @@ def slow_forward_for_ssm_materializing_knockout_falcon(
             affected_outputs,  # type: ignore
             knockout_mode,  # type: ignore
             dtype,
+            knockout_feature_mask
         )
         scan_output = torch.stack(scan_outputs, dim=-1)  # [batch, seq_len, intermediade_size]
     scan_output = scan_output + (hidden_states * self.D[None, :, None])

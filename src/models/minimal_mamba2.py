@@ -13,7 +13,7 @@ A minimal, single-file implementation of the Mamba-2 model in PyTorch.
 
 import json
 from dataclasses import dataclass
-from typing import Iterable, NamedTuple, Optional, TypeAlias, cast
+from typing import Iterable, NamedTuple, Optional, TypeAlias, cast, Dict
 
 import torch
 import torch.nn.functional as F
@@ -118,6 +118,7 @@ class Mamba2LMHeadModel(nn.Module):
         h: list[InferenceCache] | list[None] | None = None,
         attention=False,
         num_to_masks=None,
+        feature_mask: Optional[Dict[int, torch.Tensor]] = None,
     ) -> tuple[LongTensor, list[InferenceCache]]:
         """
         Arguments
@@ -139,12 +140,18 @@ class Mamba2LMHeadModel(nn.Module):
 
         x = self.backbone.embedding(input_ids)
         for i, layer in enumerate(self.backbone.layers):
+            curr_feature_mask = None
+
+            if feature_mask and (i in feature_mask):
+                curr_feature_mask = feature_mask[i]
+
             y, h[i] = layer.mixer(
                 layer.norm(x),
                 h[i],
                 layer_num=i,
                 attention=attention,
                 num_to_masks=num_to_masks,
+                feature_mask=curr_feature_mask
             )
             x = y + x
 
@@ -218,6 +225,7 @@ class Mamba2LMHeadModel(nn.Module):
         eos_token_id: int = 0,
         attention=False,
         num_to_masks=None,
+        feature_mask: Optional[Dict[int, torch.Tensor]] = None,
     ) -> Iterable[tuple[int, list[InferenceCache]]]:
         # num_to_masks: dict of layer num to list of tuples, [idx1,idx2] where idx1 won't get info from idx2.
 
@@ -234,7 +242,7 @@ class Mamba2LMHeadModel(nn.Module):
         if len(tokens.shape) == 1:
             tokens = tokens.unsqueeze(0)
         out, h = self(
-            tokens, None, attention=attention, num_to_masks=num_to_masks
+            tokens, None, attention=attention, num_to_masks=num_to_masks, feature_mask=feature_mask
         )  # self(tokens[:n_chunked], None, num_to_masks=num_to_masks)
 
         # Generate
@@ -295,6 +303,7 @@ class Mamba2(nn.Module):
         layer_num=0,
         attention=False,
         num_to_masks=None,
+        feature_mask: Optional[torch.Tensor] = None,
     ):
         """
         Arguments
@@ -340,6 +349,7 @@ class Mamba2(nn.Module):
             device=self.device,
             attention=attention,
             list_of_masks=list_of_masks,
+            feature_mask=feature_mask,
         )
         y = y + x * self.D.unsqueeze(-1)
         y = rearrange(y, "b l h p -> b l (h p)")
@@ -433,6 +443,7 @@ def ssd(
     device: Device = None,
     attention=False,
     list_of_masks=None,
+    feature_mask: Optional[torch.Tensor] = None,
 ):
     """Structed State Space Duality (SSD) - the core of Mamba-2
     This is almost the exact same minimal SSD code from the blog post.
@@ -473,7 +484,9 @@ def ssd(
     # by this notion idx1 is always greater or equal to idx2
     # attention_matrix[:, :, 11, :, 3] = 0
     for idx1, idx2 in list_of_masks:
-        attention_matrix[:, :, idx1, :, idx2] = 0
+        if feature_mask is None:
+            feature_mask = torch.zeros((attention_matrix.shape[0], attention_matrix.shape[1], attention_matrix.shape[3]))
+        attention_matrix[:, :, idx1, :, idx2] = attention_matrix[:, :, idx1, :, idx2] * feature_mask
 
     out_by_atten = torch.einsum("bclhs, bcshp-> bclhp", attention_matrix, x)
     out_by_atten = rearrange(out_by_atten, "b c l h p -> b (c l) h p")
