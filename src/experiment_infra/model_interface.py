@@ -181,7 +181,7 @@ class Mamba2Interface(ModelInterface):
         if feature_category == FeatureCategory.NONE:
             return torch.ones_like(layer.A_log)
         
-        decay_matrices = torch.exp(-torch.exp(layer.A_log))
+        decay_matrices = torch.exp(-torch.exp(layer.A_log)).unsqueeze(-1)
         n_ssms = decay_matrices.shape[0]
 
         # get the norms
