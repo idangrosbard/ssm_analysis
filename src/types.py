@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from enum import Enum
 from typing import Literal, NewType, Optional, Sequence, Union, assert_never
 
 import pandas as pd
@@ -106,18 +105,21 @@ TSSM_Bu = Float[Tensor, "batch hidden_size seq_len ssm_dim"]
 TSSM_C = Float[Tensor, "batch seq_len ssm_dim"]
 
 
-class KnockoutMode(Enum):
-    ZERO_ATTENTION = 0
-    ZERO_DELTA = 1
-    IGNORE_CONTEXT = 2
-    ONLY_CONTEXT = 3
-    IGNORE_LAYER = 4
-    IGNORE_SSM = 5
-    INCREASE_DELTA = 6
+class KnockoutMode(STREnum):
+    ZERO_ATTENTION = "ZERO_ATTENTION"
+    ZERO_DELTA = "ZERO_DELTA"
+    IGNORE_CONTEXT = "IGNORE_CONTEXT"
+    ONLY_CONTEXT = "ONLY_CONTEXT"
+    IGNORE_LAYER = "IGNORE_LAYER"
+    IGNORE_SSM = "IGNORE_SSM"
+    INCREASE_DELTA = "INCREASE_DELTA"
 
 
-class FeatureCategory(Enum):
-    ALL = 0
-    NONE = 1
-    FAST_DECAY = 2
-    SLOW_DECAY = 3
+class FeatureCategory(STREnum):
+    ALL = "ALL"
+    NONE = "NONE"
+    FAST_DECAY = "FAST_DECAY"
+    SLOW_DECAY = "SLOW_DECAY"
+
+
+TInfoFlowSource = Union[TokenType, tuple[TokenType, FeatureCategory]]

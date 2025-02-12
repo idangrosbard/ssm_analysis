@@ -104,7 +104,7 @@ def get_num_to_masks(
     prompt: Prompt,
     tokenizer,
     window: list[int],
-    knockout_src: TokenType,
+    knockout_source: TokenType,
     knockout_target: TokenType,
     device,
 ) -> tuple[TNum2Mask, bool]:
@@ -129,10 +129,12 @@ def get_num_to_masks(
             return [i for i in range(last_idx + 1) if i not in subject_tokens]
         elif knockout == TokenType.context:
             return [i for i in range(subject_tokens[0])]
+        elif knockout == TokenType.all:
+            return list(range(last_idx + 1))
         else:
-            assert_never(knockout_src)
+            assert_never(knockout_source)
 
-    src_idx = get_knockout_idx(knockout_src)
+    src_idx = get_knockout_idx(knockout_source)
     target_idx = get_knockout_idx(knockout_target)
 
     for layer in window:

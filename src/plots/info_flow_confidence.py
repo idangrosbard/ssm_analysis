@@ -11,8 +11,8 @@ from matplotlib.figure import Figure
 from numpy.typing import NDArray
 from scipy import stats
 
-from src.consts import TOKEN_TYPE_COLORS, TOKEN_TYPE_LINE_STYLES
-from src.types import TokenType
+from src.consts import COLUMNS, TOKEN_TYPE_COLORS, TOKEN_TYPE_LINE_STYLES
+from src.types import TInfoFlowSource, TokenType
 
 
 class MetricData(TypedDict):
@@ -193,8 +193,8 @@ def calculate_metrics_with_confidence(
     metrics: Dict[str, Dict[str, list[float]]] = defaultdict(lambda: defaultdict(list))
 
     metric_to_name = {
-        "acc": "hit",
-        "diff": "diffs",
+        "acc": COLUMNS.IF_HIT,
+        "diff": COLUMNS.IF_DIFFS,
     }
 
     for window_idx in window_outputs.keys():
@@ -221,7 +221,7 @@ def calculate_metrics_with_confidence(
 def plot_with_confidence(
     metrics: MetricsDict,
     metric_type: Literal["acc", "diff"],
-    block: TokenType,
+    block: TInfoFlowSource,
     color: str,
     linestyle: str,
     ax: Axes,
@@ -234,7 +234,7 @@ def plot_with_confidence(
     ax.plot(
         layers,
         metrics[metric_type]["mean"] * (100 if metric_type == "acc" else 1),
-        label=block,
+        label=f"{block[0]} feature={block[1]}" if isinstance(block, tuple) else block,
         color=color,
         linestyle=linestyle,
     )
@@ -250,7 +250,7 @@ def plot_with_confidence(
 
 
 def create_confidence_plot(
-    targets_window_outputs: dict[TokenType, dict[str, dict[str, list[float]]]],
+    targets_window_outputs: dict[TInfoFlowSource, dict[str, dict[str, list[float]]]],
     confidence_level: float,
     title: str,
     plots_meta_data: dict[Literal["acc", "diff"], PlotMetadata],
@@ -272,6 +272,9 @@ def create_confidence_plot(
     # Create figure with two subplots side by side
     fig, axes = plt.subplots(1, 2, figsize=(12, 5))
 
+    # Dictionary to store unique handles by their properties
+    unique_handles = {}
+
     # Process each metric type (accuracy and diff)
     for i, (metric_type, plot_metadata) in enumerate(plots_meta_data.items()):
         ax = axes[i]
@@ -289,16 +292,18 @@ def create_confidence_plot(
                 ax=ax,
             )
 
+            # Only collect handles and labels from the first subplot
+            if i == 0:
+                handles, labels = ax.get_legend_handles_labels()
+                for handle, label in zip(handles, labels):
+                    # Create a unique key based on the handle's visual properties
+                    key = (label, handle.get_color(), handle.get_linestyle())
+                    if key not in unique_handles:
+                        unique_handles[key] = (handle, label)
+
         # Customize subplot
         ax.grid(True, which="both", linestyle="--", linewidth=0.5)
         ax.set_xlabel("Layers", fontsize=12)
-        ax.legend(
-            loc="upper center",
-            bbox_to_anchor=(0.5, 1.2),
-            ncol=len(targets_window_outputs),
-            fontsize=10,
-            frameon=False,
-        )
         ax.axhline(plot_metadata["axhline_value"], color="gray", linewidth=1)
         ax.set_ylabel(plot_metadata["ylabel"], fontsize=12, loc=plot_metadata["ylabel_loc"])
         if plot_metadata["ylim"]:
@@ -306,11 +311,24 @@ def create_confidence_plot(
         ax.tick_params(axis="both", which="major", labelsize=10)
         ax.set_title(plot_metadata["title"])
 
+    # Extract unique handles and labels
+    all_handles, all_labels = zip(*unique_handles.values()) if unique_handles else ([], [])
+
+    # Create a single legend for the entire figure
+    fig.legend(
+        all_handles,
+        all_labels,
+        loc="lower center",
+        bbox_to_anchor=(0.5, 0.84),
+        ncol=len(all_handles),
+        fontsize=10,
+        frameon=False,
+    )
+
     # Set overall title
     fig.suptitle(
         title,
         fontsize=12,
-        # y=1.05,
     )
 
     fig.tight_layout()
@@ -472,7 +490,7 @@ def process_info_flow_files(
     title = f"Knocking out flow to {target_block}\n{model_id}, window size={window_size}"
 
     fig = create_confidence_plot(
-        targets_window_outputs=targets_window_outputs,
+        targets_window_outputs=targets_window_outputs,  # type: ignore
         confidence_level=confidence_level,
         title=title,
         plots_meta_data=plots_meta_data,

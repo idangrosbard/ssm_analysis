@@ -58,7 +58,7 @@ if __name__ == "__main__":
     # For updating baseline
 
     test_base_path = Path(__file__).parent / "baselines" / "full_pipeline"
-    create_test_data(test_base_path)
+    # create_test_data(test_base_path)
 
     # Create test data and run pipeline with mocked paths
     with pytest.MonkeyPatch().context() as mp:
