@@ -15,7 +15,7 @@ from transformers import (
 
 import src.models.minimal_mamba2 as minimal_mamba2
 from src.consts import MODEL_SIZES_PER_ARCH_TO_MODEL_ID, is_falcon
-from src.types import MODEL_ARCH
+from src.types import MODEL_ARCH, TModelID
 
 if TYPE_CHECKING:
     from mamba_ssm.models.mixer_seq_simple import MambaLMHeadModel
@@ -30,11 +30,24 @@ def setup_mamba_model(
     return model, tokenizer, device
 
 
-def _get_tokenizer_id(model_arch: MODEL_ARCH, model_id: str) -> str:
+def _get_tokenizer_id(model_id: str) -> str:
     if model_id.startswith("state-spaces/"):
         return "EleutherAI/gpt-neox-20b"
     else:
         return model_id
+
+
+MODEL_TOKENIZER_CACHE: dict[TModelID, PreTrainedTokenizer | PreTrainedTokenizerFast] = {}
+
+
+def get_tokenizer(model_arch: MODEL_ARCH, model_size: str) -> PreTrainedTokenizer | PreTrainedTokenizerFast:
+    model_id = MODEL_SIZES_PER_ARCH_TO_MODEL_ID[model_arch][model_size]
+    if model_id in MODEL_TOKENIZER_CACHE:
+        return MODEL_TOKENIZER_CACHE[model_id]
+    tokenizer = AutoTokenizer.from_pretrained(_get_tokenizer_id(model_id))
+    tokenizer.pad_token = tokenizer.eos_token
+    MODEL_TOKENIZER_CACHE[model_id] = tokenizer
+    return tokenizer
 
 
 def get_tokenizer_and_model(
@@ -58,8 +71,7 @@ def get_tokenizer_and_model(
     }
 
     model_id = MODEL_SIZES_PER_ARCH_TO_MODEL_ID[model_arch][model_size]
-    tokenizer = AutoTokenizer.from_pretrained(_get_tokenizer_id(model_arch, model_id))
-    tokenizer.pad_token = tokenizer.eos_token
+    tokenizer = get_tokenizer(model_arch, model_size)
 
     match model_arch:
         case MODEL_ARCH.MAMBA2:

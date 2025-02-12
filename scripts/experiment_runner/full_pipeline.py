@@ -14,20 +14,19 @@ def main(args: FullPipelineConfig):
     # window_sizes = [1, 3, 5, 9, 12, 15]
     # experiment_name = "heatmap_debug_use_matrix"
     # args.variation = "v1_titan_xp"
-    args.variation = "v2"
     # window_sizes = [1, 5]
     # window_sizes = [1, 5, 9]
 
     for model_arch, model_size in [
-        (MODEL_ARCH.MAMBA1, "130M"),
-        (MODEL_ARCH.MAMBA1, "1.4B"),
-        (MODEL_ARCH.MAMBA1, "2.8B"),
-        (MODEL_ARCH.MAMBA1, "7B"),
-        (MODEL_ARCH.MAMBA1, "7B-falcon"),
-        (MODEL_ARCH.MAMBA1, "7B-falcon-base"),
-        # (MODEL_ARCH.MINIMAL_MAMBA2, "130M"),
-        # (MODEL_ARCH.MINIMAL_MAMBA2, "1.3B"),
-        # (MODEL_ARCH.MINIMAL_MAMBA2, "2.7B"),
+         (MODEL_ARCH.MAMBA1, "130M"),
+         (MODEL_ARCH.MAMBA1, "1.4B"),
+         (MODEL_ARCH.MAMBA1, "2.8B"),
+         (MODEL_ARCH.MAMBA1, "7B"),
+         (MODEL_ARCH.MAMBA1, "7B-falcon"),
+         (MODEL_ARCH.MAMBA1, "7B-falcon-base"),
+        (MODEL_ARCH.MAMBA2, "130M"),
+        (MODEL_ARCH.MAMBA2, "1.3B"),
+        (MODEL_ARCH.MAMBA2, "2.7B"),
         # (MODEL_ARCH.GPT2, "124M"),
         # (MODEL_ARCH.GPT2, "355M"),
         # (MODEL_ARCH.GPT2, "774M"),
@@ -35,6 +34,7 @@ def main(args: FullPipelineConfig):
     ]:
         args.model_arch = model_arch
         args.model_size = model_size
+        args.variation = "v2" if model_arch == MODEL_ARCH.MAMBA1 or model_arch == MODEL_ARCH.MAMBA2 else "v1"
         args.dataset_args = DatasetArgs(name=DATASETS.COUNTER_FACT, splits="all")
         for window_size in window_sizes:
             args.window_size = window_size
@@ -54,13 +54,13 @@ def main(args: FullPipelineConfig):
                 )
 
                 print(f"{job}: {args.job_name}")
-        else:
-            # args.variation = "v2"
-            # args.model_arch = MODEL_ARCH.MAMBA1
-            # args.model_size = "1.4B"
-            # args.window_size = 9
-            args.with_plotting = True
-            main_local(args)
+            else:
+                # args.variation = "v2"
+                # args.model_arch = MODEL_ARCH.MAMBA1
+                # args.model_size = "1.4B"
+                # args.window_size = 9
+                args.with_plotting = True
+                main_local(args)
 
 
 if __name__ == "__main__":

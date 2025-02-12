@@ -25,6 +25,7 @@ from src.experiment_infra.base_config import BASE_OUTPUT_KEYS, BaseConfig, creat
 from src.experiment_infra.model_interface import get_model_interface
 from src.plots.heatmaps import simple_diff_fixed
 from src.utils.logits import decode_tokens, get_prompt_row
+from src.utils.setup_models import get_tokenizer
 from src.utils.types_utils import STREnum
 
 
@@ -65,13 +66,12 @@ class HeatmapConfig(BaseConfig):
 
 def plot(args: HeatmapConfig):
     data = args.get_prompt_data()
-    model_interface = get_model_interface(args.model_arch, args.model_size)
+    tokenizer = get_tokenizer(args.model_arch, args.model_size)
     model_id = MODEL_SIZES_PER_ARCH_TO_MODEL_ID[args.model_arch][args.model_size]
 
     prob_mats = args.get_outputs()
     for prompt_idx, prob_mat in tqdm(prob_mats.items(), desc="Plotting heatmaps"):
         prompt = get_prompt_row(data, prompt_idx)
-        tokenizer = model_interface.tokenizer
         input_ids = prompt.input_ids(tokenizer, "cpu")
         toks = cast(list[str], decode_tokens(tokenizer, input_ids[0]))
         last_tok = toks[-1]
