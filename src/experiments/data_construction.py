@@ -11,13 +11,10 @@ The combined result is saved as a parquet file
 from dataclasses import dataclass
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
-import torch
-from tqdm import tqdm
 
+from src.consts import COLUMNS, EVAL_MODEL_2_DATA_CONST_COL_CONV
 from src.experiment_infra.base_config import BaseConfig
-from src.experiment_infra.model_interface import get_model_interface
 from src.experiment_infra.output_path import OutputKey
 
 
@@ -47,56 +44,29 @@ def run(args: DataConstructionConfig):
         return
 
     args.create_output_path()
-    original_data = args.get_raw_data(align_to_known=False)
-    model_interface = get_model_interface(args.model_arch, args.model_size)
-    tokenizer = model_interface.tokenizer
-    tokenizer.padding_side = "left"
-    tokenizer.pad_token = tokenizer.eos_token
-    device = model_interface.device
 
-    original_data["true_prob"] = 0.0
-    original_data["max_prob"] = 0.0
-    original_data["hit"] = False
-    original_data["pred"] = ""
+    original_data = args.get_raw_data()
 
-    def forward_eval(batch_start, batch_end, attention, print_period=10000):
-        prompts = list(original_data.loc[batch_start : batch_end - 1, "prompt"].values)
-        true_word = list(original_data.loc[batch_start : batch_end - 1, "target_true"].values)
-        true_token = tokenizer(true_word, return_tensors="pt", padding=True)
-        true_id = true_token.input_ids.to(device="cpu")
-        tokens = tokenizer(prompts, return_tensors="pt", padding=True)
-        input_ids = tokens.input_ids.to(device=device)
-        next_token_probs = model_interface.generate_logits(
-            input_ids=input_ids,
-            attention=attention,
-        )
-        max_idx = np.argmax(next_token_probs, axis=1)
-        row_idx = np.arange(next_token_probs.shape[0])
-        preds = [tokenizer.decode([t]) for t in max_idx]
-        original_data.loc[batch_start : batch_end - 1, "true_prob"] = next_token_probs[
-            row_idx, true_id[:, 0].numpy()
-        ].tolist()
-        original_data.loc[batch_start : batch_end - 1, "max_prob"] = next_token_probs[row_idx, max_idx].tolist()
-        original_data.loc[batch_start : batch_end - 1, "hit"] = (
-            original_data.loc[batch_start : batch_end - 1, "true_prob"].values
-            == original_data.loc[batch_start : batch_end - 1, "max_prob"].values
-        )
-        original_data.loc[batch_start : batch_end - 1, "pred"] = preds
-        if (batch_start + 1) % print_period == 0:
-            print(f"Finished batch [{batch_start}:{batch_end - 1}]")
-        torch.cuda.empty_cache()
+    from src.experiments.evaluate_model import EvaluateModelConfig
 
-    batch_size = args.batch_size
-    N = len(original_data)
-    batches = list(np.arange(0, N, batch_size)) + [N]
+    eval_config = args.init_sub_config_from_full_pipeline_config(
+        EvaluateModelConfig,
+        drop_subject=False,
+        drop_subj_last_token=False,
+        with_3_dots=False,
+        new_max_tokens=5,
+        top_k_tokens=5,
+    )
 
-    for i in tqdm(range(len(batches) - 1)):
-        forward_eval(
-            batch_start=batches[i],
-            batch_end=batches[i + 1],
-            attention=args.attention,
-        )
+    eval_results = eval_config.get_outputs()
 
-    print(original_data.pipe(lambda df: df[~df["hit"]]))
-    print(original_data["hit"].mean())
-    original_data.to_csv(args.output_result_path, index=False)
+    filtered_data = pd.merge(
+        original_data,
+        eval_results[[COLUMNS.ORIGINAL_IDX] + list(EVAL_MODEL_2_DATA_CONST_COL_CONV.keys())],
+        on=COLUMNS.ORIGINAL_IDX,
+        how="inner",
+    )
+
+    renamed_data = filtered_data.rename(columns=EVAL_MODEL_2_DATA_CONST_COL_CONV)
+
+    renamed_data.to_csv(args.output_result_path, index=False)

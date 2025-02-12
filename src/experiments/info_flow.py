@@ -189,6 +189,9 @@ def run(args: InfoFlowConfig):
                 windows_true_probs[i]["hit"].append(bool(hit))
                 windows_true_probs[i]["true_probs"].append(float(true_prob))
                 windows_true_probs[i]["diffs"].append(float(diff))
+                # # Store original index for traceability
+                # original_idx = pd.to_numeric(data.loc[prompt_idx, "original_idx"], downcast="integer")
+                # windows_true_probs[i]["original_idx"].append(int(original_idx))
         return windows_true_probs
 
     prompt_indices = list(data.index)

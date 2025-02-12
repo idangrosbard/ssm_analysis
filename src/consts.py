@@ -156,9 +156,51 @@ def is_falcon(model_size: str) -> bool:
 DATASETS_IDS: dict[DATASETS, TDatasetID] = {DATASETS.COUNTER_FACT: TDatasetID("NeelNanda/counterfact-tracing")}  # type: ignore
 
 
+class EXPERIMENT_NAMES:
+    DATA_CONSTRUCTION = "data_construction"
+    EVALUATE_MODEL = "evaluate_model"
+
+
 class COLUMNS:
     ORIGINAL_IDX = "original_idx"
 
+    # Counter Fact
+    PROMPT = "prompt"
+    TARGET_TRUE = "target_true"
+    TARGET_FALSE = "target_false"
+    SUBJECT = "subject"
+    TARGET_FALSE_ID = "target_false_id"
+
+    # KNOWN1000
+    ATTRIBUTE = "attribute"
+
+    # Evaluate Model
+    TARGET_PROBS = "target_probs"
+    MODEL_TOP_OUTPUT_CONFIDENCE = "model_top_output_confidence"
+    MODEL_CORRECT = "model_correct"
+    MODEL_OUTPUT = "model_output"
+    TARGET_RANK = "target_rank"
+    MODEL_TOP_OUTPUTS = "model_top_outputs"
+    MODEL_GENERATION = "model_generation"
+    TARGET_TOKENS = "target_tokens"
+
+    # Data Construction
+    HIT = "hit"
+    MAX_PROB = "max_prob"
+    TRUE_PROB = "true_prob"
+    PRED = "pred"
+
+
+COUNTER_FACT_2_KNOWN1000_COL_CONV = {
+    COLUMNS.TARGET_TRUE: COLUMNS.ATTRIBUTE,
+}
+
+EVAL_MODEL_2_DATA_CONST_COL_CONV = {
+    COLUMNS.TARGET_PROBS: COLUMNS.TRUE_PROB,
+    COLUMNS.MODEL_TOP_OUTPUT_CONFIDENCE: COLUMNS.MAX_PROB,
+    COLUMNS.MODEL_CORRECT: COLUMNS.HIT,
+    COLUMNS.MODEL_OUTPUT: COLUMNS.PRED,
+}
 
 TOKEN_TYPE_COLORS: dict[TokenType, str] = {
     TokenType.last: "#D2691E",  # orange

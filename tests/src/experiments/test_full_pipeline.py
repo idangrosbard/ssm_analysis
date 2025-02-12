@@ -48,7 +48,7 @@ def create_test_data(test_base_path: Path):
 
     # save filteration to disk
     (
-        pd.DataFrame({"original_idx": dataset[COLUMNS.ORIGINAL_IDX]}).to_csv(
+        pd.DataFrame({COLUMNS.ORIGINAL_IDX: dataset[COLUMNS.ORIGINAL_IDX]}).to_csv(
             test_paths.COUNTER_FACT_FILTERATIONS_DIR / f"{FILTERATIONS.all_correct}.csv", index=False
         )
     )

@@ -59,6 +59,7 @@ class BaseConfig(ABC, Generic[_TConfigOutputs]):
     @property
     def dataset_name(self) -> str:
         return self.dataset_args.display_name
+        # return self.dataset_args.name
 
     @property
     def batch_size(self) -> int:
@@ -125,7 +126,7 @@ class BaseConfig(ABC, Generic[_TConfigOutputs]):
         run_id = create_run_id(None)
         json.dump(asdict(self), self.running_history_json_path(run_id).open("w"), indent=4)
 
-    def get_raw_data(self, align_to_known: bool = True) -> pd.DataFrame:
+    def get_raw_data(self, align_to_known: bool = False) -> pd.DataFrame:
         dataset = load_splitted_counter_fact(
             "all", align_to_known=align_to_known, filteration=self.dataset_args.filteration
         )
