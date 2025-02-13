@@ -18,12 +18,16 @@ import src.experiments.data_construction as data_construction
 import src.experiments.evaluate_model as evaluate_model
 import src.experiments.heatmap as heatmap
 import src.experiments.info_flow as info_flow
-from src.experiment_infra.base_config import BASE_OUTPUT_KEYS, BaseConfig, create_mutable_field
+from src.experiment_infra.base_config import (
+    BASE_OUTPUT_KEYS,
+    BaseConfig,
+    create_mutable_field,
+)
 from src.experiments.data_construction import DataConstructionConfig
 from src.experiments.evaluate_model import EvaluateModelConfig
 from src.experiments.heatmap import HeatmapConfig
 from src.experiments.info_flow import InfoFlowConfig
-from src.types import DatasetArgs, TInfoFlowSource, TokenType
+from src.types import TInfoFlowSource, TokenType
 
 
 @dataclass
@@ -33,6 +37,7 @@ class FullPipelineConfig(BaseConfig):
     experiment_base_name: str = "full_pipeline"
 
     with_plotting: bool = False
+    with_generation: bool = True
 
     # EvaluateModelConfig
     drop_subject: bool = EvaluateModelConfig.drop_subject
@@ -40,7 +45,6 @@ class FullPipelineConfig(BaseConfig):
     with_3_dots: bool = EvaluateModelConfig.with_3_dots
     new_max_tokens: int = EvaluateModelConfig.new_max_tokens
     top_k_tokens: int = EvaluateModelConfig.top_k_tokens
-    full_dataset_args: DatasetArgs = create_mutable_field(lambda: EvaluateModelConfig().dataset_args)
 
     # HeatmapConfig
     window_size: int = HeatmapConfig.window_size
@@ -62,7 +66,6 @@ class FullPipelineConfig(BaseConfig):
     def evaluate_model_config(self) -> EvaluateModelConfig:
         return self.init_sub_config_from_full_pipeline_config(
             EvaluateModelConfig,
-            dataset_args=self.full_dataset_args,
         )
 
     def heatmap_config(self) -> HeatmapConfig:
@@ -82,31 +85,34 @@ def main_local(args: FullPipelineConfig):
     print(args)
 
     # Step 1: Model Evaluation
-
-    print("\nRunning Model Evaluation Experiment...")
-    evaluate_model.run(args.evaluate_model_config())
+    if args.with_generation:
+        print("\nRunning Model Evaluation Experiment...")
+        evaluate_model.run(args.evaluate_model_config())
 
     # Step 2: Data Construction
+    if args.with_generation:
+        print("\nRunning Data Construction Experiment (attention=False)...")
+        data_construction.run(args.data_construction_config(attention=False))
 
-    print("\nRunning Data Construction Experiment (attention=False)...")
-    data_construction.run(args.data_construction_config(attention=False))
-
-    print("\nRunning Data Construction Experiment (attention=True)...")
-    data_construction.run(args.data_construction_config(attention=True))
+    if args.with_generation:
+        print("\nRunning Data Construction Experiment (attention=True)...")
+        data_construction.run(args.data_construction_config(attention=True))
 
     # Step 3: Heatmap Analysis
 
     print("\nRunning Heatmap Analysis Experiment...")
     heatmap_config = args.heatmap_config()
-    heatmap.run(heatmap_config)
+    if args.with_generation:
+        heatmap.run(heatmap_config)
     if args.with_plotting:
         print("\nPlotting all heatmaps...")
         heatmap.plot(heatmap_config)
 
     # Step 4: Information Flow Analysis
     info_flow_config = args.info_flow_config()
-    print("\nRunning Information Flow Analysis Experiment...")
-    info_flow.run(info_flow_config)
+    if args.with_generation:
+        print("\nRunning Information Flow Analysis Experiment...")
+        info_flow.run(info_flow_config)
     if args.with_plotting:
         print("\nPlotting all info flow blocks...")
         info_flow.plot(info_flow_config)

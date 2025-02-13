@@ -15,7 +15,7 @@ from src.experiment_infra.model_interface import get_model_interface
 from src.experiment_infra.output_path import OutputKey
 from src.plots.info_flow_confidence import create_confidence_plot
 from src.types import MODEL_ARCH, FeatureCategory, TInfoFlowSource, TokenType
-from src.utils.logits import get_num_to_masks, get_prompt_row
+from src.utils.logits import get_num_to_masks, get_prompt_row_index
 
 
 def skip_task(model_arch: MODEL_ARCH, source: TInfoFlowSource) -> bool:
@@ -164,7 +164,7 @@ def run(args: InfoFlowConfig):
         knockout_source: TInfoFlowSource,
         knockout_target: TokenType,
     ):
-        prompt = get_prompt_row(data, prompt_idx)
+        prompt = get_prompt_row_index(data, prompt_idx)
         source, feature_category = (
             (
                 knockout_source,
@@ -207,18 +207,27 @@ def run(args: InfoFlowConfig):
             windows_true_probs[i] = defaultdict(list)
             model_interface.setup(layers=window)
             for _, prompt_idx in enumerate(tqdm(prompt_indices, desc="Prompts", miniters=print_period)):
-                hit, diff, first, diff_unnorm, true_prob = forward_eval(
-                    prompt_idx,
-                    window,
-                    knockout_source,
-                    knockout_target,
-                )
-                windows_true_probs[i][COLUMNS.HIT].append(bool(hit))
+                try:
+                    hit, diff, first, diff_unnorm, true_prob = forward_eval(
+                        prompt_idx,
+                        window,
+                        knockout_source,
+                        knockout_target,
+                    )
+                except Exception as e:
+                    if i == 0:
+                        print(
+                            f" Error evaluating {prompt_idx = }"
+                            f" in {window = }"
+                            f" with {knockout_source = }, {knockout_target = }"
+                            f": {e}"
+                        )
+                    continue
+                windows_true_probs[i][COLUMNS.IF_HIT].append(bool(hit))
                 windows_true_probs[i][COLUMNS.IF_TRUE_PROBS].append(float(true_prob))
                 windows_true_probs[i][COLUMNS.IF_DIFFS].append(float(diff))
-                # # Store original index for traceability
-                # original_idx = pd.to_numeric(data.loc[prompt_idx, "original_idx"], downcast="integer")
-                # windows_true_probs[i]["original_idx"].append(int(original_idx))
+                # Store original index for traceability
+                windows_true_probs[i][COLUMNS.ORIGINAL_IDX].append(int(prompt_idx))
         return windows_true_probs
 
     prompt_indices = list(data.index)

@@ -12,7 +12,6 @@ from src.datasets.download_dataset import load_splitted_counter_fact
 from src.experiments.full_pipeline import FullPipelineConfig, main_local
 from src.types import FILTERATIONS, MODEL_ARCH
 
-DATA_SIZE = 10
 HEATMAP_SIZE = 5
 
 
@@ -36,12 +35,28 @@ def create_test_data(test_base_path: Path):
         shutil.rmtree(test_base_path)
     test_base_path.mkdir(parents=True, exist_ok=True)
     test_paths.COUNTER_FACT_FILTERATIONS_DIR.mkdir(parents=True, exist_ok=True)
+
     # get sample of real data
     dataset = load_splitted_counter_fact(
         "all",
         align_to_known=False,
         filteration=FILTERATIONS.all_correct,
-    ).select(range(DATA_SIZE))
+    ).filter(
+        lambda x: x[COLUMNS.ORIGINAL_IDX]
+        in [
+            53,
+            59,
+            74,
+            90,
+            93,
+            10594,
+            6410,
+            140,
+            148,
+            159,
+            182,
+        ]
+    )
 
     # save dataset to disk
     DatasetDict({"train1": dataset}).save_to_disk(test_paths.COUNTER_FACT_DIR / "splitted")

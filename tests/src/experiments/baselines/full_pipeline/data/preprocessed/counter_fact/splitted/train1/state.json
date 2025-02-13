@@ -4,20 +4,20 @@
       "filename": "data-00000-of-00001.arrow"
     }
   ],
-  "_fingerprint": "f13802e963f43c51",
+  "_fingerprint": "e56d8a0d2ee14068",
   "_format_columns": [
-    "original_idx",
-    "prompt",
     "relation",
-    "relation_id",
     "relation_prefix",
     "relation_suffix",
-    "split",
-    "subject",
-    "target_false",
+    "prompt",
+    "relation_id",
     "target_false_id",
+    "target_true_id",
     "target_true",
-    "target_true_id"
+    "target_false",
+    "subject",
+    "original_idx",
+    "split"
   ],
   "_format_kwargs": {},
   "_format_type": null,

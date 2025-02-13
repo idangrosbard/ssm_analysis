@@ -21,10 +21,14 @@ import torch
 from tqdm import tqdm
 
 from src.consts import MODEL_SIZES_PER_ARCH_TO_MODEL_ID
-from src.experiment_infra.base_config import BASE_OUTPUT_KEYS, BaseConfig, create_mutable_field
+from src.experiment_infra.base_config import (
+    BASE_OUTPUT_KEYS,
+    BaseConfig,
+    create_mutable_field,
+)
 from src.experiment_infra.model_interface import get_model_interface
 from src.plots.heatmaps import simple_diff_fixed
-from src.utils.logits import decode_tokens, get_prompt_row
+from src.utils.logits import Prompt, decode_tokens, get_prompt_row
 from src.utils.setup_models import get_tokenizer
 from src.utils.types_utils import STREnum
 
@@ -58,7 +62,11 @@ class HeatmapConfig(BaseConfig):
         return self.outputs_path / f"idx={prompt_idx}.csv"
 
     def get_outputs(self) -> dict[int, IHeatmap]:
-        return {idx: pd.read_csv(self.output_heatmap_path(idx)) for idx in self.prompt_indices}
+        data = self.get_prompt_data()
+        return {
+            idx: pd.read_csv(self.output_heatmap_path(get_prompt_row(data, idx).original_idx))
+            for idx in self.prompt_indices
+        }
 
     def get_plot_output_path(self, prompt_idx: int, plot_name: str) -> Path:
         return self.plots_path / f"idx={prompt_idx}{plot_name}.png"
@@ -87,32 +95,32 @@ def plot(args: HeatmapConfig):
             toks=toks,
             fixed_diff=0.3,
         )
-        output_path = args.get_plot_output_path(prompt_idx, HEATMAP_PLOT_FUNCS._simple_diff_fixed_0_3)
+        output_path = args.get_plot_output_path(prompt.original_idx, HEATMAP_PLOT_FUNCS._simple_diff_fixed_0_3)
         plt.savefig(output_path, bbox_inches="tight")
         plt.close(fig)
 
 
 def run(args: HeatmapConfig):
     print(args)
+    data = args.get_prompt_data()
     remaining_idx = [
         idx
         for idx in args.prompt_indices
-        if not args.output_heatmap_path(idx).exists() or args.overwrite_existing_outputs
+        if not args.output_heatmap_path(get_prompt_row(data, idx).original_idx).exists()
+        or args.overwrite_existing_outputs
     ]
     if not remaining_idx:
         print("All heatmaps already exist")
         return
 
     args.create_output_path()
-    data = args.get_prompt_data()
     model_interface = get_model_interface(args.model_arch, args.model_size)
     tokenizer = model_interface.tokenizer
     device = model_interface.device
 
     n_layers = model_interface.n_layers()
 
-    def forward_eval(prompt_idx, window):
-        prompt = get_prompt_row(data, prompt_idx)
+    def forward_eval(prompt: Prompt, window: list[int]):
         true_id = prompt.true_id(tokenizer, "cpu")
         input_ids = prompt.input_ids(tokenizer, device)
 
@@ -135,9 +143,10 @@ def run(args: HeatmapConfig):
 
     for prompt_idx in tqdm(remaining_idx, desc="Prompts"):
         prob_mat = []
+        prompt = get_prompt_row(data, prompt_idx)
         for window in windows:
             model_interface.setup(layers=window)
-            prob_mat.append(forward_eval(prompt_idx, window))
+            prob_mat.append(forward_eval(prompt, window))
 
         prob_mat = np.array(prob_mat).T
-        pd.DataFrame(prob_mat).to_csv(args.output_heatmap_path(prompt_idx), index=False)
+        pd.DataFrame(prob_mat).to_csv(args.output_heatmap_path(prompt.original_idx), index=False)

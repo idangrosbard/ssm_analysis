@@ -1,4 +1,5 @@
 import json
+import subprocess
 from abc import ABC, abstractmethod
 from dataclasses import asdict, dataclass, fields
 from pathlib import Path
@@ -7,20 +8,36 @@ from typing import Any, Callable, Generic, Type, TypeVar, cast, final
 import pandas as pd
 import pyrallis
 
-from src.consts import MODEL_SIZES_PER_ARCH_TO_MODEL_ID, PATHS
+from src.consts import COLUMNS, MODEL_SIZES_PER_ARCH_TO_MODEL_ID, PATHS
 from src.datasets.download_dataset import load_splitted_counter_fact
-from src.experiment_infra.output_path import _ATTRIBUTE_TYPE, OutputKey, combine_output_keys
-from src.types import DATASETS, FILTERATIONS, MODEL_ARCH, DatasetArgs, TModelID, TPromptData
+from src.experiment_infra.output_path import (
+    _ATTRIBUTE_TYPE,
+    OutputKey,
+    combine_output_keys,
+)
+from src.types import (
+    DATASETS,
+    FILTERATIONS,
+    MODEL_ARCH,
+    DatasetArgs,
+    TModelID,
+    TPromptData,
+)
 from src.utils.experiment_helper import create_run_id
 
 _TBaseConfig = TypeVar("_TBaseConfig", bound="BaseConfig")
 
 
-def create_mutable_field(default_factory: Callable[[], _ATTRIBUTE_TYPE]) -> _ATTRIBUTE_TYPE:
+def create_mutable_field(
+    default_factory: Callable[[], _ATTRIBUTE_TYPE],
+) -> _ATTRIBUTE_TYPE:
     # Pyralis need mutable fields to be defined with field but it's typing is not complete.
     # This is a fix to make it work.
 
-    return cast(_ATTRIBUTE_TYPE, pyrallis.field(default_factory=default_factory, is_mutable=True))
+    return cast(
+        _ATTRIBUTE_TYPE,
+        pyrallis.field(default_factory=default_factory, is_mutable=True),
+    )
 
 
 class BASE_OUTPUT_KEYS:
@@ -49,17 +66,20 @@ class BaseConfig(ABC, Generic[_TConfigOutputs]):
         lambda: DatasetArgs(
             name=DATASETS.COUNTER_FACT,
             splits="all",
-            filteration=FILTERATIONS.all_correct,
+            filteration=FILTERATIONS.current_model_correct,
         ),
     )
     _batch_size: int = 1  # Adjust based on GPU memory
     with_slurm: bool = False
+    # slurm_gpu_type: str = "titan_xp-studentrun"
+    slurm_gpu_type: str = "l40s"
+    slurm_gpus_per_node: int = 1
     overwrite_existing_outputs: bool = False
 
     @property
     def dataset_name(self) -> str:
-        return self.dataset_args.display_name
-        # return self.dataset_args.name
+        # return self.dataset_args.display_name
+        return self.dataset_args.name
 
     @property
     def batch_size(self) -> int:
@@ -124,11 +144,21 @@ class BaseConfig(ABC, Generic[_TConfigOutputs]):
         self.outputs_path.mkdir(parents=True, exist_ok=True)
 
         run_id = create_run_id(None)
-        json.dump(asdict(self), self.running_history_json_path(run_id).open("w"), indent=4)
+
+        params = asdict(self)
+        params["run_id"] = run_id
+        try:
+            params["git_commit_hash"] = subprocess.check_output(["git", "rev-parse", "HEAD"]).decode("utf-8").strip()
+        except Exception:
+            pass
+
+        json.dump(params, self.running_history_json_path(run_id).open("w"), indent=4)
 
     def get_raw_data(self, align_to_known: bool = False) -> pd.DataFrame:
         dataset = load_splitted_counter_fact(
-            "all", align_to_known=align_to_known, filteration=self.dataset_args.filteration
+            "all",
+            align_to_known=align_to_known,
+            filteration=self.dataset_args.filteration,
         )
         return pd.DataFrame(cast(dict, dataset))
 
@@ -174,15 +204,23 @@ class BaseConfig(ABC, Generic[_TConfigOutputs]):
         return sub_config_cls(**init_kwargs)
 
     def get_prompt_data(self) -> TPromptData:
-        from src.experiments.data_construction import DataConstructionConfig
+        from src.experiments.evaluate_model import EvaluateModelConfig
 
-        original_res, attn_res = [
-            self.init_sub_config_from_full_pipeline_config(DataConstructionConfig, attention=attention).get_outputs()
-            for attention in [True, False]
-        ]
-
-        mask = (original_res["hit"] == attn_res["hit"]) & (attn_res["hit"])
-        return attn_res[mask]  # type: ignore
+        df = self.init_sub_config_from_full_pipeline_config(
+            EvaluateModelConfig,
+            drop_subject=EvaluateModelConfig.drop_subject,
+            drop_subj_last_token=EvaluateModelConfig.drop_subj_last_token,
+            with_3_dots=EvaluateModelConfig.with_3_dots,
+            new_max_tokens=EvaluateModelConfig.new_max_tokens,
+            top_k_tokens=EvaluateModelConfig.top_k_tokens,
+        ).get_outputs()
+        if self.dataset_args.filteration == FILTERATIONS.current_model_correct:
+            return cast(
+                TPromptData,
+                df[df[COLUMNS.MODEL_CORRECT]].set_index(COLUMNS.ORIGINAL_IDX),
+            )
+        else:
+            raise NotImplementedError(f"Filteration {self.dataset_args.filteration} not implemented")
 
     @abstractmethod
     def get_outputs(self) -> _TConfigOutputs:

@@ -78,6 +78,10 @@ class Prompt:
     prompt_row: TPromptData
 
     @property
+    def original_idx(self) -> int:
+        return cast(int, self.prompt_row.name)
+
+    @property
     def prompt(self):
         return self.prompt_row[COLUMNS.PROMPT]
 
@@ -91,7 +95,7 @@ class Prompt:
 
     @property
     def base_prob(self):
-        return self.prompt_row[COLUMNS.TRUE_PROB]
+        return self.prompt_row[COLUMNS.TARGET_PROBS]
 
     def true_id(self, tokenizer, device) -> torch.Tensor:
         return tokenizer(self.true_word, return_tensors="pt", padding=True).input_ids.to(device="cpu")
@@ -146,4 +150,8 @@ def get_num_to_masks(
 
 
 def get_prompt_row(data: TPromptData, prompt_idx: int) -> Prompt:
+    return Prompt(prompt_row=data.iloc[prompt_idx])  # type: ignore
+
+
+def get_prompt_row_index(data: TPromptData, prompt_idx: int) -> Prompt:
     return Prompt(prompt_row=data.loc[prompt_idx])  # type: ignore
