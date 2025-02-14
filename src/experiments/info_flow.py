@@ -1,4 +1,5 @@
 import json
+import time
 from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
@@ -11,11 +12,14 @@ from tqdm import tqdm
 
 from src.consts import COLUMNS, is_mamba_arch
 from src.experiment_infra.base_config import BASE_OUTPUT_KEYS, BaseConfig, create_mutable_field
-from src.experiment_infra.model_interface import get_model_interface
+from src.experiment_infra.model_interface import ModelInterface, get_model_interface
 from src.experiment_infra.output_path import OutputKey
 from src.plots.info_flow_confidence import create_confidence_plot
-from src.types import MODEL_ARCH, FeatureCategory, TInfoFlowSource, TokenType
-from src.utils.logits import get_num_to_masks, get_prompt_row_index
+from src.types import MODEL_ARCH, FeatureCategory, TInfoFlowSource, TokenType, TTokenizer
+from src.utils.logits import Prompt, get_num_to_masks, get_prompt_row_index
+
+# Time in seconds between intermediate saves
+SAVE_INTERVAL = 600  # 10 minutes
 
 
 def skip_task(model_arch: MODEL_ARCH, source: TInfoFlowSource) -> bool:
@@ -43,11 +47,11 @@ class InfoFlowConfig(BaseConfig):
                 TokenType.context,
                 TokenType.subject,
             ],
-            TokenType.relation: [
-                TokenType.context,
-                TokenType.subject,
-                TokenType.relation,
-            ],
+            # TokenType.relation: [
+            #     TokenType.context,
+            #     TokenType.subject,
+            #     TokenType.relation,
+            # ],
         }
     )
 
@@ -62,6 +66,39 @@ class InfoFlowConfig(BaseConfig):
 
     def intermediate_outputs_path(self) -> Path:
         return self.experiment_variation_base_path / "intermediate_outputs"
+
+    def get_intermediate_output_path(self, target: TokenType, source: TInfoFlowSource) -> Path:
+        """Get the path for intermediate results for a specific target-source pair."""
+        return self.intermediate_outputs_path() / f"intermediate_{target}_{source}.json"
+
+    def save_intermediate_results(
+        self, target: TokenType, source: TInfoFlowSource, window_outputs: dict, current_window: int
+    ) -> None:
+        """Save intermediate results to a temporary file."""
+        path = self.get_intermediate_output_path(target, source)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        # Save current progress and metadata
+        data = {"window_outputs": window_outputs, "current_window": current_window, "timestamp": time.time()}
+        json.dump(data, path.open("w"))
+
+    def load_intermediate_results(
+        self, target: TokenType, source: TInfoFlowSource
+    ) -> tuple[Optional[dict[int, dict[str, list[float]]]], int]:
+        """Load intermediate results if they exist."""
+        path = self.get_intermediate_output_path(target, source)
+        if path.exists():
+            try:
+                data = json.load(path.open("r"))
+                return data["window_outputs"], data["current_window"]
+            except Exception as e:
+                print(f"Error loading intermediate results: {e}")
+        return None, 0
+
+    def cleanup_intermediate_results(self, target: TokenType, source: TInfoFlowSource) -> None:
+        """Clean up intermediate results after successful completion."""
+        path = self.get_intermediate_output_path(target, source)
+        if path.exists():
+            path.unlink()
 
     def output_block_target_path(self, target: TokenType, is_intermediate: bool) -> Path:
         output_path = self.intermediate_outputs_path() if is_intermediate else self.outputs_path
@@ -159,6 +196,46 @@ def plot(args: InfoFlowConfig, enforce_no_missing_outputs: bool = True):
         args.plot_block_target(target, save=True)
 
 
+def forward_eval(
+    prompt: Prompt,
+    window: list[int],
+    knockout_source: TInfoFlowSource,
+    knockout_target: TokenType,
+    model_interface: ModelInterface,
+    tokenizer: TTokenizer,
+    device,
+):
+    source, feature_category = (
+        (
+            knockout_source,
+            FeatureCategory.ALL,
+        )
+        if isinstance(knockout_source, TokenType)
+        else knockout_source
+    )
+    num_to_masks, first_token = get_num_to_masks(prompt, tokenizer, window, source, knockout_target, device)
+
+    next_token_probs = model_interface.generate_logits(
+        input_ids=prompt.input_ids(tokenizer, device),
+        attention=True,
+        num_to_masks=num_to_masks,
+        feature_category=feature_category,
+    )
+
+    max_prob = np.max(next_token_probs, axis=1)[0]
+    true_id = prompt.true_id(tokenizer, "cpu")
+    base_prob = prompt.base_prob
+    true_prob = next_token_probs[0, true_id[:, 0]]
+    torch.cuda.empty_cache()
+    return (
+        true_prob == max_prob,
+        ((true_prob - base_prob) / base_prob) * 100.0,
+        first_token,
+        (true_prob - base_prob),
+        true_prob,
+    )
+
+
 def run(args: InfoFlowConfig):
     print(args)
 
@@ -183,77 +260,65 @@ def run(args: InfoFlowConfig):
     device = model_interface.device
 
     n_layers = model_interface.n_layers()
-
-    def forward_eval(
-        prompt_idx,
-        window,
-        knockout_source: TInfoFlowSource,
-        knockout_target: TokenType,
-    ):
-        prompt = get_prompt_row_index(data, prompt_idx)
-        source, feature_category = (
-            (
-                knockout_source,
-                FeatureCategory.ALL,
-            )
-            if isinstance(knockout_source, TokenType)
-            else knockout_source
-        )
-        num_to_masks, first_token = get_num_to_masks(prompt, tokenizer, window, source, knockout_target, device)
-
-        next_token_probs = model_interface.generate_logits(
-            input_ids=prompt.input_ids(tokenizer, device),
-            attention=True,
-            num_to_masks=num_to_masks,
-            feature_category=feature_category,
-        )
-
-        max_prob = np.max(next_token_probs, axis=1)[0]
-        true_id = prompt.true_id(tokenizer, "cpu")
-        base_prob = prompt.base_prob
-        true_prob = next_token_probs[0, true_id[:, 0]]
-        torch.cuda.empty_cache()
-        return (
-            true_prob == max_prob,
-            ((true_prob - base_prob) / base_prob) * 100.0,
-            first_token,
-            (true_prob - base_prob),
-            true_prob,
-        )
+    banned_prompt_indices: set[int] = set()
 
     def evaluate(
-        prompt_indices,
-        windows,
+        prompt_indices: list[int],
+        windows: list[list[int]],
         knockout_source: TInfoFlowSource,
         knockout_target: TokenType,
         print_period=100,
     ):
-        windows_true_probs: dict[int, dict[str, list[float]]] = defaultdict(lambda: defaultdict(list))
-        for i, window in enumerate(tqdm(windows, desc="Windows")):
+        # Try to load intermediate results
+        windows_true_probs, start_window_idx = args.load_intermediate_results(knockout_target, knockout_source)
+        if windows_true_probs is None:
+            windows_true_probs = defaultdict(lambda: defaultdict(list))
+            start_window_idx = 0
+        else:
+            print(f"Resuming from window {start_window_idx}")
+            # Convert the loaded dict back to defaultdict
+            windows_true_probs = defaultdict(lambda: defaultdict(list), windows_true_probs)
+
+        last_save_time = time.time()
+
+        for i, window in enumerate(
+            tqdm(windows[start_window_idx:], desc="Windows", initial=float(start_window_idx)), start=start_window_idx
+        ):
             windows_true_probs[i] = defaultdict(list)
             model_interface.setup(layers=window)
-            for _, prompt_idx in enumerate(tqdm(prompt_indices, desc="Prompts", miniters=print_period)):
+            for _, prompt_idx in enumerate(tqdm(prompt_indices, desc="Prompts", mininterval=print_period)):
+                if prompt_idx in banned_prompt_indices:
+                    continue
                 try:
                     hit, diff, first, diff_unnorm, true_prob = forward_eval(
-                        prompt_idx,
+                        get_prompt_row_index(data, prompt_idx),
                         window,
                         knockout_source,
                         knockout_target,
+                        model_interface,
+                        tokenizer,
+                        device,
                     )
                 except Exception as e:
-                    if i == 0:
-                        print(
-                            f" Error evaluating {prompt_idx = }"
-                            f" in {window = }"
-                            f" with {knockout_source = }, {knockout_target = }"
-                            f": {e}"
-                        )
+                    if "Test failure" in str(e):
+                        # Test failure is expected, so we raise the error
+                        raise e
+                    print(f" Error evaluating {prompt_idx = } with {knockout_source = }, {knockout_target = }: {e}")
+                    banned_prompt_indices.add(prompt_idx)
                     continue
                 windows_true_probs[i][COLUMNS.IF_HIT].append(bool(hit))
                 windows_true_probs[i][COLUMNS.IF_TRUE_PROBS].append(float(true_prob))
                 windows_true_probs[i][COLUMNS.IF_DIFFS].append(float(diff))
                 # Store original index for traceability
                 windows_true_probs[i][COLUMNS.ORIGINAL_IDX].append(int(prompt_idx))
+
+            # Check if it's time to save intermediate results
+            current_time = time.time()
+            if current_time - last_save_time >= SAVE_INTERVAL:
+                args.save_intermediate_results(knockout_target, knockout_source, dict(windows_true_probs), i)
+                last_save_time = current_time
+                print(f"\nSaved intermediate results at window {i}")
+
         return windows_true_probs
 
     prompt_indices = list(data.index)
@@ -277,3 +342,5 @@ def run(args: InfoFlowConfig):
             }
         args.output_block_target_source_path(target, source).parent.mkdir(parents=True, exist_ok=True)
         json.dump(window_outputs, args.output_block_target_source_path(target, source).open("w"))
+        # Clean up intermediate results after successful completion
+        args.cleanup_intermediate_results(target, source)

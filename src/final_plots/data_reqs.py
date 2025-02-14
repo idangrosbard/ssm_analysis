@@ -296,11 +296,12 @@ def get_data_reqs() -> IDataFulfilled:
         if is_mamba_arch(model_arch):
             for is_all_correct in [True, False]:
                 for source, feature_category in [
-                    (TokenType.context, None),
-                    (TokenType.subject, None),
-                    (TokenType.relation, None),
+                    (TokenType.last, None),
                     (TokenType.subject, FeatureCategory.SLOW_DECAY),
                     (TokenType.subject, FeatureCategory.FAST_DECAY),
+                    (TokenType.first, None),
+                    (TokenType.subject, None),
+                    (TokenType.relation, None),
                 ]:
                     data_reqs[
                         DataReq(

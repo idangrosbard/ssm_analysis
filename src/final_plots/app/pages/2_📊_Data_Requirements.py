@@ -3,6 +3,7 @@ from pathlib import Path
 import pandas as pd
 import streamlit as st
 
+from src.consts import EXPERIMENT_NAMES
 from src.final_plots.data_reqs import (
     get_data_fullfment_options,
     get_data_reqs,
@@ -105,17 +106,18 @@ st.write(f"Showing {len(filtered_df)} requirements out of {len(df)} total")
 # Display requirements with expandable rows
 for _, row in filtered_df.iterrows():
     label = (
-        f"{row[ParamNames.experiment_name]} - {row[ParamNames.model_arch]}-{row[ParamNames.model_size]}"
-        f"ws={row[ParamNames.window_size]} all_correct={row[ParamNames.is_all_correct]}"
+        f"{row[ReqMetadataColumns.AvailableOptions]} Options | "
+        f"**{row[ParamNames.experiment_name]}** | "
+        f"**{row[ParamNames.model_arch]}-{row[ParamNames.model_size]}**"
+        f" | ws=**{row[ParamNames.window_size]}**{' | **all_correct** ' if row[ParamNames.is_all_correct] else ''}"
     )
-    if row[ParamNames.experiment_name] == "info_flow":
-        label += (
-            f" source={row[ParamNames.source]} target={row[ParamNames.target]} prompt_idx={row[ParamNames.prompt_idx]}"
+    if row[ParamNames.experiment_name] == EXPERIMENT_NAMES.INFO_FLOW:
+        label += f" | source=**{row[ParamNames.source]}** target=**{row[ParamNames.target]}**" + (
+            f" feature_category=**{row[ParamNames.feature_category]}**" if row[ParamNames.feature_category] else ""
         )
-    elif row[ParamNames.experiment_name] == "feature_knockout":
-        label += f" feature_category={row[ParamNames.feature_category]}"
+    elif row[ParamNames.experiment_name] == EXPERIMENT_NAMES.HEATMAP:
+        label += f" | prompt_idx=**{row[ParamNames.prompt_idx]}**"
 
-    label += f" (Options: {row[ReqMetadataColumns.AvailableOptions]})"
     with st.expander(label):
         st.write("### Requirement Details")
         details_col1, details_col2 = st.columns(2)
