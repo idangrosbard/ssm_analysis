@@ -415,7 +415,11 @@ def get_data_reqs() -> IDataFulfilled:
     return data_reqs
 
 
-def update_data_reqs_with_latest_results() -> None:
+def get_current_data_reqs() -> IDataFulfilled:
     data_reqs_options = get_latest_data_fulfilled()
     loaded_overides: dict[DataReq, Path | None] = load_data_fulfilled_overides()
-    _save_data_fulfilled(DATA_FULFILLED_PATH, merge_data_reqs(loaded_overides, data_reqs_options, keys_by_first=False))
+    return merge_data_reqs(loaded_overides, data_reqs_options, keys_by_first=False)
+
+
+def update_data_reqs_with_latest_results() -> None:
+    _save_data_fulfilled(DATA_FULFILLED_PATH, get_current_data_reqs())

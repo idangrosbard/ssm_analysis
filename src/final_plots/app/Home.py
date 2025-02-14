@@ -11,6 +11,7 @@ This application provides visualizations and analysis of various experiments con
 ### Available Pages:
 - **📋 Results Bank**: View detailed information about all experiments and their results
 - **📊 Data Requirements**: Manage data requirements and overrides for experiments
+- **📈 Info Flow Plots**: Visualize and analyze information flow with customizable grid layouts
 """)
 
 st.sidebar.success("Select a page above to explore different analyses.")
