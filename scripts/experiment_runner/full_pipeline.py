@@ -26,16 +26,17 @@ def main(args: FullPipelineConfig):
         # (MODEL_ARCH.MAMBA1, "7B-falcon-base"),
         # (MODEL_ARCH.MAMBA2, "130M"),
         # (MODEL_ARCH.MAMBA2, "1.3B"),
-        (MODEL_ARCH.MAMBA2, "2.7B"),
-        # (MODEL_ARCH.GPT2, "124M"),
+        # (MODEL_ARCH.MAMBA2, "2.7B"),
+        (MODEL_ARCH.GPT2, "124M"),
         # (MODEL_ARCH.GPT2, "355M"),
         # (MODEL_ARCH.GPT2, "774M"),
         # (MODEL_ARCH.GPT2, "1.5B"),
     ]:
         args.model_arch = model_arch
         args.model_size = model_size
-        args.variation = "v3"
-        # args.variation = "v2" if model_arch == MODEL_ARCH.MAMBA1 or model_arch == MODEL_ARCH.MAMBA2 else "v1"
+        # args.variation = "v3"
+        # if model_arch == MODEL_ARCH.GPT2:
+        #     args.variation = "v2"
         # args.dataset_args = DatasetArgs(name=DATASETS.COUNTER_FACT, splits="all")
         for window_size in window_sizes:
             args.window_size = window_size

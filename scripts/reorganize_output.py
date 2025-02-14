@@ -1,10 +1,9 @@
 import shutil
-from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, Optional
 
 from src.consts import PATHS
 from src.experiment_infra.base_config import BASE_OUTPUT_KEYS
-from src.experiment_infra.output_path import OutputKey, OutputPath
+from src.experiment_infra.output_path import OutputKey, OutputPath, dict_to_obj
 from src.utils.file_system import remove_dirs_with_only_dirs
 
 
@@ -39,57 +38,12 @@ def reorganize_files(
             f"New structure only: {new_keys - old_keys}"
         )
 
-    def process_directory(
-        current_path: Path, depth: int
-    ) -> Tuple[List[Tuple[Path, Path, Dict[str, str]]], List[Tuple[Path, str]]]:
-        """Process a directory at the given depth in the path structure.
-
-        Args:
-            current_path: The current directory path
-            depth: Current depth in the path components
-            collected_values: Values collected from parent directories
-
-        Returns:
-            List of moves to perform (old_path, new_path, values)
-        """
-        if not current_path.exists():
-            return [], [(current_path, "Path not found")]
-
-        if not current_path.is_dir():
-            return [], [(current_path, "Not a directory, and not all components resolved")]
-
-        sub_path = OutputPath(old_path_structure.base_path, old_path_structure.path_components[:depth])
-
-        try:
-            values = sub_path.extract_values_from_path(current_path)
-        except ValueError as e:
-            return [], [(current_path, str(e))]
-
-        if depth == len(old_path_structure.path_components):
-
-            class MockConfig:
-                pass
-
-            config = MockConfig()
-            for key, value in values.items():
-                setattr(config, key, value)
-
-            new_base = new_path_structure.to_path(config)
-            return [(current_path, new_base, values)], []
-        else:
-            moves: List[Tuple[Path, Path, Dict[str, str]]] = []
-            errors: List[Tuple[Path, str]] = []
-            for item in current_path.iterdir():
-                res = process_directory(item, depth + 1)
-                moves.extend(res[0])
-                errors.extend(res[1])
-
-            return moves, errors
-
-    moves, errors = process_directory(old_path_structure.base_path, 0)
-    if errors:
+    in_pattern, out_of_pattern = old_path_structure.process_path()
+    assert all([p.is_dir() for p, _ in in_pattern])
+    moves = [(old_path, new_path_structure.to_path(dict_to_obj(values)), values) for old_path, values in in_pattern]
+    if out_of_pattern:
         print("Errors:")
-        for path, error in errors:
+        for path, error in out_of_pattern:
             print(f"  {path.relative_to(old_path_structure.base_path)}: {error}")
     elif not moves:
         print("No files found to move.")
@@ -110,7 +64,7 @@ def reorganize_files(
 
 if __name__ == "__main__":
     base_path = PATHS.OUTPUT_DIR
-    # base_path = PATHS.PROJECT_DIR / "tests/src/experiments/baselines/full_pipeline/output"
+    base_path = PATHS.PROJECT_DIR / "tests/src/experiments/baselines/full_pipeline/output"
     old_path_structure = OutputPath(
         base_path,
         [
@@ -122,7 +76,8 @@ if __name__ == "__main__":
         ],
     )
     new_path_structure = OutputPath(
-        base_path.parent / "output.temp",
+        # base_path.parent/ "output.temp",
+        base_path,
         # base_path,
         [
             BASE_OUTPUT_KEYS.EXPERIMENT_NAME,
@@ -139,5 +94,6 @@ if __name__ == "__main__":
         BASE_OUTPUT_KEYS.EXPERIMENT_NAME.key_name: ["evaluate"],
     }
     # filter_values = None
-    reorganize_files(old_path_structure, new_path_structure, filter_values=filter_values, dry_run=dry_run)
+    reorganize_files(new_path_structure, new_path_structure, filter_values=filter_values, dry_run=dry_run)
+    # reorganize_files(old_path_structure, new_path_structure, filter_values=filter_values, dry_run=dry_run)
     # reorganize_files(new_path_structure, old_path_structure, filter_values=filter_values, dry_run=dry_run)

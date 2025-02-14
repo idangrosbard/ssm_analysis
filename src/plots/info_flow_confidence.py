@@ -275,6 +275,11 @@ def create_confidence_plot(
     # Dictionary to store unique handles by their properties
     unique_handles = {}
 
+    # Get number of points from first window of first block
+    first_block = next(iter(targets_window_outputs.values()))
+    first_window = next(iter(first_block.values()))
+    n_points = len(first_window[COLUMNS.IF_HIT])
+
     # Process each metric type (accuracy and diff)
     for i, (metric_type, plot_metadata) in enumerate(plots_meta_data.items()):
         ax = axes[i]
@@ -327,7 +332,7 @@ def create_confidence_plot(
 
     # Set overall title
     fig.suptitle(
-        title,
+        f"{title} ({n_points = })",
         fontsize=12,
     )
 

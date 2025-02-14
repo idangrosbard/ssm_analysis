@@ -1,5 +1,6 @@
 import os
 from dataclasses import dataclass
+from enum import StrEnum
 from pathlib import Path
 
 from src.types import (
@@ -105,7 +106,7 @@ MODEL_SIZES_PER_ARCH_TO_MODEL_ID: dict[MODEL_ARCH, dict[str, TModelID]] = {
         "130M": TModelID("state-spaces/mamba2-130M"),
         "1.3B": TModelID("state-spaces/mamba2-1.3b"),
         "2.7B": TModelID("state-spaces/mamba2-2.7B"),
-        "8B": TModelID("nvidia/mamba2-8b-3t-4k"),
+        # "8B": TModelID("nvidia/mamba2-8b-3t-4k"),
     },
     MODEL_ARCH.LLAMA2: {
         "7B": TModelID("meta-llama/Llama-2-7b-hf"),
@@ -123,35 +124,29 @@ MODEL_SIZES_PER_ARCH_TO_MODEL_ID: dict[MODEL_ARCH, dict[str, TModelID]] = {
 }
 
 GRAPHS_ORDER = [
-    (MODEL_ARCH.GPT2, "124M"),
-    (MODEL_ARCH.MAMBA1, "130M"),
-    (MODEL_ARCH.MAMBA2, "130M"),
-    (MODEL_ARCH.GPT2, "355M"),
-    (MODEL_ARCH.GPT2, "774M"),
-    (MODEL_ARCH.MAMBA1, "1.4B"),
-    (MODEL_ARCH.MAMBA2, "1.3B"),
-    (MODEL_ARCH.GPT2, "1.5B"),
-    (MODEL_ARCH.MAMBA1, "2.8B"),
-    (MODEL_ARCH.MAMBA2, "2.7B"),
-    (MODEL_ARCH.MAMBA1, "7B"),
-    (MODEL_ARCH.MAMBA1, "7B-falcon"),
-    (MODEL_ARCH.MAMBA1, "7B-falcon-base"),
-    (MODEL_ARCH.MAMBA2, "8B"),
+    (MODEL_ARCH.GPT2, "124M", MODEL_SIZE_CAT.SMALL),
+    (MODEL_ARCH.MAMBA1, "130M", MODEL_SIZE_CAT.SMALL),
+    (MODEL_ARCH.MAMBA2, "130M", MODEL_SIZE_CAT.SMALL),
+    (MODEL_ARCH.GPT2, "355M", MODEL_SIZE_CAT.SMALL),
+    (MODEL_ARCH.GPT2, "774M", MODEL_SIZE_CAT.MEDIUM),
+    (MODEL_ARCH.MAMBA1, "1.4B", MODEL_SIZE_CAT.MEDIUM),
+    (MODEL_ARCH.MAMBA2, "1.3B", MODEL_SIZE_CAT.MEDIUM),
+    (MODEL_ARCH.GPT2, "1.5B", MODEL_SIZE_CAT.MEDIUM),
+    (MODEL_ARCH.MAMBA1, "2.8B", MODEL_SIZE_CAT.LARGE),
+    (MODEL_ARCH.MAMBA2, "2.7B", MODEL_SIZE_CAT.LARGE),
+    (MODEL_ARCH.MAMBA1, "7B", MODEL_SIZE_CAT.HUGE),
+    (MODEL_ARCH.MAMBA1, "7B-falcon", MODEL_SIZE_CAT.HUGE),
+    (MODEL_ARCH.MAMBA1, "7B-falcon-base", MODEL_SIZE_CAT.HUGE),
+    # (MODEL_ARCH.MAMBA2, "8B", MODEL_SIZE_CAT.HUGE),
 ]
 
 
 def get_model_by_cat_size(cat_size: MODEL_SIZE_CAT) -> list[tuple[MODEL_ARCH, str]]:
-    if isinstance(cat_size, str):
-        cat_size = MODEL_SIZE_CAT[cat_size.upper()]
-
-    for i, size in enumerate(MODEL_SIZE_CAT):
-        if size == cat_size:
-            return GRAPHS_ORDER[2 * i : 2 * i + 2]
-    raise ValueError(f"Model size {cat_size} not found in GRAPHS_ORDER")
+    return [(arch, model_size) for arch, model_size, model_size_cat in GRAPHS_ORDER if model_size_cat == cat_size]
 
 
 def reverse_model_id(model_id: str) -> tuple[MODEL_ARCH, str]:
-    for arch, model_size in GRAPHS_ORDER:
+    for arch, model_size, _ in GRAPHS_ORDER:
         for model_id_prefix in ["", "state-spaces/", "tiiuae/"]:
             if MODEL_SIZES_PER_ARCH_TO_MODEL_ID[arch][model_size] == f"{model_id_prefix}{model_id}":
                 return arch, model_size
@@ -169,9 +164,11 @@ def is_falcon(model_size: str) -> bool:
 DATASETS_IDS: dict[DATASETS, TDatasetID] = {DATASETS.COUNTER_FACT: TDatasetID("NeelNanda/counterfact-tracing")}  # type: ignore
 
 
-class EXPERIMENT_NAMES:
+class EXPERIMENT_NAMES(StrEnum):
     DATA_CONSTRUCTION = "data_construction"
     EVALUATE_MODEL = "evaluate_model"
+    INFO_FLOW = "info_flow"
+    HEATMAP = "heatmap"
 
 
 class COLUMNS:

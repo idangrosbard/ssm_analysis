@@ -11,6 +11,7 @@ The combined result is a dictionary of prompt index -> heatmap
 
 import functools
 from dataclasses import dataclass
+from enum import StrEnum
 from pathlib import Path
 from typing import Callable, cast
 
@@ -30,10 +31,9 @@ from src.experiment_infra.model_interface import get_model_interface
 from src.plots.heatmaps import simple_diff_fixed
 from src.utils.logits import Prompt, decode_tokens, get_prompt_row
 from src.utils.setup_models import get_tokenizer
-from src.utils.types_utils import STREnum
 
 
-class HEATMAP_PLOT_FUNCS(STREnum):
+class HEATMAP_PLOT_FUNCS(StrEnum):
     _simple_diff_fixed_0_3 = "_simple_diff_fixed_0.3"
 
 

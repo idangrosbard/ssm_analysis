@@ -37,6 +37,7 @@ class FullPipelineConfig(BaseConfig):
     experiment_base_name: str = "full_pipeline"
 
     with_plotting: bool = False
+    enforce_no_missing_outputs: bool = True
     with_generation: bool = True
 
     # EvaluateModelConfig
@@ -82,6 +83,7 @@ class FullPipelineConfig(BaseConfig):
 def main_local(args: FullPipelineConfig):
     """Run the full pipeline of experiments."""
     print("Starting Full Pipeline Experiment")
+    print(f"{args.with_generation=} {args.with_plotting=} {args.enforce_no_missing_outputs=}")
     print(args)
 
     # Step 1: Model Evaluation
@@ -106,7 +108,10 @@ def main_local(args: FullPipelineConfig):
         heatmap.run(heatmap_config)
     if args.with_plotting:
         print("\nPlotting all heatmaps...")
-        heatmap.plot(heatmap_config)
+        try:
+            heatmap.plot(heatmap_config)
+        except Exception as e:
+            print(f"Error plotting heatmaps: {e}")
 
     # Step 4: Information Flow Analysis
     info_flow_config = args.info_flow_config()
@@ -115,6 +120,9 @@ def main_local(args: FullPipelineConfig):
         info_flow.run(info_flow_config)
     if args.with_plotting:
         print("\nPlotting all info flow blocks...")
-        info_flow.plot(info_flow_config)
+        try:
+            info_flow.plot(info_flow_config, args.enforce_no_missing_outputs)
+        except Exception as e:
+            print(f"Error plotting info flow blocks: {e}")
 
     print("\nFull Pipeline Experiment Complete!")

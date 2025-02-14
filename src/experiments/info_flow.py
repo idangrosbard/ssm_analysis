@@ -60,39 +60,57 @@ class InfoFlowConfig(BaseConfig):
             [BASE_OUTPUT_KEYS.WINDOW_SIZE, debug_last_windows_output_key],
         ]
 
-    def output_block_target_path(self, target: TokenType) -> Path:
-        return self.outputs_path / f"target={target}"
+    def intermediate_outputs_path(self) -> Path:
+        return self.experiment_variation_base_path / "intermediate_outputs"
 
-    def output_block_target_source_path(self, target: TokenType, source: TInfoFlowSource) -> Path:
+    def output_block_target_path(self, target: TokenType, is_intermediate: bool) -> Path:
+        output_path = self.intermediate_outputs_path() if is_intermediate else self.outputs_path
+        return output_path / f"target={target}"
+
+    def output_block_target_source_path(
+        self, target: TokenType, source: TInfoFlowSource, is_intermediate: bool = False
+    ) -> Path:
         if isinstance(source, tuple):
             feature_category_str = f"source={source[0]}_feature_category={source[1]}"
         else:
             feature_category_str = f"source={source}"
-        return self.output_block_target_path(target) / f"{feature_category_str}.csv"
+        return self.output_block_target_path(target, is_intermediate) / f"{feature_category_str}.csv"
 
-    def get_block_target_outputs(self, target: TokenType) -> dict[TInfoFlowSource, dict[str, dict[str, list[float]]]]:
+    def get_block_target_outputs(
+        self, target: TokenType, enforce_no_missing_outputs: bool
+    ) -> dict[TInfoFlowSource, dict[str, dict[str, list[float]]]]:
         return {
             source: json.load(self.output_block_target_source_path(target, source).open("r"))
             for source in self.knockout_map[target]
             if not skip_task(self.model_arch, source)
+            and (not enforce_no_missing_outputs or self.output_block_target_source_path(target, source).exists())
         }
 
     def get_outputs(
         self,
+        enforce_no_missing_outputs: bool = True,
     ) -> dict[TokenType, dict[TInfoFlowSource, dict[str, dict[str, list[float]]]]]:
-        return {target: self.get_block_target_outputs(target) for target in self.knockout_map}
+        return {
+            target: self.get_block_target_outputs(target, enforce_no_missing_outputs) for target in self.knockout_map
+        }
 
     def get_plot_output_path(self, target: TokenType, plot_name: str) -> Path:
         return self.plots_path / f"target={target}{plot_name}.png"
 
-    def plot_block_target(self, target: TokenType, save: bool = False, confidence_level: float = 0.95):
+    def plot_block_target(
+        self,
+        target: TokenType,
+        save: bool = False,
+        confidence_level: float = 0.95,
+        enforce_no_missing_outputs: bool = True,
+    ):
         """Plot information flow from a target block to its source blocks.
 
         Args:
             target: The target TokenType to analyze flows from
             save: Whether to save the figure
         """
-        data = self.get_block_target_outputs(target)
+        data = self.get_block_target_outputs(target, enforce_no_missing_outputs)
         figs = {}
         for with_fixed_limits in [True, False]:
             sub_title = "_fixed_limits" if with_fixed_limits else ""
@@ -121,12 +139,14 @@ class InfoFlowConfig(BaseConfig):
                 },
             )
             if save:
-                figs[sub_title].savefig(self.get_plot_output_path(target, sub_title))
+                p = self.get_plot_output_path(target, sub_title)
+                p.parent.mkdir(parents=True, exist_ok=True)
+                figs[sub_title].savefig(p)
                 plt.close(figs[sub_title])
         return figs
 
 
-def plot(args: InfoFlowConfig):
+def plot(args: InfoFlowConfig, enforce_no_missing_outputs: bool = True):
     knockout_map_outputs = args.get_outputs()
     for target in knockout_map_outputs:
         print(f"Plotting {target}")

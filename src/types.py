@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from enum import StrEnum
 from typing import Literal, NewType, Optional, Sequence, Union, assert_never
 
 import pandas as pd
@@ -6,10 +7,8 @@ from jaxtyping import Float
 from torch import Tensor
 from transformers import PreTrainedTokenizer, PreTrainedTokenizerFast
 
-from src.utils.types_utils import STREnum
 
-
-class SPLIT(STREnum):
+class SPLIT(StrEnum):
     TRAIN1 = "train1"
     TRAIN2 = "train2"
     TRAIN3 = "train3"
@@ -18,7 +17,7 @@ class SPLIT(STREnum):
     TEST = "test"
 
 
-class MODEL_ARCH(STREnum):
+class MODEL_ARCH(StrEnum):
     MAMBA1 = "mamba1"
     MAMBA2 = "mamba2"
     GPT2 = "gpt2"
@@ -41,13 +40,14 @@ class MODEL_ARCH(STREnum):
         assert_never(self.value)
 
 
-class MODEL_SIZE_CAT(STREnum):
+class MODEL_SIZE_CAT(StrEnum):
     SMALL = "small"
     MEDIUM = "medium"
     LARGE = "large"
+    HUGE = "huge"
 
 
-class DATASETS(STREnum):
+class DATASETS(StrEnum):
     COUNTER_FACT = "counter_fact"
 
 
@@ -60,7 +60,7 @@ TWindow = NewType("TWindow", list[int])
 TPromptData = NewType("TPromptData", pd.DataFrame)
 
 
-class TokenType(STREnum):
+class TokenType(StrEnum):
     first = "first"
     last = "last"
     subject = "subject"
@@ -69,7 +69,7 @@ class TokenType(STREnum):
     all = "all"
 
 
-class FILTERATIONS(STREnum):
+class FILTERATIONS(StrEnum):
     all_correct = "all_correct"
     current_model_correct = "current_model_correct"
     all_any_correct = "all_any_correct"
@@ -105,7 +105,7 @@ TSSM_Bu = Float[Tensor, "batch hidden_size seq_len ssm_dim"]
 TSSM_C = Float[Tensor, "batch seq_len ssm_dim"]
 
 
-class KnockoutMode(STREnum):
+class KnockoutMode(StrEnum):
     ZERO_ATTENTION = "ZERO_ATTENTION"
     ZERO_DELTA = "ZERO_DELTA"
     IGNORE_CONTEXT = "IGNORE_CONTEXT"
@@ -115,7 +115,7 @@ class KnockoutMode(STREnum):
     INCREASE_DELTA = "INCREASE_DELTA"
 
 
-class FeatureCategory(STREnum):
+class FeatureCategory(StrEnum):
     ALL = "ALL"
     NONE = "NONE"
     FAST_DECAY = "FAST_DECAY"

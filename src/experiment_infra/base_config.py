@@ -58,7 +58,7 @@ class BaseConfig(ABC, Generic[_TConfigOutputs]):
     """Base configuration class with common parameters across all scripts."""
 
     experiment_base_name: str
-    variation: str = "v1"
+    variation: str = "v3"
 
     model_arch: MODEL_ARCH = MODEL_ARCH.MAMBA1
     model_size: str = "130M"
@@ -79,6 +79,7 @@ class BaseConfig(ABC, Generic[_TConfigOutputs]):
     @property
     def dataset_name(self) -> str:
         # return self.dataset_args.display_name
+        # return 'counter_fact_all_correct'
         return self.dataset_args.name
 
     @property
