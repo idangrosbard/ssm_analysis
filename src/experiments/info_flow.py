@@ -145,6 +145,12 @@ class InfoFlowConfig(BaseConfig):
                 plt.close(figs[sub_title])
         return figs
 
+    def plot(self, enforce_no_missing_outputs: bool = True) -> None:
+        plot(self, enforce_no_missing_outputs)
+
+    def run(self) -> None:
+        run(self)
+
 
 def plot(args: InfoFlowConfig, enforce_no_missing_outputs: bool = True):
     knockout_map_outputs = args.get_outputs()

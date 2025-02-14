@@ -1,7 +1,7 @@
 {
     "experiment_base_name": "info_flow",
     "variation": "test_baseline",
-    "model_arch": "mamba2",
+    "model_arch": "mamba1",
     "model_size": "130M",
     "dataset_args": {
         "name": "counter_fact",
@@ -10,6 +10,8 @@
     },
     "_batch_size": 1,
     "with_slurm": false,
+    "slurm_gpu_type": "l40s",
+    "slurm_gpus_per_node": 1,
     "overwrite_existing_outputs": false,
     "window_size": 15,
     "DEBUG_LAST_WINDOWS": null,
@@ -37,5 +39,7 @@
             "subject",
             "relation"
         ]
-    }
+    },
+    "run_id": "20250214_10-12-36",
+    "git_commit_hash": "28315c7e3cfde688a2e3e297f2cde68f82e7c684"
 }

@@ -51,6 +51,9 @@ class EvaluateModelConfig(BaseConfig):
     def get_outputs(self) -> pd.DataFrame:
         return pd.read_csv(self.output_result_path, index_col=False)
 
+    def run(self) -> None:
+        run(self)
+
 
 def get_subj_idx(
     input: str,

@@ -14,7 +14,6 @@ consistent configuration across all steps.
 from dataclasses import dataclass
 from typing import Optional
 
-import src.experiments.data_construction as data_construction
 import src.experiments.evaluate_model as evaluate_model
 import src.experiments.heatmap as heatmap
 import src.experiments.info_flow as info_flow
@@ -23,7 +22,6 @@ from src.experiment_infra.base_config import (
     BaseConfig,
     create_mutable_field,
 )
-from src.experiments.data_construction import DataConstructionConfig
 from src.experiments.evaluate_model import EvaluateModelConfig
 from src.experiments.heatmap import HeatmapConfig
 from src.experiments.info_flow import InfoFlowConfig
@@ -61,9 +59,6 @@ class FullPipelineConfig(BaseConfig):
             BASE_OUTPUT_KEYS.WINDOW_SIZE,
         ]
 
-    def data_construction_config(self, attention: bool = False) -> DataConstructionConfig:
-        return self.init_sub_config_from_full_pipeline_config(DataConstructionConfig, attention=attention)
-
     def evaluate_model_config(self) -> EvaluateModelConfig:
         return self.init_sub_config_from_full_pipeline_config(
             EvaluateModelConfig,
@@ -79,6 +74,9 @@ class FullPipelineConfig(BaseConfig):
         """Get outputs from all experiments."""
         return {}
 
+    def run(self) -> None:
+        main_local(self)
+
 
 def main_local(args: FullPipelineConfig):
     """Run the full pipeline of experiments."""
@@ -91,16 +89,7 @@ def main_local(args: FullPipelineConfig):
         print("\nRunning Model Evaluation Experiment...")
         evaluate_model.run(args.evaluate_model_config())
 
-    # Step 2: Data Construction
-    if args.with_generation:
-        print("\nRunning Data Construction Experiment (attention=False)...")
-        data_construction.run(args.data_construction_config(attention=False))
-
-    if args.with_generation:
-        print("\nRunning Data Construction Experiment (attention=True)...")
-        data_construction.run(args.data_construction_config(attention=True))
-
-    # Step 3: Heatmap Analysis
+    # Step 2: Heatmap Analysis
 
     print("\nRunning Heatmap Analysis Experiment...")
     heatmap_config = args.heatmap_config()
@@ -113,7 +102,7 @@ def main_local(args: FullPipelineConfig):
         except Exception as e:
             print(f"Error plotting heatmaps: {e}")
 
-    # Step 4: Information Flow Analysis
+    # Step 3: Information Flow Analysis
     info_flow_config = args.info_flow_config()
     if args.with_generation:
         print("\nRunning Information Flow Analysis Experiment...")

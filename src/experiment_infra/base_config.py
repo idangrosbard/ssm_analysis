@@ -226,3 +226,7 @@ class BaseConfig(ABC, Generic[_TConfigOutputs]):
     @abstractmethod
     def get_outputs(self) -> _TConfigOutputs:
         pass
+
+    @abstractmethod
+    def run(self) -> None:
+        pass

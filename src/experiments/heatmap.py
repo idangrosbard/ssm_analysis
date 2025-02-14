@@ -71,6 +71,12 @@ class HeatmapConfig(BaseConfig):
     def get_plot_output_path(self, prompt_idx: int, plot_name: str) -> Path:
         return self.plots_path / f"idx={prompt_idx}{plot_name}.png"
 
+    def plot(self) -> None:
+        plot(self)
+
+    def run(self) -> None:
+        run(self)
+
 
 def plot(args: HeatmapConfig):
     data = args.get_prompt_data()
