@@ -287,13 +287,22 @@ def clear_results_bank_cache():
 
 
 def get_results_bank(
-    results_base_paths: list[RESULTS_BASE_PATH] = [RESULTS_BASE_PATH.Prev, RESULTS_BASE_PATH.New],
-    experiments: list[Type[ResultRecord]] = [HeatmapRecord, InfoFlowRecord],
+    results_base_paths: Optional[list[RESULTS_BASE_PATH]] = None,
+    experiments: Optional[list[Type[ResultRecord]]] = None,
     update: bool = False,
 ) -> list[ResultRecord]:
     global CACHE_RESULTS_BANK
-    if CACHE_RESULTS_BANK is not None and not update:
+    with_cache = results_base_paths is None and experiments is None
+    if with_cache and (CACHE_RESULTS_BANK is not None) and not update:
         return CACHE_RESULTS_BANK
+
+    if results_base_paths is None:
+        results_base_paths = [RESULTS_BASE_PATH.Prev, RESULTS_BASE_PATH.New]
+
+    if experiments is None:
+        experiments = [HeatmapRecord, InfoFlowRecord]
+
+    print("Results bank cache is being updated")
     results: list[ResultRecord] = []
     for results_base_path in results_base_paths:
         for experiment in experiments:
@@ -313,4 +322,6 @@ def get_results_bank(
                     )
                 )
 
+    if with_cache:
+        CACHE_RESULTS_BANK = results
     return results

@@ -1,4 +1,3 @@
-from itertools import product
 from pathlib import Path
 from typing import Literal, TypedDict, cast
 
@@ -7,15 +6,13 @@ import pandas as pd
 import streamlit as st
 
 from src.consts import TOKEN_TYPE_COLORS, TOKEN_TYPE_LINE_STYLES
-from src.final_plots.data_reqs import (
-    get_current_data_reqs,
+from src.final_plots.app.utils import (
+    cache_data,
+    format_path_for_display,
+    get_param_values,
+    load_experiment_data,
 )
 from src.final_plots.results_bank import ParamNames
-from src.plots.info_flow_confidence import (
-    PlotMetadata,
-    create_confidence_plot,
-    load_window_outputs,
-)
 
 st.set_page_config(page_title="Info Flow Plots", page_icon="📈", layout="wide")
 
@@ -34,30 +31,10 @@ class DataRow(TypedDict):
     data_path: Path
 
 
-# Cache the data loading
-@st.cache_data
-def load_info_flow_data() -> list[DataRow]:
+@cache_data
+def load_info_flow_data() -> pd.DataFrame:
     """Load info flow requirements and their fulfillment data"""
-    # Get the latest data fulfillments and merge with overrides
-    current_fulfilled = get_current_data_reqs()
-
-    data: list[DataRow] = []
-    for req, data_path in current_fulfilled.items():
-        if not hasattr(req, "experiment_name") or req.experiment_name.value != "info_flow":
-            continue
-
-        if not data_path:  # Skip requirements with no fulfillment
-            continue
-
-        row_dict = {
-            param: getattr(req, param, None)
-            for param in ParamNames
-            if param not in [ParamNames.path, ParamNames.variation]
-        }
-        row: DataRow = {**row_dict, "data_path": data_path}  # type: ignore
-        data.append(row)
-
-    return data
+    return load_experiment_data("info_flow")
 
 
 # Load the data
@@ -96,12 +73,6 @@ st.sidebar.subheader("Parameter Configuration")
 # Store selected values for each parameter
 param_values = {}
 
-
-# Function to get available values for a parameter
-def get_param_values(param: str) -> list:
-    return sorted(df[param].unique())
-
-
 # Create parameter controls
 for param in available_params:
     st.sidebar.markdown(f"**{param}:**")
@@ -109,7 +80,7 @@ for param in available_params:
 
     with col1:
         # If parameter is fixed, show value selector
-        unique_values = get_param_values(param)
+        unique_values = get_param_values(df, param)
         if st.session_state.param_roles[param] == "fixed":
             param_values[param] = st.selectbox(
                 f"Value for {param}", unique_values, key=f"value_{param}", label_visibility="collapsed"
@@ -213,7 +184,7 @@ def display_tree():
                         line_val = row[line_param]
                         if pd.notna(line_val):
                             st.markdown(f"{'&nbsp;' * 7}└── {line_param} = {line_val}")
-                            st.markdown(f"{'&nbsp;' * 10}└── `{row['data_path']}`")
+                            st.markdown(f"{'&nbsp;' * 10}└── `{format_path_for_display(row['data_path'])}`")
 
 
 # Display data source tree
@@ -232,81 +203,114 @@ with col2:
 def create_grid_plots():
     grid_values = sorted(df[grid_param].unique())
     plots = {}
+    failed_plots = []
 
     for grid_val in grid_values:
-        grid_df = df[df[grid_param] == grid_val]
+        try:
+            grid_df = df[df[grid_param] == grid_val]
 
-        # Get unique values for rows and columns
-        row_values = sorted(grid_df[row_param].unique())
-        col_values = sorted(grid_df[col_param].unique())
+            # Get unique values for rows and columns
+            row_values = sorted(grid_df[row_param].unique())
+            col_values = sorted(grid_df[col_param].unique())
 
-        # Create figure with subplots
-        fig, axes = plt.subplots(
-            len(row_values), len(col_values), figsize=(plot_width / 100, plot_height / 100), squeeze=False
-        )
+            # Create figure with subplots
+            fig, axes = plt.subplots(
+                len(row_values), len(col_values), figsize=(plot_width / 100, plot_height / 100), squeeze=False
+            )
 
-        # Create plots for each combination
-        for (i, row_val), (j, col_val) in product(enumerate(row_values), enumerate(col_values)):
-            subplot_df = grid_df[(grid_df[row_param] == row_val) & (grid_df[col_param] == col_val)]
+            # Create plots for each combination
+            # for (i, row_val), (j, col_val) in product(enumerate(row_values), enumerate(col_values)):
+            #     try:
+            #         paths = []
+            #         subplot_df = grid_df[(grid_df[row_param] == row_val) & (grid_df[col_param] == col_val)]
 
-            if subplot_df.empty:
-                continue
+            #         if subplot_df.empty:
+            #             continue
 
-            # Group by line parameter and create plot
-            targets_window_outputs = {}
-            for _, row in subplot_df.iterrows():
-                line_val = row[line_param]
-                if pd.isna(line_val):
-                    continue
+            #         # Group by line parameter and create plot
+            #         targets_window_outputs = {}
 
-                try:
-                    window_outputs = load_window_outputs(row["data_path"])
-                    targets_window_outputs[line_val] = window_outputs
-                except Exception as e:
-                    st.error(f"Error loading data for {line_val}: {e}")
-                    continue
+            #         load_errors = []
+            #         for _, row in subplot_df.iterrows():
+            #             line_val = row[line_param]
+            #             if pd.isna(line_val):
+            #                 continue
 
-            if targets_window_outputs:
-                plots_meta_data: dict[Literal["acc", "diff"], PlotMetadata] = {
-                    "acc": {
-                        "title": "Accuracy",
-                        "ylabel": "% accuracy",
-                        "ylabel_loc": "center",
-                        "axhline_value": 100.0,
-                        "ylim": (60.0, 105.0),
-                    },
-                    "diff": {
-                        "title": "Normalized change in prediction probability",
-                        "ylabel": "% probability change",
-                        "ylabel_loc": "top",
-                        "axhline_value": 0.0,
-                        "ylim": (-50.0, 50.0),
-                    },
-                }
+            #             try:
+            #                 window_outputs = load_window_outputs(row["data_path"])
+            #                 targets_window_outputs[line_val] = window_outputs
+            #                 paths.append(format_path_for_display(row["data_path"]))
+            #             except Exception as e:
+            #                 load_errors.append(f"Error loading data for {line_val}: {e}")
+            #                 continue
 
-                fig = create_confidence_plot(
-                    targets_window_outputs=targets_window_outputs,
-                    confidence_level=confidence_level,
-                    title=f"{grid_param}={grid_val}\n{row_param}={row_val}, {col_param}={col_val}",
-                    plots_meta_data=plots_meta_data,
-                )
+            #         if not targets_window_outputs:
+            #             if load_errors:
+            #                 failed_plots.append(
+            #                     f"Failed to load any data for {grid_param}={grid_val}, "
+            #                     f"{row_param}={row_val}, {col_param}={col_val}:\n"
+            #                     + "\n".join(f"  - {err}" for err in load_errors)
+            #                 )
+            #             continue
 
-                plots[f"{grid_val}_{row_val}_{col_val}"] = fig
+            #         plots_meta_data: dict[Literal["acc", "diff"], PlotMetadata] = {
+            #             "acc": {
+            #                 "title": "Accuracy",
+            #                 "ylabel": "% accuracy",
+            #                 "ylabel_loc": "center",
+            #                 "axhline_value": 100.0,
+            #                 "ylim": (60.0, 105.0),
+            #             },
+            #             "diff": {
+            #                 "title": "Normalized change in prediction probability",
+            #                 "ylabel": "% probability change",
+            #                 "ylabel_loc": "top",
+            #                 "axhline_value": 0.0,
+            #                 "ylim": (-50.0, 50.0),
+            #             },
+            #         }
 
-    return plots
+            #         fig = create_confidence_plot(
+            #             targets_window_outputs=targets_window_outputs,
+            #             confidence_level=confidence_level,
+            #             title=f"{grid_param}={grid_val}\n{row_param}={row_val}, {col_param}={col_val}",
+            #             plots_meta_data=plots_meta_data,
+            #         )
+
+            #         plots[f"{grid_val}_{row_val}_{col_val}"] = fig
+
+            #     except Exception as e:
+            #         failed_plots.append(
+            #             f"Failed to create plot for one of the paths: {paths}\n{row['data_path']}:\nError: {str(e)}"
+            #         )
+            #         continue
+
+        except Exception as e:
+            failed_plots.append(f"Failed to process grid {grid_param}={grid_val}: {str(e)}")
+            continue
+
+    return plots, failed_plots
 
 
 # Create plots button
 if st.button("Generate Plots"):
     with st.spinner("Generating plots..."):
-        plots = create_grid_plots()
+        plots, failed_plots = create_grid_plots()
 
-        # Display plots
-        for plot_key, fig in plots.items():
-            st.pyplot(fig)
-            plt.close(fig)  # Clean up
+        if failed_plots:
+            st.warning("Some plots failed to generate:")
+            with st.expander("Show Error Details"):
+                for error in failed_plots:
+                    st.error(error)
 
-        st.success("Plots generated successfully!")
+        if plots:
+            st.success(f"Successfully generated {len(plots)} plots")
+            # Display plots
+            for plot_key, fig in plots.items():
+                st.pyplot(fig)
+                plt.close(fig)  # Clean up
+        else:
+            st.error("No plots could be generated. Please check the error details above.")
 
 # Help text
 st.markdown("""

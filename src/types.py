@@ -122,4 +122,31 @@ class FeatureCategory(StrEnum):
     SLOW_DECAY = "SLOW_DECAY"
 
 
+class SLURM_GPU_TYPE(StrEnum):
+    TITAN_XP_STUDENTRUN = "titan_xp-studentrun"
+    L40S = "l40s"
+    A100 = "a100"
+    H100 = "h100"
+    GEFORCE_RTX_3090 = "geforce_rtx_3090"
+    V100 = "v100"
+    A5000 = "a5000"
+    A6000 = "a6000"
+    QUADRO_RTX_8000 = "quadro_rtx_8000"
+    TESLA_V100_SXM2_32GB = "tesla_v100_sxm2_32gb"
+    TITAN_XP_STUDENTRUN_BATCH = "titan_xp-studentrun-batch"
+    TITAN_XP_STUDENTRUN_KILLABLE = "titan_xp-studentrun-killable"
+
+    @property
+    def gpu_name(self) -> str:
+        match self:
+            case (
+                SLURM_GPU_TYPE.TITAN_XP_STUDENTRUN
+                | SLURM_GPU_TYPE.TITAN_XP_STUDENTRUN_BATCH
+                | SLURM_GPU_TYPE.TITAN_XP_STUDENTRUN_KILLABLE
+            ):
+                return "titan_xp"
+            case _:
+                return self.value
+
+
 TInfoFlowSource = Union[TokenType, tuple[TokenType, FeatureCategory]]

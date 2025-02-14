@@ -1,8 +1,8 @@
 {
     "experiment_base_name": "info_flow",
     "variation": "test_baseline",
-    "model_arch": "gpt2",
-    "model_size": "355M",
+    "model_arch": "mamba2",
+    "model_size": "130M",
     "dataset_args": {
         "name": "counter_fact",
         "splits": "all",
@@ -40,6 +40,6 @@
             "relation"
         ]
     },
-    "run_id": "20250214_10-15-02",
-    "git_commit_hash": "28315c7e3cfde688a2e3e297f2cde68f82e7c684"
+    "run_id": "20250214_22-54-52",
+    "git_commit_hash": "57270b5e08ed01614cf3452643f91d953a7b5c73"
 }

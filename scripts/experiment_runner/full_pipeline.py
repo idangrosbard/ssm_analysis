@@ -1,9 +1,7 @@
 import pyrallis
 
-from src.consts import PATHS
-from src.experiments.full_pipeline import FullPipelineConfig, main_local
+from src.experiments.full_pipeline import FullPipelineConfig
 from src.types import MODEL_ARCH
-from src.utils.slurm import submit_job
 
 
 @pyrallis.wrap()
@@ -22,12 +20,12 @@ def main(args: FullPipelineConfig):
         # (MODEL_ARCH.MAMBA1, "1.4B"),
         # (MODEL_ARCH.MAMBA1, "2.8B"),
         # (MODEL_ARCH.MAMBA1, "7B"),
-        # (MODEL_ARCH.MAMBA1, "7B-falcon"),
-        # (MODEL_ARCH.MAMBA1, "7B-falcon-base"),
+        (MODEL_ARCH.MAMBA1, "7B-falcon"),
+        (MODEL_ARCH.MAMBA1, "7B-falcon-base"),
         # (MODEL_ARCH.MAMBA2, "130M"),
         # (MODEL_ARCH.MAMBA2, "1.3B"),
         # (MODEL_ARCH.MAMBA2, "2.7B"),
-        (MODEL_ARCH.GPT2, "124M"),
+        # (MODEL_ARCH.GPT2, "124M"),
         # (MODEL_ARCH.GPT2, "355M"),
         # (MODEL_ARCH.GPT2, "774M"),
         # (MODEL_ARCH.GPT2, "1.5B"),
@@ -41,35 +39,14 @@ def main(args: FullPipelineConfig):
         for window_size in window_sizes:
             args.window_size = window_size
 
-            if args.with_slurm:
-                # args.slurm_gpu_type = "l40s"
-
-                if args.with_generation:
-                    # args.slurm_gpu_type = (
-                    #     "l40s" if (model_size == "2.7B" and model_arch == MODEL_ARCH.MAMBA2) else args.slurm_gpu_type
-                    # )
-                    args.slurm_gpus_per_node = (
-                        1 if (model_size in ["2.8B", "2.7B"] and args.slurm_gpu_type == "titan_xp-studentrun") else 1
-                    )
-
-                job = submit_job(
-                    main_local,
-                    args,
-                    log_folder=str(PATHS.SLURM_DIR / args.job_name / "%j"),
-                    job_name=args.job_name,
-                    # timeout_min=1200,
-                    gpu_type=args.slurm_gpu_type,
-                    slurm_gpus_per_node=args.slurm_gpus_per_node,
+            if args.with_generation:
+                args.slurm_gpus_per_node = (
+                    1 if (model_size in ["2.8B", "2.7B"] and args.slurm_gpu_type == "titan_xp-studentrun") else 1
                 )
-
-                print(f"{job}: {args.job_name}")
-            else:
-                # args.variation = "v2"
-                # args.model_arch = MODEL_ARCH.MAMBA1
-                # args.model_size = "1.4B"
-                # args.window_size = 9
-                args.with_plotting = True
-                main_local(args)
+                # args.slurm_gpu_type = (
+                #     "l40s" if (model_size == "2.7B" and model_arch == MODEL_ARCH.MAMBA2) else args.slurm_gpu_type
+                # )
+            args.run()
 
 
 if __name__ == "__main__":

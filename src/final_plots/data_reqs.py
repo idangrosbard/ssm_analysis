@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import NamedTuple, Optional, cast
+from typing import NamedTuple, Optional, Union, cast
 
 import pandas as pd
 
@@ -13,8 +13,10 @@ from src.consts import (
     is_falcon,
     is_mamba_arch,
 )
+from src.experiments.heatmap import HeatmapConfig
+from src.experiments.info_flow import InfoFlowConfig
 from src.final_plots.results_bank import HeatmapRecord, InfoFlowRecord, ResultRecord, get_results_bank
-from src.types import FeatureCategory
+from src.types import FeatureCategory, TInfoFlowSource
 
 
 class DataReq(NamedTuple):
@@ -27,6 +29,35 @@ class DataReq(NamedTuple):
     feature_category: Optional[FeatureCategory]
     target: Optional[TokenType]
     prompt_idx: Optional[int]
+
+    def get_config(self) -> Union[InfoFlowConfig, HeatmapConfig]:
+        assert not self.is_all_correct
+
+        if self.experiment_name == EXPERIMENT_NAMES.INFO_FLOW:
+            assert self.source is not None
+            assert self.target is not None
+            token_source: TInfoFlowSource = (
+                self.source if self.feature_category is None else (self.source, self.feature_category)
+            )
+            return InfoFlowConfig(
+                model_arch=self.model_arch,
+                model_size=self.model_size,
+                window_size=self.window_size,
+                knockout_map={
+                    self.target: [token_source],
+                },
+            )
+        elif self.experiment_name == EXPERIMENT_NAMES.HEATMAP:
+            assert self.prompt_idx is not None
+            return HeatmapConfig(
+                model_arch=self.model_arch,
+                model_size=self.model_size,
+                window_size=self.window_size,
+                prompt_indices_rows=[],
+                prompt_original_indices=[self.prompt_idx],
+            )
+        else:
+            raise ValueError(f"Unknown experiment name: {self.experiment_name}")
 
 
 IDataFulfilled = dict[DataReq, Optional[Path]]

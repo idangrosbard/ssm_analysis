@@ -24,7 +24,7 @@ def get_config(variation_name: str, model_arch: MODEL_ARCH, model_size: str) -> 
         model_size=model_size,
         _batch_size=1,
         window_size=15,
-        prompt_indices=list(range(HEATMAP_SIZE)),
+        prompt_indices_rows=list(range(HEATMAP_SIZE)),
         with_plotting=True,
     )
 
@@ -105,7 +105,7 @@ def test_info_flow_intermediate_recovery(tmp_path: Path):
             ],
         }
 
-        full_pipeline_config.evaluate_model_config().run()
+        full_pipeline_config.evaluate_model_config().compute()
 
         info_flow_config = full_pipeline_config.info_flow_config()
 
@@ -133,7 +133,7 @@ def test_info_flow_intermediate_recovery(tmp_path: Path):
 
         try:
             # First run - should create intermediate results
-            info_flow_config.run()
+            info_flow_config.compute()
         except Exception:
             pass
 
@@ -152,7 +152,7 @@ def test_info_flow_intermediate_recovery(tmp_path: Path):
 
         # Run again - should recover from intermediate results
         mp.setattr("src.experiments.info_flow.forward_eval", original_forward_eval)
-        info_flow_config.run()
+        info_flow_config.compute()
 
         # Verify final output exists and intermediate files are cleaned up
         final_output_path = info_flow_config.output_block_target_source_path(TokenType.last, TokenType.last)
@@ -172,5 +172,5 @@ if __name__ == "__main__":
     # For updating baseline
 
     _test_base_path = Path(__file__).parent / "baselines" / "full_pipeline"
-    create_test_data(_test_base_path)
+    # create_test_data(_test_base_path)
     create_test_experiment(_test_base_path)

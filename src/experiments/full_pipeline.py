@@ -14,9 +14,6 @@ consistent configuration across all steps.
 from dataclasses import dataclass
 from typing import Optional
 
-import src.experiments.evaluate_model as evaluate_model
-import src.experiments.heatmap as heatmap
-import src.experiments.info_flow as info_flow
 from src.experiment_infra.base_config import (
     BASE_OUTPUT_KEYS,
     BaseConfig,
@@ -47,7 +44,8 @@ class FullPipelineConfig(BaseConfig):
 
     # HeatmapConfig
     window_size: int = HeatmapConfig.window_size
-    prompt_indices: list[int] = create_mutable_field(lambda: HeatmapConfig().prompt_indices)
+    prompt_indices_rows: list[int] = create_mutable_field(lambda: HeatmapConfig().prompt_indices_rows)
+    prompt_original_indices: list[int] = create_mutable_field(lambda: HeatmapConfig().prompt_original_indices)
 
     # InfoFlowConfig
     knockout_map: dict[TokenType, list[TInfoFlowSource]] = create_mutable_field(lambda: InfoFlowConfig().knockout_map)
@@ -74,7 +72,7 @@ class FullPipelineConfig(BaseConfig):
         """Get outputs from all experiments."""
         return {}
 
-    def run(self) -> None:
+    def compute(self) -> None:
         main_local(self)
 
 
@@ -87,30 +85,30 @@ def main_local(args: FullPipelineConfig):
     # Step 1: Model Evaluation
     if args.with_generation:
         print("\nRunning Model Evaluation Experiment...")
-        evaluate_model.run(args.evaluate_model_config())
+        args.evaluate_model_config().compute()
 
     # Step 2: Heatmap Analysis
 
     print("\nRunning Heatmap Analysis Experiment...")
     heatmap_config = args.heatmap_config()
     if args.with_generation:
-        heatmap.run(heatmap_config)
+        heatmap_config.compute()
     if args.with_plotting:
         print("\nPlotting all heatmaps...")
-        try:
-            heatmap.plot(heatmap_config)
-        except Exception as e:
-            print(f"Error plotting heatmaps: {e}")
+        heatmap_config.plot()
+        # try:
+        # except Exception as e:
+        #     print(f"Error plotting heatmaps: {e}")
 
     # Step 3: Information Flow Analysis
     info_flow_config = args.info_flow_config()
     if args.with_generation:
         print("\nRunning Information Flow Analysis Experiment...")
-        info_flow.run(info_flow_config)
+        info_flow_config.compute()
     if args.with_plotting:
         print("\nPlotting all info flow blocks...")
         try:
-            info_flow.plot(info_flow_config, args.enforce_no_missing_outputs)
+            info_flow_config.plot(args.enforce_no_missing_outputs)
         except Exception as e:
             print(f"Error plotting info flow blocks: {e}")
 

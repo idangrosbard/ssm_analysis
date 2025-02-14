@@ -3,7 +3,7 @@ import subprocess
 from abc import ABC, abstractmethod
 from dataclasses import asdict, dataclass, fields
 from pathlib import Path
-from typing import Any, Callable, Generic, Type, TypeVar, cast, final
+from typing import Any, Callable, Generic, Optional, Type, TypeVar, cast, final
 
 import pandas as pd
 import pyrallis
@@ -19,11 +19,13 @@ from src.types import (
     DATASETS,
     FILTERATIONS,
     MODEL_ARCH,
+    SLURM_GPU_TYPE,
     DatasetArgs,
     TModelID,
     TPromptData,
 )
 from src.utils.experiment_helper import create_run_id
+from src.utils.slurm import submit_job
 
 _TBaseConfig = TypeVar("_TBaseConfig", bound="BaseConfig")
 
@@ -71,8 +73,8 @@ class BaseConfig(ABC, Generic[_TConfigOutputs]):
     )
     _batch_size: int = 1  # Adjust based on GPU memory
     with_slurm: bool = False
-    # slurm_gpu_type: str = "titan_xp-studentrun"
-    slurm_gpu_type: str = "l40s"
+    # slurm_gpu_type: SLURM_GPU_TYPE = SLURM_GPU_TYPE.TITAN_XP_STUDENTRUN
+    slurm_gpu_type: SLURM_GPU_TYPE = SLURM_GPU_TYPE.L40S
     slurm_gpus_per_node: int = 1
     overwrite_existing_outputs: bool = False
 
@@ -124,6 +126,15 @@ class BaseConfig(ABC, Generic[_TConfigOutputs]):
             sep="_",
         )
 
+    def set_running_params(
+        self, variation: str, is_slurm: bool, slurm_gpu_type: SLURM_GPU_TYPE, slurm_gpus_per_node: Optional[int] = None
+    ):
+        self.variation = variation
+        self.with_slurm = is_slurm
+        self.slurm_gpu_type = slurm_gpu_type
+        if slurm_gpus_per_node is not None:
+            self.slurm_gpus_per_node = slurm_gpus_per_node
+
     @property
     def running_history_path(self) -> Path:
         return self.experiment_variation_base_path / "running_history"
@@ -139,7 +150,10 @@ class BaseConfig(ABC, Generic[_TConfigOutputs]):
     def running_history_json_path(self, run_id: str) -> Path:
         return self.running_history_path / f"{run_id}.json"
 
-    def create_output_path(self) -> None:
+    def slurm_logs_path(self) -> Path:
+        return self.experiment_variation_base_path / "slurm_logs"
+
+    def create_experiment_run_path(self) -> None:
         self.running_history_path.mkdir(parents=True, exist_ok=True)
         self.plots_path.mkdir(parents=True, exist_ok=True)
         self.outputs_path.mkdir(parents=True, exist_ok=True)
@@ -228,5 +242,28 @@ class BaseConfig(ABC, Generic[_TConfigOutputs]):
         pass
 
     @abstractmethod
-    def run(self) -> None:
+    def compute(self) -> None:
         pass
+
+    def run(self) -> None:
+        if not self.with_slurm:
+            self.compute()
+            return
+        else:
+            slurm_experiment_dir = PATHS.SLURM_DIR / self.job_name
+            job = submit_job(
+                self.compute,
+                log_folder=str(slurm_experiment_dir / "%j"),
+                job_name=self.job_name,
+                # timeout_min=1200,
+                gpu_type=self.slurm_gpu_type,
+                slurm_gpus_per_node=self.slurm_gpus_per_node,
+            )
+            self.slurm_logs_path().mkdir(parents=True, exist_ok=True)
+            slurm_experiment_dir /= f"{job.job_id}"
+            # create symlink to slurm logs
+            (self.slurm_logs_path() / f"{job.job_id}").symlink_to(slurm_experiment_dir)
+
+            (slurm_experiment_dir / "experiment_variation_base_path").symlink_to(self.experiment_variation_base_path)
+
+            print(f"{job}: {self.job_name}")

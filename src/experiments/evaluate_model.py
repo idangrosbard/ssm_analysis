@@ -51,7 +51,7 @@ class EvaluateModelConfig(BaseConfig):
     def get_outputs(self) -> pd.DataFrame:
         return pd.read_csv(self.output_result_path, index_col=False)
 
-    def run(self) -> None:
+    def compute(self) -> None:
         run(self)
 
 
@@ -162,7 +162,7 @@ def run(args: EvaluateModelConfig):
         print(f"Output file {args.output_result_path} already exists")
         return
 
-    args.create_output_path()
+    args.create_experiment_run_path()
     df = args.get_raw_data()
 
     model_interface = get_model_interface(args.model_arch, args.model_size)

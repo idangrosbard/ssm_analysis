@@ -29,7 +29,7 @@ from src.experiment_infra.base_config import (
 )
 from src.experiment_infra.model_interface import get_model_interface
 from src.plots.heatmaps import simple_diff_fixed
-from src.utils.logits import Prompt, decode_tokens, get_prompt_row
+from src.utils.logits import Prompt, decode_tokens, get_prompt_row, get_prompt_row_index
 from src.utils.setup_models import get_tokenizer
 
 
@@ -50,7 +50,8 @@ class HeatmapConfig(BaseConfig):
 
     experiment_base_name: str = "heatmap"
     window_size: int = 5
-    prompt_indices: list[int] = create_mutable_field(lambda: [1, 2, 3, 4, 5])
+    prompt_indices_rows: list[int] = create_mutable_field(lambda: [1, 2, 3, 4, 5])
+    prompt_original_indices: list[int] = create_mutable_field(lambda: [])
 
     @property
     def experiment_output_keys(self):
@@ -61,12 +62,20 @@ class HeatmapConfig(BaseConfig):
     def output_heatmap_path(self, prompt_idx: int) -> Path:
         return self.outputs_path / f"idx={prompt_idx}.csv"
 
-    def get_outputs(self) -> dict[int, IHeatmap]:
+    def get_prompt_original_idx_combined(self) -> list[int]:
         data = self.get_prompt_data()
-        return {
-            idx: pd.read_csv(self.output_heatmap_path(get_prompt_row(data, idx).original_idx))
-            for idx in self.prompt_indices
-        }
+
+        return list(
+            set(
+                [
+                    *[get_prompt_row(data, idx).original_idx for idx in self.prompt_indices_rows],
+                    *self.prompt_original_indices,
+                ]
+            )
+        )
+
+    def get_outputs(self) -> dict[int, IHeatmap]:
+        return {idx: pd.read_csv(self.output_heatmap_path(idx)) for idx in self.get_prompt_original_idx_combined()}
 
     def get_plot_output_path(self, prompt_idx: int, plot_name: str) -> Path:
         return self.plots_path / f"idx={prompt_idx}{plot_name}.png"
@@ -74,7 +83,7 @@ class HeatmapConfig(BaseConfig):
     def plot(self) -> None:
         plot(self)
 
-    def run(self) -> None:
+    def compute(self) -> None:
         run(self)
 
 
@@ -85,7 +94,7 @@ def plot(args: HeatmapConfig):
 
     prob_mats = args.get_outputs()
     for prompt_idx, prob_mat in tqdm(prob_mats.items(), desc="Plotting heatmaps"):
-        prompt = get_prompt_row(data, prompt_idx)
+        prompt = get_prompt_row_index(data, prompt_idx)
         input_ids = prompt.input_ids(tokenizer, "cpu")
         toks = cast(list[str], decode_tokens(tokenizer, input_ids[0]))
         last_tok = toks[-1]
@@ -111,15 +120,14 @@ def run(args: HeatmapConfig):
     data = args.get_prompt_data()
     remaining_idx = [
         idx
-        for idx in args.prompt_indices
-        if not args.output_heatmap_path(get_prompt_row(data, idx).original_idx).exists()
-        or args.overwrite_existing_outputs
+        for idx in args.get_prompt_original_idx_combined()
+        if not args.output_heatmap_path(idx).exists() or args.overwrite_existing_outputs
     ]
     if not remaining_idx:
         print("All heatmaps already exist")
         return
 
-    args.create_output_path()
+    args.create_experiment_run_path()
     model_interface = get_model_interface(args.model_arch, args.model_size)
     tokenizer = model_interface.tokenizer
     device = model_interface.device
@@ -149,7 +157,7 @@ def run(args: HeatmapConfig):
 
     for prompt_idx in tqdm(remaining_idx, desc="Prompts"):
         prob_mat = []
-        prompt = get_prompt_row(data, prompt_idx)
+        prompt = get_prompt_row_index(data, prompt_idx)
         for window in windows:
             model_interface.setup(layers=window)
             prob_mat.append(forward_eval(prompt, window))

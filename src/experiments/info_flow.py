@@ -47,11 +47,11 @@ class InfoFlowConfig(BaseConfig):
                 TokenType.context,
                 TokenType.subject,
             ],
-            # TokenType.relation: [
-            #     TokenType.context,
-            #     TokenType.subject,
-            #     TokenType.relation,
-            # ],
+            TokenType.relation: [
+                TokenType.context,
+                TokenType.subject,
+                TokenType.relation,
+            ],
         }
     )
 
@@ -185,7 +185,7 @@ class InfoFlowConfig(BaseConfig):
     def plot(self, enforce_no_missing_outputs: bool = True) -> None:
         plot(self, enforce_no_missing_outputs)
 
-    def run(self) -> None:
+    def compute(self) -> None:
         run(self)
 
 
@@ -252,7 +252,7 @@ def run(args: InfoFlowConfig):
         print("All outputs already exist")
         return
 
-    args.create_output_path()
+    args.create_experiment_run_path()
     data = args.get_prompt_data()
 
     model_interface = get_model_interface(args.model_arch, args.model_size)

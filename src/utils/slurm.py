@@ -1,5 +1,7 @@
 import submitit
 
+from src.types import SLURM_GPU_TYPE
+
 """
 | GPU                       | Speed (TFLOPS) | Memory (GB) |
 |---------------------------|----------------|-------------|
@@ -19,7 +21,7 @@ import submitit
 def submit_job(
     func,
     *args,
-    gpu_type,
+    gpu_type: SLURM_GPU_TYPE,
     job_name="test",
     log_folder="log_test/%j",  # %j is replaced by the job id at runtime
     timeout_min=1200,
@@ -32,31 +34,31 @@ def submit_job(
 ):
     # Map GPU type and account type to partition and account options based on `sinfo` data
     partition_account_map = {
-        "geforce_rtx_3090": {"partition": "killable", "account": "gpu-students"},
-        "v100": {"partition": "killable", "account": "gpu-students"},
-        "a5000": {"partition": "killable", "account": "gpu-students"},
-        "a6000": {"partition": "killable", "account": "gpu-research"},
-        "l40s": {"partition": "killable", "account": "gpu-research"},
-        "a100": {"partition": "gpu-a100-killable", "account": "gpu-research"},
-        "h100": {"partition": "gpu-h100-killable", "account": "gpu-research"},
-        "titan_xp-studentrun": {
+        SLURM_GPU_TYPE.GEFORCE_RTX_3090: {"partition": "killable", "account": "gpu-students"},
+        SLURM_GPU_TYPE.V100: {"partition": "killable", "account": "gpu-students"},
+        SLURM_GPU_TYPE.A5000: {"partition": "killable", "account": "gpu-students"},
+        SLURM_GPU_TYPE.A6000: {"partition": "killable", "account": "gpu-research"},
+        SLURM_GPU_TYPE.L40S: {"partition": "killable", "account": "gpu-research"},
+        SLURM_GPU_TYPE.A100: {"partition": "gpu-a100-killable", "account": "gpu-research"},
+        SLURM_GPU_TYPE.H100: {"partition": "gpu-h100-killable", "account": "gpu-research"},
+        SLURM_GPU_TYPE.TITAN_XP_STUDENTRUN: {
             "partition": "studentrun",
             "account": "gpu-students",
             "nodelist": "s-003, s-004, s-005",
         },
-        "titan_xp-studentbatch": {
+        SLURM_GPU_TYPE.TITAN_XP_STUDENTRUN_BATCH: {
             "partition": "studentbatch",
             "account": "gpu-students",
             "nodelist": "s-003, s-004, s-005",
         },
-        "titan_xp-studentkillable": {
+        SLURM_GPU_TYPE.TITAN_XP_STUDENTRUN_KILLABLE: {
             "partition": "studentkillable",
             "account": "gpu-students",
             "nodelist": "s-003, s-004, s-005",
         },
     }
 
-    if gpu_type == "titan_xp-studentrun":
+    if gpu_type == SLURM_GPU_TYPE.TITAN_XP_STUDENTRUN:
         timeout_min = 150
 
     # Determine the appropriate partition and account based on `gpu_type`
@@ -80,7 +82,7 @@ def submit_job(
         slurm_cpus_per_task=slurm_cpus_per_task,
         slurm_gpus_per_node=slurm_gpus_per_node,
         slurm_mem=memory_required,
-        slurm_constraint=gpu_type.split("-")[0] if gpu_type else None,
+        slurm_constraint=gpu_type.gpu_name,
         **ommit_none(
             dict(
                 slurm_nodelist=slurm_nodelist,
