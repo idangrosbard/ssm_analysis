@@ -4,10 +4,11 @@ import pandas as pd
 import streamlit as st
 
 from src.consts import EXPERIMENT_NAMES
+from src.final_plots.app.app_consts import ReqMetadataColumns
+from src.final_plots.app.data_store import load_data
 from src.final_plots.app.utils import (
     apply_filters,
     apply_pagination,
-    cache_data,
     create_filters,
     create_pagination_config,
     format_path_for_display,
@@ -15,7 +16,6 @@ from src.final_plots.app.utils import (
     show_filtered_count,
 )
 from src.final_plots.data_reqs import (
-    get_data_fullfment_options,
     load_data_fulfilled_overides,
     save_data_fulfilled_overides,
     update_data_reqs_with_latest_results,
@@ -46,38 +46,6 @@ with st.sidebar:
         update_data_reqs_with_latest_results()
         st.success("Requirements updated successfully!")
         st.rerun()
-
-
-class ReqMetadataColumns:
-    AvailableOptions = "Available Options"
-    Options = "Options"
-    CurrentOverride = "Current Override"
-    Key = "Key"
-
-
-@cache_data
-def load_data() -> pd.DataFrame:
-    """Load requirements and options data with caching"""
-    options = get_data_fullfment_options()
-
-    data = []
-    for req, opts in options.items():
-        override = st.session_state.overrides.get(str(req))
-
-        row = {
-            **{
-                param: getattr(req, param, None)
-                for param in ParamNames
-                if param not in [ParamNames.path, ParamNames.variation]
-            },
-            ReqMetadataColumns.AvailableOptions: len(opts),
-            ReqMetadataColumns.Options: opts,
-            ReqMetadataColumns.CurrentOverride: override,
-            ReqMetadataColumns.Key: str(req),
-        }
-        data.append(row)
-
-    return pd.DataFrame(data)
 
 
 # Load data
@@ -189,7 +157,7 @@ for _, row in paginated_df.iterrows():
                 selected_option = st.selectbox(
                     "Select Override",
                     options,
-                    index=0 if not current_override else options.index(format_path_for_display(current_override)),
+                    index=(0 if not current_override else options.index(format_path_for_display(current_override))),
                     key=f"override_{row[ReqMetadataColumns.Key]}",
                 )
 

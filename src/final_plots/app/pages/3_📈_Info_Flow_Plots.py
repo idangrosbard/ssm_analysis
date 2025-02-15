@@ -6,11 +6,10 @@ import pandas as pd
 import streamlit as st
 
 from src.consts import TOKEN_TYPE_COLORS, TOKEN_TYPE_LINE_STYLES
+from src.final_plots.app.data_store import load_info_flow_data
 from src.final_plots.app.utils import (
-    cache_data,
     format_path_for_display,
     get_param_values,
-    load_experiment_data,
 )
 from src.final_plots.results_bank import ParamNames
 
@@ -29,12 +28,6 @@ class DataRow(TypedDict):
     feature_category: str
     target: str
     data_path: Path
-
-
-@cache_data
-def load_info_flow_data() -> pd.DataFrame:
-    """Load info flow requirements and their fulfillment data"""
-    return load_experiment_data("info_flow")
 
 
 # Load the data

@@ -1,37 +1,20 @@
-import pandas as pd
 import streamlit as st
 
+from src.final_plots.app.data_store import load_results
 from src.final_plots.app.utils import (
     apply_filters,
     apply_pagination,
-    cache_data,
     create_filters,
     create_pagination_config,
-    format_path_for_display,
     show_filtered_count,
 )
 from src.final_plots.results_bank import (
     ParamNames,
-    get_results_bank,
 )
 
 st.set_page_config(page_title="Results Bank", page_icon="📋", layout="wide")
 
 st.title("Results Bank 📋")
-
-
-@cache_data
-def load_results() -> pd.DataFrame:
-    """Load and process results with caching"""
-    results = get_results_bank()
-    results_data = []
-    for result in results:
-        result_dict = {param: getattr(result, param, None) for param in ParamNames}
-        result_dict[ParamNames.path] = format_path_for_display(result_dict[ParamNames.path])
-        results_data.append(result_dict)
-
-    return pd.DataFrame(results_data)
-
 
 # Get results using cached function
 df = load_results()
