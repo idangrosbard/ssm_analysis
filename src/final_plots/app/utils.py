@@ -5,8 +5,11 @@ import pandas as pd
 import streamlit as st
 
 from src.consts import PATHS
+from src.experiments.heatmap import HeatmapConfig
+from src.final_plots.app.app_consts import MINIMUM_COMBINATIONS_FOR_FILTERING, HeatmapColumns
 from src.final_plots.data_reqs import DataReq, get_current_data_reqs
 from src.final_plots.results_bank import ParamNames, clear_results_bank_cache
+from src.types import MODEL_ARCH
 
 T = TypeVar("T")
 
@@ -56,15 +59,22 @@ def create_pagination_config(
     with col2:
         page_size = st.selectbox(
             "Items per page",
-            options=[10, 20, 50, 100],
-            index=[10, 20, 50, 100].index(st.session_state[f"{key_prefix}page_size"]),
+            options=[5, 10, 20, 50, 100],
+            index=[5, 10, 20, 50, 100].index(st.session_state[f"{key_prefix}page_size"]),
             key=f"{key_prefix}page_size_select",
         )
         st.session_state[f"{key_prefix}page_size"] = page_size
 
     with col4:
         total_pages = (total_items - 1) // page_size + 1
-        st.write(f"Page {st.session_state[f'{key_prefix}current_page'] + 1} of {total_pages}")
+        current_page = st.number_input(
+            f"Current Page out of {total_pages}",
+            min_value=1,
+            max_value=total_pages,
+            value=st.session_state[f"{key_prefix}current_page"] + 1,
+            key=f"{key_prefix}current_page_input",
+        )
+        st.session_state[f"{key_prefix}current_page"] = current_page - 1
 
     with col3:
         if st.button(
@@ -251,3 +261,85 @@ def get_param_values(df: pd.DataFrame, param: str) -> list[Any]:
         List of unique values
     """
     return sorted(df[param].unique())
+
+
+def filter_combinations(df: pd.DataFrame, model_names: list[str]) -> pd.DataFrame:
+    """
+    Adds a UI on top of a dataframe to let viewers filter columns
+
+    Args:
+        df (pd.DataFrame): Original dataframe
+
+    Returns:
+        pd.DataFrame: Filtered dataframe
+    """
+    df = df.copy()
+
+    modification_container = st.container()
+
+    model_name_filters = []
+    for model_name in model_names:
+        model_name_filters.append((model_name, True))
+        model_name_filters.append((f"{model_name} - wrong", False))
+
+    def format_func(option: str | tuple[str, bool]) -> str:
+        if isinstance(option, tuple):
+            return f"{option[0]} - {'correct ✅' if option[1] else 'incorrect ❌'}"
+        else:
+            assert option == HeatmapColumns.PROMPT_COUNT
+            return "Prompt Count"
+
+    with modification_container:
+        to_filter_columns = st.multiselect(
+            "Filter dataframe on",
+            [HeatmapColumns.PROMPT_COUNT, *model_name_filters],
+            format_func=format_func,
+            default=[HeatmapColumns.PROMPT_COUNT],
+        )
+        for column in to_filter_columns:
+            left, right = st.columns((1, 20))
+            left.write("↳")
+
+            # Handle different column
+
+            if column == HeatmapColumns.PROMPT_COUNT:
+                _min = int(df[column].min())
+                _max = int(df[column].max())
+                user_num_input = right.number_input(
+                    "Minimum prompt count",
+                    min_value=_min,
+                    max_value=_max,
+                    value=MINIMUM_COMBINATIONS_FOR_FILTERING,
+                    step=1,
+                )
+                df = df[df[column] >= user_num_input]
+            else:
+                assert isinstance(column, tuple)
+                model_name, is_correct = column
+                if is_correct:
+                    df = df[df[model_name] == "✅"]
+                else:
+                    df = df[df[model_name] == "❌"]
+
+    return df
+
+
+def get_model_heatmap_config(
+    model_arch: MODEL_ARCH, model_size: str, window_size: int, variation: str, prompt_original_indices: list[int]
+) -> HeatmapConfig:
+    """Get the data requirement for a specific model.
+
+    Args:
+        model_arch: Model architecture
+        model_size: Model size
+
+    Returns:
+        Data requirement for the model
+    """
+    return HeatmapConfig(
+        model_arch=model_arch,
+        model_size=model_size,
+        window_size=window_size,
+        variation=variation,
+        prompt_original_indices=prompt_original_indices,
+    )

@@ -251,3 +251,7 @@ TOKEN_TYPE_LINE_STYLES: dict[TInfoFlowSource, str] = {
     (TokenType.subject, FeatureCategory.FAST_DECAY): "--",
     (TokenType.subject, FeatureCategory.SLOW_DECAY): ":",
 }
+
+
+def to_model_name(model_arch: MODEL_ARCH, model_size: str) -> str:
+    return f"{model_arch}-{model_size}"

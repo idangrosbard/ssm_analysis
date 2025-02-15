@@ -1,23 +1,44 @@
+# Purpose: Create and display information flow plots with customizable parameters and visualization options
+# High Level Outline:
+# 1. Page setup and configuration
+# 2. Parameter configuration and role assignment
+# 3. Data source management and display
+# 4. Plot creation and customization
+# Outline Issues:
+# - Add export functionality for generated plots
+# - Consider adding more plot customization options
+# Outline Compatibility Issues:
+# - Current implementation follows the outline structure correctly
+
 from pathlib import Path
-from typing import Literal, TypedDict, cast
+from typing import TypedDict, cast
 
 import matplotlib.pyplot as plt
 import pandas as pd
 import streamlit as st
 
 from src.consts import TOKEN_TYPE_COLORS, TOKEN_TYPE_LINE_STYLES
+from src.final_plots.app.app_consts import (
+    DEFAULT_LINE_STYLES,
+    DEFAULT_PLOT_CONFIG,
+    PARAM_ROLES,
+    ParamRole,
+)
 from src.final_plots.app.data_store import load_info_flow_data
+from src.final_plots.app.texts import COMMON_TEXTS, INFO_FLOW_TEXTS
 from src.final_plots.app.utils import (
     format_path_for_display,
     get_param_values,
 )
 from src.final_plots.results_bank import ParamNames
 
-st.set_page_config(page_title="Info Flow Plots", page_icon="📈", layout="wide")
+# region Page Configuration
+st.set_page_config(page_title=INFO_FLOW_TEXTS.title, page_icon=INFO_FLOW_TEXTS.icon, layout="wide")
+st.title(f"{INFO_FLOW_TEXTS.title} {INFO_FLOW_TEXTS.icon}")
+# endregion
 
-st.title("Info Flow Visualization 📈")
 
-
+# region Type Definitions
 class DataRow(TypedDict):
     experiment_name: str
     model_arch: str
@@ -30,11 +51,11 @@ class DataRow(TypedDict):
     data_path: Path
 
 
+# endregion
+
+# region Data Loading and Parameter Setup
 # Load the data
 df = pd.DataFrame(load_info_flow_data())
-
-# Sidebar controls for plot parameters
-st.sidebar.header("Plot Configuration")
 
 # Available parameters
 available_params = [
@@ -44,12 +65,7 @@ available_params = [
     ParamNames.is_all_correct,
     ParamNames.source,
     ParamNames.target,
-    # ParamNames.feature_category,
 ]
-
-# Parameter roles for plotting
-ParamRole = Literal["grid", "column", "row", "line", "fixed"]
-PARAM_ROLES: list[ParamRole] = ["fixed", "grid", "column", "row", "line"]
 
 # Initialize session state for parameter roles if not exists
 if "param_roles" not in st.session_state:
@@ -59,8 +75,10 @@ if "param_roles" not in st.session_state:
     st.session_state.param_roles[ParamNames.model_size] = cast(ParamRole, "column")
     st.session_state.param_roles[ParamNames.window_size] = cast(ParamRole, "row")
     st.session_state.param_roles[ParamNames.source] = cast(ParamRole, "line")
+# endregion
 
-# Parameter configuration section
+# region Parameter Configuration
+st.sidebar.header(INFO_FLOW_TEXTS.plot_config_title)
 st.sidebar.subheader("Parameter Configuration")
 
 # Store selected values for each parameter
@@ -90,12 +108,13 @@ for param in available_params:
         selected_role = st.selectbox(
             f"Role for {param}",
             options=PARAM_ROLES,
-            # index=PARAM_ROLES.index(current_role),
             key=f"role_{param}",
             label_visibility="collapsed",
         )
         st.session_state.param_roles[param] = cast(ParamRole, selected_role)
+# endregion
 
+# region Role Validation
 # Validate and update roles
 role_counts = {role: 0 for role in ["grid", "column", "row", "line"]}
 for param, role in st.session_state.param_roles.items():
@@ -113,7 +132,9 @@ grid_param = next(param for param, role in st.session_state.param_roles.items() 
 col_param = next(param for param, role in st.session_state.param_roles.items() if role == "column")
 row_param = next(param for param, role in st.session_state.param_roles.items() if role == "row")
 line_param = next(param for param, role in st.session_state.param_roles.items() if role == "line")
+# endregion
 
+# region Data Filtering
 # Filter dataframe based on fixed parameters
 for param, value in param_values.items():
     df = df[df[param] == value]
@@ -121,12 +142,29 @@ for param, value in param_values.items():
 if df.empty:
     st.sidebar.error("No data available for the selected parameter values")
     st.stop()
+# endregion
 
-# Plot customization
+# region Plot Customization
 st.sidebar.header("Plot Customization")
-confidence_level = st.sidebar.slider("Confidence Level", 0.8, 0.99, 0.95, 0.01)
-plot_height = st.sidebar.slider("Plot Height", 300, 1000, 400)
-plot_width = st.sidebar.slider("Plot Width", 400, 1200, 600)
+confidence_level = st.sidebar.slider(
+    "Confidence Level",
+    0.8,
+    0.99,
+    DEFAULT_PLOT_CONFIG["confidence_level"],
+    0.01,
+)
+plot_height = st.sidebar.slider(
+    "Plot Height",
+    300,
+    1000,
+    DEFAULT_PLOT_CONFIG["plot_height"],
+)
+plot_width = st.sidebar.slider(
+    "Plot Width",
+    400,
+    1200,
+    DEFAULT_PLOT_CONFIG["plot_width"],
+)
 
 # Color customization
 st.sidebar.header("Color Customization")
@@ -143,16 +181,16 @@ if use_custom_colors:
             with col1:
                 custom_colors[value] = st.color_picker(f"Color for {value}", TOKEN_TYPE_COLORS.get(value, "#000000"))
             with col2:
-                custom_styles[value] = st.selectbox(f"Style for {value}", ["-", "--", ":", "-."], index=0)
+                custom_styles[value] = st.selectbox(f"Style for {value}", DEFAULT_LINE_STYLES, index=0)
 else:
     custom_colors = TOKEN_TYPE_COLORS
     custom_styles = TOKEN_TYPE_LINE_STYLES
+# endregion
 
-# Show data paths that will be used
+# region Data Source Display
 st.header("Data Sources")
 
 
-# Create tree view of data sources
 def display_tree():
     # Get all unique values for each parameter
     grid_values = sorted(df[grid_param].unique())
@@ -183,16 +221,17 @@ def display_tree():
 # Display data source tree
 col1, col2 = st.columns([1, 3])
 with col1:
-    show_tree = st.checkbox("Show Data Sources Tree", value=True)
+    show_tree = st.checkbox(INFO_FLOW_TEXTS.show_data_sources, value=True)
     if show_tree:
-        st.info(f"Total experiments: {len(df)}")
+        st.info(INFO_FLOW_TEXTS.total_experiments(len(df)))
 
 with col2:
     if show_tree:
         display_tree()
+# endregion
 
 
-# Function to create plots
+# region Plot Creation
 def create_grid_plots():
     grid_values = sorted(df[grid_param].unique())
     plots = {}
@@ -286,37 +325,21 @@ def create_grid_plots():
 
 
 # Create plots button
-if st.button("Generate Plots"):
-    with st.spinner("Generating plots..."):
+if st.button(INFO_FLOW_TEXTS.generate_plots):
+    with st.spinner(INFO_FLOW_TEXTS.generating_plots):
         plots, failed_plots = create_grid_plots()
 
         if failed_plots:
             st.warning("Some plots failed to generate:")
-            with st.expander("Show Error Details"):
+            with st.expander(COMMON_TEXTS.error_details):
                 for error in failed_plots:
                     st.error(error)
 
         if plots:
-            st.success(f"Successfully generated {len(plots)} plots")
+            st.success(INFO_FLOW_TEXTS.plots_generated(len(plots)))
             # Display plots
             for plot_key, fig in plots.items():
                 st.pyplot(fig)
                 plt.close(fig)  # Clean up
         else:
-            st.error("No plots could be generated. Please check the error details above.")
-
-# Help text
-st.markdown("""
-### How to use:
-1. Select parameters for grid layout in the sidebar:
-   - Grid Parameter: Creates multiple plot grids
-   - Column Parameter: Determines columns in each grid
-   - Row Parameter: Determines rows in each grid
-   - Line Parameter: Determines different lines within each plot
-2. Customize plot appearance:
-   - Adjust confidence level
-   - Modify plot dimensions
-   - Customize colors and line styles
-3. Review the data sources tree
-4. Click "Generate Plots" to create visualizations
-""")
+            st.error(INFO_FLOW_TEXTS.no_plots_generated)

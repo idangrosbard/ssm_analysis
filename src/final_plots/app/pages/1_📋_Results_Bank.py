@@ -1,6 +1,20 @@
+# Purpose: Display and manage a bank of experiment results with filtering and pagination capabilities
+# High Level Outline:
+# 1. Page setup and configuration
+# 2. Load and prepare results data
+# 3. Create and apply filters to results
+# 4. Display filtered results with pagination
+# Outline Issues:
+# - Consider adding export functionality for filtered results
+# - Add more detailed information for each result
+# Outline Compatibility Issues:
+# - Current implementation follows the outline structure correctly
+
 import streamlit as st
 
+from src.final_plots.app.app_consts import PaginationConfig
 from src.final_plots.app.data_store import load_results
+from src.final_plots.app.texts import RESULTS_BANK_TEXTS
 from src.final_plots.app.utils import (
     apply_filters,
     apply_pagination,
@@ -12,23 +26,31 @@ from src.final_plots.results_bank import (
     ParamNames,
 )
 
-st.set_page_config(page_title="Results Bank", page_icon="📋", layout="wide")
+# region Page Configuration
+st.set_page_config(page_title=RESULTS_BANK_TEXTS.title, page_icon=RESULTS_BANK_TEXTS.icon, layout="wide")
+st.title(f"{RESULTS_BANK_TEXTS.title} {RESULTS_BANK_TEXTS.icon}")
+# endregion
 
-st.title("Results Bank 📋")
-
+# region Data Loading and Preparation
 # Get results using cached function
 df = load_results()
+# endregion
 
+# region Filtering
 # Create and apply filters
 filters = create_filters(df, filter_columns=[col for col in df.columns if col != ParamNames.path])
 filtered_df = apply_filters(df, filters)
 
 # Display results count and create pagination
 show_filtered_count(filtered_df, df)
+# endregion
 
+# region Results Display
 # Add pagination
 pagination_config = create_pagination_config(
-    total_items=len(filtered_df), default_page_size=20, key_prefix="results_bank_"
+    total_items=len(filtered_df),
+    default_page_size=PaginationConfig.RESULTS_BANK["default_page_size"],
+    key_prefix=PaginationConfig.RESULTS_BANK["key_prefix"],
 )
 
 # Apply pagination to filtered data
@@ -44,3 +66,4 @@ st.dataframe(
         )
     },
 )
+# endregion

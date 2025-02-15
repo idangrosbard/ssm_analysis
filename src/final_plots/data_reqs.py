@@ -69,6 +69,7 @@ IDataFulfilledOptions = dict[DataReq, list[Path]]
 
 DATA_FULFILLED_OVERIDES_PATH = Path(__file__).parent / "data_fulfilled_overides.csv"
 DATA_FULFILLED_PATH = Path(__file__).parent / "data_fulfilled.csv"
+PROMPT_SELECTION_PATH = Path(__file__).parent / "prompt_selections.csv"
 
 
 def result_record_to_data_req(result_record: ResultRecord) -> DataReq:

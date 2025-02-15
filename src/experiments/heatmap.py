@@ -74,6 +74,13 @@ class HeatmapConfig(BaseConfig):
             )
         )
 
+    def get_remaining_prompt_original_indices(self) -> list[int]:
+        return [
+            idx
+            for idx in self.get_prompt_original_idx_combined()
+            if not self.output_heatmap_path(idx).exists() or self.overwrite_existing_outputs
+        ]
+
     def get_outputs(self) -> dict[int, IHeatmap]:
         return {idx: pd.read_csv(self.output_heatmap_path(idx)) for idx in self.get_prompt_original_idx_combined()}
 
@@ -118,11 +125,7 @@ def plot(args: HeatmapConfig):
 def run(args: HeatmapConfig):
     print(args)
     data = args.get_prompt_data()
-    remaining_idx = [
-        idx
-        for idx in args.get_prompt_original_idx_combined()
-        if not args.output_heatmap_path(idx).exists() or args.overwrite_existing_outputs
-    ]
+    remaining_idx = args.get_remaining_prompt_original_indices()
     if not remaining_idx:
         print("All heatmaps already exist")
         return

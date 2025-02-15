@@ -188,3 +188,4 @@ data/raw/
 .cursor/rules/*
 !.cursor/rules/project-strucutre.mdc
 .mlflow/
+*.code-workspace

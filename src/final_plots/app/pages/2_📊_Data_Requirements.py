@@ -1,87 +1,79 @@
-from pathlib import Path
+# Purpose: Manage and display data requirements for experiments with filtering and execution capabilities
+# High Level Outline:
+# 1. Page setup and configuration
+# 2. Initialize session state and load data
+# 3. Display and manage requirements with filters
+# 4. Handle requirement selection and execution
+# Outline Issues:
+# - Consider adding batch operations for requirements
+# - Add progress tracking for running requirements
+# Outline Compatibility Issues:
+# - Current implementation follows the outline structure correctly
 
-import pandas as pd
+
 import streamlit as st
 
-from src.consts import EXPERIMENT_NAMES
-from src.final_plots.app.app_consts import ReqMetadataColumns
-from src.final_plots.app.data_store import load_data
+from src.final_plots.app.app_consts import (
+    DATA_REQS_DEFAULT_FILTER_VALUES,
+    AppSessionKeys,
+    DATA_REQS_FILTER_COLUMNSs,
+    DataReqsSessionKeys,
+    PaginationConfig,
+    ReqMetadataColumns,
+)
+from src.final_plots.app.components.inputs import select_variation
+from src.final_plots.app.data_store import empty_selected_requirements, load_data
+from src.final_plots.app.texts import DATA_REQUIREMENTS_TEXTS
 from src.final_plots.app.utils import (
     apply_filters,
     apply_pagination,
     create_filters,
     create_pagination_config,
-    format_path_for_display,
     get_data_req_from_df_row,
     show_filtered_count,
 )
 from src.final_plots.data_reqs import (
+    IDataFulfilled,
     load_data_fulfilled_overides,
     save_data_fulfilled_overides,
-    update_data_reqs_with_latest_results,
 )
 from src.final_plots.results_bank import ParamNames
 from src.types import SLURM_GPU_TYPE
 
-st.set_page_config(page_title="Data Requirements", page_icon="📊", layout="wide")
+# region Page Configuration
+st.set_page_config(page_title=DATA_REQUIREMENTS_TEXTS.title, page_icon=DATA_REQUIREMENTS_TEXTS.icon, layout="wide")
+st.title(f"{DATA_REQUIREMENTS_TEXTS.title} {DATA_REQUIREMENTS_TEXTS.icon}")
+# endregion
 
-st.title("Data Requirements and Overrides 📊")
-
+# region Session State Initialization
 # Initialize session state for overrides if not exists
-if "overrides" not in st.session_state:
-    st.session_state.overrides = load_data_fulfilled_overides()
+if DataReqsSessionKeys.overrides.key not in st.session_state:
+    st.session_state[DataReqsSessionKeys.overrides.key] = load_data_fulfilled_overides()
+# endregion
 
-# Initialize session state for selected requirements
-if "selected_requirements" not in st.session_state:
-    st.session_state.selected_requirements = set()
-
-
-def empty_selected_requirements():
-    st.session_state.selected_requirements = set()
-
-
-# Add refresh button
-with st.sidebar:
-    if st.button("🔄 Update Latest Requirements"):
-        update_data_reqs_with_latest_results()
-        st.success("Requirements updated successfully!")
-        st.rerun()
-
-
+# region Data Loading and Preparation
 # Load data
 df = load_data()
 
 # Create and apply filters
-filter_columns = [
-    ReqMetadataColumns.AvailableOptions,
-    ParamNames.experiment_name,
-    ParamNames.model_arch,
-    ParamNames.model_size,
-    ParamNames.window_size,
-    ParamNames.is_all_correct,
-    ParamNames.source,
-    ParamNames.target,
-    ParamNames.prompt_idx,
-]
 filters = create_filters(
     df,
-    filter_columns=filter_columns,
-    default_values={
-        ReqMetadataColumns.AvailableOptions: [0],
-        ParamNames.is_all_correct: [False],
-    },
+    filter_columns=DATA_REQS_FILTER_COLUMNSs,
+    default_values=DATA_REQS_DEFAULT_FILTER_VALUES,
 )
 filtered_df = apply_filters(df, filters)
 
 # Display results count
 show_filtered_count(filtered_df, df, "requirements")
+# endregion
 
+# region Requirements Display and Management
 # Add pagination
 pagination_config = create_pagination_config(
     total_items=len(filtered_df),
-    default_page_size=10,
-    key_prefix="data_reqs_",
-    on_change=lambda: empty_selected_requirements(),
+    default_page_size=PaginationConfig.DATA_REQS["default_page_size"],
+    key_prefix=PaginationConfig.DATA_REQS["key_prefix"],
+    on_change=empty_selected_requirements,
 )
 
 # Apply pagination to filtered data
@@ -95,93 +87,52 @@ for _, row in paginated_df.iterrows():
         key = row[ReqMetadataColumns.Key]
         is_selected = st.checkbox(
             " ",
-            value=key in st.session_state.selected_requirements,
-            key=f"select_{key}",
+            value=key in DataReqsSessionKeys.selected_requirements.get(),
+            key=DataReqsSessionKeys.select_requirement(key).key,
             label_visibility="hidden",
         )
         if is_selected:
-            st.session_state.selected_requirements.add(key)
+            DataReqsSessionKeys.selected_requirements.get().add(key)
         else:
-            st.session_state.selected_requirements.discard(key)
+            DataReqsSessionKeys.selected_requirements.get().discard(key)
 
     with col2:
-        label = (
-            f"{row[ReqMetadataColumns.AvailableOptions]} Options | "
-            f"**{row[ParamNames.experiment_name]}** | "
-            f"**{row[ParamNames.model_arch]}-{row[ParamNames.model_size]}**"
-            f" | ws=**{row[ParamNames.window_size]}**{' | **all_correct** ' if row[ParamNames.is_all_correct] else ''}"
-        )
+        # Create an expander for the requirement
+        with st.expander(f"Requirement {key}"):
+            st.write(f"**Model:** {row[ParamNames.model_arch]} {row[ParamNames.model_size]}")
+            st.write(f"**Window Size:** {row[ParamNames.window_size]}")
+            if row[ParamNames.source]:
+                st.write(f"**Source:** {row[ParamNames.source]}")
+            if row[ParamNames.target]:
+                st.write(f"**Target:** {row[ParamNames.target]}")
+            if row[ParamNames.feature_category]:
+                st.write(f"**Feature Category:** {row[ParamNames.feature_category]}")
+            if row[ParamNames.prompt_idx]:
+                st.write(f"**Prompt Index:** {row[ParamNames.prompt_idx]}")
+# endregion
 
-        if row[ParamNames.experiment_name] == EXPERIMENT_NAMES.INFO_FLOW:
-            label += f" | source=**{row[ParamNames.source]}** target=**{row[ParamNames.target]}**" + (
-                f" feature_category=**{row[ParamNames.feature_category]}**" if row[ParamNames.feature_category] else ""
-            )
-        elif row[ParamNames.experiment_name] == EXPERIMENT_NAMES.HEATMAP:
-            label += f" | prompt_idx=**{row[ParamNames.prompt_idx]}**"
-
-        job = get_data_req_from_df_row(row).get_config().get_latest_slurm_job()
-        if job is not None:
-            label += f" | [Job {job.job_id} {job.state}]"
-
-        with st.expander(label):
-            st.write("### Requirement Details")
-            details_col1, details_col2 = st.columns(2)
-
-            with details_col1:
-                st.write("**Parameters:**")
-                for col in [
-                    ParamNames.window_size,
-                    ParamNames.is_all_correct,
-                    ParamNames.source,
-                    ParamNames.feature_category,
-                    ParamNames.target,
-                    ParamNames.prompt_idx,
-                ]:
-                    if pd.notna(row[col]):
-                        st.write(f"- {col}: {row[col]}")
-
-            with details_col2:
-                st.write("**Available Options:**")
-                if row[ReqMetadataColumns.AvailableOptions] > 0:
-                    for opt in row[ReqMetadataColumns.Options]:
-                        st.write(f"- `{format_path_for_display(opt)}`")
-                else:
-                    st.write("No options available")
-
-            # Override management
-            st.write("### Override Management")
-            current_override = row[ReqMetadataColumns.CurrentOverride]
-
-            if row[ReqMetadataColumns.AvailableOptions] > 0:
-                options = ["None"] + [format_path_for_display(opt) for opt in row[ReqMetadataColumns.Options]]
-                selected_option = st.selectbox(
-                    "Select Override",
-                    options,
-                    index=(0 if not current_override else options.index(format_path_for_display(current_override))),
-                    key=f"override_{row[ReqMetadataColumns.Key]}",
-                )
-
-                if selected_option != "None":
-                    st.session_state.overrides[row[ReqMetadataColumns.Key]] = Path(selected_option)
-                elif row[ReqMetadataColumns.Key] in st.session_state.overrides:
-                    del st.session_state.overrides[row[ReqMetadataColumns.Key]]
-
+# region Requirement Execution
 # Save button for overrides
-if st.button("💾 Save Overrides"):
-    save_data_fulfilled_overides(st.session_state.overrides)
-    st.success("Overrides saved successfully!")
+if st.button(DATA_REQUIREMENTS_TEXTS.save_overrides):
+    # Convert session state overrides to IDataFulfilled type
+    overrides: IDataFulfilled = {}
+    for key, path in DataReqsSessionKeys.overrides.get().items():
+        data_req = get_data_req_from_df_row(filtered_df[filtered_df[ReqMetadataColumns.Key] == key].iloc[0])
+        overrides[data_req] = path
+    save_data_fulfilled_overides(overrides)
+    st.success(DATA_REQUIREMENTS_TEXTS.overrides_saved)
 
 # Add SLURM configuration in sidebar
 with st.sidebar:
     with st.expander("Run Filtered Requirements"):
         # Show count of selected requirements
-        selected_count = len(st.session_state.selected_requirements)
+        selected_count = len(DataReqsSessionKeys.selected_requirements.get())
 
         # SLURM configuration
         col1, col2 = st.columns(2)
 
         with col1:
-            variation = st.text_input("Variation", value="v3")
+            select_variation()
 
         with col2:
             gpu_options = [(gpu_type.value, gpu_type) for gpu_type in SLURM_GPU_TYPE]
@@ -204,7 +155,7 @@ with st.sidebar:
 
             # Get all rows from filtered_df that match selected requirements
             selected_rows = filtered_df[
-                filtered_df[ReqMetadataColumns.Key].isin(st.session_state.selected_requirements)
+                filtered_df[ReqMetadataColumns.Key].isin(DataReqsSessionKeys.selected_requirements.get())
             ]
 
             for i, (idx, row) in enumerate(selected_rows.iterrows()):
@@ -212,7 +163,7 @@ with st.sidebar:
                     req = get_data_req_from_df_row(row)
 
                     # Get config and set running parameters
-                    config = req.get_config(variation=variation)
+                    config = req.get_config(variation=AppSessionKeys.variation.get())
                     config.set_running_params(
                         with_slurm=True,
                         slurm_gpu_type=selected_gpu,
@@ -237,3 +188,4 @@ with st.sidebar:
                 st.success(f"Successfully submitted {success_count} requirements to run")
             if failed_count > 0:
                 st.warning(f"Failed to submit {failed_count} requirements")
+# endregion
