@@ -30,7 +30,7 @@ class DataReq(NamedTuple):
     target: Optional[TokenType]
     prompt_idx: Optional[int]
 
-    def get_config(self) -> Union[InfoFlowConfig, HeatmapConfig]:
+    def get_config(self, variation: Optional[str] = None) -> Union[InfoFlowConfig, HeatmapConfig]:
         assert not self.is_all_correct
 
         if self.experiment_name == EXPERIMENT_NAMES.INFO_FLOW:
@@ -39,7 +39,7 @@ class DataReq(NamedTuple):
             token_source: TInfoFlowSource = (
                 self.source if self.feature_category is None else (self.source, self.feature_category)
             )
-            return InfoFlowConfig(
+            config = InfoFlowConfig(
                 model_arch=self.model_arch,
                 model_size=self.model_size,
                 window_size=self.window_size,
@@ -49,7 +49,7 @@ class DataReq(NamedTuple):
             )
         elif self.experiment_name == EXPERIMENT_NAMES.HEATMAP:
             assert self.prompt_idx is not None
-            return HeatmapConfig(
+            config = HeatmapConfig(
                 model_arch=self.model_arch,
                 model_size=self.model_size,
                 window_size=self.window_size,
@@ -58,6 +58,10 @@ class DataReq(NamedTuple):
             )
         else:
             raise ValueError(f"Unknown experiment name: {self.experiment_name}")
+
+        if variation is not None:
+            config.variation = variation
+        return config
 
 
 IDataFulfilled = dict[DataReq, Optional[Path]]
@@ -114,6 +118,10 @@ def get_latest_data_fulfilled() -> IDataFulfilled:
 
 
 def _save_data_fulfilled(path: Path, data_fulfilled: IDataFulfilled) -> None:
+    if not data_fulfilled:
+        if path.exists():
+            path.unlink()
+        return
     (
         pd.DataFrame.from_records(
             [

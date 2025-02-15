@@ -141,6 +141,13 @@ GRAPHS_ORDER = [
 ]
 
 
+def get_model_cat_size(model_arch: MODEL_ARCH, model_size: str) -> MODEL_SIZE_CAT:
+    for _model_arch, _model_size, model_size_cat in GRAPHS_ORDER:
+        if model_arch == _model_arch and model_size == _model_size:
+            return model_size_cat
+    raise ValueError(f"Model {model_arch} {model_size} not found in GRAPHS_ORDER")
+
+
 def get_model_by_cat_size(cat_size: MODEL_SIZE_CAT) -> list[tuple[MODEL_ARCH, str]]:
     return [(arch, model_size) for arch, model_size, model_size_cat in GRAPHS_ORDER if model_size_cat == cat_size]
 
@@ -171,7 +178,9 @@ class EXPERIMENT_NAMES(StrEnum):
 
 
 class COLUMNS:
+    # Preprocessing
     ORIGINAL_IDX = "original_idx"
+    SPLIT = "split"
 
     # Counter Fact
     PROMPT = "prompt"
@@ -179,6 +188,11 @@ class COLUMNS:
     TARGET_FALSE = "target_false"
     SUBJECT = "subject"
     TARGET_FALSE_ID = "target_false_id"
+    RELATION = "relation"
+    RELATION_PREFIX = "relation_prefix"
+    RELATION_SUFFIX = "relation_suffix"
+    RELATION_ID = "relation_id"
+    TARGET_TRUE_ID = "target_true_id"
 
     # KNOWN1000
     ATTRIBUTE = "attribute"

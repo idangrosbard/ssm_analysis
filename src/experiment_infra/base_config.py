@@ -7,6 +7,7 @@ from typing import Any, Callable, Generic, Optional, Type, TypeVar, cast, final
 
 import pandas as pd
 import pyrallis
+from submitit.slurm.slurm import SlurmJob
 
 from src.consts import COLUMNS, MODEL_SIZES_PER_ARCH_TO_MODEL_ID, PATHS
 from src.datasets.download_dataset import load_splitted_counter_fact
@@ -127,10 +128,9 @@ class BaseConfig(ABC, Generic[_TConfigOutputs]):
         )
 
     def set_running_params(
-        self, variation: str, is_slurm: bool, slurm_gpu_type: SLURM_GPU_TYPE, slurm_gpus_per_node: Optional[int] = None
+        self, with_slurm: bool, slurm_gpu_type: SLURM_GPU_TYPE, slurm_gpus_per_node: Optional[int] = None
     ):
-        self.variation = variation
-        self.with_slurm = is_slurm
+        self.with_slurm = with_slurm
         self.slurm_gpu_type = slurm_gpu_type
         if slurm_gpus_per_node is not None:
             self.slurm_gpus_per_node = slurm_gpus_per_node
@@ -244,6 +244,20 @@ class BaseConfig(ABC, Generic[_TConfigOutputs]):
     @abstractmethod
     def compute(self) -> None:
         pass
+
+    def get_latest_slurm_job(self) -> Optional[SlurmJob]:
+        slurm_logs_path = self.slurm_logs_path()
+        if not slurm_logs_path.exists():
+            return None
+
+        job_paths = list(slurm_logs_path.glob("*"))
+        if not job_paths:
+            return None
+        job_path = max(job_paths, key=lambda x: int(x.stem))
+        submission_file_path = list(job_path.glob("*_submission.sh"))
+        if len(submission_file_path) != 1:
+            return None
+        return SlurmJob(submission_file_path[0], job_id=job_path.stem)
 
     def run(self) -> None:
         if not self.with_slurm:

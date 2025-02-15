@@ -11,10 +11,10 @@ from src.final_plots.app.utils import (
     create_filters,
     create_pagination_config,
     format_path_for_display,
+    get_data_req_from_df_row,
     show_filtered_count,
 )
 from src.final_plots.data_reqs import (
-    DataReq,
     get_data_fullfment_options,
     load_data_fulfilled_overides,
     save_data_fulfilled_overides,
@@ -95,7 +95,14 @@ filter_columns = [
     ParamNames.target,
     ParamNames.prompt_idx,
 ]
-filters = create_filters(df, filter_columns=filter_columns)
+filters = create_filters(
+    df,
+    filter_columns=filter_columns,
+    default_values={
+        ReqMetadataColumns.AvailableOptions: [0],
+        ParamNames.is_all_correct: [False],
+    },
+)
 filtered_df = apply_filters(df, filters)
 
 # Display results count
@@ -136,12 +143,17 @@ for _, row in paginated_df.iterrows():
             f"**{row[ParamNames.model_arch]}-{row[ParamNames.model_size]}**"
             f" | ws=**{row[ParamNames.window_size]}**{' | **all_correct** ' if row[ParamNames.is_all_correct] else ''}"
         )
+
         if row[ParamNames.experiment_name] == EXPERIMENT_NAMES.INFO_FLOW:
             label += f" | source=**{row[ParamNames.source]}** target=**{row[ParamNames.target]}**" + (
                 f" feature_category=**{row[ParamNames.feature_category]}**" if row[ParamNames.feature_category] else ""
             )
         elif row[ParamNames.experiment_name] == EXPERIMENT_NAMES.HEATMAP:
             label += f" | prompt_idx=**{row[ParamNames.prompt_idx]}**"
+
+        job = get_data_req_from_df_row(row).get_config().get_latest_slurm_job()
+        if job is not None:
+            label += f" | [Job {job.job_id} {job.state}]"
 
         with st.expander(label):
             st.write("### Requirement Details")
@@ -229,20 +241,12 @@ with st.sidebar:
 
             for i, (idx, row) in enumerate(selected_rows.iterrows()):
                 try:
-                    # Create DataReq object
-                    req = DataReq(
-                        **{
-                            param: row[param]
-                            for param in ParamNames
-                            if param not in [ParamNames.path, ParamNames.variation]
-                        },
-                    )
+                    req = get_data_req_from_df_row(row)
 
                     # Get config and set running parameters
-                    config = req.get_config()
+                    config = req.get_config(variation=variation)
                     config.set_running_params(
-                        variation=variation,
-                        is_slurm=True,
+                        with_slurm=True,
                         slurm_gpu_type=selected_gpu,
                     )
 

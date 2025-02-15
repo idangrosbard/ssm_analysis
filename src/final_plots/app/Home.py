@@ -1,4 +1,7 @@
 import streamlit as st
+import torch
+
+torch.classes.__path__ = []
 
 st.set_page_config(page_title="SSM Analysis Results", page_icon="📊", layout="wide")
 

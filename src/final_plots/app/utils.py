@@ -5,9 +5,7 @@ import pandas as pd
 import streamlit as st
 
 from src.consts import PATHS
-from src.final_plots.data_reqs import (
-    get_current_data_reqs,
-)
+from src.final_plots.data_reqs import DataReq, get_current_data_reqs
 from src.final_plots.results_bank import ParamNames, clear_results_bank_cache
 
 T = TypeVar("T")
@@ -152,7 +150,13 @@ def apply_filters(df: pd.DataFrame, filters: dict[str, list]) -> pd.DataFrame:
     return filtered_df
 
 
-def cache_data(func: Callable[[], T]) -> Callable[[], T]:
+def get_data_req_from_df_row(row: pd.Series) -> DataReq:
+    return DataReq(
+        **{param: row[param] for param in ParamNames if param not in [ParamNames.path, ParamNames.variation]},
+    )
+
+
+def cache_data(func: Callable[..., T]) -> Callable[..., T]:
     """Decorator to cache data with a refresh button in the sidebar.
 
     Args:
@@ -161,15 +165,15 @@ def cache_data(func: Callable[[], T]) -> Callable[[], T]:
     Returns:
         Cached function with refresh button
     """
-    cached_func = st.cache_data(func)
+    cached_func: Callable[[], T] = st.cache_data(func)  # type: ignore
 
-    def wrapper() -> T:
+    def wrapper(*args: Any, **kwargs: Any) -> T:
         if st.sidebar.button("🔄 Refresh Data"):
             # Clear all caches
             clear_results_bank_cache()
             cached_func.clear()  # type: ignore
             st.rerun()
-        return cached_func()
+        return cached_func(*args, **kwargs)
 
     return wrapper
 

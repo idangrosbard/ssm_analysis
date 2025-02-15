@@ -1,6 +1,6 @@
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import assert_never, cast
+from typing import Any, assert_never, cast
 
 import torch
 
@@ -102,6 +102,9 @@ class Prompt:
 
     def input_ids(self, tokenizer, device) -> torch.Tensor:
         return tokenizer(self.prompt, return_tensors="pt", padding=True).input_ids.to(device=device)
+
+    def get_column(self, column: str) -> Any:
+        return self.prompt_row[column]
 
 
 def get_num_to_masks(
