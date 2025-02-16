@@ -50,7 +50,7 @@ class HeatmapConfig(BaseConfig):
 
     experiment_base_name: str = "heatmap"
     window_size: int = 5
-    prompt_indices_rows: list[int] = create_mutable_field(lambda: [1, 2, 3, 4, 5])
+    prompt_indices_rows: list[int] = create_mutable_field(lambda: [])
     prompt_original_indices: list[int] = create_mutable_field(lambda: [])
 
     @property

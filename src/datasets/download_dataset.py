@@ -57,13 +57,6 @@ def load_splitted_counter_fact(
         ) in COUNTER_FACT_2_KNOWN1000_COL_CONV.items():
             dataset = dataset.rename_column(counter_fact_col, known1000_col)
         dataset = dataset.remove_columns([COLUMNS.TARGET_FALSE, COLUMNS.TARGET_FALSE_ID])
-
-    # if filteration is not None:
-    #     original_idx = pd.read_csv(PATHS.COUNTER_FACT_FILTERATIONS_DIR / f"{filteration}.csv")[
-    #         COLUMNS.ORIGINAL_IDX
-    #     ].to_list()
-    #     dataset = dataset.filter(lambda x: x[COLUMNS.ORIGINAL_IDX] in original_idx)
-
     return dataset
 
 

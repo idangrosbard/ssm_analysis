@@ -10,7 +10,7 @@ import src.models.minimal_mamba2 as minimal_mamba2
 from src.consts import is_falcon
 from src.knockout.attention_knockout import gpt2_knockout_utils
 from src.knockout.attention_knockout.ssm_interfere import SSMInterfereHook
-from src.types import MODEL_ARCH, FeatureCategory, KnockoutMode
+from src.types import MODEL_ARCH, MODEL_ARCH_AND_SIZE, FeatureCategory, KnockoutMode
 from src.utils.setup_models import get_tokenizer_and_model
 
 
@@ -288,7 +288,7 @@ class GPT2Interface(ModelInterface):
         return len(self.model.transformer.h)
 
 
-MODEL_INTERFACES_CACHE: dict[tuple[MODEL_ARCH, str], ModelInterface] = {}
+MODEL_INTERFACES_CACHE: dict[MODEL_ARCH_AND_SIZE, ModelInterface] = {}
 
 
 def get_model_interface(

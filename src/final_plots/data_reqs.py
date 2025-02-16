@@ -1,9 +1,13 @@
+import json
+import random
+from dataclasses import dataclass
 from pathlib import Path
-from typing import NamedTuple, Optional, Union, cast
+from typing import Any, NamedTuple, Optional, Union, cast
 
 import pandas as pd
 
 from src.consts import (
+    COLUMNS,
     EXPERIMENT_NAMES,
     GRAPHS_ORDER,
     MODEL_ARCH,
@@ -13,10 +17,11 @@ from src.consts import (
     is_falcon,
     is_mamba_arch,
 )
+from src.experiments.evaluate_model import EvaluateModelConfig
 from src.experiments.heatmap import HeatmapConfig
 from src.experiments.info_flow import InfoFlowConfig
-from src.final_plots.results_bank import HeatmapRecord, InfoFlowRecord, ResultRecord, get_results_bank
-from src.types import FeatureCategory, TInfoFlowSource
+from src.final_plots.results_bank import HeatmapRecord, InfoFlowRecord, ResultRecord, get_experiment_results_bank
+from src.types import MODEL_ARCH_AND_SIZE, FeatureCategory, TInfoFlowSource
 
 
 class DataReq(NamedTuple):
@@ -69,7 +74,7 @@ IDataFulfilledOptions = dict[DataReq, list[Path]]
 
 DATA_FULFILLED_OVERIDES_PATH = Path(__file__).parent / "data_fulfilled_overides.csv"
 DATA_FULFILLED_PATH = Path(__file__).parent / "data_fulfilled.csv"
-PROMPT_SELECTION_PATH = Path(__file__).parent / "prompt_selections.csv"
+PROMPT_SELECTION_PATH = Path(__file__).parent / "prompt_selections.json"
 
 
 def result_record_to_data_req(result_record: ResultRecord) -> DataReq:
@@ -101,7 +106,7 @@ def result_record_to_data_req(result_record: ResultRecord) -> DataReq:
 def get_data_fullfment_options() -> IDataFulfilledOptions:
     data_reqs = get_data_reqs()
     data_reqs_options: IDataFulfilledOptions = {data_req: [] for data_req in data_reqs}
-    results = get_results_bank()
+    results = get_experiment_results_bank()
     for result in results:
         data_req = result_record_to_data_req(result)
         if data_req in data_reqs_options:
@@ -463,3 +468,185 @@ def get_current_data_reqs() -> IDataFulfilled:
 
 def update_data_reqs_with_latest_results() -> None:
     _save_data_fulfilled(DATA_FULFILLED_PATH, get_current_data_reqs())
+
+
+def save_prompt_selections(prompt_selections: list[tuple[set[MODEL_ARCH_AND_SIZE], int]]) -> None:
+    pd.DataFrame(prompt_selections).to_csv(PROMPT_SELECTION_PATH, index=False)
+
+
+def load_prompt_selections() -> list[tuple[set[MODEL_ARCH_AND_SIZE], int]]:
+    return pd.read_csv(PROMPT_SELECTION_PATH).to_dict(orient="records")  # type: ignore
+
+
+def get_model_evaluations(
+    variation: str, model_arch_and_sizes: list[MODEL_ARCH_AND_SIZE]
+) -> dict[MODEL_ARCH_AND_SIZE, pd.DataFrame]:
+    return {
+        model_arch_and_size: EvaluateModelConfig(
+            model_arch=model_arch_and_size[0],
+            model_size=model_arch_and_size[1],
+            variation=variation,
+        ).get_outputs()
+        for model_arch_and_size in model_arch_and_sizes
+    }
+
+
+@dataclass
+class ModelCombination:
+    correct_models: set[MODEL_ARCH_AND_SIZE]
+    incorrect_models: set[MODEL_ARCH_AND_SIZE]
+    prompts: list[int]
+    chosen_prompt: Optional[int]
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "correct_models": list(self.correct_models),
+            "incorrect_models": list(self.incorrect_models),
+            "prompts": self.prompts,
+            "chosen_prompt": self.chosen_prompt,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "ModelCombination":
+        return cls(
+            correct_models=set(map(tuple, data["correct_models"])),
+            incorrect_models=set(map(tuple, data["incorrect_models"])),
+            prompts=data["prompts"],
+            chosen_prompt=data["chosen_prompt"],
+        )
+
+
+def save_model_combinations_prompts(model_combinations: list[ModelCombination]) -> None:
+    json.dump(
+        [model_combination.to_dict() for model_combination in model_combinations],
+        PROMPT_SELECTION_PATH.open("w"),
+    )
+
+
+def get_model_combinations_prompts(
+    variation: Optional[str], model_arch_and_sizes: list[MODEL_ARCH_AND_SIZE], seed: Optional[int] = 42
+) -> list[ModelCombination]:
+    """Get all possible model combinations and their corresponding prompts.
+    Each combination specifies which models should be correct and which should be incorrect.
+
+    Returns:
+        List of ModelCombination objects describing each valid combination pattern.
+    """
+    if PROMPT_SELECTION_PATH.exists():
+        saved_selections = json.load(PROMPT_SELECTION_PATH.open("r"))
+        saved_combinations = [ModelCombination.from_dict(selection) for selection in saved_selections]
+
+        # Get all unique models from saved combinations
+        saved_models = set()
+        for combo in saved_combinations:
+            saved_models.update(combo.correct_models)
+            saved_models.update(combo.incorrect_models)
+
+        # If requested models are a subset of saved models, derive from existing
+        if saved_models - set(model_arch_and_sizes):
+            return derive_subset_model_combinations(saved_combinations, model_arch_and_sizes)
+        else:
+            return saved_combinations
+
+    # Otherwise generate new combinations
+    assert seed is not None
+    assert variation is not None
+    model_evaluations = get_model_evaluations(variation, model_arch_and_sizes)
+    # Get all prompts
+    all_prompts = set(model_evaluations[model_arch_and_sizes[0]].index)
+
+    # Create a DataFrame with correctness for each model
+    correctness_df = pd.DataFrame(index=sorted(all_prompts))
+    for model_arch_and_size in model_arch_and_sizes:
+        model_df = model_evaluations[model_arch_and_size]
+        correctness_df[model_arch_and_size] = [
+            model_df.at[idx, COLUMNS.MODEL_CORRECT] if idx in model_df.index else False for idx in correctness_df.index
+        ]
+
+    # Generate all possible combinations
+    combinations: list[ModelCombination] = []
+
+    # Convert to numpy for faster operations
+    correctness_matrix = correctness_df.values
+
+    # For each possible combination of models being correct/incorrect
+    for i in range(2 ** len(model_arch_and_sizes)):
+        # Convert number to binary to get combination of correct models
+        binary = format(i, f"0{len(model_arch_and_sizes)}b")
+
+        # Get models that should be correct and incorrect
+        correct_models = [model_arch_and_sizes[j] for j, bit in enumerate(binary) if bit == "1"]
+        incorrect_models = [model_arch_and_sizes[j] for j, bit in enumerate(binary) if bit == "0"]
+
+        # Find prompts that are correct for all correct_models AND incorrect for all incorrect_models
+        correct_mask = correctness_matrix[:, [j for j, bit in enumerate(binary) if bit == "1"]].all(axis=1)
+        incorrect_mask = ~correctness_matrix[:, [j for j, bit in enumerate(binary) if bit == "0"]].any(axis=1)
+
+        # Combined mask for prompts meeting both conditions
+        mask = correct_mask & incorrect_mask
+        matching_prompts = correctness_df.index[mask].tolist()
+
+        random.seed(seed)
+        if matching_prompts:
+            chosen_prompt = random.choice(matching_prompts)
+        else:
+            chosen_prompt = None
+
+        combinations.append(
+            ModelCombination(
+                correct_models=set(correct_models),
+                incorrect_models=set(incorrect_models),
+                prompts=matching_prompts,
+                chosen_prompt=chosen_prompt,
+            )
+        )
+
+    save_model_combinations_prompts(combinations)
+    return get_model_combinations_prompts(variation, model_arch_and_sizes, None)
+
+
+def derive_subset_model_combinations(
+    saved_combinations: list[ModelCombination], requested_models: list[MODEL_ARCH_AND_SIZE]
+) -> list[ModelCombination]:
+    """Derive model combinations for a subset using saved combinations with O(|C|) complexity."""
+    requested_set = set(requested_models)
+    pattern_map: dict[tuple[frozenset, frozenset], tuple[list[int], list[int]]] = {}
+
+    # First pass: Group by projected patterns and collect prompts
+    for combo in saved_combinations:
+        # Project to subset - O(|S|) per combination
+        proj_correct = frozenset(m for m in combo.correct_models if m in requested_set)
+        proj_incorrect = frozenset(m for m in combo.incorrect_models if m in requested_set)
+
+        # Get existing or create new entry
+        key = (proj_correct, proj_incorrect)
+        prompts, chosen_prompts = pattern_map.get(key, ([], []))
+
+        # Extend with this combination's prompts
+        prompts.extend(combo.prompts)
+        if combo.chosen_prompt is not None:
+            chosen_prompts.append(combo.chosen_prompt)
+
+        pattern_map[key] = (prompts, chosen_prompts)
+
+    # Second pass: Create new combinations
+    new_combinations = []
+    for (correct, incorrect), (prompts, chosen_prompts) in pattern_map.items():
+        # Remove duplicate prompts while preserving order
+        seen = set()
+        unique_prompts = [p for p in prompts if not (p in seen or seen.add(p))]
+
+        # Preserve chosen prompt order from original combinations
+        chosen_candidates = [p for p in chosen_prompts if p in unique_prompts]
+        chosen_prompt = chosen_candidates[0] if chosen_candidates else None
+
+        new_combinations.append(
+            ModelCombination(
+                correct_models=set(correct),
+                incorrect_models=set(incorrect),
+                prompts=unique_prompts,
+                chosen_prompt=chosen_prompt or (unique_prompts[0] if unique_prompts else None),
+            )
+        )
+
+    return sorted(new_combinations, key=lambda x: (-len(x.prompts), x.chosen_prompt))

@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import Literal, NewType, Optional, Sequence, Union, assert_never
+from typing import Literal, NewType, Sequence, Union, assert_never
 
 import pandas as pd
 from jaxtyping import Float
@@ -79,7 +79,6 @@ class FILTERATIONS(StrEnum):
 class DatasetArgs:
     name: DATASETS
     splits: TSplit = "all"
-    filteration: Optional[FILTERATIONS] = FILTERATIONS.all_correct
 
     def __post_init__(self):
         if self.splits != "all" and isinstance(self.splits, str):
@@ -90,8 +89,7 @@ class DatasetArgs:
         split_name = ""
         if self.splits != "all":
             split_name = f"_{self.splits}"
-        if self.filteration is not None:
-            split_name = f"_{self.filteration}"
+
         return self.name + split_name
 
 
@@ -150,3 +148,5 @@ class SLURM_GPU_TYPE(StrEnum):
 
 
 TInfoFlowSource = Union[TokenType, tuple[TokenType, FeatureCategory]]
+
+MODEL_ARCH_AND_SIZE = tuple[MODEL_ARCH, str]

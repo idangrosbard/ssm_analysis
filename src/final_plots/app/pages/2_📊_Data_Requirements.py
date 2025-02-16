@@ -14,12 +14,11 @@
 import streamlit as st
 
 from src.final_plots.app.app_consts import (
-    DATA_REQS_DEFAULT_FILTER_VALUES,
+    GLOBAL_APP_CONSTS,
     AppSessionKeys,
-    DATA_REQS_FILTER_COLUMNSs,
+    DataReqCols,
+    DataReqConsts,
     DataReqsSessionKeys,
-    PaginationConfig,
-    ReqMetadataColumns,
 )
 from src.final_plots.app.components.inputs import select_variation
 from src.final_plots.app.data_store import empty_selected_requirements, load_data
@@ -32,23 +31,12 @@ from src.final_plots.app.utils import (
     get_data_req_from_df_row,
     show_filtered_count,
 )
-from src.final_plots.data_reqs import (
-    IDataFulfilled,
-    load_data_fulfilled_overides,
-    save_data_fulfilled_overides,
-)
 from src.final_plots.results_bank import ParamNames
 from src.types import SLURM_GPU_TYPE
 
 # region Page Configuration
 st.set_page_config(page_title=DATA_REQUIREMENTS_TEXTS.title, page_icon=DATA_REQUIREMENTS_TEXTS.icon, layout="wide")
 st.title(f"{DATA_REQUIREMENTS_TEXTS.title} {DATA_REQUIREMENTS_TEXTS.icon}")
-# endregion
-
-# region Session State Initialization
-# Initialize session state for overrides if not exists
-if DataReqsSessionKeys.overrides.key not in st.session_state:
-    st.session_state[DataReqsSessionKeys.overrides.key] = load_data_fulfilled_overides()
 # endregion
 
 # region Data Loading and Preparation
@@ -58,8 +46,8 @@ df = load_data()
 # Create and apply filters
 filters = create_filters(
     df,
-    filter_columns=DATA_REQS_FILTER_COLUMNSs,
-    default_values=DATA_REQS_DEFAULT_FILTER_VALUES,
+    filter_columns=DataReqConsts.DATA_REQS_FILTER_COLUMNS,
+    default_values=DataReqConsts.DATA_REQS_DEFAULT_FILTER_VALUES,
 )
 filtered_df = apply_filters(df, filters)
 
@@ -71,8 +59,8 @@ show_filtered_count(filtered_df, df, "requirements")
 # Add pagination
 pagination_config = create_pagination_config(
     total_items=len(filtered_df),
-    default_page_size=PaginationConfig.DATA_REQS["default_page_size"],
-    key_prefix=PaginationConfig.DATA_REQS["key_prefix"],
+    default_page_size=GLOBAL_APP_CONSTS.PaginationConfig.DATA_REQS["default_page_size"],
+    key_prefix=GLOBAL_APP_CONSTS.PaginationConfig.DATA_REQS["key_prefix"],
     on_change=empty_selected_requirements,
 )
 
@@ -84,7 +72,7 @@ for _, row in paginated_df.iterrows():
     col1, col2 = st.columns([1, 100], gap="small")
 
     with col1:
-        key = row[ReqMetadataColumns.Key]
+        key = row[DataReqCols.Key]
         is_selected = st.checkbox(
             " ",
             value=key in DataReqsSessionKeys.selected_requirements.get(),
@@ -115,12 +103,13 @@ for _, row in paginated_df.iterrows():
 # Save button for overrides
 if st.button(DATA_REQUIREMENTS_TEXTS.save_overrides):
     # Convert session state overrides to IDataFulfilled type
-    overrides: IDataFulfilled = {}
-    for key, path in DataReqsSessionKeys.overrides.get().items():
-        data_req = get_data_req_from_df_row(filtered_df[filtered_df[ReqMetadataColumns.Key] == key].iloc[0])
-        overrides[data_req] = path
-    save_data_fulfilled_overides(overrides)
-    st.success(DATA_REQUIREMENTS_TEXTS.overrides_saved)
+    pass
+    # overrides: IDataFulfilled = {}
+    # for key, path in DataReqsSessionKeys.overrides.get().items():
+    #     data_req = get_data_req_from_df_row(filtered_df[filtered_df[DataReqCols.Key] == key].iloc[0])
+    #     overrides[data_req] = path
+    # save_data_fulfilled_overides(overrides)
+    # st.success(DATA_REQUIREMENTS_TEXTS.overrides_saved)
 
 # Add SLURM configuration in sidebar
 with st.sidebar:
@@ -155,7 +144,7 @@ with st.sidebar:
 
             # Get all rows from filtered_df that match selected requirements
             selected_rows = filtered_df[
-                filtered_df[ReqMetadataColumns.Key].isin(DataReqsSessionKeys.selected_requirements.get())
+                filtered_df[DataReqCols.Key].isin(DataReqsSessionKeys.selected_requirements.get())
             ]
 
             for i, (idx, row) in enumerate(selected_rows.iterrows()):

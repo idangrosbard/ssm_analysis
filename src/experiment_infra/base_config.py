@@ -18,7 +18,6 @@ from src.experiment_infra.output_path import (
 )
 from src.types import (
     DATASETS,
-    FILTERATIONS,
     MODEL_ARCH,
     SLURM_GPU_TYPE,
     DatasetArgs,
@@ -69,7 +68,6 @@ class BaseConfig(ABC, Generic[_TConfigOutputs]):
         lambda: DatasetArgs(
             name=DATASETS.COUNTER_FACT,
             splits="all",
-            filteration=FILTERATIONS.current_model_correct,
         ),
     )
     _batch_size: int = 1  # Adjust based on GPU memory
@@ -81,8 +79,6 @@ class BaseConfig(ABC, Generic[_TConfigOutputs]):
 
     @property
     def dataset_name(self) -> str:
-        # return self.dataset_args.display_name
-        # return 'counter_fact_all_correct'
         return self.dataset_args.name
 
     @property
@@ -173,7 +169,6 @@ class BaseConfig(ABC, Generic[_TConfigOutputs]):
         dataset = load_splitted_counter_fact(
             "all",
             align_to_known=align_to_known,
-            filteration=self.dataset_args.filteration,
         )
         return pd.DataFrame(cast(dict, dataset))
 
@@ -229,13 +224,11 @@ class BaseConfig(ABC, Generic[_TConfigOutputs]):
             new_max_tokens=EvaluateModelConfig.new_max_tokens,
             top_k_tokens=EvaluateModelConfig.top_k_tokens,
         ).get_outputs()
-        if self.dataset_args.filteration == FILTERATIONS.current_model_correct:
-            return cast(
-                TPromptData,
-                df[df[COLUMNS.MODEL_CORRECT]].set_index(COLUMNS.ORIGINAL_IDX),
-            )
-        else:
-            raise NotImplementedError(f"Filteration {self.dataset_args.filteration} not implemented")
+
+        return cast(
+            TPromptData,
+            df.set_index(COLUMNS.ORIGINAL_IDX),
+        )
 
     @abstractmethod
     def get_outputs(self) -> _TConfigOutputs:
@@ -258,6 +251,12 @@ class BaseConfig(ABC, Generic[_TConfigOutputs]):
         if len(submission_file_path) != 1:
             return None
         return SlurmJob(submission_file_path[0], job_id=job_path.stem)
+
+    def is_running(self) -> bool:
+        latest_job = self.get_latest_slurm_job()
+        if latest_job is None:
+            return False
+        return latest_job.state == "RUNNING"
 
     def run(self) -> None:
         if not self.with_slurm:

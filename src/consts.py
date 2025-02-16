@@ -2,11 +2,14 @@ import os
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
+from typing import assert_never
 
 from src.types import (
     DATASETS,
     MODEL_ARCH,
+    MODEL_ARCH_AND_SIZE,
     MODEL_SIZE_CAT,
+    SLURM_GPU_TYPE,
     FeatureCategory,
     TDatasetID,
     TInfoFlowSource,
@@ -140,6 +143,10 @@ GRAPHS_ORDER = [
     # (MODEL_ARCH.MAMBA2, "8B", MODEL_SIZE_CAT.HUGE),
 ]
 
+ALL_MODEL_ARCH_AND_SIZES: list[MODEL_ARCH_AND_SIZE] = [
+    (model_arch, model_size) for model_arch, model_size, _ in GRAPHS_ORDER
+]
+
 
 def get_model_cat_size(model_arch: MODEL_ARCH, model_size: str) -> MODEL_SIZE_CAT:
     for _model_arch, _model_size, model_size_cat in GRAPHS_ORDER:
@@ -148,16 +155,27 @@ def get_model_cat_size(model_arch: MODEL_ARCH, model_size: str) -> MODEL_SIZE_CA
     raise ValueError(f"Model {model_arch} {model_size} not found in GRAPHS_ORDER")
 
 
-def get_model_by_cat_size(cat_size: MODEL_SIZE_CAT) -> list[tuple[MODEL_ARCH, str]]:
+def get_model_by_cat_size(cat_size: MODEL_SIZE_CAT) -> list[MODEL_ARCH_AND_SIZE]:
     return [(arch, model_size) for arch, model_size, model_size_cat in GRAPHS_ORDER if model_size_cat == cat_size]
 
 
-def reverse_model_id(model_id: str) -> tuple[MODEL_ARCH, str]:
+def reverse_model_id(model_id: str) -> MODEL_ARCH_AND_SIZE:
     for arch, model_size, _ in GRAPHS_ORDER:
         for model_id_prefix in ["", "state-spaces/", "tiiuae/"]:
             if MODEL_SIZES_PER_ARCH_TO_MODEL_ID[arch][model_size] == f"{model_id_prefix}{model_id}":
                 return arch, model_size
     raise ValueError(f"Model id {model_id} not found in MODEL_SIZES_PER_ARCH_TO_MODEL_ID")
+
+
+def model_and_size_to_slurm_gpu_type(model_arch: MODEL_ARCH, model_size: str) -> SLURM_GPU_TYPE:
+    model_cat_size = get_model_cat_size(model_arch, model_size)
+    match model_cat_size:
+        case MODEL_SIZE_CAT.SMALL | MODEL_SIZE_CAT.MEDIUM:
+            return SLURM_GPU_TYPE.TITAN_XP_STUDENTRUN
+        case MODEL_SIZE_CAT.LARGE | MODEL_SIZE_CAT.HUGE:
+            return SLURM_GPU_TYPE.L40S
+        case _:
+            assert_never(model_cat_size)
 
 
 def is_mamba_arch(model_arch: MODEL_ARCH) -> bool:

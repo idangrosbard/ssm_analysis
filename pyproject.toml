@@ -122,9 +122,9 @@ ignore = [
     "notebooks/idan_plots.ipynb"
 ]
 
-# executionEnvironments = [
-#   { root = "." }
-# ]
+executionEnvironments = [
+  { root = "." }
+]
 
 
 

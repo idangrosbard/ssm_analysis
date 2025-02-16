@@ -6,7 +6,7 @@ import streamlit as st
 
 from src.consts import PATHS
 from src.experiments.heatmap import HeatmapConfig
-from src.final_plots.app.app_consts import MINIMUM_COMBINATIONS_FOR_FILTERING, HeatmapColumns
+from src.final_plots.app.app_consts import HeatmapCols, HeatmapConsts
 from src.final_plots.data_reqs import DataReq, get_current_data_reqs
 from src.final_plots.results_bank import ParamNames, clear_results_bank_cache
 from src.types import MODEL_ARCH
@@ -286,15 +286,15 @@ def filter_combinations(df: pd.DataFrame, model_names: list[str]) -> pd.DataFram
         if isinstance(option, tuple):
             return f"{option[0]} - {'correct ✅' if option[1] else 'incorrect ❌'}"
         else:
-            assert option == HeatmapColumns.PROMPT_COUNT
+            assert option == HeatmapCols.PROMPT_COUNT
             return "Prompt Count"
 
     with modification_container:
         to_filter_columns = st.multiselect(
             "Filter dataframe on",
-            [HeatmapColumns.PROMPT_COUNT, *model_name_filters],
+            [HeatmapCols.PROMPT_COUNT, *model_name_filters],
             format_func=format_func,
-            default=[HeatmapColumns.PROMPT_COUNT],
+            default=[HeatmapCols.PROMPT_COUNT],
         )
         for column in to_filter_columns:
             left, right = st.columns((1, 20))
@@ -302,14 +302,14 @@ def filter_combinations(df: pd.DataFrame, model_names: list[str]) -> pd.DataFram
 
             # Handle different column
 
-            if column == HeatmapColumns.PROMPT_COUNT:
+            if column == HeatmapCols.PROMPT_COUNT:
                 _min = int(df[column].min())
                 _max = int(df[column].max())
                 user_num_input = right.number_input(
                     "Minimum prompt count",
                     min_value=_min,
                     max_value=_max,
-                    value=MINIMUM_COMBINATIONS_FOR_FILTERING,
+                    value=HeatmapConsts.MINIMUM_COMBINATIONS_FOR_FILTERING,
                     step=1,
                 )
                 df = df[df[column] >= user_num_input]

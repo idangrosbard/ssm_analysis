@@ -12,8 +12,8 @@
 
 import streamlit as st
 
-from src.final_plots.app.app_consts import PaginationConfig
-from src.final_plots.app.data_store import load_results
+from src.final_plots.app.app_consts import GLOBAL_APP_CONSTS
+from src.final_plots.app.data_store import load_experiment_results
 from src.final_plots.app.texts import RESULTS_BANK_TEXTS
 from src.final_plots.app.utils import (
     apply_filters,
@@ -33,7 +33,7 @@ st.title(f"{RESULTS_BANK_TEXTS.title} {RESULTS_BANK_TEXTS.icon}")
 
 # region Data Loading and Preparation
 # Get results using cached function
-df = load_results()
+df = load_experiment_results()
 # endregion
 
 # region Filtering
@@ -49,8 +49,8 @@ show_filtered_count(filtered_df, df)
 # Add pagination
 pagination_config = create_pagination_config(
     total_items=len(filtered_df),
-    default_page_size=PaginationConfig.RESULTS_BANK["default_page_size"],
-    key_prefix=PaginationConfig.RESULTS_BANK["key_prefix"],
+    default_page_size=GLOBAL_APP_CONSTS.PaginationConfig.RESULTS_BANK["default_page_size"],
+    key_prefix=GLOBAL_APP_CONSTS.PaginationConfig.RESULTS_BANK["key_prefix"],
 )
 
 # Apply pagination to filtered data

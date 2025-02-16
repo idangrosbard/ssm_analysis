@@ -37,7 +37,7 @@ class EvaluateModelConfig(BaseConfig):
     top_k_tokens: int = 5
 
     dataset_args: DatasetArgs = create_mutable_field(
-        lambda: DatasetArgs(name=DATASETS.COUNTER_FACT, splits="all", filteration=None),
+        lambda: DatasetArgs(name=DATASETS.COUNTER_FACT, splits="all"),
     )
 
     @property

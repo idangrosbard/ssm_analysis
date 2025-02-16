@@ -14,7 +14,6 @@ class HEATMAP_TEXTS:
     show_prompts = "Show Prompts"
     active_models_str = lambda active_models: " ∩ ".join(active_models)
     run_selected_prompts = lambda count: f"🚀 Run {count} Selected Jobs"
-    preparing_to_run = lambda count: COMMON_TEXTS.preparing_to_run(count, "jobs")
     processing_status = lambda current, total: COMMON_TEXTS.processing_status(current, total, "jobs")
     success_status = lambda count: COMMON_TEXTS.success_status(count, "jobs")
     error_status = lambda count: COMMON_TEXTS.error_status(count, "jobs")
@@ -24,6 +23,9 @@ class HEATMAP_TEXTS:
     run_selected_prompts_error = "Failed to submit jobs"
     show_models_with_correctness = (
         lambda is_correct, models: f"{'✅' if is_correct else '❌'} ({len(models)}): {', '.join(models)}"
+    )
+    skipping_running = (
+        lambda model_arch, model_size: f"Skipping running {model_arch} {model_size} because it is already running"
     )
 
 
@@ -61,7 +63,7 @@ class DATA_REQUIREMENTS_TEXTS:
 
 class COMMON_TEXTS:
     error_details = "Show Error Details"
-    preparing_to_run = lambda count, run_what: f"Preparing to run {count} {run_what}..."
+    preparing_to_run = "Preparing to run"
     processing_status = lambda current, total, run_what: f"Processed {current} / {total} {run_what}..."
     success_status = lambda count, run_what: f"Successfully submitted {count} {run_what}..."
     error_status = lambda count, run_what: f"Failed to submit {count} {run_what}..."

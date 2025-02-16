@@ -3,27 +3,34 @@ from typing import Tuple as PyTuple
 
 import matplotlib.pyplot as plt
 import pandas as pd
-import streamlit as st
 from matplotlib.figure import Figure
 from streamlit import cache_data as st_cache_data
 
-from src.consts import COLUMNS, GRAPHS_ORDER, MODEL_ARCH, to_model_name
-from src.experiments.evaluate_model import EvaluateModelConfig
+from src.consts import COLUMNS
 from src.experiments.heatmap import HeatmapConfig
-from src.final_plots.app.app_consts import DataReqsSessionKeys, ReqMetadataColumns
+from src.final_plots.app.app_consts import (
+    GLOBAL_APP_CONSTS,
+    DataReqCols,
+    DataReqsSessionKeys,
+)
 from src.final_plots.app.utils import (
     cache_data,
     format_path_for_display,
     load_experiment_data,
 )
 from src.final_plots.data_reqs import (
+    ModelCombination,
     get_data_fullfment_options,
+    get_model_combinations_prompts,
+    get_model_evaluations,
+    load_data_fulfilled_overides,
 )
 from src.final_plots.results_bank import (
     ParamNames,
-    get_results_bank,
+    get_experiment_results_bank,
 )
 from src.plots.info_flow_confidence import PlotMetadata, create_confidence_plot, load_window_outputs
+from src.types import MODEL_ARCH_AND_SIZE
 
 # Constants
 PROMPT_RELATED_COLUMNS = [
@@ -37,22 +44,16 @@ PROMPT_RELATED_COLUMNS = [
 
 
 @st_cache_data
-def get_model_evaluations(variation: str) -> dict[PyTuple[MODEL_ARCH, str], pd.DataFrame]:
-    """Get the model evaluations from session state."""
-    return load_evaluation_data(variation)
-
-
-@st_cache_data
-def get_model_combinations(variation: str) -> list[PyTuple[MODEL_ARCH, str]]:
-    """Get the model combinations from session state."""
-    return list(get_model_evaluations(variation).keys())
+def load_model_evaluations(variation: str) -> dict[MODEL_ARCH_AND_SIZE, pd.DataFrame]:
+    """Load evaluation data for all models with caching"""
+    return get_model_evaluations(variation, GLOBAL_APP_CONSTS.MODELS_COMBINATIONS)
 
 
 # Results Bank hooks
 @cache_data
-def load_results() -> pd.DataFrame:
+def load_experiment_results() -> pd.DataFrame:
     """Load and process results with caching"""
-    results = get_results_bank()
+    results = get_experiment_results_bank()
     results_data = []
     for result in results:
         result_dict = {param: getattr(result, param, None) for param in ParamNames}
@@ -67,10 +68,11 @@ def load_results() -> pd.DataFrame:
 def load_data() -> pd.DataFrame:
     """Load requirements and options data with caching"""
     options = get_data_fullfment_options()
+    data_fulfilled_overides = load_data_fulfilled_overides()
 
     data = []
     for req, opts in options.items():
-        override = st.session_state.overrides.get(str(req))
+        override = data_fulfilled_overides.get(req)
 
         row = {
             **{
@@ -78,10 +80,10 @@ def load_data() -> pd.DataFrame:
                 for param in ParamNames
                 if param not in [ParamNames.path, ParamNames.variation]
             },
-            ReqMetadataColumns.AvailableOptions: len(opts),
-            ReqMetadataColumns.Options: opts,
-            ReqMetadataColumns.CurrentOverride: override,
-            ReqMetadataColumns.Key: str(req),
+            DataReqCols.AvailableOptions: len(opts),
+            DataReqCols.Options: opts,
+            DataReqCols.CurrentOverride: override,
+            DataReqCols.Key: str(req),
         }
         data.append(row)
 
@@ -93,82 +95,6 @@ def load_data() -> pd.DataFrame:
 def load_info_flow_data() -> pd.DataFrame:
     """Load info flow requirements and their fulfillment data"""
     return load_experiment_data("info_flow")
-
-
-# Heatmap Creation hooks
-@st_cache_data
-def load_evaluation_data(variation: str) -> dict[PyTuple[MODEL_ARCH, str], pd.DataFrame]:
-    """Load evaluation data for all models with caching"""
-    return {
-        (model_arch, model_size): EvaluateModelConfig(
-            model_arch=model_arch, model_size=model_size, variation=variation
-        ).get_outputs()
-        for model_arch, model_size, _ in GRAPHS_ORDER
-    }
-
-
-@st_cache_data
-def get_model_combinations_prompts(variation: str) -> pd.DataFrame:
-    """Get all possible model combinations and their corresponding prompts.
-    Each combination specifies which models should be correct and which should be incorrect.
-
-    Returns:
-        DataFrame with columns for each model combination and the count of prompts
-        that match that combination pattern.
-    """
-    model_evaluations = get_model_evaluations(variation)
-    model_combinations = get_model_combinations(variation)
-    # Get all prompts
-    all_prompts = set(model_evaluations[model_combinations[0]].index)
-
-    # Create a DataFrame with correctness for each model
-    correctness_df = pd.DataFrame(index=sorted(all_prompts))
-    for model_arch, model_size in model_combinations:
-        model_name = to_model_name(model_arch, model_size)
-        model_df = model_evaluations[(model_arch, model_size)]
-        correctness_df[model_name] = [
-            model_df.at[idx, COLUMNS.MODEL_CORRECT] if idx in model_df.index else False for idx in correctness_df.index
-        ]
-
-    # Generate all possible combinations
-    combinations = []
-
-    # Convert to numpy for faster operations
-    correctness_matrix = correctness_df.values
-    model_names = correctness_df.columns.tolist()
-
-    # For each possible combination of models being correct/incorrect
-    for i in range(2 ** len(model_combinations)):
-        # Convert number to binary to get combination of correct models
-        binary = format(i, f"0{len(model_combinations)}b")
-
-        # Get models that should be correct and incorrect
-        correct_models = [model_names[j] for j, bit in enumerate(binary) if bit == "1"]
-        incorrect_models = [model_names[j] for j, bit in enumerate(binary) if bit == "0"]
-
-        # Find prompts that are correct for all correct_models AND incorrect for all incorrect_models
-        correct_mask = correctness_matrix[:, [j for j, bit in enumerate(binary) if bit == "1"]].all(axis=1)
-        incorrect_mask = ~correctness_matrix[:, [j for j, bit in enumerate(binary) if bit == "0"]].any(axis=1)
-
-        # Combined mask for prompts meeting both conditions
-        mask = correct_mask & incorrect_mask
-        matching_prompts = correctness_df.index[mask].tolist()
-
-        if matching_prompts:
-            combinations.append(
-                {
-                    "correct_models": correct_models,
-                    "incorrect_models": incorrect_models,
-                    "binary_pattern": binary,
-                    "prompt_count": len(matching_prompts),
-                    "prompts": matching_prompts,
-                }
-            )
-
-    # Convert to DataFrame and sort by count
-    result_df = pd.DataFrame(combinations)
-    result_df = result_df.sort_values("prompt_count", ascending=False)
-    return result_df
 
 
 @st_cache_data
@@ -183,16 +109,15 @@ def get_merged_evaluations(prompt_idx: int, variation: str) -> PyTuple[pd.Series
             - Series with prompt-specific data
             - DataFrame with model-specific evaluations merged
     """
-    model_evaluations = get_model_evaluations(variation)
-    model_combinations = get_model_combinations(variation)
+    model_evaluations = load_model_evaluations(variation)
     # Get the prompt data from first model (prompt data is the same for all models)
-    first_model_df = model_evaluations[model_combinations[0]]
+    first_model_df = model_evaluations[GLOBAL_APP_CONSTS.MODELS_COMBINATIONS[0]]
     prompt_data = cast(pd.Series, first_model_df.loc[prompt_idx])
 
     # Create list to hold each model's evaluation
     model_evals = []
 
-    for model_arch, model_size in model_combinations:
+    for model_arch, model_size in GLOBAL_APP_CONSTS.MODELS_COMBINATIONS:
         model_df = model_evaluations[(model_arch, model_size)]
         if prompt_idx not in model_df.index:
             continue
@@ -213,9 +138,8 @@ def get_merged_evaluations(prompt_idx: int, variation: str) -> PyTuple[pd.Series
 @st_cache_data
 def get_models_is_heatmap_available(
     prompt_idx: int, variation: str, window_size: int
-) -> dict[PyTuple[MODEL_ARCH, str], bool]:
+) -> dict[MODEL_ARCH_AND_SIZE, bool]:
     """Check if a model has a heatmap for a given prompt index."""
-    model_combinations = get_model_combinations(variation)
     return {
         (model_arch, model_size): HeatmapConfig(
             model_arch=model_arch,
@@ -227,7 +151,7 @@ def get_models_is_heatmap_available(
         )
         .output_heatmap_path(prompt_idx)
         .exists()
-        for model_arch, model_size in model_combinations
+        for model_arch, model_size in GLOBAL_APP_CONSTS.MODELS_COMBINATIONS
     }
 
 
@@ -364,11 +288,11 @@ def create_info_flow_plots(
 
 @st_cache_data
 def get_models_remaining_prompts(
-    model_combinations: list[tuple[MODEL_ARCH, str]],
+    model_combinations: list[MODEL_ARCH_AND_SIZE],
     window_size: int,
     variation: str,
     prompt_original_indices: list[int],
-) -> dict[tuple[MODEL_ARCH, str], HeatmapConfig]:
+) -> dict[MODEL_ARCH_AND_SIZE, HeatmapConfig]:
     """Get the remaining prompts for each model."""
     res = {}
     for model_arch, model_size in model_combinations:
@@ -384,3 +308,11 @@ def get_models_remaining_prompts(
             config.prompt_original_indices = remaining_prompt_original_indices
             res[(model_arch, model_size)] = config
     return res
+
+
+@st_cache_data
+def load_model_combinations_prompts(
+    variation: str, model_arch_and_sizes: list[MODEL_ARCH_AND_SIZE]
+) -> list[ModelCombination]:
+    """Get all possible model combinations and their corresponding prompts."""
+    return get_model_combinations_prompts(variation, model_arch_and_sizes)

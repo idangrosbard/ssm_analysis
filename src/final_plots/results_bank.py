@@ -278,7 +278,7 @@ class InfoFlowRecord(ResultRecord):
         return output_path
 
 
-CACHE_RESULTS_BANK = None
+CACHE_RESULTS_BANK: Optional[list[ResultRecord]] = None
 
 
 def clear_results_bank_cache():
@@ -286,7 +286,7 @@ def clear_results_bank_cache():
     CACHE_RESULTS_BANK = None
 
 
-def get_results_bank(
+def get_experiment_results_bank(
     results_base_paths: Optional[list[RESULTS_BASE_PATH]] = None,
     experiments: Optional[list[Type[ResultRecord]]] = None,
     update: bool = False,
