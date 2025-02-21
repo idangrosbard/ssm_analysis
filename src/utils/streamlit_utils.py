@@ -1,4 +1,5 @@
 import sys
+from abc import ABC, abstractmethod
 from contextlib import contextmanager
 from io import StringIO
 from typing import Any, Callable, Generic, TypeVar, cast, get_args, get_origin
@@ -182,3 +183,13 @@ def st_stderr(dst, placeholder, overwrite):
     "This will show the logging"
     with st_redirect(sys.stderr, dst, placeholder, overwrite):
         yield
+
+
+class StreamlitComponent(ABC):
+    @abstractmethod
+    def render(self) -> Any:
+        pass
+
+
+class StreamlitPage(ABC):
+    pass

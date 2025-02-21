@@ -1,5 +1,5 @@
 from enum import StrEnum
-from typing import Any, ClassVar, Generic, Literal, Optional, Type, TypeVar, Union, cast
+from typing import Any, ClassVar, Generic, Literal, Type, TypeVar, Union, cast
 
 from src.consts import COLUMNS, GRAPHS_ORDER, model_and_size_to_slurm_gpu_type
 from src.final_plots.results_bank import ParamNames
@@ -163,17 +163,7 @@ class ModelFilterOption(StrEnum):
 
 
 class _HeatmapSessionKeys(SessionKeysBase["_HeatmapSessionKeys"]):
-    model_filters = SessionKeyDescriptor[dict[str, list[str]]]({})
-    show_combination = SessionKeyDescriptor[Optional[int]](None)
-    _selected_prompts: dict[int, SessionKey[bool]] = {}
-
-    def selected_prompt(self, prompt_idx: int) -> SessionKey[bool]:
-        if prompt_idx not in self._selected_prompts:
-            self._selected_prompts[prompt_idx] = SessionKey(f"heatmap_select_prompt_{prompt_idx}", False)
-        return self._selected_prompts[prompt_idx]
-
-    def get_selected_prompts(self) -> set[int]:
-        return {prompt_idx for prompt_idx, key in self._selected_prompts.items() if key.value}
+    pass
 
 
 HeatmapSessionKeys = _HeatmapSessionKeys()

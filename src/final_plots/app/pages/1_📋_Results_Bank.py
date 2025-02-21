@@ -25,45 +25,51 @@ from src.final_plots.app.utils import (
 from src.final_plots.results_bank import (
     ParamNames,
 )
+from src.utils.streamlit_utils import StreamlitPage
 
-# region Page Configuration
-st.set_page_config(page_title=RESULTS_BANK_TEXTS.title, page_icon=RESULTS_BANK_TEXTS.icon, layout="wide")
-st.title(f"{RESULTS_BANK_TEXTS.title} {RESULTS_BANK_TEXTS.icon}")
-# endregion
 
-# region Data Loading and Preparation
-# Get results using cached function
-df = load_experiment_results()
-# endregion
+class ResultsBankPage(StreamlitPage):
+    def render(self):
+        st.set_page_config(page_title=RESULTS_BANK_TEXTS.title, page_icon=RESULTS_BANK_TEXTS.icon, layout="wide")
+        st.title(f"{RESULTS_BANK_TEXTS.title} {RESULTS_BANK_TEXTS.icon}")
 
-# region Filtering
-# Create and apply filters
-filters = create_filters(df, filter_columns=[col for col in df.columns if col != ParamNames.path])
-filtered_df = apply_filters(df, filters)
+        # region Data Loading and Preparation
+        # Get results using cached function
+        df = load_experiment_results()
+        # endregion
 
-# Display results count and create pagination
-show_filtered_count(filtered_df, df)
-# endregion
+        # region Filtering
+        # Create and apply filters
+        filters = create_filters(df, filter_columns=[col for col in df.columns if col != ParamNames.path])
+        filtered_df = apply_filters(df, filters)
 
-# region Results Display
-# Add pagination
-pagination_config = create_pagination_config(
-    total_items=len(filtered_df),
-    default_page_size=GLOBAL_APP_CONSTS.PaginationConfig.RESULTS_BANK["default_page_size"],
-    key_prefix=GLOBAL_APP_CONSTS.PaginationConfig.RESULTS_BANK["key_prefix"],
-)
+        # Display results count and create pagination
+        show_filtered_count(filtered_df, df)
+        # endregion
 
-# Apply pagination to filtered data
-paginated_df = apply_pagination(filtered_df, pagination_config)
-
-# Display the table
-st.dataframe(
-    paginated_df,
-    use_container_width=True,
-    column_config={
-        ParamNames.path: st.column_config.TextColumn(
-            ParamNames.path,
+        # region Results Display
+        # Add pagination
+        pagination_config = create_pagination_config(
+            total_items=len(filtered_df),
+            default_page_size=GLOBAL_APP_CONSTS.PaginationConfig.RESULTS_BANK["default_page_size"],
+            key_prefix=GLOBAL_APP_CONSTS.PaginationConfig.RESULTS_BANK["key_prefix"],
         )
-    },
-)
-# endregion
+
+        # Apply pagination to filtered data
+        paginated_df = apply_pagination(filtered_df, pagination_config)
+
+        # Display the table
+        st.dataframe(
+            paginated_df,
+            use_container_width=True,
+            column_config={
+                ParamNames.path: st.column_config.TextColumn(
+                    ParamNames.path,
+                )
+            },
+        )
+        # endregion
+
+
+if __name__ == "__main__":
+    ResultsBankPage().render()
