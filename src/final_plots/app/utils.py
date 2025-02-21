@@ -1,8 +1,9 @@
 from pathlib import Path
-from typing import Any, Callable, Optional, TypedDict, TypeVar
+from typing import Any, Callable, Optional, TypedDict, TypeVar, cast
 
 import pandas as pd
 import streamlit as st
+import streamlit_antd_components as sac
 from streamlit.elements.arrow import DataframeState
 
 from src.consts import PATHS
@@ -17,13 +18,13 @@ T = TypeVar("T")
 
 class PaginationConfig(TypedDict):
     page_size: int
-    total_items: int
     current_page: int
 
 
 def create_pagination_config(
     total_items: int,
     default_page_size: int = 10,
+    pages_options: tuple[int, ...] = (5, 10, 20, 50, 100),
     key_prefix: str = "",
     on_change: Optional[Callable[[], None]] = None,
 ) -> PaginationConfig:
@@ -37,59 +38,33 @@ def create_pagination_config(
     Returns:
         PaginationConfig with page size and current page
     """
-    # Initialize session state for pagination if not exists
-    if f"{key_prefix}page_size" not in st.session_state:
-        st.session_state[f"{key_prefix}page_size"] = default_page_size
-    if f"{key_prefix}current_page" not in st.session_state:
-        st.session_state[f"{key_prefix}current_page"] = 0
-
     # Create columns for pagination controls
-    col1, col2, col3, col4 = st.columns(
-        [1, 2, 2, 1],
+    cols = st.columns(
+        [10, 1],
         vertical_alignment="bottom",
     )
-
-    with col1:
-        if st.button(
-            "⬅️ Previous", key=f"{key_prefix}prev", disabled=st.session_state[f"{key_prefix}current_page"] == 0
-        ):
-            st.session_state[f"{key_prefix}current_page"] -= 1
-            if on_change:
-                on_change()
-            st.rerun()
-    with col2:
+    with cols[1]:
         page_size = st.selectbox(
             "Items per page",
-            options=[5, 10, 20, 50, 100],
-            index=[5, 10, 20, 50, 100].index(st.session_state[f"{key_prefix}page_size"]),
-            key=f"{key_prefix}page_size_select",
+            options=pages_options,
+            index=pages_options.index(st.session_state[f"{key_prefix}page_size"]),
         )
-        st.session_state[f"{key_prefix}page_size"] = page_size
-
-    with col4:
-        total_pages = (total_items - 1) // page_size + 1
-        current_page = st.number_input(
-            f"Current Page out of {total_pages}",
-            min_value=1,
-            max_value=total_pages,
-            value=st.session_state[f"{key_prefix}current_page"] + 1,
-            key=f"{key_prefix}current_page_input",
+    with cols[0]:
+        current_page = sac.pagination(
+            total=total_items,
+            page_size=page_size,
+            align="center",
+            show_total=True,
+            jump=True,
+            variant="filled",
+            # size=50,
+            on_change=cast(Callable[[], Any], on_change),
         )
-        st.session_state[f"{key_prefix}current_page"] = current_page - 1
 
-    with col3:
-        if st.button(
-            "Next ➡️", key=f"{key_prefix}next", disabled=st.session_state[f"{key_prefix}current_page"] >= total_pages - 1
-        ):
-            st.session_state[f"{key_prefix}current_page"] += 1
-            if on_change:
-                on_change()
-            st.rerun()
-
+    assert isinstance(current_page, int)
     return {
         "page_size": page_size,
-        "total_items": total_items,
-        "current_page": st.session_state[f"{key_prefix}current_page"],
+        "current_page": current_page,
     }
 
 

@@ -1,14 +1,14 @@
 # import warnings
 
+import warnings
+
 import streamlit as st
 
 # import streamlit.watcher.local_sources_watcher as watcher
-import torch
-
 from src.final_plots.app.app_consts import AppSessionKeys
 from src.final_plots.app.components.inputs import select_gpu_type, select_window_size
 
-torch.classes.__path__ = []
+warnings.filterwarnings("ignore", message="Tried to instantiate class '__path__._path', but it does not exist!")
 
 # warnings.filterwarnings("ignore", message="Ignoring RuntimeError:*")
 # def safe_extract_paths(module):
