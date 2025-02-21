@@ -87,14 +87,14 @@ class HeatmapConfig(BaseConfig):
     def get_plot_output_path(self, prompt_idx: int, plot_name: str) -> Path:
         return self.plots_path / f"idx={prompt_idx}{plot_name}.png"
 
-    def plot(self) -> None:
-        plot(self)
+    def plot(self, plot_name: HEATMAP_PLOT_FUNCS) -> None:
+        plot(self, plot_name)
 
     def compute(self) -> None:
         run(self)
 
 
-def plot(args: HeatmapConfig):
+def plot(args: HeatmapConfig, plot_name: HEATMAP_PLOT_FUNCS):
     data = args.get_prompt_data()
     tokenizer = get_tokenizer(args.model_arch, args.model_size)
     model_id = MODEL_SIZES_PER_ARCH_TO_MODEL_ID[args.model_arch][args.model_size]

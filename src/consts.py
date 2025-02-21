@@ -16,6 +16,7 @@ from src.types import (
     TModelID,
     TokenType,
 )
+from src.utils.types_utils import class_values
 
 
 @dataclass
@@ -126,49 +127,45 @@ MODEL_SIZES_PER_ARCH_TO_MODEL_ID: dict[MODEL_ARCH, dict[str, TModelID]] = {
     },
 }
 
-GRAPHS_ORDER = [
-    (MODEL_ARCH.GPT2, "124M", MODEL_SIZE_CAT.SMALL),
-    (MODEL_ARCH.MAMBA1, "130M", MODEL_SIZE_CAT.SMALL),
-    (MODEL_ARCH.MAMBA2, "130M", MODEL_SIZE_CAT.SMALL),
-    (MODEL_ARCH.GPT2, "355M", MODEL_SIZE_CAT.SMALL),
-    (MODEL_ARCH.GPT2, "774M", MODEL_SIZE_CAT.MEDIUM),
-    (MODEL_ARCH.MAMBA1, "1.4B", MODEL_SIZE_CAT.MEDIUM),
-    (MODEL_ARCH.MAMBA2, "1.3B", MODEL_SIZE_CAT.MEDIUM),
-    (MODEL_ARCH.GPT2, "1.5B", MODEL_SIZE_CAT.MEDIUM),
-    (MODEL_ARCH.MAMBA1, "2.8B", MODEL_SIZE_CAT.LARGE),
-    (MODEL_ARCH.MAMBA2, "2.7B", MODEL_SIZE_CAT.LARGE),
-    (MODEL_ARCH.MAMBA1, "7B", MODEL_SIZE_CAT.HUGE),
-    (MODEL_ARCH.MAMBA1, "7B-falcon", MODEL_SIZE_CAT.HUGE),
-    (MODEL_ARCH.MAMBA1, "7B-falcon-base", MODEL_SIZE_CAT.HUGE),
-    # (MODEL_ARCH.MAMBA2, "8B", MODEL_SIZE_CAT.HUGE),
-]
-
-ALL_MODEL_ARCH_AND_SIZES: list[MODEL_ARCH_AND_SIZE] = [
-    (model_arch, model_size) for model_arch, model_size, _ in GRAPHS_ORDER
-]
-
-
-def get_model_cat_size(model_arch: MODEL_ARCH, model_size: str) -> MODEL_SIZE_CAT:
-    for _model_arch, _model_size, model_size_cat in GRAPHS_ORDER:
-        if model_arch == _model_arch and model_size == _model_size:
-            return model_size_cat
-    raise ValueError(f"Model {model_arch} {model_size} not found in GRAPHS_ORDER")
+GRAPHS_ORDER: dict[MODEL_ARCH_AND_SIZE, MODEL_SIZE_CAT] = {
+    # MODEL_ARCH_AND_SIZE(MODEL_ARCH.GPT2, "124M"): MODEL_SIZE_CAT.SMALL,
+    MODEL_ARCH_AND_SIZE(MODEL_ARCH.MAMBA1, "130M"): MODEL_SIZE_CAT.SMALL,
+    MODEL_ARCH_AND_SIZE(MODEL_ARCH.MAMBA2, "130M"): MODEL_SIZE_CAT.SMALL,
+    MODEL_ARCH_AND_SIZE(MODEL_ARCH.GPT2, "355M"): MODEL_SIZE_CAT.SMALL,
+    MODEL_ARCH_AND_SIZE(MODEL_ARCH.GPT2, "774M"): MODEL_SIZE_CAT.MEDIUM,
+    MODEL_ARCH_AND_SIZE(MODEL_ARCH.MAMBA1, "1.4B"): MODEL_SIZE_CAT.MEDIUM,
+    MODEL_ARCH_AND_SIZE(MODEL_ARCH.MAMBA2, "1.3B"): MODEL_SIZE_CAT.MEDIUM,
+    MODEL_ARCH_AND_SIZE(MODEL_ARCH.GPT2, "1.5B"): MODEL_SIZE_CAT.LARGE,
+    MODEL_ARCH_AND_SIZE(MODEL_ARCH.MAMBA1, "2.8B"): MODEL_SIZE_CAT.LARGE,
+    MODEL_ARCH_AND_SIZE(MODEL_ARCH.MAMBA2, "2.7B"): MODEL_SIZE_CAT.LARGE,
+    MODEL_ARCH_AND_SIZE(MODEL_ARCH.MAMBA1, "7B"): MODEL_SIZE_CAT.HUGE,
+    MODEL_ARCH_AND_SIZE(MODEL_ARCH.MAMBA1, "7B-falcon"): MODEL_SIZE_CAT.HUGE,
+    MODEL_ARCH_AND_SIZE(MODEL_ARCH.MAMBA1, "7B-falcon-base"): MODEL_SIZE_CAT.HUGE,
+    # MODEL_ARCH_AND_SIZE(MODEL_ARCH.MAMBA2, "8B"): MODEL_SIZE_CAT.HUGE,
+}
 
 
 def get_model_by_cat_size(cat_size: MODEL_SIZE_CAT) -> list[MODEL_ARCH_AND_SIZE]:
-    return [(arch, model_size) for arch, model_size, model_size_cat in GRAPHS_ORDER if model_size_cat == cat_size]
+    return [
+        model_arch_and_size
+        for model_arch_and_size, model_size_cat in GRAPHS_ORDER.items()
+        if model_size_cat == cat_size
+    ]
 
 
 def reverse_model_id(model_id: str) -> MODEL_ARCH_AND_SIZE:
-    for arch, model_size, _ in GRAPHS_ORDER:
+    for model_arch_and_size in GRAPHS_ORDER.keys():
         for model_id_prefix in ["", "state-spaces/", "tiiuae/"]:
-            if MODEL_SIZES_PER_ARCH_TO_MODEL_ID[arch][model_size] == f"{model_id_prefix}{model_id}":
-                return arch, model_size
+            if (
+                MODEL_SIZES_PER_ARCH_TO_MODEL_ID[model_arch_and_size.arch][model_arch_and_size.size]
+                == f"{model_id_prefix}{model_id}"
+            ):
+                return model_arch_and_size
     raise ValueError(f"Model id {model_id} not found in MODEL_SIZES_PER_ARCH_TO_MODEL_ID")
 
 
-def model_and_size_to_slurm_gpu_type(model_arch: MODEL_ARCH, model_size: str) -> SLURM_GPU_TYPE:
-    model_cat_size = get_model_cat_size(model_arch, model_size)
+def model_and_size_to_slurm_gpu_type(model_arch_and_size: MODEL_ARCH_AND_SIZE) -> SLURM_GPU_TYPE:
+    model_cat_size = GRAPHS_ORDER[model_arch_and_size]
     match model_cat_size:
         case MODEL_SIZE_CAT.SMALL | MODEL_SIZE_CAT.MEDIUM:
             return SLURM_GPU_TYPE.TITAN_XP_STUDENTRUN
@@ -201,19 +198,30 @@ class COLUMNS:
     SPLIT = "split"
 
     # Counter Fact
-    PROMPT = "prompt"
-    TARGET_TRUE = "target_true"
-    TARGET_FALSE = "target_false"
-    SUBJECT = "subject"
-    TARGET_FALSE_ID = "target_false_id"
-    RELATION = "relation"
+    class COUNTER_FACT_COLS(StrEnum):
+        PROMPT = "prompt"
+        TARGET_TRUE = "target_true"
+        RELATION = "relation"
+        SUBJECT = "subject"
+        TARGET_FALSE = "target_false"
+        RELATION_PREFIX = "relation_prefix"
+        RELATION_SUFFIX = "relation_suffix"
+        TARGET_TRUE_ID = "target_true_id"
+        TARGET_FALSE_ID = "target_false_id"
+        RELATION_ID = "relation_id"
+
+    PROMPT_DATA_COLS = class_values(COUNTER_FACT_COLS)
+    PROMPT = COUNTER_FACT_COLS.PROMPT
+    TARGET_TRUE = COUNTER_FACT_COLS.TARGET_TRUE
+    TARGET_FALSE = COUNTER_FACT_COLS.TARGET_FALSE
+    SUBJECT = COUNTER_FACT_COLS.SUBJECT
+    TARGET_FALSE_ID = COUNTER_FACT_COLS.TARGET_FALSE_ID
+    RELATION = COUNTER_FACT_COLS.RELATION
+    RELATION_ID = COUNTER_FACT_COLS.RELATION_ID
     RELATION_PREFIX = "relation_prefix"
     RELATION_SUFFIX = "relation_suffix"
     RELATION_ID = "relation_id"
     TARGET_TRUE_ID = "target_true_id"
-
-    # KNOWN1000
-    ATTRIBUTE = "attribute"
 
     # Evaluate Model
     TARGET_PROBS = "target_probs"
@@ -238,7 +246,7 @@ class COLUMNS:
 
 
 COUNTER_FACT_2_KNOWN1000_COL_CONV = {
-    COLUMNS.TARGET_TRUE: COLUMNS.ATTRIBUTE,
+    COLUMNS.TARGET_TRUE: "attribute",
 }
 
 EVAL_MODEL_2_DATA_CONST_COL_CONV = {
@@ -269,7 +277,3 @@ TOKEN_TYPE_LINE_STYLES: dict[TInfoFlowSource, str] = {
     (TokenType.subject, FeatureCategory.FAST_DECAY): "--",
     (TokenType.subject, FeatureCategory.SLOW_DECAY): ":",
 }
-
-
-def to_model_name(model_arch: MODEL_ARCH, model_size: str) -> str:
-    return f"{model_arch}-{model_size}"

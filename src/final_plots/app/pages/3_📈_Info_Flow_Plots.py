@@ -18,12 +18,7 @@ import pandas as pd
 import streamlit as st
 
 from src.consts import TOKEN_TYPE_COLORS, TOKEN_TYPE_LINE_STYLES
-from src.final_plots.app.app_consts import (
-    DEFAULT_LINE_STYLES,
-    DEFAULT_PLOT_CONFIG,
-    PARAM_ROLES,
-    ParamRole,
-)
+from src.final_plots.app.app_consts import InfoFlowConsts
 from src.final_plots.app.data_store import load_info_flow_data
 from src.final_plots.app.texts import COMMON_TEXTS, INFO_FLOW_TEXTS
 from src.final_plots.app.utils import (
@@ -69,12 +64,12 @@ available_params = [
 
 # Initialize session state for parameter roles if not exists
 if "param_roles" not in st.session_state:
-    st.session_state.param_roles = {param: cast(ParamRole, "fixed") for param in available_params}
+    st.session_state.param_roles = {param: cast(InfoFlowConsts.ParamRole, "fixed") for param in available_params}
     # Set default roles
-    st.session_state.param_roles[ParamNames.model_arch] = cast(ParamRole, "grid")
-    st.session_state.param_roles[ParamNames.model_size] = cast(ParamRole, "column")
-    st.session_state.param_roles[ParamNames.window_size] = cast(ParamRole, "row")
-    st.session_state.param_roles[ParamNames.source] = cast(ParamRole, "line")
+    st.session_state.param_roles[ParamNames.model_arch] = cast(InfoFlowConsts.ParamRole, "grid")
+    st.session_state.param_roles[ParamNames.model_size] = cast(InfoFlowConsts.ParamRole, "column")
+    st.session_state.param_roles[ParamNames.window_size] = cast(InfoFlowConsts.ParamRole, "row")
+    st.session_state.param_roles[ParamNames.source] = cast(InfoFlowConsts.ParamRole, "line")
 # endregion
 
 # region Parameter Configuration
@@ -107,11 +102,11 @@ for param in available_params:
         current_role = st.session_state.param_roles[param]
         selected_role = st.selectbox(
             f"Role for {param}",
-            options=PARAM_ROLES,
+            options=InfoFlowConsts.PARAM_ROLES,
             key=f"role_{param}",
             label_visibility="collapsed",
         )
-        st.session_state.param_roles[param] = cast(ParamRole, selected_role)
+        st.session_state.param_roles[param] = cast(InfoFlowConsts.ParamRole, selected_role)
 # endregion
 
 # region Role Validation
@@ -150,20 +145,20 @@ confidence_level = st.sidebar.slider(
     "Confidence Level",
     0.8,
     0.99,
-    DEFAULT_PLOT_CONFIG["confidence_level"],
+    InfoFlowConsts.DEFAULT_PLOT_CONFIG["confidence_level"],
     0.01,
 )
 plot_height = st.sidebar.slider(
     "Plot Height",
     300,
     1000,
-    DEFAULT_PLOT_CONFIG["plot_height"],
+    InfoFlowConsts.DEFAULT_PLOT_CONFIG["plot_height"],
 )
 plot_width = st.sidebar.slider(
     "Plot Width",
     400,
     1200,
-    DEFAULT_PLOT_CONFIG["plot_width"],
+    InfoFlowConsts.DEFAULT_PLOT_CONFIG["plot_width"],
 )
 
 # Color customization
@@ -181,7 +176,7 @@ if use_custom_colors:
             with col1:
                 custom_colors[value] = st.color_picker(f"Color for {value}", TOKEN_TYPE_COLORS.get(value, "#000000"))
             with col2:
-                custom_styles[value] = st.selectbox(f"Style for {value}", DEFAULT_LINE_STYLES, index=0)
+                custom_styles[value] = st.selectbox(f"Style for {value}", InfoFlowConsts.DEFAULT_LINE_STYLES, index=0)
 else:
     custom_colors = TOKEN_TYPE_COLORS
     custom_styles = TOKEN_TYPE_LINE_STYLES

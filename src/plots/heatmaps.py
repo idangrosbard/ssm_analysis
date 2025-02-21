@@ -67,15 +67,17 @@ def simple_diff_fixed(
         fontsize=12,
     )
 
-    ax.set_xlabel("")
+    ax.set_xlabel("Depth %")
     ax.set_ylabel("")
 
     # Customize ticks
-    tick_size = int(prob_mat.shape[1] // 9)
-    x_pos = list(range(0, prob_mat.shape[1], tick_size))
-    x_pos = list(range(0, prob_mat.shape[1], tick_size))
-    ax.set_xticks(np.array(range(0, prob_mat.shape[1], tick_size)) + 0.5)
-    ax.set_xticklabels([str(x) for x in x_pos], rotation=0, fontsize=fontsize)
+    n_cols = prob_mat.shape[1]
+    # Calculate positions for 0, 20, 40, 60, 80, 100 percent
+    percentages = np.linspace(0, 100, 6)
+    x_positions = [(p / 100) * (n_cols - 1) for p in percentages]
+    ax.set_xticks(np.array(x_positions) + 0.5)
+    ax.set_xticklabels([f"{int(p)}" for p in percentages], rotation=0, fontsize=fontsize)
+
     ax.set_yticks(np.arange(prob_mat.shape[0]) + 0.5)
     ax.set_yticklabels(toks, rotation=0, fontsize=fontsize)
 
@@ -84,19 +86,11 @@ def simple_diff_fixed(
 
     # Customize colorbar
     cbar = ax.collections[0].colorbar
-    ax.set_xlabel(
-        f"p_knockout({true_word[1:]}) - p_base({true_word[1:]})[={round(base_prob, 4)}]",
-        labelpad=5,
-        fontsize=fontsize,
-        # loc='left'
-    )
     if cbar:
         cbar.locator = MaxNLocator(nbins=5)
         cbar.update_ticks()
         cbar.ax.tick_params(labelsize=fontsize)
 
     fig.subplots_adjust(top=0.8)
-
-    # plt.tight_layout()
 
     return fig, ax

@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import Literal, NewType, Sequence, Union, assert_never
+from typing import Literal, NamedTuple, NewType, Sequence, Union, assert_never
 
 import pandas as pd
 from jaxtyping import Float
@@ -149,4 +149,11 @@ class SLURM_GPU_TYPE(StrEnum):
 
 TInfoFlowSource = Union[TokenType, tuple[TokenType, FeatureCategory]]
 
-MODEL_ARCH_AND_SIZE = tuple[MODEL_ARCH, str]
+
+class MODEL_ARCH_AND_SIZE(NamedTuple):
+    arch: MODEL_ARCH
+    size: str
+
+    @property
+    def model_name(self) -> str:
+        return f"{self.arch}-{self.size}"

@@ -185,14 +185,14 @@ def get_data_reqs() -> IDataFulfilled:
     source = [last, first, subject, relation]
     """
 
-    for model_arch, model_size, _ in GRAPHS_ORDER:
+    for model_arch_and_size in GRAPHS_ORDER:
         for is_all_correct in [True, False]:
             for source in [TokenType.last, TokenType.first, TokenType.subject, TokenType.relation]:
                 data_reqs[
                     DataReq(
                         experiment_name=EXPERIMENT_NAMES.INFO_FLOW,
-                        model_arch=model_arch,
-                        model_size=model_size,
+                        model_arch=model_arch_and_size.arch,
+                        model_size=model_arch_and_size.size,
                         window_size=STANDARD_WINDOW_SIZE_FOR_INFO_FLOW,
                         is_all_correct=is_all_correct,
                         source=source,
@@ -219,8 +219,8 @@ def get_data_reqs() -> IDataFulfilled:
     source = [last, first, subject, relation, subject-SLOW_DECAY, subject-FAST_DECAY]
     """
 
-    for model_arch, model_size, _ in GRAPHS_ORDER:
-        if is_mamba_arch(model_arch):
+    for model_arch_and_size in GRAPHS_ORDER:
+        if is_mamba_arch(model_arch_and_size.arch):
             for is_all_correct in [True, False]:
                 for source, feature_category in [
                     (TokenType.last, None),
@@ -233,8 +233,8 @@ def get_data_reqs() -> IDataFulfilled:
                     data_reqs[
                         DataReq(
                             experiment_name=EXPERIMENT_NAMES.INFO_FLOW,
-                            model_arch=model_arch,
-                            model_size=model_size,
+                            model_arch=model_arch_and_size.arch,
+                            model_size=model_arch_and_size.size,
                             window_size=STANDARD_WINDOW_SIZE_FOR_INFO_FLOW,
                             is_all_correct=is_all_correct,
                             source=source,
@@ -257,8 +257,8 @@ def get_data_reqs() -> IDataFulfilled:
     source = [last, first, subject, relation, subject-SLOW_DECAY, subject-FAST_DECAY]
     """
 
-    for model_arch, model_size, _ in GRAPHS_ORDER:
-        if is_falcon(model_size):
+    for model_arch_and_size in GRAPHS_ORDER:
+        if is_falcon(model_arch_and_size.size):
             for source, feature_category in [
                 (TokenType.last, None),
                 (TokenType.first, None),
@@ -270,8 +270,8 @@ def get_data_reqs() -> IDataFulfilled:
                 data_reqs[
                     DataReq(
                         experiment_name=EXPERIMENT_NAMES.INFO_FLOW,
-                        model_arch=model_arch,
-                        model_size=model_size,
+                        model_arch=model_arch_and_size.arch,
+                        model_size=model_arch_and_size.size,
                         window_size=STANDARD_WINDOW_SIZE_FOR_INFO_FLOW,
                         is_all_correct=True,
                         source=source,
@@ -299,7 +299,7 @@ def get_data_reqs() -> IDataFulfilled:
     source = [context, subject]
     """
 
-    for model_arch, model_size, model_size_cat in GRAPHS_ORDER:
+    for model_arch_and_size, model_size_cat in GRAPHS_ORDER.items():
         if model_size_cat != MODEL_SIZE_CAT.LARGE:
             continue
         for is_all_correct in [True, False]:
@@ -307,8 +307,8 @@ def get_data_reqs() -> IDataFulfilled:
                 data_reqs[
                     DataReq(
                         experiment_name=EXPERIMENT_NAMES.INFO_FLOW,
-                        model_arch=model_arch,
-                        model_size=model_size,
+                        model_arch=model_arch_and_size.arch,
+                        model_size=model_arch_and_size.size,
                         window_size=STANDARD_WINDOW_SIZE_FOR_INFO_FLOW,
                         is_all_correct=is_all_correct,
                         source=source,
@@ -337,8 +337,8 @@ def get_data_reqs() -> IDataFulfilled:
     source = [context, subject, relation, subject-SLOW_DECAY, subject-FAST_DECAY]
     """
 
-    for model_arch, model_size, _ in GRAPHS_ORDER:
-        if is_mamba_arch(model_arch):
+    for model_arch_and_size in GRAPHS_ORDER:
+        if is_mamba_arch(model_arch_and_size.arch):
             for is_all_correct in [True, False]:
                 for source, feature_category in [
                     (TokenType.last, None),
@@ -351,8 +351,8 @@ def get_data_reqs() -> IDataFulfilled:
                     data_reqs[
                         DataReq(
                             experiment_name=EXPERIMENT_NAMES.INFO_FLOW,
-                            model_arch=model_arch,
-                            model_size=model_size,
+                            model_arch=model_arch_and_size.arch,
+                            model_size=model_arch_and_size.size,
                             window_size=STANDARD_WINDOW_SIZE_FOR_INFO_FLOW,
                             is_all_correct=is_all_correct,
                             source=source,
@@ -363,6 +363,26 @@ def get_data_reqs() -> IDataFulfilled:
                     ] = None
 
     # endregion
+
+    # also for 'last' target with all vars of decay only for mamba1 & 2 of the large sizes
+
+    for source in [TokenType.relation, TokenType.first, TokenType.last, TokenType.all]:
+        for model_arch_and_size, model_size_cat in GRAPHS_ORDER.items():
+            if is_mamba_arch(model_arch_and_size.arch) and model_size_cat == MODEL_SIZE_CAT.LARGE:
+                for feature_category in [FeatureCategory.SLOW_DECAY, FeatureCategory.FAST_DECAY]:
+                    data_reqs[
+                        DataReq(
+                            experiment_name=EXPERIMENT_NAMES.INFO_FLOW,
+                            model_arch=model_arch_and_size.arch,
+                            model_size=model_arch_and_size.size,
+                            window_size=STANDARD_WINDOW_SIZE_FOR_INFO_FLOW,
+                            is_all_correct=False,
+                            source=source,
+                            feature_category=feature_category,
+                            target=TokenType.last,
+                            prompt_idx=None,
+                        )
+                    ] = None
 
     # region 6. Figure 6 Heatmaps.
     """
@@ -390,15 +410,15 @@ def get_data_reqs() -> IDataFulfilled:
     source = [last, first, subject, relation]
 
     """
-    for model_arch, model_size, _ in GRAPHS_ORDER:
-        if is_mamba_arch(model_arch):
+    for model_arch_and_size in GRAPHS_ORDER:
+        if is_mamba_arch(model_arch_and_size.arch):
             for window_size in ALL_WINDOW_SIZES:
                 for source in [TokenType.last, TokenType.first, TokenType.subject, TokenType.relation]:
                     data_reqs[
                         DataReq(
                             experiment_name=EXPERIMENT_NAMES.INFO_FLOW,
-                            model_arch=model_arch,
-                            model_size=model_size,
+                            model_arch=model_arch_and_size.arch,
+                            model_size=model_arch_and_size.size,
                             window_size=window_size,
                             is_all_correct=True,
                             source=source,
@@ -425,15 +445,15 @@ def get_data_reqs() -> IDataFulfilled:
     source = [last, first, subject, relation]
     """
 
-    for model_arch, model_size, _ in GRAPHS_ORDER:
-        if is_mamba_arch(model_arch):
+    for model_arch_and_size in GRAPHS_ORDER:
+        if is_mamba_arch(model_arch_and_size.arch):
             for is_all_correct in [True, False]:
                 for source in [TokenType.last, TokenType.first, TokenType.subject, TokenType.relation]:
                     data_reqs[
                         DataReq(
                             experiment_name=EXPERIMENT_NAMES.INFO_FLOW,
-                            model_arch=model_arch,
-                            model_size=model_size,
+                            model_arch=model_arch_and_size.arch,
+                            model_size=model_arch_and_size.size,
                             window_size=STANDARD_WINDOW_SIZE_FOR_INFO_FLOW,
                             is_all_correct=is_all_correct,
                             source=source,
@@ -486,7 +506,9 @@ def get_model_evaluations(
             model_arch=model_arch_and_size[0],
             model_size=model_arch_and_size[1],
             variation=variation,
-        ).get_outputs()
+        )
+        .get_outputs()
+        .set_index(COLUMNS.ORIGINAL_IDX)
         for model_arch_and_size in model_arch_and_sizes
     }
 
@@ -509,8 +531,8 @@ class ModelCombination:
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "ModelCombination":
         return cls(
-            correct_models=set(map(tuple, data["correct_models"])),
-            incorrect_models=set(map(tuple, data["incorrect_models"])),
+            correct_models=set(data["correct_models"]),
+            incorrect_models=set(data["incorrect_models"]),
             prompts=data["prompts"],
             chosen_prompt=data["chosen_prompt"],
         )

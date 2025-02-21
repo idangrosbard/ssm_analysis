@@ -20,7 +20,7 @@ from src.experiment_infra.base_config import (
     create_mutable_field,
 )
 from src.experiments.evaluate_model import EvaluateModelConfig
-from src.experiments.heatmap import HeatmapConfig
+from src.experiments.heatmap import HEATMAP_PLOT_FUNCS, HeatmapConfig
 from src.experiments.info_flow import InfoFlowConfig
 from src.types import TInfoFlowSource, TokenType
 
@@ -95,10 +95,10 @@ def main_local(args: FullPipelineConfig):
         heatmap_config.compute()
     if args.with_plotting:
         print("\nPlotting all heatmaps...")
-        heatmap_config.plot()
-        # try:
-        # except Exception as e:
-        #     print(f"Error plotting heatmaps: {e}")
+        try:
+            heatmap_config.plot(HEATMAP_PLOT_FUNCS._simple_diff_fixed_0_3)
+        except Exception as e:
+            print(f"Error plotting heatmaps: {e}")
 
     # Step 3: Information Flow Analysis
     info_flow_config = args.info_flow_config()

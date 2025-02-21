@@ -1,7 +1,9 @@
+from typing import NamedTuple
+
 import pandas as pd
 import streamlit as st
 
-from src.consts import to_model_name
+from src.experiments.heatmap import HEATMAP_PLOT_FUNCS
 from src.final_plots.app.app_consts import AppSessionKeys
 from src.final_plots.app.texts import AppGlobalText
 from src.final_plots.app.utils import format_path_for_display
@@ -14,12 +16,16 @@ def select_gpu_type():
         AppGlobalText.gpu_type,
         options=options,
         key=AppSessionKeys._selected_gpu.key,
-        index=options.index(AppSessionKeys._selected_gpu.get()),
+        index=options.index(AppSessionKeys._selected_gpu.value),
     )
 
 
 def select_variation():
-    st.text_input(AppGlobalText.variation, key=AppSessionKeys.variation.key, value=AppSessionKeys.variation.get())
+    st.text_input(
+        AppGlobalText.variation,
+        key=AppSessionKeys.variation.key,
+        value=AppSessionKeys.variation.value,
+    )
 
 
 def select_window_size():
@@ -28,7 +34,7 @@ def select_window_size():
         AppGlobalText.window_size,
         options=options,
         key=AppSessionKeys.window_size.key,
-        index=options.index(AppSessionKeys.window_size.get()),
+        index=options.index(AppSessionKeys.window_size.value),
     )
 
 
@@ -42,15 +48,19 @@ def select_models_and_sizes(available_models: list[MODEL_ARCH_AND_SIZE]) -> list
         List of selected (model_arch, model_size) tuples
     """
     # Create display names for models
-    model_options = [(model_arch, model_size) for model_arch, model_size in available_models]
-    model_display_names = [to_model_name(model_arch, model_size) for model_arch, model_size in model_options]
+    model_options = [model_arch_and_size for model_arch_and_size in available_models]
+    model_display_names = [model_arch_and_size.model_name for model_arch_and_size in model_options]
 
     # Create mapping from display name back to tuple
     name_to_model = dict(zip(model_display_names, model_options))
 
     with st.expander("Filter Models", expanded=False):
-        selected_names = st.multiselect(
-            "Select Models", options=model_display_names, default=model_display_names, key="model_multiselect"
+        selected_names = st.pills(
+            "Select Models",
+            options=model_display_names,
+            default=model_display_names,
+            key="model_multiselect",
+            selection_mode="multi",
         )
 
         # Convert selected names back to model tuples
@@ -99,3 +109,17 @@ def info_flow_data_tree(
                         if pd.notna(line_val):
                             st.markdown(f"{'&nbsp;' * 7}└── {line_param} = {line_val}")
                             st.markdown(f"{'&nbsp;' * 10}└── `{format_path_for_display(row['data_path'])}`")
+
+
+class HeatmapPlotsParams(NamedTuple):
+    plot_name: HEATMAP_PLOT_FUNCS
+
+
+def choose_heatmap_parms():
+    return HeatmapPlotsParams(
+        plot_name=st.selectbox(
+            "Plot Name",
+            options=list(HEATMAP_PLOT_FUNCS),
+            index=0,
+        )
+    )

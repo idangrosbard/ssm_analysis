@@ -3,6 +3,7 @@ from typing import Any, Callable, Optional, TypedDict, TypeVar
 
 import pandas as pd
 import streamlit as st
+from streamlit.elements.arrow import DataframeState
 
 from src.consts import PATHS
 from src.experiments.heatmap import HeatmapConfig
@@ -166,7 +167,7 @@ def get_data_req_from_df_row(row: pd.Series) -> DataReq:
     )
 
 
-def cache_data(func: Callable[..., T]) -> Callable[..., T]:
+def my_cache_data(func: Callable[..., T]) -> Callable[..., T]:
     """Decorator to cache data with a refresh button in the sidebar.
 
     Args:
@@ -280,7 +281,7 @@ def filter_combinations(df: pd.DataFrame, model_names: list[str]) -> pd.DataFram
     model_name_filters = []
     for model_name in model_names:
         model_name_filters.append((model_name, True))
-        model_name_filters.append((f"{model_name} - wrong", False))
+        model_name_filters.append((f"{model_name}", False))
 
     def format_func(option: str | tuple[str, bool]) -> str:
         if isinstance(option, tuple):
@@ -296,16 +297,13 @@ def filter_combinations(df: pd.DataFrame, model_names: list[str]) -> pd.DataFram
             format_func=format_func,
             default=[HeatmapCols.PROMPT_COUNT],
         )
+
+        # Existing column filtering logic
         for column in to_filter_columns:
-            left, right = st.columns((1, 20))
-            left.write("↳")
-
-            # Handle different column
-
             if column == HeatmapCols.PROMPT_COUNT:
                 _min = int(df[column].min())
                 _max = int(df[column].max())
-                user_num_input = right.number_input(
+                user_num_input = st.number_input(
                     "Minimum prompt count",
                     min_value=_min,
                     max_value=_max,
@@ -320,6 +318,18 @@ def filter_combinations(df: pd.DataFrame, model_names: list[str]) -> pd.DataFram
                     df = df[df[model_name] == "✅"]
                 else:
                     df = df[df[model_name] == "❌"]
+
+        # New minimum correct models filter
+        min_correct = st.number_input(
+            "Minimum correct models",
+            min_value=0,
+            max_value=len(model_names),
+            value=0,
+            help="Show only combinations with at least this many correct models",
+        )
+        if min_correct > 0:
+            # Count number of ✅ in model columns for each row
+            df = df[df[model_names].apply(lambda row: (row == "✅").sum(), axis=1) >= min_correct]
 
     return df
 
@@ -343,3 +353,11 @@ def get_model_heatmap_config(
         variation=variation,
         prompt_original_indices=prompt_original_indices,
     )
+
+
+def get_steamlit_dataframe_selected_row(selected_row: Optional[DataframeState]) -> Optional[int]:
+    if selected_row is not None:
+        assert "selection" in selected_row
+        assert "rows" in selected_row["selection"]
+        if len(selected_row["selection"]["rows"]) == 1:
+            return selected_row["selection"]["rows"][0]

@@ -1,12 +1,10 @@
 from enum import StrEnum
-from typing import Any, Literal, Union
+from typing import Any, ClassVar, Generic, Literal, Optional, Type, TypeVar, Union, cast
 
-from git import Optional
-
-from src.consts import ALL_MODEL_ARCH_AND_SIZES, model_and_size_to_slurm_gpu_type
+from src.consts import COLUMNS, GRAPHS_ORDER, model_and_size_to_slurm_gpu_type
 from src.final_plots.results_bank import ParamNames
-from src.types import MODEL_ARCH, SLURM_GPU_TYPE
-from src.utils.streamlit_utils import SessionKey
+from src.types import MODEL_ARCH_AND_SIZE, SLURM_GPU_TYPE
+from src.utils.streamlit_utils import SessionKey, SessionKeyDescriptor
 
 
 # region Global App constants
@@ -17,7 +15,15 @@ class AppCols:
 class GLOBAL_APP_CONSTS:
     DEFAULT_VARIATION = "v3"
     DEFAULT_WINDOW_SIZE = 9
-    MODELS_COMBINATIONS = ALL_MODEL_ARCH_AND_SIZES
+    MODELS_COMBINATIONS = list(GRAPHS_ORDER.keys())
+    PROMPT_RELATED_COLUMNS = [
+        COLUMNS.PROMPT,
+        COLUMNS.TARGET_TRUE,
+        COLUMNS.TARGET_FALSE,
+        COLUMNS.SUBJECT,
+        COLUMNS.TARGET_FALSE_ID,
+        COLUMNS.RELATION,
+    ]
 
     class PaginationConfig:
         RESULTS_BANK = {"default_page_size": 20, "key_prefix": "results_bank_"}
@@ -26,17 +32,30 @@ class GLOBAL_APP_CONSTS:
         PROMPTS = {"default_page_size": 10, "key_prefix": "prompts_"}
 
 
-class _AppSessionKeys:
-    variation: SessionKey[str] = SessionKey.with_default("variation", GLOBAL_APP_CONSTS.DEFAULT_VARIATION)
-    _selected_gpu: SessionKey[Union[SLURM_GPU_TYPE, Literal["smart"]]] = SessionKey.with_default(
-        "selected_gpu", "smart"
-    )
-    window_size: SessionKey[int] = SessionKey.with_default("window_size", GLOBAL_APP_CONSTS.DEFAULT_WINDOW_SIZE)
+T = TypeVar("T", bound="SessionKeysBase[Any]")
 
-    def get_selected_gpu(self, model_arch: MODEL_ARCH, model_size: str) -> SLURM_GPU_TYPE:
-        selected_gpu = self._selected_gpu.get()
+
+class SessionKeysBase(Generic[T]):
+    """Base class for session key containers that ensures singleton pattern."""
+
+    _instance: ClassVar[dict[Type[Any], Any]] = {}
+
+    def __new__(cls) -> T:
+        if cls not in cls._instance:
+            cls._instance[cls] = super().__new__(cls)
+        return cast(T, cls._instance[cls])
+
+
+class _AppSessionKeys(SessionKeysBase["_AppSessionKeys"]):
+    # Each descriptor creates a SessionKey with the class name prefix
+    variation = SessionKeyDescriptor[str](GLOBAL_APP_CONSTS.DEFAULT_VARIATION)
+    _selected_gpu = SessionKeyDescriptor[Union[SLURM_GPU_TYPE, Literal["smart"]]]("smart")
+    window_size = SessionKeyDescriptor[int](GLOBAL_APP_CONSTS.DEFAULT_WINDOW_SIZE)
+
+    def get_selected_gpu(self, model_arch_and_size: MODEL_ARCH_AND_SIZE) -> SLURM_GPU_TYPE:
+        selected_gpu = self._selected_gpu.value
         if selected_gpu == "smart":
-            return model_and_size_to_slurm_gpu_type(model_arch, model_size)
+            return model_and_size_to_slurm_gpu_type(model_arch_and_size)
         return selected_gpu
 
 
@@ -77,16 +96,16 @@ class DataReqConsts:
     }
 
 
-class _DataReqsSessionKeys:
-    selected_requirements: SessionKey[set[str]] = SessionKey.with_default("selected_requirements", set())
+class _DataReqsSessionKeys(SessionKeysBase["_DataReqsSessionKeys"]):
+    selected_requirements = SessionKeyDescriptor[set[str]](set())
 
     @staticmethod
     def select_requirement(key: str) -> SessionKey[bool]:
-        return SessionKey.with_default(f"select_{key}", False)
+        return SessionKey(f"datareqs_select_{key}", False)
 
     @staticmethod
     def override_requirement(key: str) -> SessionKey[bool]:
-        return SessionKey.with_default(f"override_{key}", False)
+        return SessionKey(f"datareqs_override_{key}", False)
 
 
 DataReqsSessionKeys = _DataReqsSessionKeys()
@@ -109,14 +128,14 @@ class InfoFlowConsts:
     }
 
 
-class _InfoFlowSessionKeys:
-    param_roles: SessionKey[dict[str, InfoFlowConsts.ParamRole]] = SessionKey.with_default("param_roles", {})
+class _InfoFlowSessionKeys(SessionKeysBase["_InfoFlowSessionKeys"]):
+    param_roles = SessionKeyDescriptor[dict[str, InfoFlowConsts.ParamRole]]({})
 
     def param_value(self, param: str) -> SessionKey[str]:
-        return SessionKey.with_default(f"value_{param}", "")
+        return SessionKey(f"infoflow_value_{param}", "")
 
     def param_role(self, param: str) -> SessionKey[InfoFlowConsts.ParamRole]:
-        return SessionKey.with_default(f"role_{param}", "fixed")
+        return SessionKey(f"infoflow_role_{param}", "fixed")
 
 
 InfoFlowSessionKeys = _InfoFlowSessionKeys()
@@ -143,34 +162,18 @@ class ModelFilterOption(StrEnum):
     INCORRECT = "incorrect"
 
 
-class _HeatmapSessionKeys:
-    model_filters: SessionKey[dict[str, list[str]]] = SessionKey.with_default("model_filters", {})
-    # selected_prompts: SessionKey[set[str]] = SessionKey.with_default("selected_prompts", set())
-    selected_prompts: dict[int, SessionKey[bool]] = {}
-    show_combination: SessionKey[Optional[int]] = SessionKey.with_default("show_combination", None)
-    selected_combination: SessionKey[dict[str, dict[str, list[int]]]] = SessionKey("selected_combination")
+class _HeatmapSessionKeys(SessionKeysBase["_HeatmapSessionKeys"]):
+    model_filters = SessionKeyDescriptor[dict[str, list[str]]]({})
+    show_combination = SessionKeyDescriptor[Optional[int]](None)
+    _selected_prompts: dict[int, SessionKey[bool]] = {}
 
-    def selected_prompt(self, prompt_idx: Any) -> SessionKey[bool]:
-        if prompt_idx not in self.selected_prompts:
-            self.selected_prompts[prompt_idx] = SessionKey.with_default(f"select_prompt_{prompt_idx}", False)
-        return self.selected_prompts[prompt_idx]
-
-    def get_selected_combination_row(self) -> Optional[int]:
-        if self.selected_combination.get() is None:
-            return None
-        selected_rows = self.selected_combination.get()["selection"]["rows"]
-        assert len(selected_rows) <= 1
-        if len(selected_rows) == 0:
-            return None
-        return selected_rows[0]
+    def selected_prompt(self, prompt_idx: int) -> SessionKey[bool]:
+        if prompt_idx not in self._selected_prompts:
+            self._selected_prompts[prompt_idx] = SessionKey(f"heatmap_select_prompt_{prompt_idx}", False)
+        return self._selected_prompts[prompt_idx]
 
     def get_selected_prompts(self) -> set[int]:
-        return {prompt_idx for prompt_idx, key in self.selected_prompts.items() if key.get()}
-
-    def select_prompt(self, prompt_idx: Any) -> SessionKey[bool]:
-        if prompt_idx not in self.selected_prompts:
-            self.selected_prompts[prompt_idx] = SessionKey.with_default(f"select_prompt_{prompt_idx}", False)
-        return self.selected_prompts[prompt_idx]
+        return {prompt_idx for prompt_idx, key in self._selected_prompts.items() if key.value}
 
 
 HeatmapSessionKeys = _HeatmapSessionKeys()

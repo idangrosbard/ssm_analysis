@@ -49,7 +49,13 @@ class EvaluateModelConfig(BaseConfig):
         return self.outputs_path / f"{self.dataset_args.name}.csv"
 
     def get_outputs(self) -> pd.DataFrame:
-        return pd.read_csv(self.output_result_path, index_col=False)
+        df = pd.read_csv(self.output_result_path, index_col=False)
+        for counter_fact_col, known1000_col in COUNTER_FACT_2_KNOWN1000_COL_CONV.items():
+            if counter_fact_col not in df.columns:
+                assert known1000_col in df.columns
+                df[counter_fact_col] = df[known1000_col]
+            df = df.drop(columns=[known1000_col])
+        return df
 
     def compute(self) -> None:
         run(self)
@@ -185,9 +191,6 @@ def run(args: EvaluateModelConfig):
     for counter_fact_col, known1000_col in COUNTER_FACT_2_KNOWN1000_COL_CONV.items():
         if known1000_col in df.columns:
             df[counter_fact_col] = df[known1000_col]
-
-    if COLUMNS.TARGET_TRUE in df.columns:
-        df[COLUMNS.ATTRIBUTE] = df[COLUMNS.TARGET_TRUE]
 
     pbar = tqdm(range(0, len(df), args.batch_size), total=len(df) // args.batch_size)
     for start_idx in pbar:

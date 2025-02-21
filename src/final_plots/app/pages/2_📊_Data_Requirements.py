@@ -41,7 +41,8 @@ st.title(f"{DATA_REQUIREMENTS_TEXTS.title} {DATA_REQUIREMENTS_TEXTS.icon}")
 
 # region Data Loading and Preparation
 # Load data
-df = load_data()
+with st.spinner("Loading data...", show_time=True):
+    df = load_data()
 
 # Create and apply filters
 filters = create_filters(
@@ -75,14 +76,14 @@ for _, row in paginated_df.iterrows():
         key = row[DataReqCols.Key]
         is_selected = st.checkbox(
             " ",
-            value=key in DataReqsSessionKeys.selected_requirements.get(),
+            value=key in DataReqsSessionKeys.selected_requirements.value,
             key=DataReqsSessionKeys.select_requirement(key).key,
             label_visibility="hidden",
         )
         if is_selected:
-            DataReqsSessionKeys.selected_requirements.get().add(key)
+            DataReqsSessionKeys.selected_requirements.value.add(key)
         else:
-            DataReqsSessionKeys.selected_requirements.get().discard(key)
+            DataReqsSessionKeys.selected_requirements.value.discard(key)
 
     with col2:
         # Create an expander for the requirement
@@ -115,7 +116,7 @@ if st.button(DATA_REQUIREMENTS_TEXTS.save_overrides):
 with st.sidebar:
     with st.expander("Run Filtered Requirements"):
         # Show count of selected requirements
-        selected_count = len(DataReqsSessionKeys.selected_requirements.get())
+        selected_count = len(DataReqsSessionKeys.selected_requirements.value)
 
         # SLURM configuration
         col1, col2 = st.columns(2)
@@ -144,7 +145,7 @@ with st.sidebar:
 
             # Get all rows from filtered_df that match selected requirements
             selected_rows = filtered_df[
-                filtered_df[DataReqCols.Key].isin(DataReqsSessionKeys.selected_requirements.get())
+                filtered_df[DataReqCols.Key].isin(DataReqsSessionKeys.selected_requirements.value)
             ]
 
             for i, (idx, row) in enumerate(selected_rows.iterrows()):
@@ -152,7 +153,7 @@ with st.sidebar:
                     req = get_data_req_from_df_row(row)
 
                     # Get config and set running parameters
-                    config = req.get_config(variation=AppSessionKeys.variation.get())
+                    config = req.get_config(variation=AppSessionKeys.variation.value)
                     config.set_running_params(
                         with_slurm=True,
                         slurm_gpu_type=selected_gpu,

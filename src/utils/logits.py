@@ -2,6 +2,7 @@ from collections import defaultdict
 from dataclasses import dataclass
 from typing import Any, assert_never, cast
 
+import pandas as pd
 import torch
 
 from src.consts import COLUMNS
@@ -75,7 +76,8 @@ def find_token_range(
 
 @dataclass
 class Prompt:
-    prompt_row: TPromptData
+    # prompt_row: TPromptData
+    prompt_row: pd.DataFrame | pd.Series
 
     @property
     def original_idx(self) -> int:
@@ -103,7 +105,7 @@ class Prompt:
     def input_ids(self, tokenizer, device) -> torch.Tensor:
         return tokenizer(self.prompt, return_tensors="pt", padding=True).input_ids.to(device=device)
 
-    def get_column(self, column: str) -> Any:
+    def get_column(self, column: COLUMNS.COUNTER_FACT_COLS) -> Any:
         return self.prompt_row[column]
 
 

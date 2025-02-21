@@ -1,12 +1,12 @@
-from typing import Literal, cast
-from typing import Tuple as PyTuple
+from pathlib import Path
+from typing import Literal
 
 import matplotlib.pyplot as plt
 import pandas as pd
 from matplotlib.figure import Figure
-from streamlit import cache_data as st_cache_data
+from pygwalker.api.streamlit import StreamlitRenderer
+from streamlit import cache_data, cache_resource
 
-from src.consts import COLUMNS
 from src.experiments.heatmap import HeatmapConfig
 from src.final_plots.app.app_consts import (
     GLOBAL_APP_CONSTS,
@@ -14,9 +14,9 @@ from src.final_plots.app.app_consts import (
     DataReqsSessionKeys,
 )
 from src.final_plots.app.utils import (
-    cache_data,
     format_path_for_display,
     load_experiment_data,
+    my_cache_data,
 )
 from src.final_plots.data_reqs import (
     ModelCombination,
@@ -32,25 +32,31 @@ from src.final_plots.results_bank import (
 from src.plots.info_flow_confidence import PlotMetadata, create_confidence_plot, load_window_outputs
 from src.types import MODEL_ARCH_AND_SIZE
 
+
 # Constants
-PROMPT_RELATED_COLUMNS = [
-    COLUMNS.PROMPT,
-    COLUMNS.TARGET_TRUE,
-    COLUMNS.TARGET_FALSE,
-    COLUMNS.SUBJECT,
-    COLUMNS.TARGET_FALSE_ID,
-    COLUMNS.RELATION,
-]
-
-
-@st_cache_data
+@cache_data
 def load_model_evaluations(variation: str) -> dict[MODEL_ARCH_AND_SIZE, pd.DataFrame]:
     """Load evaluation data for all models with caching"""
     return get_model_evaluations(variation, GLOBAL_APP_CONSTS.MODELS_COMBINATIONS)
 
 
+@cache_resource
+def merge_model_evaluations_streamlit_rendered(variation: str) -> StreamlitRenderer:
+    """Load evaluation data for all models with caching"""
+    return StreamlitRenderer(
+        pd.concat(
+            [
+                df.assign(model_arch=key.arch, model_size=key.size)
+                for key, df in load_model_evaluations(variation).items()
+            ]
+        ),
+        spec=f"model_evals_{variation}.csv",
+        spec_io_mode="rw",
+    )
+
+
 # Results Bank hooks
-@cache_data
+@my_cache_data
 def load_experiment_results() -> pd.DataFrame:
     """Load and process results with caching"""
     results = get_experiment_results_bank()
@@ -64,7 +70,7 @@ def load_experiment_results() -> pd.DataFrame:
 
 
 # Data Requirements hooks
-@cache_data
+@my_cache_data
 def load_data() -> pd.DataFrame:
     """Load requirements and options data with caching"""
     options = get_data_fullfment_options()
@@ -91,14 +97,14 @@ def load_data() -> pd.DataFrame:
 
 
 # Info Flow Plots hooks
-@cache_data
+@my_cache_data
 def load_info_flow_data() -> pd.DataFrame:
     """Load info flow requirements and their fulfillment data"""
     return load_experiment_data("info_flow")
 
 
-@st_cache_data
-def get_merged_evaluations(prompt_idx: int, variation: str) -> PyTuple[pd.Series, pd.DataFrame]:
+@cache_data
+def get_merged_evaluations(prompt_idx: int, variation: str) -> pd.DataFrame:
     """Get merged evaluations for a specific prompt.
 
     Args:
@@ -106,58 +112,54 @@ def get_merged_evaluations(prompt_idx: int, variation: str) -> PyTuple[pd.Series
 
     Returns:
         tuple of:
-            - Series with prompt-specific data
             - DataFrame with model-specific evaluations merged
     """
     model_evaluations = load_model_evaluations(variation)
-    # Get the prompt data from first model (prompt data is the same for all models)
-    first_model_df = model_evaluations[GLOBAL_APP_CONSTS.MODELS_COMBINATIONS[0]]
-    prompt_data = cast(pd.Series, first_model_df.loc[prompt_idx])
 
     # Create list to hold each model's evaluation
     model_evals = []
 
-    for model_arch, model_size in GLOBAL_APP_CONSTS.MODELS_COMBINATIONS:
-        model_df = model_evaluations[(model_arch, model_size)]
+    for model_combination in GLOBAL_APP_CONSTS.MODELS_COMBINATIONS:
+        model_df = model_evaluations[model_combination]
         if prompt_idx not in model_df.index:
             continue
 
         row = model_df.loc[prompt_idx]
 
         # Filter out prompt-related columns (they're the same for all models)
-        model_specific_data = {col: val for col, val in row.items() if col not in PROMPT_RELATED_COLUMNS}
+        model_specific_data = {
+            col: val for col, val in row.items() if col not in GLOBAL_APP_CONSTS.PROMPT_RELATED_COLUMNS
+        }
 
-        model_specific_data["model_arch"] = model_arch
-        model_specific_data["model_size"] = model_size
+        model_specific_data["model_arch"] = model_combination.arch
+        model_specific_data["model_size"] = model_combination.size
 
         model_evals.append(model_specific_data)
 
-    return prompt_data, pd.DataFrame(model_evals)
+    return pd.DataFrame(model_evals)
 
 
-@st_cache_data
+@cache_data
 def get_models_is_heatmap_available(
     prompt_idx: int, variation: str, window_size: int
-) -> dict[MODEL_ARCH_AND_SIZE, bool]:
+) -> dict[MODEL_ARCH_AND_SIZE, Path]:
     """Check if a model has a heatmap for a given prompt index."""
     return {
-        (model_arch, model_size): HeatmapConfig(
-            model_arch=model_arch,
-            model_size=model_size,
+        model_combination: HeatmapConfig(
+            model_arch=model_combination.arch,
+            model_size=model_combination.size,
             window_size=window_size,
             variation=variation,
             prompt_indices_rows=[],
             prompt_original_indices=[prompt_idx],
-        )
-        .output_heatmap_path(prompt_idx)
-        .exists()
-        for model_arch, model_size in GLOBAL_APP_CONSTS.MODELS_COMBINATIONS
+        ).output_heatmap_path(prompt_idx)
+        for model_combination in GLOBAL_APP_CONSTS.MODELS_COMBINATIONS
     }
 
 
 def empty_selected_requirements() -> None:
     """Empty the selected requirements set in session state."""
-    DataReqsSessionKeys.selected_requirements.get().clear()
+    DataReqsSessionKeys.selected_requirements.value.clear()
 
 
 def create_info_flow_plots(
@@ -286,7 +288,7 @@ def create_info_flow_plots(
     return plots, failed_plots
 
 
-@st_cache_data
+@cache_data
 def get_models_remaining_prompts(
     model_combinations: list[MODEL_ARCH_AND_SIZE],
     window_size: int,
@@ -310,7 +312,7 @@ def get_models_remaining_prompts(
     return res
 
 
-@st_cache_data
+@cache_data
 def load_model_combinations_prompts(
     variation: str, model_arch_and_sizes: list[MODEL_ARCH_AND_SIZE]
 ) -> list[ModelCombination]:

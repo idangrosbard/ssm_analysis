@@ -7,11 +7,24 @@ class HEATMAP_TEXTS:
     icon = "🔥"
     title = "Heatmap Creation"
     description = "Create heatmaps for the selected prompts"
+
+    # Headers
+    MODEL_COMBINATIONS_HEADER = "Model Combinations Analysis"
+    TAB_SELECT_COMBINATION = "Selected Combination"
+    TAB_HEATMAP_PLOTS_GENERATION = "Heatmap Plots Generation"
+    POSSIBLE_PROMPTS_HEADER = "Possible Prompts"
+    MODEL_COMBINATIONS_FILTERING = "Model Combinations Filtering"
+
+    # Buttons
+    show_combination = "Show Combination"
+    show_prompts = "Show Prompts"
+    BUT_SAVE_NEW_SELECTION = lambda old, new: f"Save New Selection ~~{old}~~ -> {new}"
+
+    # Other
+    NO_SELECTED_COMBINATION = "Select a combination to continue"
     matching_counts = lambda len_filtered_prompts, len_all_prompts: (
         f"Found {show_filter_results_text(len_filtered_prompts, len_all_prompts)} prompts matching all criteria"
     )
-    show_combination = "Show Combination"
-    show_prompts = "Show Prompts"
     active_models_str = lambda active_models: " ∩ ".join(active_models)
     run_selected_prompts = lambda count: f"🚀 Run {count} Selected Jobs"
     processing_status = lambda current, total: COMMON_TEXTS.processing_status(current, total, "jobs")
@@ -68,3 +81,4 @@ class COMMON_TEXTS:
     success_status = lambda count, run_what: f"Successfully submitted {count} {run_what}..."
     error_status = lambda count, run_what: f"Failed to submit {count} {run_what}..."
     submit_failed = lambda prompt_idx, error, run_what: f"Failed to submit job for {prompt_idx} {run_what}: {error}"
+    LOADING = lambda what: f"Loading {what}..."
