@@ -12,11 +12,12 @@
 
 import itertools
 from pathlib import Path
-from typing import Literal, TypedDict, cast
+from typing import Literal, TypedDict, Union, cast
 
 import matplotlib.pyplot as plt
 import pandas as pd
 import streamlit as st
+import streamlit_antd_components as sac
 
 from src.consts import TOKEN_TYPE_COLORS, TOKEN_TYPE_LINE_STYLES
 from src.final_plots.app.app_consts import InfoFlowConsts
@@ -119,22 +120,22 @@ class PlotCustomization(StreamlitComponent):
         self.line_param = line_param
 
     def render(self):
-        st.sidebar.header("Plot Customization")
+        st.header("Plot Customization")
         plot_config = {
-            "confidence_level": st.sidebar.slider(
+            "confidence_level": st.slider(
                 "Confidence Level",
                 0.8,
                 0.99,
                 InfoFlowConsts.DEFAULT_PLOT_CONFIG["confidence_level"],
                 0.01,
             ),
-            "plot_height": st.sidebar.slider(
+            "plot_height": st.slider(
                 "Plot Height",
                 300,
                 1000,
                 InfoFlowConsts.DEFAULT_PLOT_CONFIG["plot_height"],
             ),
-            "plot_width": st.sidebar.slider(
+            "plot_width": st.slider(
                 "Plot Width",
                 400,
                 1200,
@@ -143,8 +144,8 @@ class PlotCustomization(StreamlitComponent):
         }
 
         # Color customization
-        st.sidebar.header("Color Customization")
-        use_custom_colors = st.sidebar.checkbox("Use Custom Colors", False)
+        st.header("Color Customization")
+        use_custom_colors = st.checkbox("Use Custom Colors", False)
 
         if use_custom_colors:
             custom_colors = {}
@@ -153,7 +154,7 @@ class PlotCustomization(StreamlitComponent):
 
             for value in unique_values:
                 if pd.notna(value):
-                    col1, col2 = st.sidebar.columns(2)
+                    col1, col2 = st.columns(2)
                     with col1:
                         custom_colors[value] = st.color_picker(
                             f"Color for {value}", TOKEN_TYPE_COLORS.get(value, "#000000")
@@ -177,42 +178,40 @@ class DataSourceDisplay(StreamlitComponent):
     def render(self):
         st.header("Data Sources")
 
-        def display_tree():
-            # Get all unique values for each parameter
-            grid_values = sorted(self.df[self.param_roles["grid"]].unique())
+        grid_items: list[Union[str, dict, sac.TreeItem]] = []
+        for grid_val in sorted(self.df[self.param_roles["grid"]].unique()):
+            row_items: list[sac.TreeItem] = []
+            grid_items.append(sac.TreeItem(label=f"{self.param_roles['grid']} = {grid_val}", children=row_items))
+            for row_val in sorted(self.df[self.param_roles["row"]].unique()):
+                col_items: list[sac.TreeItem] = []
+                row_items.append(sac.TreeItem(label=f"{self.param_roles['row']} = {row_val}", children=col_items))
+                for col_val in sorted(self.df[self.param_roles["column"]].unique()):
+                    line_items: list[sac.TreeItem] = []
+                    col_items.append(
+                        sac.TreeItem(label=f"{self.param_roles['column']} = {col_val}", children=line_items)
+                    )
+                    for _, row in self.df[
+                        (self.df[self.param_roles["grid"]] == grid_val)
+                        & (self.df[self.param_roles["row"]] == row_val)
+                        & (self.df[self.param_roles["column"]] == col_val)
+                    ].iterrows():
+                        line_items.append(
+                            sac.TreeItem(
+                                label=f"{self.param_roles['line']} = {row[self.param_roles['line']]}",
+                                children=[],
+                            )
+                        )
 
-            # Display tree structure
-            for grid_val in grid_values:
-                grid_df = self.df[self.df[self.param_roles["grid"]] == grid_val]
-
-                with st.expander(f"🗂 {self.param_roles['grid']} = {grid_val}", expanded=True):
-                    row_values = sorted(grid_df[self.param_roles["row"]].unique())
-
-                    for row_val in row_values:
-                        row_df = grid_df[grid_df[self.param_roles["row"]] == row_val]
-                        st.markdown(f"**└── {self.param_roles['row']} = {row_val}**")
-
-                        col_values = sorted(row_df[self.param_roles["column"]].unique())
-                        for col_val in col_values:
-                            col_df = row_df[row_df[self.param_roles["column"]] == col_val]
-                            st.markdown(f"{'&nbsp;' * 4}**└── {self.param_roles['column']} = {col_val}**")
-
-                            for _, row in col_df.iterrows():
-                                line_val = row[self.param_roles["line"]]
-                                if pd.notna(line_val):
-                                    st.markdown(f"{'&nbsp;' * 7}└── {self.param_roles['line']} = {line_val}")
-                                    st.markdown(f"{'&nbsp;' * 10}└── `{format_path_for_display(row['data_path'])}`")
-
-        # Display data source tree
-        col1, col2 = st.columns([1, 3])
-        with col1:
-            show_tree = st.checkbox(INFO_FLOW_TEXTS.show_data_sources, value=True)
-            if show_tree:
-                st.info(INFO_FLOW_TEXTS.total_experiments(len(self.df)))
-
-        with col2:
-            if show_tree:
-                display_tree()
+        sac.tree(
+            items=grid_items,
+            label="Data Sources",
+            # align="center",
+            width=500,
+            size="lg",
+            open_all=True,
+            key="data_sources_tree",
+            height=500,
+        )
 
 
 class PlotCreation(StreamlitComponent):
@@ -391,11 +390,14 @@ class InfoFlowPlotsPage(StreamlitPage):
             st.sidebar.error("No data available for the selected parameter values")
             st.stop()
 
-        # Configure plot customization
-        plot_config, custom_colors, custom_styles = PlotCustomization(df, param_roles["line"]).render()
+        col1, col2 = st.columns(2)
+        with col1:
+            # Configure plot customization
+            plot_config, custom_colors, custom_styles = PlotCustomization(df, param_roles["line"]).render()
 
-        # Display data sources
-        DataSourceDisplay(df, param_roles).render()
+        with col2:
+            # Display data sources
+            DataSourceDisplay(df, param_roles).render()
 
         # Create and display plots
         PlotCreation(df, param_roles, plot_config, custom_colors, custom_styles).render()
