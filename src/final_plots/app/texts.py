@@ -71,6 +71,7 @@ class DATA_REQUIREMENTS_TEXTS:
     update_requirements = "🔄 Update Latest Requirements"
     requirements_updated = "Requirements updated successfully!"
     save_overrides = "💾 Save Overrides"
+    reset_to_latest = "🔄 Reset to Latest"
     overrides_saved = "Overrides saved successfully!"
 
 

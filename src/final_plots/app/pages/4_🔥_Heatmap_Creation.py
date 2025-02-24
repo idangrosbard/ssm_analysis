@@ -52,13 +52,13 @@ from src.utils.extended_streamlit_pydantic import pydantic_input
 from src.utils.logits import Prompt
 from src.utils.streamlit_utils import StreamlitPage
 
+st.set_page_config(layout="wide", page_icon=HEATMAP_TEXTS.icon, page_title=HEATMAP_TEXTS.title)
+st.header(HEATMAP_TEXTS.MODEL_COMBINATIONS_HEADER)
+
 
 class HeatmapCreationPage(StreamlitPage):
     def render(self):
         # region Data Loading
-        st.set_page_config(layout="wide", page_icon=HEATMAP_TEXTS.icon, page_title=HEATMAP_TEXTS.title)
-
-        st.header(HEATMAP_TEXTS.MODEL_COMBINATIONS_HEADER)
 
         with st.sidebar:
             selected_models = select_models_and_sizes(GLOBAL_APP_CONSTS.MODELS_COMBINATIONS)

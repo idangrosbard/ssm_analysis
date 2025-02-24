@@ -1,8 +1,9 @@
+import contextvars
 import sys
 from abc import ABC, abstractmethod
 from contextlib import contextmanager
 from io import StringIO
-from typing import Any, Callable, Generic, TypeVar, cast, get_args, get_origin
+from typing import Any, Callable, Generic, Optional, TypeVar, cast, get_args, get_origin
 
 import streamlit as st
 from streamlit_pydantic.ui_renderer import GroupOptionalFieldsStrategy, InputUI
@@ -10,6 +11,7 @@ from streamlit_pydantic.ui_renderer import GroupOptionalFieldsStrategy, InputUI
 TSessionKey = TypeVar("TSessionKey")
 
 
+# region SessionKey
 class SessionKey(Generic[TSessionKey]):
     """A strongly typed wrapper around streamlit session state values."""
 
@@ -139,6 +141,10 @@ class SessionKeyDescriptor(Generic[TSessionKey]):
         return getattr(obj, f"_{self.key}_instance")
 
 
+# endregion
+
+
+# region Redirect stdout and stderr to streamlit
 @contextmanager
 def st_redirect(src, dst, placeholder, overwrite):
     output_func = getattr(placeholder.empty(), dst)
@@ -185,11 +191,99 @@ def st_stderr(dst, placeholder, overwrite):
         yield
 
 
-class StreamlitComponent(ABC):
+# endregion
+
+# region Streamlit components
+OutputType = TypeVar("OutputType")
+
+
+class StreamlitComponent(ABC, Generic[OutputType]):
     @abstractmethod
-    def render(self) -> Any:
+    def render(self) -> OutputType:
         pass
 
 
 class StreamlitPage(ABC):
     pass
+
+
+# endregion
+
+
+# region Cached functions
+
+
+class CachedFunction:
+    """A strongly typed wrapper for a cached function with recursive clearing and UI rendering."""
+
+    _cache_dependencies: dict["CachedFunction", set["CachedFunction"]] = {}
+    _all_instances: set["CachedFunction"] = set()
+
+    def __init__(self, func: Callable, cached_func: Callable):
+        self.func = func
+        self.cached_func = cached_func
+        CachedFunction._cache_dependencies[self] = set()
+        CachedFunction._all_instances.add(self)
+
+    def __call__(self, *args, **kwargs) -> Any:
+        """Call the cached function and track dependencies."""
+        caller_instance = _current_function.get()
+        _current_function.set(self)  # Mark this function as active
+
+        with st.spinner("Loading...", show_time=True):
+            result = self.cached_func(*args, **kwargs)
+
+        _current_function.set(caller_instance)  # Restore the previous caller
+
+        # Register dependency if called within another cached function
+        if caller_instance:
+            CachedFunction._cache_dependencies[caller_instance].add(self)
+
+        return result
+
+    def clear(self):
+        """Clears the function's cache and all dependent caches recursively."""
+        self.cached_func.clear()  # type: ignore
+        for dep in CachedFunction._cache_dependencies[self]:
+            dep.clear()
+        CachedFunction._cache_dependencies[self] = set()  # Remove dependencies
+
+    @staticmethod
+    def clear_all():
+        """Clears all cached functions in the system."""
+        for instance in CachedFunction._all_instances:
+            instance.clear()
+
+    def render(self):
+        """Renders Streamlit buttons for clearing caches in the dependency chain."""
+        with st.expander(f"Cache Controls: {self.func.__name__}"):
+            if st.button(f"Clear Cache for {self.func.__name__}"):
+                self.clear()
+                st.rerun()  # Force UI refresh
+
+            # Render buttons for dependent caches
+            for dep in CachedFunction._cache_dependencies[self]:
+                dep.render()
+
+    def __getattr__(self, attr):
+        """Delegate attribute access to the wrapped function."""
+        return getattr(self.cached_func, attr)
+
+
+class CacheWithDependencies:
+    """Class decorator wrapping @st.cache_data with strong typing, dependency tracking, and UI rendering."""
+
+    def __init__(self, *st_args, **st_kwargs):
+        self.st_args = st_args
+        self.st_kwargs = st_kwargs
+
+    def __call__(self, func: Callable) -> CachedFunction:
+        cached_func = st.cache_data(*self.st_args, **self.st_kwargs)(func)
+        return CachedFunction(func, cached_func)
+
+
+# Thread-safe storage for tracking current function execution
+_current_function = contextvars.ContextVar[Optional[CachedFunction]]("current_function", default=None)
+
+
+# endregion

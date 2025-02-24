@@ -21,7 +21,10 @@ from src.final_plots.app.app_consts import (
     DataReqsSessionKeys,
 )
 from src.final_plots.app.components.inputs import select_variation
-from src.final_plots.app.data_store import empty_selected_requirements, load_data
+from src.final_plots.app.data_store import (
+    empty_selected_requirements,
+    load_fulfliield_reqs,
+)
 from src.final_plots.app.texts import DATA_REQUIREMENTS_TEXTS
 from src.final_plots.app.utils import (
     apply_filters,
@@ -29,26 +32,24 @@ from src.final_plots.app.utils import (
     create_filters,
     create_pagination_config,
     get_data_req_from_df_row,
-    show_filtered_count,
 )
+from src.final_plots.data_reqs import update_data_reqs_with_latest_results
 from src.final_plots.results_bank import ParamNames
 from src.types import SLURM_GPU_TYPE
 from src.utils.streamlit_utils import StreamlitPage
 
+# region Page Configuration
+st.set_page_config(page_title=DATA_REQUIREMENTS_TEXTS.title, page_icon=DATA_REQUIREMENTS_TEXTS.icon, layout="wide")
+st.title(f"{DATA_REQUIREMENTS_TEXTS.title} {DATA_REQUIREMENTS_TEXTS.icon}")
+# endregion
+
 
 class DataRequirementsPage(StreamlitPage):
     def render(self):
-        # region Page Configuration
-        st.set_page_config(
-            page_title=DATA_REQUIREMENTS_TEXTS.title, page_icon=DATA_REQUIREMENTS_TEXTS.icon, layout="wide"
-        )
-        st.title(f"{DATA_REQUIREMENTS_TEXTS.title} {DATA_REQUIREMENTS_TEXTS.icon}")
-        # endregion
-
         # region Data Loading and Preparation
         # Load data
-        with st.spinner("Loading data...", show_time=True):
-            df = load_data()
+
+        df = load_fulfliield_reqs()
 
         # Create and apply filters
         filters = create_filters(
@@ -58,16 +59,11 @@ class DataRequirementsPage(StreamlitPage):
         )
         filtered_df = apply_filters(df, filters)
 
-        # Display results count
-        show_filtered_count(filtered_df, df, "requirements")
-        # endregion
-
         # region Requirements Display and Management
         # Add pagination
         pagination_config = create_pagination_config(
             total_items=len(filtered_df),
             default_page_size=GLOBAL_APP_CONSTS.PaginationConfig.DATA_REQS["default_page_size"],
-            key_prefix=GLOBAL_APP_CONSTS.PaginationConfig.DATA_REQS["key_prefix"],
             on_change=empty_selected_requirements,
         )
 
@@ -108,15 +104,9 @@ class DataRequirementsPage(StreamlitPage):
 
         # region Requirement Execution
         # Save button for overrides
-        if st.button(DATA_REQUIREMENTS_TEXTS.save_overrides):
-            # Convert session state overrides to IDataFulfilled type
-            pass
-            # overrides: IDataFulfilled = {}
-            # for key, path in DataReqsSessionKeys.overrides.get().items():
-            #     data_req = get_data_req_from_df_row(filtered_df[filtered_df[DataReqCols.Key] == key].iloc[0])
-            #     overrides[data_req] = path
-            # save_data_fulfilled_overides(overrides)
-            # st.success(DATA_REQUIREMENTS_TEXTS.overrides_saved)
+        if st.sidebar.button(DATA_REQUIREMENTS_TEXTS.reset_to_latest):
+            update_data_reqs_with_latest_results()
+            st.success("Requirements updated successfully!")
 
         # Add SLURM configuration in sidebar
         with st.sidebar:

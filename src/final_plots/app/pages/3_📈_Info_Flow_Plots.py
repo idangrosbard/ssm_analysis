@@ -42,13 +42,14 @@ class DataRow(TypedDict):
     data_path: Path
 
 
+# region Page Configuration
+st.set_page_config(page_title=INFO_FLOW_TEXTS.title, page_icon=INFO_FLOW_TEXTS.icon, layout="wide")
+st.title(f"{INFO_FLOW_TEXTS.title} {INFO_FLOW_TEXTS.icon}")
+# endregion
+
+
 class InfoFlowPlotsPage(StreamlitPage):
     def render(self):
-        # region Page Configuration
-        st.set_page_config(page_title=INFO_FLOW_TEXTS.title, page_icon=INFO_FLOW_TEXTS.icon, layout="wide")
-        st.title(f"{INFO_FLOW_TEXTS.title} {INFO_FLOW_TEXTS.icon}")
-        # endregion
-
         # endregion
 
         # region Data Loading and Parameter Setup

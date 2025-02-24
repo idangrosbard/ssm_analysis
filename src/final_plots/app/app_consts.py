@@ -26,10 +26,10 @@ class GLOBAL_APP_CONSTS:
     ]
 
     class PaginationConfig:
-        RESULTS_BANK = {"default_page_size": 20, "key_prefix": "results_bank_"}
-        DATA_REQS = {"default_page_size": 10, "key_prefix": "data_reqs_"}
-        COMBINATIONS = {"default_page_size": 10, "key_prefix": "combinations_"}
-        PROMPTS = {"default_page_size": 10, "key_prefix": "prompts_"}
+        RESULTS_BANK = {"default_page_size": 20}
+        DATA_REQS = {"default_page_size": 20}
+        COMBINATIONS = {"default_page_size": 10}
+        PROMPTS = {"default_page_size": 10}
 
 
 T = TypeVar("T", bound="SessionKeysBase[Any]")

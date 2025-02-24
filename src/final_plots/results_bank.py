@@ -297,7 +297,10 @@ def get_experiment_results_bank(
         return CACHE_RESULTS_BANK
 
     if results_base_paths is None:
-        results_base_paths = [RESULTS_BASE_PATH.Prev, RESULTS_BASE_PATH.New]
+        results_base_paths = [
+            RESULTS_BASE_PATH.Prev,
+            RESULTS_BASE_PATH.New,
+        ]
 
     if experiments is None:
         experiments = [HeatmapRecord, InfoFlowRecord]

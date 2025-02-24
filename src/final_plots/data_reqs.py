@@ -531,8 +531,8 @@ class ModelCombination:
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "ModelCombination":
         return cls(
-            correct_models=set(data["correct_models"]),
-            incorrect_models=set(data["incorrect_models"]),
+            correct_models={MODEL_ARCH_AND_SIZE(arch, size) for arch, size in data["correct_models"]},
+            incorrect_models={MODEL_ARCH_AND_SIZE(arch, size) for arch, size in data["incorrect_models"]},
             prompts=data["prompts"],
             chosen_prompt=data["chosen_prompt"],
         )

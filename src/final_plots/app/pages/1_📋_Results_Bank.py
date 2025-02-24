@@ -11,64 +11,43 @@
 # - Current implementation follows the outline structure correctly
 
 import streamlit as st
+from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode
 
-from src.final_plots.app.app_consts import GLOBAL_APP_CONSTS
 from src.final_plots.app.data_store import load_experiment_results
 from src.final_plots.app.texts import RESULTS_BANK_TEXTS
-from src.final_plots.app.utils import (
-    apply_filters,
-    apply_pagination,
-    create_filters,
-    create_pagination_config,
-    show_filtered_count,
-)
-from src.final_plots.results_bank import (
-    ParamNames,
-)
+from src.final_plots.results_bank import ParamNames
 from src.utils.streamlit_utils import StreamlitPage
+
+st.set_page_config(page_title=RESULTS_BANK_TEXTS.title, page_icon=RESULTS_BANK_TEXTS.icon, layout="wide")
+st.title(f"{RESULTS_BANK_TEXTS.title} {RESULTS_BANK_TEXTS.icon}")
 
 
 class ResultsBankPage(StreamlitPage):
     def render(self):
-        st.set_page_config(page_title=RESULTS_BANK_TEXTS.title, page_icon=RESULTS_BANK_TEXTS.icon, layout="wide")
-        st.title(f"{RESULTS_BANK_TEXTS.title} {RESULTS_BANK_TEXTS.icon}")
-
-        # region Data Loading and Preparation
-        # Get results using cached function
         df = load_experiment_results()
-        # endregion
-
-        # region Filtering
-        # Create and apply filters
-        filters = create_filters(df, filter_columns=[col for col in df.columns if col != ParamNames.path])
-        filtered_df = apply_filters(df, filters)
-
-        # Display results count and create pagination
-        show_filtered_count(filtered_df, df)
-        # endregion
-
-        # region Results Display
-        # Add pagination
-        pagination_config = create_pagination_config(
-            total_items=len(filtered_df),
-            default_page_size=GLOBAL_APP_CONSTS.PaginationConfig.RESULTS_BANK["default_page_size"],
-            key_prefix=GLOBAL_APP_CONSTS.PaginationConfig.RESULTS_BANK["key_prefix"],
+        load_experiment_results.render()
+        grid_builder = GridOptionsBuilder.from_dataframe(df)
+        grid_builder.configure_pagination(enabled=True)
+        # grid_builder.configure_selection(selection_mode="single", use_checkbox=True)
+        grid_builder.configure_default_column(
+            filter=True,
+            floatingFilter=True,
         )
-
-        # Apply pagination to filtered data
-        paginated_df = apply_pagination(filtered_df, pagination_config)
+        grid_builder.configure_column(ParamNames.window_size, type=["textColumn"])
+        grid_builder.configure_column(ParamNames.prompt_idx, type=["textColumn"])
+        grid_builder.configure_side_bar()
+        grid_options = grid_builder.build()
 
         # Display the table
-        st.dataframe(
-            paginated_df,
-            use_container_width=True,
-            column_config={
-                ParamNames.path: st.column_config.TextColumn(
-                    ParamNames.path,
-                )
-            },
+        AgGrid(
+            df,
+            gridOptions=grid_options,
+            height=1000,
+            fit_columns_on_grid_load=True,
+            floatingFilter=True,
+            key="results_bank",
+            update_mode=GridUpdateMode.SELECTION_CHANGED,
         )
-        # endregion
 
 
 if __name__ == "__main__":

@@ -25,7 +25,6 @@ def create_pagination_config(
     total_items: int,
     default_page_size: int = 10,
     pages_options: tuple[int, ...] = (5, 10, 20, 50, 100),
-    key_prefix: str = "",
     on_change: Optional[Callable[[], None]] = None,
 ) -> PaginationConfig:
     """Create pagination configuration.
@@ -47,7 +46,7 @@ def create_pagination_config(
         page_size = st.selectbox(
             "Items per page",
             options=pages_options,
-            index=pages_options.index(st.session_state[f"{key_prefix}page_size"]),
+            index=pages_options.index(default_page_size),
         )
     with cols[0]:
         current_page = sac.pagination(
@@ -57,7 +56,7 @@ def create_pagination_config(
             show_total=True,
             jump=True,
             variant="filled",
-            # size=50,
+            key="pagination",
             on_change=cast(Callable[[], Any], on_change),
         )
 
@@ -78,7 +77,8 @@ def apply_pagination(df: pd.DataFrame, pagination_config: PaginationConfig) -> p
     Returns:
         Paginated DataFrame
     """
-    start_idx = pagination_config["current_page"] * pagination_config["page_size"]
+
+    start_idx = (pagination_config["current_page"] - 1) * pagination_config["page_size"]
     end_idx = start_idx + pagination_config["page_size"]
     return df.iloc[start_idx:end_idx]
 
@@ -183,17 +183,6 @@ def format_path_for_display(path: Path | str | None) -> str:
             return str(path)
 
     return format_path_for_display(Path(path))
-
-
-def show_filtered_count(filtered_df: pd.DataFrame, total_df: pd.DataFrame, item_name: str = "results") -> None:
-    """Show the count of filtered items vs total items.
-
-    Args:
-        filtered_df: Filtered DataFrame
-        total_df: Total DataFrame
-        item_name: Name of the items being counted
-    """
-    st.write(f"Showing {len(filtered_df)} {item_name} out of {len(total_df)} total")
 
 
 def load_experiment_data(experiment_name: str) -> pd.DataFrame:

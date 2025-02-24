@@ -16,7 +16,6 @@ from src.final_plots.app.app_consts import (
 from src.final_plots.app.utils import (
     format_path_for_display,
     load_experiment_data,
-    my_cache_data,
 )
 from src.final_plots.data_reqs import (
     ModelCombination,
@@ -31,6 +30,7 @@ from src.final_plots.results_bank import (
 )
 from src.plots.info_flow_confidence import PlotMetadata, create_confidence_plot, load_window_outputs
 from src.types import MODEL_ARCH_AND_SIZE
+from src.utils.streamlit_utils import CacheWithDependencies
 
 
 # Constants
@@ -56,7 +56,7 @@ def merge_model_evaluations_streamlit_rendered(variation: str) -> StreamlitRende
 
 
 # Results Bank hooks
-@my_cache_data
+@CacheWithDependencies()
 def load_experiment_results() -> pd.DataFrame:
     """Load and process results with caching"""
     results = get_experiment_results_bank()
@@ -70,8 +70,8 @@ def load_experiment_results() -> pd.DataFrame:
 
 
 # Data Requirements hooks
-@my_cache_data
-def load_data() -> pd.DataFrame:
+@CacheWithDependencies()
+def load_fulfliield_reqs() -> pd.DataFrame:
     """Load requirements and options data with caching"""
     options = get_data_fullfment_options()
     data_fulfilled_overides = load_data_fulfilled_overides()
@@ -97,7 +97,7 @@ def load_data() -> pd.DataFrame:
 
 
 # Info Flow Plots hooks
-@my_cache_data
+@CacheWithDependencies()
 def load_info_flow_data() -> pd.DataFrame:
     """Load info flow requirements and their fulfillment data"""
     return load_experiment_data("info_flow")
