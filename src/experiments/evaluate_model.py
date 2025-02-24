@@ -21,7 +21,7 @@ from transformers import PreTrainedTokenizer, PreTrainedTokenizerFast
 from src.consts import COLUMNS, COUNTER_FACT_2_KNOWN1000_COL_CONV
 from src.experiment_infra.base_config import BaseConfig, create_mutable_field
 from src.experiment_infra.model_interface import get_model_interface
-from src.types import DATASETS, MODEL_ARCH, DatasetArgs
+from src.types import DATASETS, MODEL_ARCH, MODEL_ARCH_AND_SIZE, DatasetArgs
 from src.utils.logits import get_last_token_logits, logits_to_probs
 
 
@@ -171,7 +171,7 @@ def run(args: EvaluateModelConfig):
     args.create_experiment_run_path()
     df = args.get_raw_data()
 
-    model_interface = get_model_interface(args.model_arch, args.model_size)
+    model_interface = get_model_interface(MODEL_ARCH_AND_SIZE(args.model_arch, args.model_size))
     model = model_interface.model
     tokenizer = model_interface.tokenizer
     tokenizer.padding_side = "left"

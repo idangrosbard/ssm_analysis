@@ -15,7 +15,7 @@ from src.experiment_infra.base_config import BASE_OUTPUT_KEYS, BaseConfig, creat
 from src.experiment_infra.model_interface import ModelInterface, get_model_interface
 from src.experiment_infra.output_path import OutputKey
 from src.plots.info_flow_confidence import create_confidence_plot
-from src.types import MODEL_ARCH, FeatureCategory, TInfoFlowSource, TokenType, TTokenizer
+from src.types import MODEL_ARCH, MODEL_ARCH_AND_SIZE, FeatureCategory, TInfoFlowSource, TokenType, TTokenizer
 from src.utils.logits import Prompt, get_num_to_masks, get_prompt_row_index
 
 # Time in seconds between intermediate saves
@@ -255,7 +255,7 @@ def run(args: InfoFlowConfig):
     args.create_experiment_run_path()
     data = args.get_prompt_data()
 
-    model_interface = get_model_interface(args.model_arch, args.model_size)
+    model_interface = get_model_interface(MODEL_ARCH_AND_SIZE(args.model_arch, args.model_size))
     tokenizer = model_interface.tokenizer
     device = model_interface.device
 

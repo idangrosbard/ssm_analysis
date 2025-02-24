@@ -10,8 +10,9 @@
 # Outline Compatibility Issues:
 # - Current implementation follows the outline structure correctly
 
+import itertools
 from pathlib import Path
-from typing import TypedDict, cast
+from typing import Literal, TypedDict, cast
 
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -26,7 +27,8 @@ from src.final_plots.app.utils import (
     get_param_values,
 )
 from src.final_plots.results_bank import ParamNames
-from src.utils.streamlit_utils import StreamlitPage
+from src.plots.info_flow_confidence import PlotMetadata, create_confidence_plot, load_window_outputs
+from src.utils.streamlit_utils import StreamlitComponent, StreamlitPage
 
 
 # region Type Definitions
@@ -48,37 +50,12 @@ st.title(f"{INFO_FLOW_TEXTS.title} {INFO_FLOW_TEXTS.icon}")
 # endregion
 
 
-class InfoFlowPlotsPage(StreamlitPage):
+class ParameterConfiguration(StreamlitComponent):
+    def __init__(self, df: pd.DataFrame, available_params: list[ParamNames]):
+        self.df = df
+        self.available_params = available_params
+
     def render(self):
-        # endregion
-
-        # region Data Loading and Parameter Setup
-        # Load the data
-        df = pd.DataFrame(load_info_flow_data())
-
-        # Available parameters
-        available_params = [
-            ParamNames.model_arch,
-            ParamNames.model_size,
-            ParamNames.window_size,
-            ParamNames.is_all_correct,
-            ParamNames.source,
-            ParamNames.target,
-        ]
-
-        # Initialize session state for parameter roles if not exists
-        if "param_roles" not in st.session_state:
-            st.session_state.param_roles = {
-                param: cast(InfoFlowConsts.ParamRole, "fixed") for param in available_params
-            }
-            # Set default roles
-            st.session_state.param_roles[ParamNames.model_arch] = cast(InfoFlowConsts.ParamRole, "grid")
-            st.session_state.param_roles[ParamNames.model_size] = cast(InfoFlowConsts.ParamRole, "column")
-            st.session_state.param_roles[ParamNames.window_size] = cast(InfoFlowConsts.ParamRole, "row")
-            st.session_state.param_roles[ParamNames.source] = cast(InfoFlowConsts.ParamRole, "line")
-        # endregion
-
-        # region Parameter Configuration
         st.sidebar.header(INFO_FLOW_TEXTS.plot_config_title)
         st.sidebar.subheader("Parameter Configuration")
 
@@ -86,13 +63,13 @@ class InfoFlowPlotsPage(StreamlitPage):
         param_values = {}
 
         # Create parameter controls
-        for param in available_params:
+        for param in self.available_params:
             st.sidebar.markdown(f"**{param}:**")
             col1, col2 = st.sidebar.columns([2, 1])
 
             with col1:
                 # If parameter is fixed, show value selector
-                unique_values = get_param_values(df, param)
+                unique_values = get_param_values(self.df, param)
                 if st.session_state.param_roles[param] == "fixed":
                     param_values[param] = st.selectbox(
                         f"Value for {param}", unique_values, key=f"value_{param}", label_visibility="collapsed"
@@ -105,7 +82,6 @@ class InfoFlowPlotsPage(StreamlitPage):
                     )
 
             with col2:
-                # current_role = st.session_state.param_roles[param]
                 selected_role = st.selectbox(
                     f"Role for {param}",
                     options=InfoFlowConsts.PARAM_ROLES,
@@ -113,9 +89,7 @@ class InfoFlowPlotsPage(StreamlitPage):
                     label_visibility="collapsed",
                 )
                 st.session_state.param_roles[param] = cast(InfoFlowConsts.ParamRole, selected_role)
-        # endregion
 
-        # region Role Validation
         # Validate and update roles
         role_counts = {role: 0 for role in ["grid", "column", "row", "line"]}
         for param, role in st.session_state.param_roles.items():
@@ -126,46 +100,47 @@ class InfoFlowPlotsPage(StreamlitPage):
         roles_valid = all(count == 1 for count in role_counts.values())
         if not roles_valid:
             st.sidebar.error("Please select exactly one parameter for each role (grid, column, row, line)")
-            st.stop()
+            return None, None
 
         # Get parameters for each role
-        grid_param = next(param for param, role in st.session_state.param_roles.items() if role == "grid")
-        col_param = next(param for param, role in st.session_state.param_roles.items() if role == "column")
-        row_param = next(param for param, role in st.session_state.param_roles.items() if role == "row")
-        line_param = next(param for param, role in st.session_state.param_roles.items() if role == "line")
-        # endregion
+        param_roles = {
+            "grid": next(param for param, role in st.session_state.param_roles.items() if role == "grid"),
+            "column": next(param for param, role in st.session_state.param_roles.items() if role == "column"),
+            "row": next(param for param, role in st.session_state.param_roles.items() if role == "row"),
+            "line": next(param for param, role in st.session_state.param_roles.items() if role == "line"),
+        }
 
-        # region Data Filtering
-        # Filter dataframe based on fixed parameters
-        for param, value in param_values.items():
-            df = df[df[param] == value]
+        return param_values, param_roles
 
-        if df.empty:
-            st.sidebar.error("No data available for the selected parameter values")
-            st.stop()
-        # endregion
 
-        # region Plot Customization
+class PlotCustomization(StreamlitComponent):
+    def __init__(self, df: pd.DataFrame, line_param: str):
+        self.df = df
+        self.line_param = line_param
+
+    def render(self):
         st.sidebar.header("Plot Customization")
-        # confidence_level = st.sidebar.slider(
-        #     "Confidence Level",
-        #     0.8,
-        #     0.99,
-        #     InfoFlowConsts.DEFAULT_PLOT_CONFIG["confidence_level"],
-        #     0.01,
-        # )
-        # plot_height = st.sidebar.slider(
-        #     "Plot Height",
-        #     300,
-        #     1000,
-        #     InfoFlowConsts.DEFAULT_PLOT_CONFIG["plot_height"],
-        # )
-        # plot_width = st.sidebar.slider(
-        #     "Plot Width",
-        #     400,
-        #     1200,
-        #     InfoFlowConsts.DEFAULT_PLOT_CONFIG["plot_width"],
-        # )
+        plot_config = {
+            "confidence_level": st.sidebar.slider(
+                "Confidence Level",
+                0.8,
+                0.99,
+                InfoFlowConsts.DEFAULT_PLOT_CONFIG["confidence_level"],
+                0.01,
+            ),
+            "plot_height": st.sidebar.slider(
+                "Plot Height",
+                300,
+                1000,
+                InfoFlowConsts.DEFAULT_PLOT_CONFIG["plot_height"],
+            ),
+            "plot_width": st.sidebar.slider(
+                "Plot Width",
+                400,
+                1200,
+                InfoFlowConsts.DEFAULT_PLOT_CONFIG["plot_width"],
+            ),
+        }
 
         # Color customization
         st.sidebar.header("Color Customization")
@@ -174,7 +149,7 @@ class InfoFlowPlotsPage(StreamlitPage):
         if use_custom_colors:
             custom_colors = {}
             custom_styles = {}
-            unique_values = df[line_param].unique()
+            unique_values = self.df[self.line_param].unique()
 
             for value in unique_values:
                 if pd.notna(value):
@@ -190,35 +165,42 @@ class InfoFlowPlotsPage(StreamlitPage):
         else:
             custom_colors = TOKEN_TYPE_COLORS
             custom_styles = TOKEN_TYPE_LINE_STYLES
-        # endregion
 
-        # region Data Source Display
+        return plot_config, custom_colors, custom_styles
+
+
+class DataSourceDisplay(StreamlitComponent):
+    def __init__(self, df: pd.DataFrame, param_roles: dict[str, str]):
+        self.df = df
+        self.param_roles = param_roles
+
+    def render(self):
         st.header("Data Sources")
 
         def display_tree():
             # Get all unique values for each parameter
-            grid_values = sorted(df[grid_param].unique())
+            grid_values = sorted(self.df[self.param_roles["grid"]].unique())
 
             # Display tree structure
             for grid_val in grid_values:
-                grid_df = df[df[grid_param] == grid_val]
+                grid_df = self.df[self.df[self.param_roles["grid"]] == grid_val]
 
-                with st.expander(f"🗂 {grid_param} = {grid_val}", expanded=True):
-                    row_values = sorted(grid_df[row_param].unique())
+                with st.expander(f"🗂 {self.param_roles['grid']} = {grid_val}", expanded=True):
+                    row_values = sorted(grid_df[self.param_roles["row"]].unique())
 
                     for row_val in row_values:
-                        row_df = grid_df[grid_df[row_param] == row_val]
-                        st.markdown(f"**└── {row_param} = {row_val}**")
+                        row_df = grid_df[grid_df[self.param_roles["row"]] == row_val]
+                        st.markdown(f"**└── {self.param_roles['row']} = {row_val}**")
 
-                        col_values = sorted(row_df[col_param].unique())
+                        col_values = sorted(row_df[self.param_roles["column"]].unique())
                         for col_val in col_values:
-                            col_df = row_df[row_df[col_param] == col_val]
-                            st.markdown(f"{'&nbsp;' * 4}**└── {col_param} = {col_val}**")
+                            col_df = row_df[row_df[self.param_roles["column"]] == col_val]
+                            st.markdown(f"{'&nbsp;' * 4}**└── {self.param_roles['column']} = {col_val}**")
 
                             for _, row in col_df.iterrows():
-                                line_val = row[line_param]
+                                line_val = row[self.param_roles["line"]]
                                 if pd.notna(line_val):
-                                    st.markdown(f"{'&nbsp;' * 7}└── {line_param} = {line_val}")
+                                    st.markdown(f"{'&nbsp;' * 7}└── {self.param_roles['line']} = {line_val}")
                                     st.markdown(f"{'&nbsp;' * 10}└── `{format_path_for_display(row['data_path'])}`")
 
         # Display data source tree
@@ -226,103 +208,125 @@ class InfoFlowPlotsPage(StreamlitPage):
         with col1:
             show_tree = st.checkbox(INFO_FLOW_TEXTS.show_data_sources, value=True)
             if show_tree:
-                st.info(INFO_FLOW_TEXTS.total_experiments(len(df)))
+                st.info(INFO_FLOW_TEXTS.total_experiments(len(self.df)))
 
         with col2:
             if show_tree:
                 display_tree()
-        # endregion
 
-        # region Plot Creation
+
+class PlotCreation(StreamlitComponent):
+    def __init__(
+        self,
+        df: pd.DataFrame,
+        param_roles: dict[str, str],
+        plot_config: dict,
+        custom_colors: dict,
+        custom_styles: dict,
+    ):
+        self.df = df
+        self.param_roles = param_roles
+        self.plot_config = plot_config
+        self.custom_colors = custom_colors
+        self.custom_styles = custom_styles
+
+    def render(self):
         def create_grid_plots():
-            grid_values = sorted(df[grid_param].unique())
+            grid_values = sorted(self.df[self.param_roles["grid"]].unique())
             plots = {}
             failed_plots = []
 
             for grid_val in grid_values:
                 try:
-                    pass
-                    # grid_df = df[df[grid_param] == grid_val]
+                    grid_df = self.df[self.df[self.param_roles["grid"]] == grid_val]
 
-                    # # Get unique values for rows and columns
-                    # row_values = sorted(grid_df[row_param].unique())
-                    # col_values = sorted(grid_df[col_param].unique())
+                    # Get unique values for rows and columns
+                    row_values = sorted(grid_df[self.param_roles["row"]].unique())
+                    col_values = sorted(grid_df[self.param_roles["column"]].unique())
 
-                    # Create figure with subplots
-                    # fig, axes = plt.subplots(
-                    #     len(row_values), len(col_values), figsize=(plot_width / 100, plot_height / 100), squeeze=False
-                    # )
-                    # TODO: Add plots
+                    # Create fixture with subplots
+                    fig, axes = plt.subplots(
+                        len(row_values),
+                        len(col_values),
+                        figsize=(self.plot_config["plot_width"] / 100, self.plot_config["plot_height"] / 100),
+                        squeeze=False,
+                    )
+
                     # Create plots for each combination
-                    # for (i, row_val), (j, col_val) in product(enumerate(row_values), enumerate(col_values)):
-                    #     try:
-                    #         paths = []
-                    #         subplot_df = grid_df[(grid_df[row_param] == row_val) & (grid_df[col_param] == col_val)]
+                    for (i, row_val), (j, col_val) in itertools.product(enumerate(row_values), enumerate(col_values)):
+                        paths = []
+                        try:
+                            subplot_df = grid_df[
+                                (grid_df[self.param_roles["row"]] == row_val)
+                                & (grid_df[self.param_roles["column"]] == col_val)
+                            ]
 
-                    #         if subplot_df.empty:
-                    #             continue
+                            if subplot_df.empty:
+                                continue
 
-                    #         # Group by line parameter and create plot
-                    #         targets_window_outputs = {}
+                            # Group by line parameter and create plot
+                            targets_window_outputs = {}
 
-                    #         load_errors = []
-                    #         for _, row in subplot_df.iterrows():
-                    #             line_val = row[line_param]
-                    #             if pd.isna(line_val):
-                    #                 continue
+                            load_errors = []
+                            for _, row in subplot_df.iterrows():
+                                line_val = row[self.param_roles["line"]]
+                                if pd.isna(line_val):
+                                    continue
 
-                    #             try:
-                    #                 window_outputs = load_window_outputs(row["data_path"])
-                    #                 targets_window_outputs[line_val] = window_outputs
-                    #                 paths.append(format_path_for_display(row["data_path"]))
-                    #             except Exception as e:
-                    #                 load_errors.append(f"Error loading data for {line_val}: {e}")
-                    #                 continue
+                                try:
+                                    window_outputs = load_window_outputs(row["data_path"])
+                                    targets_window_outputs[line_val] = window_outputs
+                                    paths.append(format_path_for_display(row["data_path"]))
+                                except Exception as e:
+                                    load_errors.append(f"Error loading data for {row['data_path']}{line_val}:\n {e}")
+                                    continue
 
-                    #         if not targets_window_outputs:
-                    #             if load_errors:
-                    #                 failed_plots.append(
-                    #                     f"Failed to load any data for {grid_param}={grid_val}, "
-                    #                     f"{row_param}={row_val}, {col_param}={col_val}:\n"
-                    #                     + "\n".join(f"  - {err}" for err in load_errors)
-                    #                 )
-                    #             continue
+                            if not targets_window_outputs:
+                                if load_errors:
+                                    failed_plots.append(
+                                        f"Failed to load any data for {self.param_roles['grid']}={grid_val}, "
+                                        f"{self.param_roles['row']}={row_val},"
+                                        f" {self.param_roles['column']}={col_val}:\n"
+                                        + "\n".join(f"  - {err}" for err in load_errors)
+                                    )
+                                continue
 
-                    #         plots_meta_data: dict[Literal["acc", "diff"], PlotMetadata] = {
-                    #             "acc": {
-                    #                 "title": "Accuracy",
-                    #                 "ylabel": "% accuracy",
-                    #                 "ylabel_loc": "center",
-                    #                 "axhline_value": 100.0,
-                    #                 "ylim": (60.0, 105.0),
-                    #             },
-                    #             "diff": {
-                    #                 "title": "Normalized change in prediction probability",
-                    #                 "ylabel": "% probability change",
-                    #                 "ylabel_loc": "top",
-                    #                 "axhline_value": 0.0,
-                    #                 "ylim": (-50.0, 50.0),
-                    #             },
-                    #         }
+                            plots_meta_data: dict[Literal["acc", "diff"], PlotMetadata] = {
+                                "acc": {
+                                    "title": "Accuracy",
+                                    "ylabel": "% accuracy",
+                                    "ylabel_loc": "center",
+                                    "axhline_value": 100.0,
+                                    "ylim": (60.0, 105.0),
+                                },
+                                "diff": {
+                                    "title": "Normalized change in prediction probability",
+                                    "ylabel": "% probability change",
+                                    "ylabel_loc": "top",
+                                    "axhline_value": 0.0,
+                                    "ylim": (-50.0, 50.0),
+                                },
+                            }
 
-                    #         fig = create_confidence_plot(
-                    #             targets_window_outputs=targets_window_outputs,
-                    #             confidence_level=confidence_level,
-                    #             title=f"{grid_param}={grid_val}\n{row_param}={row_val}, {col_param}={col_val}",
-                    #             plots_meta_data=plots_meta_data,
-                    #         )
+                            fig = create_confidence_plot(
+                                targets_window_outputs=targets_window_outputs,
+                                confidence_level=self.plot_config["confidence_level"],
+                                title=(
+                                    f"{self.param_roles['grid']}={grid_val}\n"
+                                    f"{self.param_roles['row']}={row_val}, "
+                                    f"{self.param_roles['column']}={col_val}"
+                                ),
+                                plots_meta_data=plots_meta_data,
+                            )
 
-                    #         plots[f"{grid_val}_{row_val}_{col_val}"] = fig
+                            plots[f"{grid_val}_{row_val}_{col_val}"] = fig
 
-                    #     except Exception as e:
-                    #         failed_plots.append(
-                    #             "Failed to create plot for one of the paths:"
-                    #             f"{paths}\n{row['data_path']}:\nError: {str(e)}"
-                    #         )
-                    #         continue
+                        except Exception as e:
+                            failed_plots.append(f"Failed to create plot for one of the paths:{paths}:\nError: {str(e)}")
+                            continue
 
                 except Exception as e:
-                    failed_plots.append(f"Failed to process grid {grid_param}={grid_val}: {str(e)}")
+                    failed_plots.append(f"Failed to process grid {self.param_roles['grid']}={grid_val}: {str(e)}")
                     continue
 
             return plots, failed_plots
@@ -346,6 +350,55 @@ class InfoFlowPlotsPage(StreamlitPage):
                         plt.close(fig)  # Clean up
                 else:
                     st.error(INFO_FLOW_TEXTS.no_plots_generated)
+
+
+class InfoFlowPlotsPage(StreamlitPage):
+    def render(self):
+        # Load the data
+        df = pd.DataFrame(load_info_flow_data())
+
+        # Available parameters
+        available_params = [
+            ParamNames.model_arch,
+            ParamNames.model_size,
+            ParamNames.window_size,
+            ParamNames.is_all_correct,
+            ParamNames.source,
+            ParamNames.target,
+        ]
+
+        # Initialize session state for parameter roles if not exists
+        if "param_roles" not in st.session_state:
+            st.session_state.param_roles = {
+                param: cast(InfoFlowConsts.ParamRole, "fixed") for param in available_params
+            }
+            # Set default roles
+            st.session_state.param_roles[ParamNames.model_arch] = cast(InfoFlowConsts.ParamRole, "grid")
+            st.session_state.param_roles[ParamNames.model_size] = cast(InfoFlowConsts.ParamRole, "column")
+            st.session_state.param_roles[ParamNames.window_size] = cast(InfoFlowConsts.ParamRole, "row")
+            st.session_state.param_roles[ParamNames.source] = cast(InfoFlowConsts.ParamRole, "line")
+
+        # Configure parameters and get roles
+        param_values, param_roles = ParameterConfiguration(df, available_params).render()
+        if param_values is None or param_roles is None:
+            st.stop()
+
+        # Filter dataframe based on fixed parameters
+        for param, value in param_values.items():
+            df = df[df[param] == value]
+
+        if df.empty:
+            st.sidebar.error("No data available for the selected parameter values")
+            st.stop()
+
+        # Configure plot customization
+        plot_config, custom_colors, custom_styles = PlotCustomization(df, param_roles["line"]).render()
+
+        # Display data sources
+        DataSourceDisplay(df, param_roles).render()
+
+        # Create and display plots
+        PlotCreation(df, param_roles, plot_config, custom_colors, custom_styles).render()
 
 
 if __name__ == "__main__":

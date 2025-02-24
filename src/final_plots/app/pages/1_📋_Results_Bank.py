@@ -16,14 +16,14 @@ from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode
 from src.final_plots.app.data_store import load_experiment_results
 from src.final_plots.app.texts import RESULTS_BANK_TEXTS
 from src.final_plots.results_bank import ParamNames
-from src.utils.streamlit_utils import StreamlitPage
+from src.utils.streamlit_utils import StreamlitComponent, StreamlitPage
 
 st.set_page_config(page_title=RESULTS_BANK_TEXTS.title, page_icon=RESULTS_BANK_TEXTS.icon, layout="wide")
 st.title(f"{RESULTS_BANK_TEXTS.title} {RESULTS_BANK_TEXTS.icon}")
 
 
-class ResultsBankPage(StreamlitPage):
-    def render(self):
+class ShowResultsBank(StreamlitComponent):
+    def render(self) -> None:
         df = load_experiment_results()
         load_experiment_results.render()
         grid_builder = GridOptionsBuilder.from_dataframe(df)
@@ -48,6 +48,11 @@ class ResultsBankPage(StreamlitPage):
             key="results_bank",
             update_mode=GridUpdateMode.SELECTION_CHANGED,
         )
+
+
+class ResultsBankPage(StreamlitPage):
+    def render(self):
+        ShowResultsBank().render()
 
 
 if __name__ == "__main__":

@@ -292,24 +292,26 @@ MODEL_INTERFACES_CACHE: dict[MODEL_ARCH_AND_SIZE, ModelInterface] = {}
 
 
 def get_model_interface(
-    model_arch: MODEL_ARCH, model_size: str, device: Optional[torch.device] = None
+    model_arch_and_size: MODEL_ARCH_AND_SIZE, device: Optional[torch.device] = None
 ) -> ModelInterface:
-    key = (model_arch, model_size)
+    key = model_arch_and_size
     if key in MODEL_INTERFACES_CACHE:
         return MODEL_INTERFACES_CACHE[key]
 
     model_interface: Optional[ModelInterface] = None
-    match model_arch:
+    match model_arch_and_size.arch:
         case MODEL_ARCH.MAMBA2:
-            model_interface = Mamba2Interface(model_size, device)
+            model_interface = Mamba2Interface(model_arch_and_size.size, device)
         case MODEL_ARCH.MAMBA1:
-            model_interface = Mamba1Interface(model_size, device, is_falcon=is_falcon(model_size))
+            model_interface = Mamba1Interface(
+                model_arch_and_size.size, device, is_falcon=is_falcon(model_arch_and_size.size)
+            )
         case MODEL_ARCH.GPT2:
-            model_interface = GPT2Interface(model_size, device)
+            model_interface = GPT2Interface(model_arch_and_size.size, device)
         case MODEL_ARCH.LLAMA2 | MODEL_ARCH.LLAMA3_2:
             raise NotImplementedError("LLama models are not supported yet")
         case _:
-            assert_never(model_arch)
+            assert_never(model_arch_and_size.arch)
 
     MODEL_INTERFACES_CACHE[key] = model_interface
     return model_interface

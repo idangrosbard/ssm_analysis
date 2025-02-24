@@ -29,6 +29,7 @@ from src.experiment_infra.base_config import (
 )
 from src.experiment_infra.model_interface import get_model_interface
 from src.plots.heatmaps import simple_diff_fixed
+from src.types import MODEL_ARCH_AND_SIZE
 from src.utils.logits import Prompt, decode_tokens, get_prompt_row, get_prompt_row_index
 from src.utils.setup_models import get_tokenizer
 
@@ -131,7 +132,7 @@ def run(args: HeatmapConfig):
         return
 
     args.create_experiment_run_path()
-    model_interface = get_model_interface(args.model_arch, args.model_size)
+    model_interface = get_model_interface(MODEL_ARCH_AND_SIZE(args.model_arch, args.model_size))
     tokenizer = model_interface.tokenizer
     device = model_interface.device
 

@@ -206,7 +206,7 @@ def create_info_flow_plots(
             col_values = sorted(grid_df[col_param].unique())
 
             # Create figure with subplots
-            fig, axes = plt.subplots(
+            fig, _ = plt.subplots(
                 len(row_values), len(col_values), figsize=(plot_width / 100, plot_height / 100), squeeze=False
             )
 
@@ -308,7 +308,7 @@ def get_models_remaining_prompts(
         remaining_prompt_original_indices = config.get_remaining_prompt_original_indices()
         if remaining_prompt_original_indices:
             config.prompt_original_indices = remaining_prompt_original_indices
-            res[(model_arch, model_size)] = config
+            res[MODEL_ARCH_AND_SIZE(model_arch, model_size)] = config
     return res
 
 

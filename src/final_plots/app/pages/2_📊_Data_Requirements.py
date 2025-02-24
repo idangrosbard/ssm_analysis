@@ -11,6 +11,7 @@
 # - Current implementation follows the outline structure correctly
 
 
+import pandas as pd
 import streamlit as st
 
 from src.final_plots.app.app_consts import (
@@ -36,7 +37,7 @@ from src.final_plots.app.utils import (
 from src.final_plots.data_reqs import update_data_reqs_with_latest_results
 from src.final_plots.results_bank import ParamNames
 from src.types import SLURM_GPU_TYPE
-from src.utils.streamlit_utils import StreamlitPage
+from src.utils.streamlit_utils import StreamlitComponent, StreamlitPage
 
 # region Page Configuration
 st.set_page_config(page_title=DATA_REQUIREMENTS_TEXTS.title, page_icon=DATA_REQUIREMENTS_TEXTS.icon, layout="wide")
@@ -44,31 +45,35 @@ st.title(f"{DATA_REQUIREMENTS_TEXTS.title} {DATA_REQUIREMENTS_TEXTS.icon}")
 # endregion
 
 
-class DataRequirementsPage(StreamlitPage):
+class RequirementsFiltering(StreamlitComponent):
+    def __init__(self, df: pd.DataFrame):
+        self.df = df
+
     def render(self):
-        # region Data Loading and Preparation
-        # Load data
-
-        df = load_fulfliield_reqs()
-
         # Create and apply filters
         filters = create_filters(
-            df,
+            self.df,
             filter_columns=DataReqConsts.DATA_REQS_FILTER_COLUMNS,
             default_values=DataReqConsts.DATA_REQS_DEFAULT_FILTER_VALUES,
         )
-        filtered_df = apply_filters(df, filters)
+        filtered_df = apply_filters(self.df, filters)
+        return filtered_df
 
-        # region Requirements Display and Management
+
+class RequirementsDisplay(StreamlitComponent):
+    def __init__(self, filtered_df: pd.DataFrame):
+        self.filtered_df = filtered_df
+
+    def render(self):
         # Add pagination
         pagination_config = create_pagination_config(
-            total_items=len(filtered_df),
+            total_items=len(self.filtered_df),
             default_page_size=GLOBAL_APP_CONSTS.PaginationConfig.DATA_REQS["default_page_size"],
             on_change=empty_selected_requirements,
         )
 
         # Apply pagination to filtered data
-        paginated_df = apply_pagination(filtered_df, pagination_config)
+        paginated_df = apply_pagination(self.filtered_df, pagination_config)
 
         # Display requirements with expandable rows
         for _, row in paginated_df.iterrows():
@@ -100,9 +105,13 @@ class DataRequirementsPage(StreamlitPage):
                         st.write(f"**Feature Category:** {row[ParamNames.feature_category]}")
                     if row[ParamNames.prompt_idx]:
                         st.write(f"**Prompt Index:** {row[ParamNames.prompt_idx]}")
-        # endregion
 
-        # region Requirement Execution
+
+class RequirementExecution(StreamlitComponent):
+    def __init__(self, filtered_df: pd.DataFrame):
+        self.filtered_df = filtered_df
+
+    def render(self):
         # Save button for overrides
         if st.sidebar.button(DATA_REQUIREMENTS_TEXTS.reset_to_latest):
             update_data_reqs_with_latest_results()
@@ -140,8 +149,8 @@ class DataRequirementsPage(StreamlitPage):
                     status_text = st.empty()
 
                     # Get all rows from filtered_df that match selected requirements
-                    selected_rows = filtered_df[
-                        filtered_df[DataReqCols.Key].isin(DataReqsSessionKeys.selected_requirements.value)
+                    selected_rows = self.filtered_df[
+                        self.filtered_df[DataReqCols.Key].isin(DataReqsSessionKeys.selected_requirements.value)
                     ]
 
                     for i, (idx, row) in enumerate(selected_rows.iterrows()):
@@ -174,7 +183,22 @@ class DataRequirementsPage(StreamlitPage):
                         st.success(f"Successfully submitted {success_count} requirements to run")
                     if failed_count > 0:
                         st.warning(f"Failed to submit {failed_count} requirements")
-        # endregion
+
+
+class DataRequirementsPage(StreamlitPage):
+    def render(self):
+        # region Data Loading and Preparation
+        # Load data
+        df = load_fulfliield_reqs()
+
+        # Filter the data
+        filtered_df = RequirementsFiltering(df).render()
+
+        # Display requirements
+        RequirementsDisplay(filtered_df).render()
+
+        # Handle requirement execution
+        RequirementExecution(filtered_df).render()
 
 
 if __name__ == "__main__":

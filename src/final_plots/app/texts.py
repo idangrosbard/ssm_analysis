@@ -11,6 +11,7 @@ class HEATMAP_TEXTS:
     # Headers
     MODEL_COMBINATIONS_HEADER = "Model Combinations Analysis"
     TAB_SELECT_COMBINATION = "Selected Combination"
+    TAB_HEATMAP_GENERATION = "Heatmap Generation"
     TAB_HEATMAP_PLOTS_GENERATION = "Heatmap Plots Generation"
     POSSIBLE_PROMPTS_HEADER = "Possible Prompts"
     MODEL_COMBINATIONS_FILTERING = "Model Combinations Filtering"
