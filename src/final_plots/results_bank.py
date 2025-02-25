@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import StrEnum
 from pathlib import Path
-from typing import Optional, Type
+from typing import Optional, Sequence, Type
 
 from git import Union
 
@@ -278,39 +278,18 @@ class InfoFlowRecord(ResultRecord):
         return output_path
 
 
-CACHE_RESULTS_BANK: Optional[list[ResultRecord]] = None
-
-
-def clear_results_bank_cache():
-    global CACHE_RESULTS_BANK
-    CACHE_RESULTS_BANK = None
-
-
 def get_experiment_results_bank(
-    results_base_paths: Optional[list[RESULTS_BASE_PATH]] = None,
-    experiments: Optional[list[Type[ResultRecord]]] = None,
-    update: bool = False,
+    results_base_paths: Sequence[RESULTS_BASE_PATH] = (
+        RESULTS_BASE_PATH.Prev,
+        RESULTS_BASE_PATH.New,
+    ),
+    experiments: Sequence[Type[ResultRecord]] = (HeatmapRecord, InfoFlowRecord),
 ) -> list[ResultRecord]:
-    global CACHE_RESULTS_BANK
-    with_cache = results_base_paths is None and experiments is None
-    if with_cache and (CACHE_RESULTS_BANK is not None) and not update:
-        return CACHE_RESULTS_BANK
-
-    if results_base_paths is None:
-        results_base_paths = [
-            RESULTS_BASE_PATH.Prev,
-            RESULTS_BASE_PATH.New,
-        ]
-
-    if experiments is None:
-        experiments = [HeatmapRecord, InfoFlowRecord]
-
-    print("Results bank cache is being updated")
     results: list[ResultRecord] = []
     for results_base_path in results_base_paths:
         for experiment in experiments:
             output_path = experiment.get_results_output_path(results_base_path.path)
-            in_pattern, out_of_pattern = output_path.process_path()
+            in_pattern, _ = output_path.process_path()
             for path, values in in_pattern:
                 values[ParamNames.experiment_name] = experiment.experiment_name
                 processed_values = results_base_path.process_values(values=values)
@@ -324,7 +303,4 @@ def get_experiment_results_bank(
                         **processed_values,  # type: ignore
                     )
                 )
-
-    if with_cache:
-        CACHE_RESULTS_BANK = results
     return results

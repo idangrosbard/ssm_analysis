@@ -19,9 +19,9 @@ import pandas as pd
 import streamlit as st
 import streamlit_antd_components as sac
 
-from src.consts import TOKEN_TYPE_COLORS, TOKEN_TYPE_LINE_STYLES
+from src.consts import EXPERIMENT_NAMES, TOKEN_TYPE_COLORS, TOKEN_TYPE_LINE_STYLES
 from src.final_plots.app.app_consts import InfoFlowConsts
-from src.final_plots.app.data_store import load_info_flow_data
+from src.final_plots.app.data_store import load_experiment_fulfilled_reqs_df
 from src.final_plots.app.texts import COMMON_TEXTS, INFO_FLOW_TEXTS
 from src.final_plots.app.utils import (
     format_path_for_display,
@@ -354,7 +354,7 @@ class PlotCreation(StreamlitComponent):
 class InfoFlowPlotsPage(StreamlitPage):
     def render(self):
         # Load the data
-        df = pd.DataFrame(load_info_flow_data())
+        df = pd.DataFrame(load_experiment_fulfilled_reqs_df(EXPERIMENT_NAMES.INFO_FLOW))
 
         # Available parameters
         available_params = [

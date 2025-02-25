@@ -20,7 +20,7 @@ from src.consts import (
 from src.experiments.evaluate_model import EvaluateModelConfig
 from src.experiments.heatmap import HeatmapConfig
 from src.experiments.info_flow import InfoFlowConfig
-from src.final_plots.results_bank import HeatmapRecord, InfoFlowRecord, ResultRecord, get_experiment_results_bank
+from src.final_plots.results_bank import HeatmapRecord, InfoFlowRecord, ResultRecord
 from src.types import MODEL_ARCH_AND_SIZE, FeatureCategory, TInfoFlowSource
 
 
@@ -72,7 +72,6 @@ class DataReq(NamedTuple):
 IDataFulfilled = dict[DataReq, Optional[Path]]
 IDataFulfilledOptions = dict[DataReq, list[Path]]
 
-DATA_FULFILLED_OVERIDES_PATH = Path(__file__).parent / "data_fulfilled_overides.csv"
 DATA_FULFILLED_PATH = Path(__file__).parent / "data_fulfilled.csv"
 PROMPT_SELECTION_PATH = Path(__file__).parent / "prompt_selections.json"
 
@@ -103,11 +102,9 @@ def result_record_to_data_req(result_record: ResultRecord) -> DataReq:
     )
 
 
-def get_data_fullfment_options() -> IDataFulfilledOptions:
-    data_reqs = get_data_reqs()
+def get_data_fullfment_options(data_reqs: IDataFulfilled, result_bank: list[ResultRecord]) -> IDataFulfilledOptions:
     data_reqs_options: IDataFulfilledOptions = {data_req: [] for data_req in data_reqs}
-    results = get_experiment_results_bank()
-    for result in results:
+    for result in result_bank:
         data_req = result_record_to_data_req(result)
         if data_req in data_reqs_options:
             data_reqs_options[data_req].append(result.path)
@@ -118,12 +115,11 @@ def merge_data_reqs(first: IDataFulfilled, second: IDataFulfilled, keys_by_first
     return {data_req: first.get(data_req) or second.get(data_req) for data_req in (first if keys_by_first else second)}
 
 
-def get_latest_data_fulfilled() -> IDataFulfilled:
-    data_reqs_options = get_data_fullfment_options()
+def choose_latest_data_fulfilled(data_reqs_options: IDataFulfilledOptions) -> IDataFulfilled:
     return {data_req: max(options) if options else None for data_req, options in data_reqs_options.items()}
 
 
-def _save_data_fulfilled(path: Path, data_fulfilled: IDataFulfilled) -> None:
+def _save_data_fulfilled(data_fulfilled: IDataFulfilled, path: Path = DATA_FULFILLED_PATH) -> None:
     if not data_fulfilled:
         if path.exists():
             path.unlink()
@@ -141,21 +137,16 @@ def _save_data_fulfilled(path: Path, data_fulfilled: IDataFulfilled) -> None:
     )
 
 
-def save_data_fulfilled_overides(data_fulfilled: IDataFulfilled) -> None:
-    _save_data_fulfilled(DATA_FULFILLED_OVERIDES_PATH, data_fulfilled)
-
-
-def _load_data_fulfilled(path: Path) -> IDataFulfilled:
+def _load_data_fulfilled(path: Path = DATA_FULFILLED_PATH) -> IDataFulfilled:
     if not path.exists():
         return {}
-    return cast(
-        IDataFulfilled,
-        {DataReq(**row): row["path"] for row in pd.read_csv(path).to_records(index=False)},
-    )
 
+    res = {}
+    for row in pd.read_csv(path).to_dict(orient="records"):
+        path = row.pop("path")
+        res[DataReq(**cast(dict[str, Any], row))] = path
 
-def load_data_fulfilled_overides() -> IDataFulfilled:
-    return _load_data_fulfilled(DATA_FULFILLED_OVERIDES_PATH)
+    return res
 
 
 # region Add data reqs
@@ -478,16 +469,6 @@ def get_data_reqs() -> IDataFulfilled:
     # endregion
 
     return data_reqs
-
-
-def get_current_data_reqs() -> IDataFulfilled:
-    data_reqs_options = get_latest_data_fulfilled()
-    loaded_overides: dict[DataReq, Path | None] = load_data_fulfilled_overides()
-    return merge_data_reqs(loaded_overides, data_reqs_options, keys_by_first=False)
-
-
-def update_data_reqs_with_latest_results() -> None:
-    _save_data_fulfilled(DATA_FULFILLED_PATH, get_current_data_reqs())
 
 
 def save_prompt_selections(prompt_selections: list[tuple[set[MODEL_ARCH_AND_SIZE], int]]) -> None:

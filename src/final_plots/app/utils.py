@@ -9,8 +9,8 @@ from streamlit.elements.arrow import DataframeState
 from src.consts import PATHS
 from src.experiments.heatmap import HeatmapConfig
 from src.final_plots.app.app_consts import HeatmapCols, HeatmapConsts
-from src.final_plots.data_reqs import DataReq, get_current_data_reqs
-from src.final_plots.results_bank import ParamNames, clear_results_bank_cache
+from src.final_plots.data_reqs import DataReq
+from src.final_plots.results_bank import ParamNames
 from src.types import MODEL_ARCH
 
 T = TypeVar("T")
@@ -56,7 +56,7 @@ def create_pagination_config(
             show_total=True,
             jump=True,
             variant="filled",
-            key="pagination",
+            key=f"pagination_{total_items}_{page_size}",
             on_change=cast(Callable[[], Any], on_change),
         )
 
@@ -142,28 +142,6 @@ def get_data_req_from_df_row(row: pd.Series) -> DataReq:
     )
 
 
-def my_cache_data(func: Callable[..., T]) -> Callable[..., T]:
-    """Decorator to cache data with a refresh button in the sidebar.
-
-    Args:
-        func: Function to cache
-
-    Returns:
-        Cached function with refresh button
-    """
-    cached_func: Callable[[], T] = st.cache_data(func)  # type: ignore
-
-    def wrapper(*args: Any, **kwargs: Any) -> T:
-        if st.sidebar.button("🔄 Refresh Data"):
-            # Clear all caches
-            clear_results_bank_cache()
-            cached_func.clear()  # type: ignore
-            st.rerun()
-        return cached_func(*args, **kwargs)
-
-    return wrapper
-
-
 def format_path_for_display(path: Path | str | None) -> str:
     """Format a path for display in the UI.
 
@@ -183,36 +161,6 @@ def format_path_for_display(path: Path | str | None) -> str:
             return str(path)
 
     return format_path_for_display(Path(path))
-
-
-def load_experiment_data(experiment_name: str) -> pd.DataFrame:
-    """Load data for a specific experiment.
-
-    Args:
-        experiment_name: Name of the experiment to load data for
-
-    Returns:
-        DataFrame with experiment data
-    """
-    current_fulfilled = get_current_data_reqs()
-
-    data = []
-    for req, data_path in current_fulfilled.items():
-        if not hasattr(req, "experiment_name") or req.experiment_name.value != experiment_name:
-            continue
-
-        if not data_path:  # Skip requirements with no fulfillment
-            continue
-
-        row_dict = {
-            param: getattr(req, param, None)
-            for param in ParamNames
-            if param not in [ParamNames.path, ParamNames.variation]
-        }
-        row = {**row_dict, "data_path": data_path}
-        data.append(row)
-
-    return pd.DataFrame(data)
 
 
 def get_param_values(df: pd.DataFrame, param: str) -> list[Any]:

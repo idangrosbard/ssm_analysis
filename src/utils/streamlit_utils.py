@@ -217,20 +217,18 @@ class CachedFunction:
     """A strongly typed wrapper for a cached function with recursive clearing and UI rendering."""
 
     _cache_dependencies: dict["CachedFunction", set["CachedFunction"]] = {}
-    _all_instances: set["CachedFunction"] = set()
 
     def __init__(self, func: Callable, cached_func: Callable):
         self.func = func
         self.cached_func = cached_func
         CachedFunction._cache_dependencies[self] = set()
-        CachedFunction._all_instances.add(self)
 
     def __call__(self, *args, **kwargs) -> Any:
         """Call the cached function and track dependencies."""
         caller_instance = _current_function.get()
         _current_function.set(self)  # Mark this function as active
 
-        with st.spinner("Loading...", show_time=True):
+        with st.spinner(f"Loading {self.func.__name__}...", show_time=True):
             result = self.cached_func(*args, **kwargs)
 
         _current_function.set(caller_instance)  # Restore the previous caller
@@ -251,19 +249,19 @@ class CachedFunction:
     @staticmethod
     def clear_all():
         """Clears all cached functions in the system."""
-        for instance in CachedFunction._all_instances:
+        for instance in CachedFunction._cache_dependencies.keys():
             instance.clear()
+        CachedFunction._cache_dependencies = {}
 
     def render(self):
         """Renders Streamlit buttons for clearing caches in the dependency chain."""
-        with st.expander(f"Cache Controls: {self.func.__name__}"):
-            if st.button(f"Clear Cache for {self.func.__name__}"):
-                self.clear()
-                st.rerun()  # Force UI refresh
+        if st.button(f"Clear Cache for {self.func.__name__}"):
+            self.clear()
+            st.rerun()  # Force UI refresh
 
-            # Render buttons for dependent caches
-            for dep in CachedFunction._cache_dependencies[self]:
-                dep.render()
+        # Render buttons for dependent caches
+        for dep in CachedFunction._cache_dependencies[self]:
+            dep.render()
 
     def __getattr__(self, attr):
         """Delegate attribute access to the wrapped function."""

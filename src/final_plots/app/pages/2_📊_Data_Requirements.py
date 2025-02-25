@@ -24,7 +24,8 @@ from src.final_plots.app.app_consts import (
 from src.final_plots.app.components.inputs import select_variation
 from src.final_plots.app.data_store import (
     empty_selected_requirements,
-    load_fulfliield_reqs,
+    load_fulfilled_reqs_df,
+    load_latest_fulfilled_reqs,
 )
 from src.final_plots.app.texts import DATA_REQUIREMENTS_TEXTS
 from src.final_plots.app.utils import (
@@ -34,7 +35,7 @@ from src.final_plots.app.utils import (
     create_pagination_config,
     get_data_req_from_df_row,
 )
-from src.final_plots.data_reqs import update_data_reqs_with_latest_results
+from src.final_plots.data_reqs import _save_data_fulfilled
 from src.final_plots.results_bank import ParamNames
 from src.types import SLURM_GPU_TYPE
 from src.utils.streamlit_utils import StreamlitComponent, StreamlitPage
@@ -113,9 +114,11 @@ class RequirementExecution(StreamlitComponent):
 
     def render(self):
         # Save button for overrides
-        if st.sidebar.button(DATA_REQUIREMENTS_TEXTS.reset_to_latest):
-            update_data_reqs_with_latest_results()
-            st.success("Requirements updated successfully!")
+        with st.sidebar.expander(DATA_REQUIREMENTS_TEXTS.reset_to_latest):
+            load_latest_fulfilled_reqs.render()
+            if st.button(DATA_REQUIREMENTS_TEXTS.reset_to_latest):
+                _save_data_fulfilled(load_latest_fulfilled_reqs())
+                st.success("Requirements updated successfully!")
 
         # Add SLURM configuration in sidebar
         with st.sidebar:
@@ -189,7 +192,8 @@ class DataRequirementsPage(StreamlitPage):
     def render(self):
         # region Data Loading and Preparation
         # Load data
-        df = load_fulfliield_reqs()
+        df = load_fulfilled_reqs_df()
+        load_fulfilled_reqs_df.render()
 
         # Filter the data
         filtered_df = RequirementsFiltering(df).render()
