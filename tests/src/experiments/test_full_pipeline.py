@@ -15,6 +15,19 @@ from src.experiments.info_flow import forward_eval
 from src.types import FILTERATIONS, MODEL_ARCH, TokenType
 
 HEATMAP_SIZE = 5
+ORIGINAL_IDS = [
+    53,
+    59,
+    74,
+    90,
+    93,
+    10594,
+    6410,
+    140,
+    148,
+    159,
+    182,
+]
 
 
 def get_config(variation_name: str, model_arch: MODEL_ARCH, model_size: str) -> FullPipelineConfig:
@@ -43,22 +56,7 @@ def create_test_data(test_base_path: Path):
         "all",
         align_to_known=False,
         filteration=FILTERATIONS.all_correct,
-    ).filter(
-        lambda x: x[COLUMNS.ORIGINAL_IDX]
-        in [
-            53,
-            59,
-            74,
-            90,
-            93,
-            10594,
-            6410,
-            140,
-            148,
-            159,
-            182,
-        ]
-    )
+    ).filter(lambda x: x[COLUMNS.ORIGINAL_IDX] in ORIGINAL_IDS)
 
     # save dataset to disk
     DatasetDict({"train1": dataset}).save_to_disk(test_paths.COUNTER_FACT_DIR / "splitted")
@@ -172,6 +170,6 @@ if __name__ == "__main__":
     # For updating baseline
 
     _test_base_path = Path(__file__).parent / "baselines" / "full_pipeline"
-    # create_test_data(_test_base_path)
+    create_test_data(_test_base_path)
     # TODO: test why there was a change at commit of 7f0fdded984bca60686dd8586c365534aeffa009
     create_test_experiment(_test_base_path)

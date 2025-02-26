@@ -53,7 +53,9 @@ class EvaluateModelConfig(BaseConfig):
             if counter_fact_col not in df.columns:
                 assert known1000_col in df.columns
                 df[counter_fact_col] = df[known1000_col]
-            df = df.drop(columns=[known1000_col])
+
+            if known1000_col in df.columns:
+                df = df.drop(columns=[known1000_col])
         return df
 
     def compute(self) -> None:

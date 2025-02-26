@@ -227,7 +227,7 @@ class BaseConfig(ABC, Generic[_TConfigOutputs]):
 
         return cast(
             TPromptData,
-            df.set_index(COLUMNS.ORIGINAL_IDX),
+            df[df[COLUMNS.MODEL_CORRECT]].set_index(COLUMNS.ORIGINAL_IDX),
         )
 
     @abstractmethod
