@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from matplotlib.figure import Figure
 from pygwalker.api.streamlit import StreamlitRenderer
-from streamlit import cache_data, cache_resource
+from streamlit import cache_resource
 
 from src.consts import EXPERIMENT_NAMES
 from src.experiments.heatmap import HeatmapConfig
@@ -132,7 +132,7 @@ def load_latest_fulfilled_reqs() -> IDataFulfilled:
     return choose_latest_data_fulfilled(data_reqs_options)
 
 
-@cache_data
+@CacheWithDependencies()
 def get_merged_evaluations(prompt_idx: int, variation: str) -> pd.DataFrame:
     """Get merged evaluations for a specific prompt.
 
@@ -168,7 +168,7 @@ def get_merged_evaluations(prompt_idx: int, variation: str) -> pd.DataFrame:
     return pd.DataFrame(model_evals)
 
 
-@cache_data
+@CacheWithDependencies()
 def get_models_is_heatmap_available(
     prompt_idx: int, variation: str, window_size: int
 ) -> dict[MODEL_ARCH_AND_SIZE, Path]:
@@ -312,7 +312,7 @@ def create_info_flow_plots(
     return plots, failed_plots
 
 
-@cache_data
+@CacheWithDependencies()
 def get_models_remaining_prompts(
     model_combinations: list[MODEL_ARCH_AND_SIZE],
     window_size: int,
@@ -336,7 +336,7 @@ def get_models_remaining_prompts(
     return res
 
 
-@cache_data
+@CacheWithDependencies()
 def load_model_combinations_prompts(
     variation: str, model_arch_and_sizes: list[MODEL_ARCH_AND_SIZE]
 ) -> list[ModelCombination]:
