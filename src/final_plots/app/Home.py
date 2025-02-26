@@ -1,26 +1,8 @@
-# import warnings
-
-import warnings
-
 import streamlit as st
 
-# import streamlit.watcher.local_sources_watcher as watcher
 from src.final_plots.app.app_consts import AppSessionKeys
 from src.final_plots.app.components.inputs import select_gpu_type, select_window_size
 from src.utils.streamlit_utils import StreamlitPage
-
-warnings.filterwarnings("ignore", message="Tried to instantiate class '__path__._path', but it does not exist!")
-
-# warnings.filterwarnings("ignore", message="Ignoring RuntimeError:*")
-# def safe_extract_paths(module):
-#     try:
-#         return list(module.__path__._path)
-#     except (AttributeError, RuntimeError):
-#         warnings.warn("Ignoring RuntimeError in Streamlit watcher", category=UserWarning)
-#         return []
-
-
-# watcher.extract_paths = safe_extract_paths
 
 
 class HomePage(StreamlitPage):

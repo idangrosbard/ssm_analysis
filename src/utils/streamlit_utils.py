@@ -1,11 +1,13 @@
 import contextvars
 import sys
 from abc import ABC, abstractmethod
+from collections import defaultdict
 from contextlib import contextmanager
 from io import StringIO
-from typing import Any, Callable, Generic, Optional, TypeVar, cast, get_args, get_origin
+from typing import Any, Callable, Generic, Optional, TypeVar, Union, cast, get_args, get_origin
 
 import streamlit as st
+import streamlit_antd_components as sac
 from streamlit_pydantic.ui_renderer import GroupOptionalFieldsStrategy, InputUI
 
 TSessionKey = TypeVar("TSessionKey")
@@ -216,52 +218,74 @@ class StreamlitPage(ABC):
 class CachedFunction:
     """A strongly typed wrapper for a cached function with recursive clearing and UI rendering."""
 
-    _cache_dependencies: dict["CachedFunction", set["CachedFunction"]] = {}
+    def global_store(self):
+        return _get_global_store()
 
     def __init__(self, func: Callable, cached_func: Callable):
         self.func = func
         self.cached_func = cached_func
-        CachedFunction._cache_dependencies[self] = set()
+        self.func_name = func.__name__
+        # Register this instance
+        self.global_store().add_instance(self.func_name, self)
 
     def __call__(self, *args, **kwargs) -> Any:
         """Call the cached function and track dependencies."""
         caller_instance = _current_function.get()
         _current_function.set(self)  # Mark this function as active
 
-        with st.spinner(f"Loading {self.func.__name__}...", show_time=True):
+        with st.spinner(f"Running {self.func.__name__}...", show_time=True):
             result = self.cached_func(*args, **kwargs)
 
         _current_function.set(caller_instance)  # Restore the previous caller
 
         # Register dependency if called within another cached function
         if caller_instance:
-            CachedFunction._cache_dependencies[caller_instance].add(self)
+            self.global_store().add_dependency(caller_instance.func_name, self.func_name)
 
         return result
 
     def clear(self):
-        """Clears the function's cache and all dependent caches recursively."""
+        """Clears this function's cache and all upstream dependencies recursively."""
+        store = self.global_store()
+        # Clear all downstream dependencies first
+        for dep_name in store.get_downstream_deps(self.func_name):
+            dep_instance = store.get_instance(dep_name)
+            if dep_instance:
+                dep_instance.cached_func.clear()  # type: ignore
+                store.reset_instance_deps(dep_name)
+        # Clear this function's cache
         self.cached_func.clear()  # type: ignore
-        for dep in CachedFunction._cache_dependencies[self]:
-            dep.clear()
-        CachedFunction._cache_dependencies[self] = set()  # Remove dependencies
-
-    @staticmethod
-    def clear_all():
-        """Clears all cached functions in the system."""
-        for instance in CachedFunction._cache_dependencies.keys():
-            instance.clear()
-        CachedFunction._cache_dependencies = {}
+        store.reset_instance_deps(self.func_name)
 
     def render(self):
         """Renders Streamlit buttons for clearing caches in the dependency chain."""
-        if st.button(f"Clear Cache for {self.func.__name__}"):
-            self.clear()
-            st.rerun()  # Force UI refresh
+        store = self.global_store()
 
-        # Render buttons for dependent caches
-        for dep in CachedFunction._cache_dependencies[self]:
-            dep.render()
+        # Show upstream dependencies (functions that this one depends on)
+        upstream_deps = store.get_upstream_deps(self.func_name)
+
+        def recursively_build_items(deps: dict) -> list[sac.TreeItem]:
+            return [
+                sac.TreeItem(label=dep_name, children=recursively_build_items(dep_upstream_deps))
+                for dep_name, dep_upstream_deps in deps.items()
+            ]
+
+        items: list[Union[str, dict, sac.TreeItem]] = [
+            sac.TreeItem(label=self.func_name, children=recursively_build_items(upstream_deps))
+        ]
+
+        selected_item = sac.tree(
+            items=items,
+            label="Clear Dependencies",
+            size="lg",
+            open_all=True,
+            key=f"upstream_dependencies_tree_{self.func_name}",
+        )
+
+        if selected_item and isinstance(selected_item, str) and (instance := store.get_instance(selected_item)):
+            if st.button(f"Clear Cache for {selected_item}"):
+                instance.clear()
+                st.rerun()
 
     def __getattr__(self, attr):
         """Delegate attribute access to the wrapped function."""
@@ -282,6 +306,89 @@ class CacheWithDependencies:
 
 # Thread-safe storage for tracking current function execution
 _current_function = contextvars.ContextVar[Optional[CachedFunction]]("current_function", default=None)
+
+
+# endregion
+
+
+# region StreamlitUtilsGlobalStore
+class StreamlitUtilsGlobalStore:
+    def __init__(self):
+        self._cache_dependencies: dict[str, set[str]] = defaultdict(set)
+        self._instances: dict[str, CachedFunction] = {}
+
+    def add_dependency(self, caller_name: str, callee_name: str):
+        """Add a dependency where caller depends on callee."""
+        if caller_name not in self._instances or callee_name not in self._instances:
+            self.rebuild_instances()
+        assert caller_name in self._instances
+        assert callee_name in self._instances
+        self._cache_dependencies[caller_name].add(callee_name)
+
+    def get_upstream_deps(self, func_name: str, visited: set[str] | None = None) -> dict:
+        """Get all functions that this function depends on (recursively)."""
+        if visited is None:
+            visited = set()
+
+        if func_name in visited:
+            return {}
+
+        visited.add(func_name)
+        return {dep_name: self.get_upstream_deps(dep_name, visited) for dep_name in self._cache_dependencies[func_name]}
+
+    def get_downstream_deps(self, func_name: str, visited: set[str] | None = None) -> set[str]:
+        """Get all functions that depend on this function (recursively)."""
+        if visited is None:
+            visited = set()
+
+        if func_name in visited:
+            return set()
+
+        visited.add(func_name)
+        deps = set()
+        for caller, callees in self._cache_dependencies.items():
+            if func_name in callees:
+                deps.add(caller)
+                deps.update(self.get_downstream_deps(caller, visited))
+        return deps
+
+    def add_instance(self, func_name: str, instance: CachedFunction):
+        self._instances[func_name] = instance
+
+    def reset_instance_deps(self, func_name: str):
+        self._cache_dependencies[func_name] = set()
+
+    def get_instance(self, func_name: str) -> Optional[CachedFunction]:
+        """Get instance by function name, falling back to module search if needed."""
+        return self._instances[func_name]
+
+    def rebuild_instances(self):
+        import inspect
+        import sys
+
+        for module in list(sys.modules.values()):
+            if module is None:
+                continue
+            try:
+                for _, obj in inspect.getmembers(module):
+                    if isinstance(obj, CachedFunction):
+                        # Update the instances map for future use
+                        self._instances[obj.func_name] = obj
+            except Exception:
+                pass
+
+    def clear_all_instances(self):
+        """Clears all cached functions in the system."""
+        # Clear all instances we know about
+        for instance in self._instances.values():
+            instance.clear()
+        self._instances.clear()
+
+
+@st.cache_resource(show_spinner=False)
+def _get_global_store() -> StreamlitUtilsGlobalStore:
+    """Get or create the cache store for dependencies and instances."""
+    return StreamlitUtilsGlobalStore()
 
 
 # endregion
