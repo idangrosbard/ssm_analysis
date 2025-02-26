@@ -12,7 +12,6 @@ from src.experiments.heatmap import HeatmapConfig
 from src.final_plots.app.app_consts import (
     GLOBAL_APP_CONSTS,
     DataReqCols,
-    DataReqsSessionKeys,
 )
 from src.final_plots.app.utils import (
     format_path_for_display,
@@ -185,11 +184,6 @@ def get_models_is_heatmap_available(
         ).output_heatmap_path(prompt_idx)
         for model_combination in GLOBAL_APP_CONSTS.MODELS_COMBINATIONS
     }
-
-
-def empty_selected_requirements() -> None:
-    """Empty the selected requirements set in session state."""
-    DataReqsSessionKeys.selected_requirements.value.clear()
 
 
 def create_info_flow_plots(

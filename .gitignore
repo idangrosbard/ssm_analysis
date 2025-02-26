@@ -189,3 +189,4 @@ data/raw/
 !.cursor/rules/project-strucutre.mdc
 .mlflow/
 *.code-workspace
+profile.pyspy

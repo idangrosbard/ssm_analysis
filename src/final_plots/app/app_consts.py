@@ -97,8 +97,6 @@ class DataReqConsts:
 
 
 class _DataReqsSessionKeys(SessionKeysBase["_DataReqsSessionKeys"]):
-    selected_requirements = SessionKeyDescriptor[set[str]](set())
-
     @staticmethod
     def select_requirement(key: str) -> SessionKey[bool]:
         return SessionKey(f"datareqs_select_{key}", False)

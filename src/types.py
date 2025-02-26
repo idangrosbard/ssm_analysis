@@ -1,11 +1,33 @@
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import Literal, NamedTuple, NewType, Sequence, Union, assert_never
+from typing import TYPE_CHECKING, Literal, NamedTuple, NewType, Sequence, TypeAlias, Union, assert_never
 
 import pandas as pd
 from jaxtyping import Float
 from torch import Tensor
-from transformers import PreTrainedTokenizer, PreTrainedTokenizerFast
+
+if TYPE_CHECKING:
+    from transformers import (
+        GPT2LMHeadModel,
+        MambaForCausalLM,
+        PreTrainedModel,
+        PreTrainedTokenizer,
+        PreTrainedTokenizerFast,
+    )
+
+    import src.models.minimal_mamba2 as minimal_mamba2
+
+    TTokenizer: TypeAlias = Union[PreTrainedTokenizer, PreTrainedTokenizerFast]
+    TMamba1Model: TypeAlias = MambaForCausalLM
+    TGP2Model: TypeAlias = GPT2LMHeadModel
+    TMamba2Model: TypeAlias = minimal_mamba2.Mamba2LMHeadModel
+    TModel: TypeAlias = Union[TMamba1Model, TGP2Model, TMamba2Model, PreTrainedModel]
+else:
+    TTokenizer = ...
+    TMamba1Model = ...
+    TGP2Model = ...
+    TMamba2Model = ...
+    TModel = ...
 
 
 class SPLIT(StrEnum):
@@ -92,8 +114,6 @@ class DatasetArgs:
 
         return self.name + split_name
 
-
-TTokenizer = PreTrainedTokenizer | PreTrainedTokenizerFast
 
 TSSMState = Float[Tensor, "batch hidden_size ssm_dim"]
 TSSMInput = Float[Tensor, "batch hidden_size seq_len"]

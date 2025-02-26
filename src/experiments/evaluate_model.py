@@ -16,12 +16,11 @@ from typing import Any, assert_never
 import pandas as pd
 import torch
 from tqdm import tqdm
-from transformers import PreTrainedTokenizer, PreTrainedTokenizerFast
 
 from src.consts import COLUMNS, COUNTER_FACT_2_KNOWN1000_COL_CONV
 from src.experiment_infra.base_config import BaseConfig, create_mutable_field
 from src.experiment_infra.model_interface import get_model_interface
-from src.types import DATASETS, MODEL_ARCH, MODEL_ARCH_AND_SIZE, DatasetArgs
+from src.types import DATASETS, MODEL_ARCH, MODEL_ARCH_AND_SIZE, DatasetArgs, TTokenizer
 from src.utils.logits import get_last_token_logits, logits_to_probs
 
 
@@ -64,7 +63,7 @@ class EvaluateModelConfig(BaseConfig):
 def get_subj_idx(
     input: str,
     subj: str,
-    tokenizer: PreTrainedTokenizer | PreTrainedTokenizerFast,
+    tokenizer: TTokenizer,
     last: bool = True,
 ) -> int:
     prefix = input.split(subj)[0]

@@ -35,6 +35,10 @@ class DataReq(NamedTuple):
     target: Optional[TokenType]
     prompt_idx: Optional[int]
 
+    @property
+    def model_arch_and_size(self) -> MODEL_ARCH_AND_SIZE:
+        return MODEL_ARCH_AND_SIZE(self.model_arch, self.model_size)
+
     def get_config(self, variation: Optional[str] = None) -> Union[InfoFlowConfig, HeatmapConfig]:
         assert not self.is_all_correct
 
@@ -170,28 +174,27 @@ def get_data_reqs() -> IDataFulfilled:
     model sizes = ALL
     model archs = ALL
     window sizes = [STANDARD_WINDOW_SIZE_FOR_INFO_FLOW]
-    is_all_correct = [True, False]
+    is_all_correct = [False]
     feature_category = [None]
     target = [last]
     source = [last, first, subject, relation]
     """
 
     for model_arch_and_size in GRAPHS_ORDER:
-        for is_all_correct in [True, False]:
-            for source in [TokenType.last, TokenType.first, TokenType.subject, TokenType.relation]:
-                data_reqs[
-                    DataReq(
-                        experiment_name=EXPERIMENT_NAMES.INFO_FLOW,
-                        model_arch=model_arch_and_size.arch,
-                        model_size=model_arch_and_size.size,
-                        window_size=STANDARD_WINDOW_SIZE_FOR_INFO_FLOW,
-                        is_all_correct=is_all_correct,
-                        source=source,
-                        feature_category=None,
-                        target=TokenType.last,
-                        prompt_idx=None,
-                    )
-                ] = None
+        for source in [TokenType.last, TokenType.first, TokenType.subject, TokenType.relation]:
+            data_reqs[
+                DataReq(
+                    experiment_name=EXPERIMENT_NAMES.INFO_FLOW,
+                    model_arch=model_arch_and_size.arch,
+                    model_size=model_arch_and_size.size,
+                    window_size=STANDARD_WINDOW_SIZE_FOR_INFO_FLOW,
+                    is_all_correct=False,
+                    source=source,
+                    feature_category=None,
+                    target=TokenType.last,
+                    prompt_idx=None,
+                )
+            ] = None
 
     # endregion
 
@@ -205,35 +208,34 @@ def get_data_reqs() -> IDataFulfilled:
     model sizes = ALL
     model archs = [Mamba1, Mamba2,]
     window sizes = [STANDARD_WINDOW_SIZE_FOR_INFO_FLOW]
-    is_all_correct = [True, False]
+    is_all_correct = [False]
     target = [last]
     source = [last, first, subject, relation, subject-SLOW_DECAY, subject-FAST_DECAY]
     """
 
     for model_arch_and_size in GRAPHS_ORDER:
         if is_mamba_arch(model_arch_and_size.arch):
-            for is_all_correct in [True, False]:
-                for source, feature_category in [
-                    (TokenType.last, None),
-                    (TokenType.first, None),
-                    (TokenType.subject, None),
-                    (TokenType.relation, None),
-                    (TokenType.subject, FeatureCategory.SLOW_DECAY),
-                    (TokenType.subject, FeatureCategory.FAST_DECAY),
-                ]:
-                    data_reqs[
-                        DataReq(
-                            experiment_name=EXPERIMENT_NAMES.INFO_FLOW,
-                            model_arch=model_arch_and_size.arch,
-                            model_size=model_arch_and_size.size,
-                            window_size=STANDARD_WINDOW_SIZE_FOR_INFO_FLOW,
-                            is_all_correct=is_all_correct,
-                            source=source,
-                            feature_category=feature_category,
-                            target=TokenType.last,
-                            prompt_idx=None,
-                        )
-                    ] = None
+            for source, feature_category in [
+                (TokenType.last, None),
+                (TokenType.first, None),
+                (TokenType.subject, None),
+                (TokenType.relation, None),
+                (TokenType.subject, FeatureCategory.SLOW_DECAY),
+                (TokenType.subject, FeatureCategory.FAST_DECAY),
+            ]:
+                data_reqs[
+                    DataReq(
+                        experiment_name=EXPERIMENT_NAMES.INFO_FLOW,
+                        model_arch=model_arch_and_size.arch,
+                        model_size=model_arch_and_size.size,
+                        window_size=STANDARD_WINDOW_SIZE_FOR_INFO_FLOW,
+                        is_all_correct=False,
+                        source=source,
+                        feature_category=feature_category,
+                        target=TokenType.last,
+                        prompt_idx=None,
+                    )
+                ] = None
 
     # endregion
 
@@ -264,7 +266,7 @@ def get_data_reqs() -> IDataFulfilled:
                         model_arch=model_arch_and_size.arch,
                         model_size=model_arch_and_size.size,
                         window_size=STANDARD_WINDOW_SIZE_FOR_INFO_FLOW,
-                        is_all_correct=True,
+                        is_all_correct=False,
                         source=source,
                         feature_category=feature_category,
                         target=TokenType.last,
@@ -285,7 +287,7 @@ def get_data_reqs() -> IDataFulfilled:
     model archs = [Mamba1, Mamba2, GPT2]
     model sizes = [SMALL, MEDIUM, LARGE, HUGE]
     window sizes = [STANDARD_WINDOW_SIZE_FOR_INFO_FLOW]
-    is_all_correct = [True, False]
+    is_all_correct = [False]
     target = [subject]
     source = [context, subject]
     """
@@ -293,21 +295,20 @@ def get_data_reqs() -> IDataFulfilled:
     for model_arch_and_size, model_size_cat in GRAPHS_ORDER.items():
         if model_size_cat != MODEL_SIZE_CAT.LARGE:
             continue
-        for is_all_correct in [True, False]:
-            for source in [TokenType.context, TokenType.subject]:
-                data_reqs[
-                    DataReq(
-                        experiment_name=EXPERIMENT_NAMES.INFO_FLOW,
-                        model_arch=model_arch_and_size.arch,
-                        model_size=model_arch_and_size.size,
-                        window_size=STANDARD_WINDOW_SIZE_FOR_INFO_FLOW,
-                        is_all_correct=is_all_correct,
-                        source=source,
-                        feature_category=None,
-                        target=TokenType.subject,
-                        prompt_idx=None,
-                    )
-                ] = None
+        for source in [TokenType.context, TokenType.subject]:
+            data_reqs[
+                DataReq(
+                    experiment_name=EXPERIMENT_NAMES.INFO_FLOW,
+                    model_arch=model_arch_and_size.arch,
+                    model_size=model_arch_and_size.size,
+                    window_size=STANDARD_WINDOW_SIZE_FOR_INFO_FLOW,
+                    is_all_correct=False,
+                    source=source,
+                    feature_category=None,
+                    target=TokenType.subject,
+                    prompt_idx=None,
+                )
+            ] = None
 
     # endregion
 
@@ -323,35 +324,34 @@ def get_data_reqs() -> IDataFulfilled:
             or only subset of features.model archs = [Mamba1, Mamba2]
     model sizes = ALL
     window sizes = [STANDARD_WINDOW_SIZE_FOR_INFO_FLOW]
-    is_all_correct = [True, False]
+    is_all_correct = [False]
     target = [last]
     source = [context, subject, relation, subject-SLOW_DECAY, subject-FAST_DECAY]
     """
 
     for model_arch_and_size in GRAPHS_ORDER:
         if is_mamba_arch(model_arch_and_size.arch):
-            for is_all_correct in [True, False]:
-                for source, feature_category in [
-                    (TokenType.last, None),
-                    (TokenType.subject, FeatureCategory.SLOW_DECAY),
-                    (TokenType.subject, FeatureCategory.FAST_DECAY),
-                    (TokenType.first, None),
-                    (TokenType.subject, None),
-                    (TokenType.relation, None),
-                ]:
-                    data_reqs[
-                        DataReq(
-                            experiment_name=EXPERIMENT_NAMES.INFO_FLOW,
-                            model_arch=model_arch_and_size.arch,
-                            model_size=model_arch_and_size.size,
-                            window_size=STANDARD_WINDOW_SIZE_FOR_INFO_FLOW,
-                            is_all_correct=is_all_correct,
-                            source=source,
-                            feature_category=feature_category,
-                            target=TokenType.last,
-                            prompt_idx=None,
-                        )
-                    ] = None
+            for source, feature_category in [
+                (TokenType.last, None),
+                (TokenType.subject, FeatureCategory.SLOW_DECAY),
+                (TokenType.subject, FeatureCategory.FAST_DECAY),
+                (TokenType.first, None),
+                (TokenType.subject, None),
+                (TokenType.relation, None),
+            ]:
+                data_reqs[
+                    DataReq(
+                        experiment_name=EXPERIMENT_NAMES.INFO_FLOW,
+                        model_arch=model_arch_and_size.arch,
+                        model_size=model_arch_and_size.size,
+                        window_size=STANDARD_WINDOW_SIZE_FOR_INFO_FLOW,
+                        is_all_correct=False,
+                        source=source,
+                        feature_category=feature_category,
+                        target=TokenType.last,
+                        prompt_idx=None,
+                    )
+                ] = None
 
     # endregion
 
@@ -411,7 +411,7 @@ def get_data_reqs() -> IDataFulfilled:
                             model_arch=model_arch_and_size.arch,
                             model_size=model_arch_and_size.size,
                             window_size=window_size,
-                            is_all_correct=True,
+                            is_all_correct=False,
                             source=source,
                             feature_category=None,
                             target=TokenType.last,
@@ -431,28 +431,27 @@ def get_data_reqs() -> IDataFulfilled:
     model archs = [Mamba1, Mamba2]
     model sizes = [SMALL, MEDIUM, LARGE, HUGE]
     window sizes = [STANDARD_WINDOW_SIZE_FOR_INFO_FLOW]
-    is_all_correct = [True, False]
+    is_all_correct = [False]
     target = [last]
     source = [last, first, subject, relation]
     """
 
     for model_arch_and_size in GRAPHS_ORDER:
         if is_mamba_arch(model_arch_and_size.arch):
-            for is_all_correct in [True, False]:
-                for source in [TokenType.last, TokenType.first, TokenType.subject, TokenType.relation]:
-                    data_reqs[
-                        DataReq(
-                            experiment_name=EXPERIMENT_NAMES.INFO_FLOW,
-                            model_arch=model_arch_and_size.arch,
-                            model_size=model_arch_and_size.size,
-                            window_size=STANDARD_WINDOW_SIZE_FOR_INFO_FLOW,
-                            is_all_correct=is_all_correct,
-                            source=source,
-                            feature_category=None,
-                            target=TokenType.last,
-                            prompt_idx=None,
-                        )
-                    ] = None
+            for source in [TokenType.last, TokenType.first, TokenType.subject, TokenType.relation]:
+                data_reqs[
+                    DataReq(
+                        experiment_name=EXPERIMENT_NAMES.INFO_FLOW,
+                        model_arch=model_arch_and_size.arch,
+                        model_size=model_arch_and_size.size,
+                        window_size=STANDARD_WINDOW_SIZE_FOR_INFO_FLOW,
+                        is_all_correct=False,
+                        source=source,
+                        feature_category=None,
+                        target=TokenType.last,
+                        prompt_idx=None,
+                    )
+                ] = None
 
     # endregion
 

@@ -1,33 +1,11 @@
 import os
-from typing import TYPE_CHECKING, Optional, Tuple, Union, assert_never
+from typing import Optional, assert_never
 
 import torch
 from huggingface_hub import login
-from transformers import (
-    AutoModelForCausalLM,
-    AutoTokenizer,
-    LlamaForCausalLM,
-    MambaForCausalLM,
-    PreTrainedModel,
-    PreTrainedTokenizer,
-    PreTrainedTokenizerFast,
-)
 
-import src.models.minimal_mamba2 as minimal_mamba2
 from src.consts import MODEL_SIZES_PER_ARCH_TO_MODEL_ID, is_falcon
-from src.types import MODEL_ARCH, TModelID
-
-if TYPE_CHECKING:
-    from mamba_ssm.models.mixer_seq_simple import MambaLMHeadModel
-
-
-def setup_mamba_model(
-    model_size: str = "2.8B",
-) -> Tuple[MambaForCausalLM, PreTrainedTokenizer | PreTrainedTokenizerFast, torch.device]:
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    tokenizer, model = get_tokenizer_and_model(MODEL_ARCH.MAMBA1, model_size)
-    assert isinstance(model, MambaForCausalLM)
-    return model, tokenizer, device
+from src.types import MODEL_ARCH, TModel, TModelID, TTokenizer
 
 
 def _get_tokenizer_id(model_id: str) -> str:
@@ -37,10 +15,12 @@ def _get_tokenizer_id(model_id: str) -> str:
         return model_id
 
 
-MODEL_TOKENIZER_CACHE: dict[TModelID, PreTrainedTokenizer | PreTrainedTokenizerFast] = {}
+MODEL_TOKENIZER_CACHE: dict[TModelID, TTokenizer] = {}
 
 
-def get_tokenizer(model_arch: MODEL_ARCH, model_size: str) -> PreTrainedTokenizer | PreTrainedTokenizerFast:
+def get_tokenizer(model_arch: MODEL_ARCH, model_size: str) -> TTokenizer:
+    from transformers import AutoTokenizer
+
     model_id = MODEL_SIZES_PER_ARCH_TO_MODEL_ID[model_arch][model_size]
     if model_id in MODEL_TOKENIZER_CACHE:
         return MODEL_TOKENIZER_CACHE[model_id]
@@ -52,16 +32,7 @@ def get_tokenizer(model_arch: MODEL_ARCH, model_size: str) -> PreTrainedTokenize
 
 def get_tokenizer_and_model(
     model_arch: MODEL_ARCH, model_size: str, device: Optional[torch.device] = None
-) -> tuple[
-    PreTrainedTokenizer | PreTrainedTokenizerFast,
-    Union[
-        minimal_mamba2.Mamba2LMHeadModel,
-        PreTrainedModel,
-        MambaForCausalLM,
-        LlamaForCausalLM,
-        "MambaLMHeadModel",
-    ],
-]:
+) -> tuple[TTokenizer, TModel]:
     if os.getenv("HUGGINGFACE_TOKEN") is not None:
         login(token=os.getenv("HUGGINGFACE_TOKEN"))
 
@@ -75,24 +46,34 @@ def get_tokenizer_and_model(
 
     match model_arch:
         case MODEL_ARCH.MAMBA2:
+            import src.models.minimal_mamba2 as minimal_mamba2
+
             model = minimal_mamba2.Mamba2LMHeadModel.from_pretrained(model_id, **minimal_kwargs)  # type: ignore
         case MODEL_ARCH.MAMBA1:
             if is_falcon(model_size):
+                from transformers import AutoModelForCausalLM
+
                 model = AutoModelForCausalLM.from_pretrained(model_id, device_map="auto")
             else:
+                from transformers import MambaForCausalLM
+
                 if device:
                     model = MambaForCausalLM.from_pretrained(model_id)
                     model.to(device)  # type: ignore
                 else:
                     model = MambaForCausalLM.from_pretrained(model_id, device_map="auto")
         case MODEL_ARCH.LLAMA2 | MODEL_ARCH.LLAMA3_2:
+            from transformers import LlamaForCausalLM
+
             if device:
                 model = LlamaForCausalLM.from_pretrained(model_id)
                 model.to(device)  # type: ignore
             else:
                 model = LlamaForCausalLM.from_pretrained(model_id, device_map="auto")
         case MODEL_ARCH.GPT2:
-            model = AutoModelForCausalLM.from_pretrained(model_id, device_map="auto")
+            from transformers import GPT2LMHeadModel
+
+            model = GPT2LMHeadModel.from_pretrained(model_id, device_map="auto")
         case _:
             assert_never(model_arch)
 

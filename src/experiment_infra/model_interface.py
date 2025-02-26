@@ -1,16 +1,23 @@
 from abc import ABC, abstractmethod
-from typing import Dict, Iterable, List, Optional, Tuple, Union, assert_never
+from typing import Dict, Iterable, List, Optional, Tuple, assert_never
 
 import torch
 import torch.nn.functional as F
 from torch import Tensor
-from transformers import MambaForCausalLM, PreTrainedTokenizer, PreTrainedTokenizerFast
 
-import src.models.minimal_mamba2 as minimal_mamba2
 from src.consts import is_falcon
 from src.knockout.attention_knockout import gpt2_knockout_utils
 from src.knockout.attention_knockout.ssm_interfere import SSMInterfereHook
-from src.types import MODEL_ARCH, MODEL_ARCH_AND_SIZE, FeatureCategory, KnockoutMode
+from src.types import (
+    MODEL_ARCH,
+    MODEL_ARCH_AND_SIZE,
+    FeatureCategory,
+    KnockoutMode,
+    TGP2Model,
+    TMamba1Model,
+    TMamba2Model,
+    TTokenizer,
+)
 from src.utils.setup_models import get_tokenizer_and_model
 
 
@@ -22,7 +29,7 @@ class ModelInterface(ABC):
         model_arch: MODEL_ARCH,
         model_size: str,
         device: Optional[torch.device] = None,
-        tokenizer: Optional[Union[PreTrainedTokenizer, PreTrainedTokenizerFast]] = None,
+        tokenizer: Optional[TTokenizer] = None,
     ):
         """Initialize the model with given size and device."""
         # x = get_tokenizer_and_model()
@@ -63,13 +70,13 @@ class ModelInterface(ABC):
 
 
 class Mamba1Interface(ModelInterface):
-    model: MambaForCausalLM
+    model: TMamba1Model
 
     def __init__(
         self,
         model_size: str,
         device: Optional[torch.device] = None,
-        tokenizer: Optional[Union[PreTrainedTokenizer, PreTrainedTokenizerFast]] = None,
+        tokenizer: Optional[TTokenizer] = None,
         is_falcon: bool = False,
     ):
         super().__init__(MODEL_ARCH.MAMBA1, model_size, device, tokenizer)
@@ -163,13 +170,13 @@ class Mamba1Interface(ModelInterface):
 
 
 class Mamba2Interface(ModelInterface):
-    model: minimal_mamba2.Mamba2LMHeadModel
+    model: TMamba2Model
 
     def __init__(
         self,
         model_size: str,
         device: Optional[torch.device] = None,
-        tokenizer: Optional[Union[PreTrainedTokenizer, PreTrainedTokenizerFast]] = None,
+        tokenizer: Optional[TTokenizer] = None,
         feature_category: Optional[FeatureCategory] = None,
     ):
         super().__init__(MODEL_ARCH.MAMBA2, model_size, device, tokenizer)
@@ -232,13 +239,13 @@ class Mamba2Interface(ModelInterface):
 
 
 class GPT2Interface(ModelInterface):
-    model: MambaForCausalLM
+    model: TGP2Model
 
     def __init__(
         self,
         model_size: str,
         device: Optional[torch.device] = None,
-        tokenizer: Optional[Union[PreTrainedTokenizer, PreTrainedTokenizerFast]] = None,
+        tokenizer: Optional[TTokenizer] = None,
     ):
         super().__init__(MODEL_ARCH.GPT2, model_size, device, tokenizer)
 

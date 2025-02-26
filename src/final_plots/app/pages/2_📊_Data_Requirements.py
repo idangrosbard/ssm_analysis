@@ -10,34 +10,20 @@
 # Outline Compatibility Issues:
 # - Current implementation follows the outline structure correctly
 
-
 import pandas as pd
 import streamlit as st
+from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode
 
-from src.final_plots.app.app_consts import (
-    GLOBAL_APP_CONSTS,
-    AppSessionKeys,
-    DataReqCols,
-    DataReqConsts,
-    DataReqsSessionKeys,
-)
-from src.final_plots.app.components.inputs import select_variation
+import src.final_plots.app  # noqa: F401
+from src.final_plots.app.app_consts import AppSessionKeys, DataReqConsts
+from src.final_plots.app.components.inputs import select_gpu_type, select_variation
 from src.final_plots.app.data_store import (
-    empty_selected_requirements,
     load_fulfilled_reqs_df,
     load_latest_fulfilled_reqs,
 )
 from src.final_plots.app.texts import DATA_REQUIREMENTS_TEXTS
-from src.final_plots.app.utils import (
-    apply_filters,
-    apply_pagination,
-    create_filters,
-    create_pagination_config,
-    get_data_req_from_df_row,
-)
+from src.final_plots.app.utils import get_data_req_from_df_row
 from src.final_plots.data_reqs import _save_data_fulfilled
-from src.final_plots.results_bank import ParamNames
-from src.types import SLURM_GPU_TYPE
 from src.utils.streamlit_utils import StreamlitComponent, StreamlitPage
 
 # region Page Configuration
@@ -46,85 +32,54 @@ st.title(f"{DATA_REQUIREMENTS_TEXTS.title} {DATA_REQUIREMENTS_TEXTS.icon}")
 # endregion
 
 
-class RequirementsFiltering(StreamlitComponent):
+class RequirementsDisplay(StreamlitComponent):
     def __init__(self, df: pd.DataFrame):
         self.df = df
 
-    def render(self):
-        # Create and apply filters
-        filters = create_filters(
-            self.df,
-            filter_columns=DataReqConsts.DATA_REQS_FILTER_COLUMNS,
-            default_values=DataReqConsts.DATA_REQS_DEFAULT_FILTER_VALUES,
+    def render(self) -> pd.DataFrame | None:
+        data_reqs_df = self.df[DataReqConsts.DATA_REQS_FILTER_COLUMNS]
+
+        grid_builder = GridOptionsBuilder.from_dataframe(data_reqs_df)
+        grid_builder.configure_pagination(enabled=True)
+        grid_builder.configure_selection(selection_mode="multiple", use_checkbox=True, header_checkbox=True)
+        grid_builder.configure_default_column(
+            filter=True,
+            floatingFilter=True,
         )
-        filtered_df = apply_filters(self.df, filters)
-        return filtered_df
+        for col in DataReqConsts.DATA_REQS_FILTER_COLUMNS:
+            grid_builder.configure_column(col, type=["textColumn"])
+        grid_builder.configure_side_bar()
+        grid_options = grid_builder.build()
 
-
-class RequirementsDisplay(StreamlitComponent):
-    def __init__(self, filtered_df: pd.DataFrame):
-        self.filtered_df = filtered_df
-
-    def render(self):
-        # Add pagination
-        pagination_config = create_pagination_config(
-            total_items=len(self.filtered_df),
-            default_page_size=GLOBAL_APP_CONSTS.PaginationConfig.DATA_REQS["default_page_size"],
-            on_change=empty_selected_requirements,
+        # Display the table
+        grid_response = AgGrid(
+            data_reqs_df,
+            gridOptions=grid_options,
+            height=1000,
+            fit_columns_on_grid_load=True,
+            floatingFilter=True,
+            key="data_requirements",
+            update_mode=GridUpdateMode.SELECTION_CHANGED,
         )
-
-        # Apply pagination to filtered data
-        paginated_df = apply_pagination(self.filtered_df, pagination_config)
-
-        # Display requirements with expandable rows
-        for _, row in paginated_df.iterrows():
-            col1, col2 = st.columns([1, 100], gap="small")
-
-            with col1:
-                key = row[DataReqCols.Key]
-                is_selected = st.checkbox(
-                    " ",
-                    value=key in DataReqsSessionKeys.selected_requirements.value,
-                    key=DataReqsSessionKeys.select_requirement(key).key,
-                    label_visibility="hidden",
-                )
-                if is_selected:
-                    DataReqsSessionKeys.selected_requirements.value.add(key)
-                else:
-                    DataReqsSessionKeys.selected_requirements.value.discard(key)
-
-            with col2:
-                # Create an expander for the requirement
-                with st.expander(f"Requirement {key}"):
-                    st.write(f"**Model:** {row[ParamNames.model_arch]} {row[ParamNames.model_size]}")
-                    st.write(f"**Window Size:** {row[ParamNames.window_size]}")
-                    if row[ParamNames.source]:
-                        st.write(f"**Source:** {row[ParamNames.source]}")
-                    if row[ParamNames.target]:
-                        st.write(f"**Target:** {row[ParamNames.target]}")
-                    if row[ParamNames.feature_category]:
-                        st.write(f"**Feature Category:** {row[ParamNames.feature_category]}")
-                    if row[ParamNames.prompt_idx]:
-                        st.write(f"**Prompt Index:** {row[ParamNames.prompt_idx]}")
+        if grid_response["selected_data"] is None or len(grid_response["selected_data"]) == 0:
+            st.warning("No requirements selected")
+            return None
+        filtered_reqs = self.df.loc[pd.to_numeric(grid_response["selected_data"].index)]
+        st.write(filtered_reqs)
+        st.write(f"Selected {len(filtered_reqs)} requirements")
+        return filtered_reqs
 
 
 class RequirementExecution(StreamlitComponent):
-    def __init__(self, filtered_df: pd.DataFrame):
-        self.filtered_df = filtered_df
+    def __init__(self, data_reqs_to_run: pd.DataFrame):
+        self.data_reqs_to_run = data_reqs_to_run
 
     def render(self):
-        # Save button for overrides
-        with st.sidebar.expander(DATA_REQUIREMENTS_TEXTS.reset_to_latest):
-            load_latest_fulfilled_reqs.render()
-            if st.button(DATA_REQUIREMENTS_TEXTS.reset_to_latest):
-                _save_data_fulfilled(load_latest_fulfilled_reqs())
-                st.success("Requirements updated successfully!")
-
         # Add SLURM configuration in sidebar
+        selected_count = len(self.data_reqs_to_run)
         with st.sidebar:
-            with st.expander("Run Filtered Requirements"):
+            with st.expander(f"Run {selected_count} Filtered Requirements"):
                 # Show count of selected requirements
-                selected_count = len(DataReqsSessionKeys.selected_requirements.value)
 
                 # SLURM configuration
                 col1, col2 = st.columns(2)
@@ -133,16 +88,10 @@ class RequirementExecution(StreamlitComponent):
                     select_variation()
 
                 with col2:
-                    gpu_options = [(gpu_type.value, gpu_type) for gpu_type in SLURM_GPU_TYPE]
-                    selected_gpu_value = st.selectbox(
-                        "GPU Type",
-                        options=[value for value, _ in gpu_options],
-                        index=[value for value, _ in gpu_options].index("l40s"),
-                    )
-                    selected_gpu = next(gpu_type for value, gpu_type in gpu_options if value == selected_gpu_value)
+                    select_gpu_type()
 
                 # Run button
-                if selected_count > 0 and st.button(f"🚀 Run {selected_count} Selected Requirements"):
+                if len(self.data_reqs_to_run) > 0 and st.button(f"🚀 Run {selected_count} Selected Requirements"):
                     st.info(f"Preparing to run {selected_count} requirements...")
 
                     success_count = 0
@@ -152,11 +101,8 @@ class RequirementExecution(StreamlitComponent):
                     status_text = st.empty()
 
                     # Get all rows from filtered_df that match selected requirements
-                    selected_rows = self.filtered_df[
-                        self.filtered_df[DataReqCols.Key].isin(DataReqsSessionKeys.selected_requirements.value)
-                    ]
 
-                    for i, (idx, row) in enumerate(selected_rows.iterrows()):
+                    for i, (idx, row) in enumerate(self.data_reqs_to_run.iterrows()):
                         try:
                             req = get_data_req_from_df_row(row)
 
@@ -164,7 +110,7 @@ class RequirementExecution(StreamlitComponent):
                             config = req.get_config(variation=AppSessionKeys.variation.value)
                             config.set_running_params(
                                 with_slurm=True,
-                                slurm_gpu_type=selected_gpu,
+                                slurm_gpu_type=AppSessionKeys.get_selected_gpu(req.model_arch_and_size),
                             )
 
                             # Run the configuration
@@ -196,13 +142,21 @@ class DataRequirementsPage(StreamlitPage):
         load_fulfilled_reqs_df.render()
 
         # Filter the data
-        filtered_df = RequirementsFiltering(df).render()
+        # filtered_df = RequirementsFiltering(df).render()
 
         # Display requirements
-        RequirementsDisplay(filtered_df).render()
+        data_reqs_to_run = RequirementsDisplay(df).render()
 
-        # Handle requirement execution
-        RequirementExecution(filtered_df).render()
+        # Save button for overrides
+        with st.sidebar.expander(DATA_REQUIREMENTS_TEXTS.reset_to_latest):
+            load_latest_fulfilled_reqs.render()
+            if st.button(DATA_REQUIREMENTS_TEXTS.reset_to_latest):
+                _save_data_fulfilled(load_latest_fulfilled_reqs())
+                st.success("Requirements updated successfully!")
+
+        if data_reqs_to_run is not None:
+            # Handle requirement execution
+            RequirementExecution(data_reqs_to_run).render()
 
 
 if __name__ == "__main__":
