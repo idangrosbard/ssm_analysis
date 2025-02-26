@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import TYPE_CHECKING, Literal, NamedTuple, NewType, Sequence, TypeAlias, Union, assert_never
+from pathlib import Path
+from typing import TYPE_CHECKING, Literal, NamedTuple, NewType, Sequence, TypeAlias, TypedDict, Union, assert_never
 
 import pandas as pd
 from jaxtyping import Float
@@ -177,3 +178,19 @@ class MODEL_ARCH_AND_SIZE(NamedTuple):
     @property
     def model_name(self) -> str:
         return f"{self.arch}-{self.size}"
+
+
+# region Streamlit Types
+class DataRow(TypedDict):
+    experiment_name: str
+    model_arch: str
+    model_size: str
+    window_size: int
+    is_all_correct: bool
+    source: str
+    feature_category: str
+    target: str
+    data_path: Path
+
+
+# endregion

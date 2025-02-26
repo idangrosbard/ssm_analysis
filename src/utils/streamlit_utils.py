@@ -10,6 +10,8 @@ import streamlit as st
 import streamlit_antd_components as sac
 from streamlit_pydantic.ui_renderer import GroupOptionalFieldsStrategy, InputUI
 
+import src.final_plots.app  # noqa: F401
+
 TSessionKey = TypeVar("TSessionKey")
 
 
