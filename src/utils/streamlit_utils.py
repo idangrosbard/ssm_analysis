@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from collections import defaultdict
 from contextlib import contextmanager
 from io import StringIO
-from typing import Any, Callable, Generic, Optional, TypeVar, Union, cast, get_args, get_origin
+from typing import Any, Callable, Generic, Optional, ParamSpec, TypeVar, Union, cast, get_args, get_origin
 
 import streamlit as st
 import streamlit_antd_components as sac
@@ -215,22 +215,23 @@ class StreamlitPage(ABC):
 
 
 # region Cached functions
+P = ParamSpec("P")
 
 
-class CachedFunction:
+class CachedFunction(Generic[P, OutputType]):
     """A strongly typed wrapper for a cached function with recursive clearing and UI rendering."""
 
     def global_store(self):
         return _get_global_store()
 
-    def __init__(self, func: Callable, cached_func: Callable):
+    def __init__(self, func: Callable[P, OutputType], cached_func: Callable[P, OutputType]):
         self.func = func
         self.cached_func = cached_func
         self.func_name = func.__name__
         # Register this instance
         self.global_store().add_instance(self.func_name, self)
 
-    def __call__(self, *args, **kwargs) -> Any:
+    def __call__(self, *args: P.args, **kwargs: P.kwargs) -> OutputType:
         """Call the cached function and track dependencies."""
         caller_instance = _current_function.get()
         _current_function.set(self)  # Mark this function as active
@@ -289,10 +290,6 @@ class CachedFunction:
                 instance.clear()
                 st.rerun()
 
-    def __getattr__(self, attr):
-        """Delegate attribute access to the wrapped function."""
-        return getattr(self.cached_func, attr)
-
 
 class CacheWithDependencies:
     """Class decorator wrapping @st.cache_data with strong typing, dependency tracking, and UI rendering."""
@@ -301,7 +298,7 @@ class CacheWithDependencies:
         self.st_args = st_args
         self.st_kwargs = st_kwargs
 
-    def __call__(self, func: Callable) -> CachedFunction:
+    def __call__(self, func: Callable[P, OutputType]) -> CachedFunction[P, OutputType]:
         cached_func = st.cache_data(*self.st_args, **self.st_kwargs)(func)
         return CachedFunction(func, cached_func)
 
