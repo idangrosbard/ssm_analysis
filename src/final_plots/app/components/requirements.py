@@ -1,8 +1,13 @@
+import json
 from typing import cast
 
 import pandas as pd
+import rich
+import rich.errors
+import rich.traceback
 import streamlit as st
-from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode
+from rich.console import Console
+from st_aggrid import AgGrid, DataReturnMode, GridOptionsBuilder, GridUpdateMode
 
 from src.final_plots.app.app_consts import GLOBAL_APP_CONSTS, AppSessionKeys, DataReqCols, DataReqConsts, HeatmapCols
 from src.final_plots.app.components.inputs import select_gpu_type, select_variation, select_window_size
@@ -10,7 +15,10 @@ from src.final_plots.app.data_store import get_models_remaining_prompts
 from src.final_plots.app.texts import HEATMAP_TEXTS
 from src.final_plots.app.utils import get_data_req_from_df_row
 from src.types import MODEL_ARCH_AND_SIZE, TPromptOriginalIndex
+from src.utils.streamlit.aagrid import set_aagrid_apply_default_filters
 from src.utils.streamlit_utils import StreamlitComponent
+
+console = Console()
 
 
 class RequirementsDisplay(StreamlitComponent):
@@ -33,7 +41,10 @@ class RequirementsDisplay(StreamlitComponent):
             grid_builder.configure_column(col, type=["textColumn"])
         grid_builder.configure_side_bar()
         grid_options = grid_builder.build()
-
+        set_aagrid_apply_default_filters(
+            grid_builder,
+            {DataReqCols.AvailableOptions: ["0"]},
+        )
         # Display the table
         grid_response = AgGrid(
             data_reqs_df,
@@ -43,6 +54,8 @@ class RequirementsDisplay(StreamlitComponent):
             floatingFilter=True,
             key=self.key,
             update_mode=GridUpdateMode.SELECTION_CHANGED,
+            data_return_mode=DataReturnMode.FILTERED,
+            allow_unsafe_jscode=True,
         )
         if grid_response["selected_data"] is None or len(grid_response["selected_data"]) == 0:
             st.warning("No requirements selected")
@@ -60,8 +73,12 @@ class RequirementExecution(StreamlitComponent):
     def render(self):
         # Add SLURM configuration in sidebar
         selected_count = len(self.data_reqs_to_run)
+
         with st.sidebar:
             with st.expander(f"Run {selected_count} Filtered Requirements"):
+                with_slurm = True
+                if selected_count == 1:
+                    with_slurm = st.checkbox("Run with SLURM", value=False)
                 # Show count of selected requirements
 
                 # SLURM configuration
@@ -71,7 +88,8 @@ class RequirementExecution(StreamlitComponent):
                     select_variation()
 
                 with col2:
-                    select_gpu_type()
+                    if with_slurm:
+                        select_gpu_type()
 
                 # Run button
                 if len(self.data_reqs_to_run) > 0 and st.button(f"🚀 Run {selected_count} Selected Requirements"):
@@ -86,23 +104,29 @@ class RequirementExecution(StreamlitComponent):
                     # Get all rows from filtered_df that match selected requirements
 
                     for i, (idx, row) in enumerate(self.data_reqs_to_run.iterrows()):
+                        req = get_data_req_from_df_row(row)
                         try:
-                            req = get_data_req_from_df_row(row)
-
                             # Get config and set running parameters
                             config = req.get_config(variation=AppSessionKeys.variation.value)
-                            config.set_running_params(
-                                with_slurm=True,
-                                slurm_gpu_type=AppSessionKeys.get_selected_gpu(req.model_arch_and_size),
-                            )
+                            if with_slurm:
+                                config.set_running_params(
+                                    with_slurm=True,
+                                    slurm_gpu_type=AppSessionKeys.get_selected_gpu(req.model_arch_and_size),
+                                )
 
                             # Run the configuration
                             config.run()
                             success_count += 1
 
                         except Exception as e:
-                            st.error(f"Failed to run requirement: {str(e)}")
+                            st.error(f"Failed to run requirement: {str(json.dumps(req._asdict(), indent=4))}")
+                            st.exception(e)
                             failed_count += 1
+                            console.print(
+                                rich.traceback.Traceback.from_exception(
+                                    exc_type=type(e), exc_value=e, traceback=e.__traceback__
+                                )
+                            )
 
                         # Update progress
                         progress = (i + 1) / selected_count

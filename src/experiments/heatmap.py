@@ -49,7 +49,7 @@ plot_suffix_to_function: dict[HEATMAP_PLOT_FUNCS, Callable] = {
 class HeatmapConfig(BaseConfig):
     """Configuration for heatmap generation."""
 
-    experiment_base_name: EXPERIMENT_NAMES = EXPERIMENT_NAMES.HEATMAP
+    experiment_name: EXPERIMENT_NAMES = EXPERIMENT_NAMES.HEATMAP
     window_size: TWindowSize = TWindowSize(5)
     prompt_indices_rows: list[TRowIndex] = create_mutable_field(lambda: [])
     prompt_original_indices: list[TPromptOriginalIndex] = create_mutable_field(lambda: [])

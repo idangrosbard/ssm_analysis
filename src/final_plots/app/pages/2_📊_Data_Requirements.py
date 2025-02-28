@@ -33,7 +33,11 @@ class DataRequirementsPage(StreamlitPage):
         # filtered_df = RequirementsFiltering(df).render()
 
         # Display requirements
-        data_reqs_to_run = RequirementsDisplay(df, height=1000).render()
+        data_reqs_to_run = RequirementsDisplay(
+            df,
+            height=1000,
+            # hide_columns=[ParamNames.is_all_correct],
+        ).render()
 
         # Save button for overrides
         with st.sidebar.expander(DATA_REQUIREMENTS_TEXTS.reset_to_latest):

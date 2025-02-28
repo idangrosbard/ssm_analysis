@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 from pathlib import Path
+from typing import cast
 
+from src.consts import EXPERIMENT_NAMES
 from src.experiment_infra.base_config import BaseConfig
 
 EXPERIMENT_NAME_BEFORE = "simple"
@@ -10,9 +12,9 @@ NEW_FIELD_AFTER = "new_field_2"
 
 
 def _test_config(config: BaseConfig):
-    assert config.experiment_base_name == EXPERIMENT_NAME_BEFORE
-    config.experiment_base_name = EXPERIMENT_NAME_AFTER
-    assert config.experiment_base_name == EXPERIMENT_NAME_AFTER
+    assert config.experiment_name == EXPERIMENT_NAME_BEFORE
+    config.experiment_name = cast(EXPERIMENT_NAMES, EXPERIMENT_NAME_AFTER)
+    assert config.experiment_name == EXPERIMENT_NAME_AFTER
 
     assert config.new_field == NEW_FIELD_BEFORE  # type: ignore
     config.new_field = NEW_FIELD_AFTER  # type: ignore
@@ -23,8 +25,8 @@ def test_simple_config_no_dataclass():
     class SimpleConfig(BaseConfig):
         new_field: str = NEW_FIELD_BEFORE
 
-        def __init__(self, experiment_base_name: str = EXPERIMENT_NAME_BEFORE):
-            super().__init__(experiment_base_name)
+        def __init__(self, experiment_name: EXPERIMENT_NAMES = cast(EXPERIMENT_NAMES, EXPERIMENT_NAME_BEFORE)):
+            super().__init__(experiment_name)
 
         @property
         def output_path(self) -> Path:
@@ -37,6 +39,9 @@ def test_simple_config_no_dataclass():
         def get_outputs(self):
             return {}
 
+        def compute(self):
+            pass
+
     config = SimpleConfig()
 
     _test_config(config)
@@ -45,7 +50,7 @@ def test_simple_config_no_dataclass():
 def test_no_init_config_with_dataclass():
     @dataclass
     class NoInitConfig(BaseConfig):
-        experiment_base_name: str = EXPERIMENT_NAME_BEFORE
+        experiment_name: EXPERIMENT_NAMES = cast(EXPERIMENT_NAMES, EXPERIMENT_NAME_BEFORE)
         new_field: str = NEW_FIELD_BEFORE
 
         @property
@@ -58,6 +63,9 @@ def test_no_init_config_with_dataclass():
 
         def get_outputs(self):
             return {}
+
+        def compute(self):
+            pass
 
     config = NoInitConfig()
 

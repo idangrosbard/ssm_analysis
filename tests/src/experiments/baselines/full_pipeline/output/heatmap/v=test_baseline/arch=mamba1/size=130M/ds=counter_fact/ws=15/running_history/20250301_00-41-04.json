@@ -1,7 +1,7 @@
 {
-    "experiment_base_name": "heatmap",
+    "experiment_name": "heatmap",
     "variation": "test_baseline",
-    "model_arch": "mamba2",
+    "model_arch": "mamba1",
     "model_size": "130M",
     "dataset_args": {
         "name": "counter_fact",
@@ -21,6 +21,6 @@
         4
     ],
     "prompt_original_indices": [],
-    "run_id": "20250226_16-22-30",
-    "git_commit_hash": "5bcb50f52adce773e2d985623d57bd23268d6e44"
+    "run_id": "20250301_00-41-04",
+    "git_commit_hash": "6b41b1f564111677063812bf09c0bb73e7de6b73"
 }

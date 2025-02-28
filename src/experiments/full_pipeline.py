@@ -12,7 +12,6 @@ consistent configuration across all steps.
 """
 
 from dataclasses import dataclass
-from typing import Optional
 
 from src.consts import EXPERIMENT_NAMES
 from src.experiment_infra.base_config import (
@@ -30,7 +29,7 @@ from src.types import TInfoFlowSource, TokenType, TPromptOriginalIndex, TRowInde
 class FullPipelineConfig(BaseConfig):
     """Configuration for the full experiment pipeline."""
 
-    experiment_base_name: EXPERIMENT_NAMES = EXPERIMENT_NAMES.FULL_PIPELINE
+    experiment_name: EXPERIMENT_NAMES = EXPERIMENT_NAMES.FULL_PIPELINE
 
     with_plotting: bool = False
     enforce_no_missing_outputs: bool = True
@@ -52,7 +51,6 @@ class FullPipelineConfig(BaseConfig):
 
     # InfoFlowConfig
     knockout_map: dict[TokenType, list[TInfoFlowSource]] = create_mutable_field(lambda: InfoFlowConfig().knockout_map)
-    DEBUG_LAST_WINDOWS: Optional[int] = InfoFlowConfig.DEBUG_LAST_WINDOWS
 
     @property
     def experiment_output_keys(self):

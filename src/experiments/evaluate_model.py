@@ -28,7 +28,7 @@ from src.utils.logits import get_last_token_logits, logits_to_probs
 class EvaluateModelConfig(BaseConfig):
     """Configuration for model evaluation."""
 
-    experiment_base_name: EXPERIMENT_NAMES = EXPERIMENT_NAMES.EVALUATE_MODEL
+    experiment_name: EXPERIMENT_NAMES = EXPERIMENT_NAMES.EVALUATE_MODEL
     drop_subject: bool = False
     drop_subj_last_token: bool = False
     with_3_dots: bool = False

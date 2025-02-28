@@ -93,3 +93,7 @@ class INFO_FLOW_ANALYSIS_TEXTS:
     select_requirement = "Select requirement to analyze"
     accuracy_over_windows = "Accuracy over windows"
     probability_distribution = "Probability Distribution"
+    sample_results = "Sample Results"
+    sample_results_count = "Sample Results Count"
+    seed = "Seed"
+    layers_range = "Layers Range"

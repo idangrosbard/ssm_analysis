@@ -188,7 +188,7 @@ DATASETS_IDS: dict[DATASETS, TDatasetID] = {DATASETS.COUNTER_FACT: TDatasetID("N
 
 
 class EXPERIMENT_NAMES(StrEnum):
-    EVALUATE_MODEL = "evaluate_model"
+    EVALUATE_MODEL = "evaluate"
     INFO_FLOW = "info_flow"
     HEATMAP = "heatmap"
     FULL_PIPELINE = "full_pipeline"

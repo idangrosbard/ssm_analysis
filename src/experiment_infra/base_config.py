@@ -63,7 +63,7 @@ _TConfigOutputs = TypeVar("_TConfigOutputs", bound=Any)
 class BaseConfig(ABC, Generic[_TConfigOutputs]):
     """Base configuration class with common parameters across all scripts."""
 
-    experiment_base_name: EXPERIMENT_NAMES
+    experiment_name: EXPERIMENT_NAMES
     variation: TVariationName = TVariationName("v3")
 
     model_arch: MODEL_ARCH = MODEL_ARCH.MAMBA1
@@ -195,8 +195,8 @@ class BaseConfig(ABC, Generic[_TConfigOutputs]):
         # Create kwargs for sub-config initialization
         init_kwargs = {}
         for field_name in sub_config_field_names:
-            if field_name == "experiment_base_name":
-                # Special case: use the sub-config's default experiment_base_name
+            if field_name == "experiment_name":
+                # Special case: use the sub-config's default experiment_name
                 continue
             if field_name in kwargs:
                 init_kwargs[field_name] = kwargs[field_name]

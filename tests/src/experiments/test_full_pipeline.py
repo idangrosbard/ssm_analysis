@@ -12,7 +12,16 @@ from src.consts import COLUMNS, PathsConfig
 from src.datasets.download_dataset import load_splitted_counter_fact
 from src.experiments.full_pipeline import FullPipelineConfig, main_local
 from src.experiments.info_flow import forward_eval
-from src.types import FILTERATIONS, MODEL_ARCH, TokenType
+from src.types import (
+    FILTERATIONS,
+    MODEL_ARCH,
+    TBatchSize,
+    TModelSize,
+    TokenType,
+    TRowIndex,
+    TVariationName,
+    TWindowSize,
+)
 
 HEATMAP_SIZE = 5
 ORIGINAL_IDS = [
@@ -32,12 +41,12 @@ ORIGINAL_IDS = [
 
 def get_config(variation_name: str, model_arch: MODEL_ARCH, model_size: str) -> FullPipelineConfig:
     return FullPipelineConfig(
-        variation=variation_name,
+        variation=TVariationName(variation_name),
         model_arch=model_arch,
-        model_size=model_size,
-        _batch_size=1,
-        window_size=15,
-        prompt_indices_rows=list(range(HEATMAP_SIZE)),
+        model_size=TModelSize(model_size),
+        _batch_size=TBatchSize(1),
+        window_size=TWindowSize(15),
+        prompt_indices_rows=[TRowIndex(i) for i in range(HEATMAP_SIZE)],
         with_plotting=True,
     )
 
@@ -161,7 +170,7 @@ def test_info_flow_intermediate_recovery(tmp_path: Path):
     _test_base_path = Path(__file__).parent / "baselines" / "full_pipeline"
     with pytest.MonkeyPatch().context() as mp:
         mp.setattr("src.consts.PATHS.PROJECT_DIR", _test_base_path)
-        info_flow_config.variation = "test_baseline"
+        info_flow_config.variation = TVariationName("test_baseline")
         baseline_data = info_flow_config.get_outputs()[TokenType.last][TokenType.last]
         assert created_data == baseline_data, "Data should be the same"
 

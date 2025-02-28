@@ -3,7 +3,7 @@ import time
 from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional, cast
+from typing import cast
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -13,7 +13,6 @@ from tqdm import tqdm
 from src.consts import COLUMNS, EXPERIMENT_NAMES, is_mamba_arch
 from src.experiment_infra.base_config import BASE_OUTPUT_KEYS, BaseConfig, create_mutable_field
 from src.experiment_infra.model_interface import ModelInterface, get_model_interface
-from src.experiment_infra.output_path import OutputKey
 from src.plots.info_flow_confidence import create_confidence_plot
 from src.types import (
     MODEL_ARCH,
@@ -47,9 +46,8 @@ def skip_task(model_arch: MODEL_ARCH, source: TInfoFlowSource) -> bool:
 class InfoFlowConfig(BaseConfig):
     """Configuration for information flow analysis."""
 
-    experiment_base_name: EXPERIMENT_NAMES = EXPERIMENT_NAMES.INFO_FLOW
+    experiment_name: EXPERIMENT_NAMES = EXPERIMENT_NAMES.INFO_FLOW
     window_size: TWindowSize = TWindowSize(9)
-    DEBUG_LAST_WINDOWS: Optional[int] = None
     knockout_map: dict[TokenType, list[TInfoFlowSource]] = create_mutable_field(
         lambda: {
             TokenType.last: [
@@ -74,12 +72,7 @@ class InfoFlowConfig(BaseConfig):
 
     @property
     def experiment_output_keys(self):
-        debug_last_windows_output_key = OutputKey[Optional[int]](
-            "DEBUG_LAST_WINDOWS", key_display_name="debug_last_windows_count=", skip_condition=lambda x: x is None
-        )
-        return super().experiment_output_keys + [
-            [BASE_OUTPUT_KEYS.WINDOW_SIZE, debug_last_windows_output_key],
-        ]
+        return super().experiment_output_keys + [BASE_OUTPUT_KEYS.WINDOW_SIZE]
 
     def intermediate_outputs_path(self) -> Path:
         return self.experiment_variation_base_path / "intermediate_outputs"
@@ -300,11 +293,11 @@ def run(args: InfoFlowConfig):
         last_save_time = time.time()
 
         for i, window in enumerate(
-            tqdm(windows[start_window_idx:], desc="Windows", initial=float(start_window_idx)), start=start_window_idx
+            tqdm(windows[start_window_idx:], desc="Windows", initial=start_window_idx), start=start_window_idx
         ):
             windows_true_probs[i] = cast(TInfoFlowWindowValue, defaultdict(list))
             model_interface.setup(layers=window)
-            for _, prompt_idx in enumerate(tqdm(prompt_indices, desc="Prompts", mininterval=print_period)):
+            for prompt_idx in tqdm(prompt_indices, desc="Prompts", mininterval=print_period):
                 if prompt_idx in banned_prompt_indices:
                     continue
                 try:
@@ -344,9 +337,6 @@ def run(args: InfoFlowConfig):
         TWindow(list(range(i, i + args.window_size))) for i in range(0, n_layers - args.window_size + 1)
     ]
 
-    if args.DEBUG_LAST_WINDOWS:
-        windows = windows[-args.DEBUG_LAST_WINDOWS :]
-
     for target, source in remaining_knockout_map:
         print(f"Knocking out flow to {target} from {source}")
 
@@ -356,10 +346,6 @@ def run(args: InfoFlowConfig):
             knockout_source=source,
             knockout_target=target,
         )
-        if args.DEBUG_LAST_WINDOWS:
-            window_outputs = {
-                k + (n_layers - args.window_size + 1 - args.DEBUG_LAST_WINDOWS): v for k, v in window_outputs.items()
-            }
         args.output_block_target_source_path(target, source).parent.mkdir(parents=True, exist_ok=True)
         json.dump(window_outputs, args.output_block_target_source_path(target, source).open("w"))
         # Clean up intermediate results after successful completion

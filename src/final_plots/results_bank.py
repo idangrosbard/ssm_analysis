@@ -288,7 +288,7 @@ class InfoFlowRecord(ResultRecord):
 
 def get_experiment_results_bank(
     results_base_paths: Sequence[RESULTS_BASE_PATH] = (
-        RESULTS_BASE_PATH.Prev,
+        # RESULTS_BASE_PATH.Prev,
         RESULTS_BASE_PATH.New,
     ),
     experiments: Sequence[Type[ResultRecord]] = (HeatmapRecord, InfoFlowRecord),

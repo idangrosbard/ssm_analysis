@@ -1,8 +1,8 @@
 {
-    "experiment_base_name": "info_flow",
+    "experiment_name": "info_flow",
     "variation": "test_baseline",
-    "model_arch": "mamba1",
-    "model_size": "130M",
+    "model_arch": "gpt2",
+    "model_size": "355M",
     "dataset_args": {
         "name": "counter_fact",
         "splits": "all"
@@ -13,7 +13,6 @@
     "slurm_gpus_per_node": 1,
     "overwrite_existing_outputs": false,
     "window_size": 15,
-    "DEBUG_LAST_WINDOWS": null,
     "knockout_map": {
         "last": [
             "last",
@@ -39,6 +38,6 @@
             "relation"
         ]
     },
-    "run_id": "20250226_16-21-16",
-    "git_commit_hash": "5bcb50f52adce773e2d985623d57bd23268d6e44"
+    "run_id": "20250301_00-44-29",
+    "git_commit_hash": "6b41b1f564111677063812bf09c0bb73e7de6b73"
 }
