@@ -11,11 +11,11 @@ from datasets import (
 )
 from scripts.counterfact.splitting import split_dataset
 from src.consts import COLUMNS, COUNTER_FACT_2_KNOWN1000_COL_CONV, DATASETS_IDS, PATHS
-from src.types import DATASETS, FILTERATIONS, SPLIT, DatasetArgs, TSplit
+from src.types import DATASETS, FILTERATIONS, SPLIT, DatasetArgs, TSplitChoise
 
 
 def load_splitted_counter_fact(
-    split: TSplit = (SPLIT.TRAIN1,),
+    split: TSplitChoise = (SPLIT.TRAIN1,),
     add_split_name_column: bool = False,
     filteration: Optional[FILTERATIONS] = None,
     align_to_known: bool = False,

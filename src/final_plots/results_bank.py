@@ -9,7 +9,15 @@ from git import Union
 from src.consts import EXPERIMENT_NAMES, MODEL_SIZES_PER_ARCH_TO_MODEL_ID, PATHS, reverse_model_id
 from src.experiment_infra.base_config import BASE_OUTPUT_KEYS, DATASETS, MODEL_ARCH
 from src.experiment_infra.output_path import OutputKey, OutputPath
-from src.types import FeatureCategory, TModelID, TokenType
+from src.types import (
+    FeatureCategory,
+    TModelID,
+    TModelSize,
+    TokenType,
+    TPromptOriginalIndex,
+    TVariationName,
+    TWindowSize,
+)
 
 
 class ParamNames(StrEnum):
@@ -87,7 +95,7 @@ class RESULTS_BASE_PATH(StrEnum):
         if self == RESULTS_BASE_PATH.Prev:
             model_id_source = values.pop(IntermediateParamNames._model_id_source)
             model_id_name = values.pop(IntermediateParamNames._model_id_name)
-            model_arch, model_size = reverse_model_id(f"{model_id_source}/{model_id_name}")
+            model_arch, model_size = reverse_model_id(TModelID(f"{model_id_source}/{model_id_name}"))
             values[ParamNames.model_arch] = model_arch.value
             values[ParamNames.model_size] = model_size
 
@@ -114,16 +122,16 @@ class RESULTS_BASE_PATH(StrEnum):
 class ResultRecord(ABC):
     experiment_name: EXPERIMENT_NAMES = field(init=False)
     path: Path
-    variation: str
+    variation: TVariationName
     model_arch: MODEL_ARCH
-    model_size: str
+    model_size: TModelSize
     dataset_and_filteration: str
-    window_size: int
+    window_size: TWindowSize
     results_base_path: RESULTS_BASE_PATH
 
     def __post_init__(self):
         self.model_arch = MODEL_ARCH(self.model_arch)
-        self.window_size = int(self.window_size)
+        self.window_size = TWindowSize(int(self.window_size))
 
     @property
     def dataset(self) -> DATASETS:
@@ -184,12 +192,12 @@ class ResultRecord(ABC):
 @dataclass
 class HeatmapRecord(ResultRecord):
     experiment_name = EXPERIMENT_NAMES.HEATMAP
-    prompt_idx: int
+    prompt_idx: TPromptOriginalIndex
 
     def __post_init__(self):
         super().__post_init__()
         assert self.prompt_idx is not None
-        self.prompt_idx = int(self.prompt_idx)
+        self.prompt_idx = TPromptOriginalIndex(int(self.prompt_idx))
 
     @classmethod
     def get_results_output_path(cls, path: Path) -> OutputPath:

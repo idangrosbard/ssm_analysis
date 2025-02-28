@@ -4,7 +4,6 @@ import streamlit as st
 
 st.set_option("logger.enableRich", True)
 
-
 # Get the logger
 logger = logging.getLogger("streamlit.watcher.local_sources_watcher")
 
@@ -29,5 +28,7 @@ class IgnoreSpecificMessageFilter(logging.Filter):
 
 
 # Add the filter to the logger
-if logger.filters and not any(getattr(f, "name", None) == "IgnoreSpecificMessageFilter" for f in logger.filters):
+if logger.filters is not None and not any(
+    getattr(f, "name", None) == "IgnoreSpecificMessageFilter" for f in logger.filters
+):
     logger.addFilter(IgnoreSpecificMessageFilter())

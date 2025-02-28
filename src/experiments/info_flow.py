@@ -3,19 +3,36 @@ import time
 from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
+from typing import Optional, cast
 
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
 from tqdm import tqdm
 
-from src.consts import COLUMNS, is_mamba_arch
+from src.consts import COLUMNS, EXPERIMENT_NAMES, is_mamba_arch
 from src.experiment_infra.base_config import BASE_OUTPUT_KEYS, BaseConfig, create_mutable_field
 from src.experiment_infra.model_interface import ModelInterface, get_model_interface
 from src.experiment_infra.output_path import OutputKey
 from src.plots.info_flow_confidence import create_confidence_plot
-from src.types import MODEL_ARCH, MODEL_ARCH_AND_SIZE, FeatureCategory, TInfoFlowSource, TokenType, TTokenizer
+from src.types import (
+    MODEL_ARCH,
+    MODEL_ARCH_AND_SIZE,
+    FeatureCategory,
+    TInfoFlowOutput,
+    TInfoFlowOutputJSONOutput,
+    TInfoFlowOutputs,
+    TInfoFlowSource,
+    TInfoFlowTargetOutputs,
+    TInfoFlowWindowValue,
+    TLayerIndex,
+    TokenType,
+    TPromptOriginalIndex,
+    TTokenizer,
+    TWindow,
+    TWindowSize,
+    TWindowStartIndex,
+)
 from src.utils.logits import Prompt, get_num_to_masks, get_prompt_row_index
 
 # Time in seconds between intermediate saves
@@ -30,8 +47,8 @@ def skip_task(model_arch: MODEL_ARCH, source: TInfoFlowSource) -> bool:
 class InfoFlowConfig(BaseConfig):
     """Configuration for information flow analysis."""
 
-    experiment_base_name: str = "info_flow"
-    window_size: int = 9
+    experiment_base_name: EXPERIMENT_NAMES = EXPERIMENT_NAMES.INFO_FLOW
+    window_size: TWindowSize = TWindowSize(9)
     DEBUG_LAST_WINDOWS: Optional[int] = None
     knockout_map: dict[TokenType, list[TInfoFlowSource]] = create_mutable_field(
         lambda: {
@@ -72,7 +89,7 @@ class InfoFlowConfig(BaseConfig):
         return self.intermediate_outputs_path() / f"intermediate_{target}_{source}.json"
 
     def save_intermediate_results(
-        self, target: TokenType, source: TInfoFlowSource, window_outputs: dict, current_window: int
+        self, target: TokenType, source: TInfoFlowSource, window_outputs: TInfoFlowOutput, current_window: TLayerIndex
     ) -> None:
         """Save intermediate results to a temporary file."""
         path = self.get_intermediate_output_path(target, source)
@@ -83,16 +100,19 @@ class InfoFlowConfig(BaseConfig):
 
     def load_intermediate_results(
         self, target: TokenType, source: TInfoFlowSource
-    ) -> tuple[Optional[dict[int, dict[str, list[float]]]], int]:
+    ) -> tuple[TInfoFlowOutput, TWindowStartIndex]:
         """Load intermediate results if they exist."""
         path = self.get_intermediate_output_path(target, source)
         if path.exists():
             try:
                 data = json.load(path.open("r"))
-                return data["window_outputs"], data["current_window"]
+                print(f"Resuming from window {data['current_window']}")
+                return self.convert_json_output_to_output(
+                    cast(TInfoFlowOutputJSONOutput, data["window_outputs"])
+                ), data["current_window"]
             except Exception as e:
                 print(f"Error loading intermediate results: {e}")
-        return None, 0
+        return cast(TInfoFlowOutput, defaultdict(lambda: defaultdict(list))), TWindowStartIndex(0)
 
     def cleanup_intermediate_results(self, target: TokenType, source: TInfoFlowSource) -> None:
         """Clean up intermediate results after successful completion."""
@@ -113,11 +133,17 @@ class InfoFlowConfig(BaseConfig):
             feature_category_str = f"source={source}"
         return self.output_block_target_path(target, is_intermediate) / f"{feature_category_str}.csv"
 
-    def get_block_target_outputs(
-        self, target: TokenType, enforce_no_missing_outputs: bool
-    ) -> dict[TInfoFlowSource, dict[str, dict[str, list[float]]]]:
+    @staticmethod
+    def convert_json_output_to_output(json_output: TInfoFlowOutputJSONOutput) -> TInfoFlowOutput:
+        return {int(k): v for k, v in json_output.items()}
+
+    @staticmethod
+    def load_output(path: Path) -> TInfoFlowOutput:
+        return InfoFlowConfig.convert_json_output_to_output(json.load(path.open("r")))
+
+    def get_block_target_outputs(self, target: TokenType, enforce_no_missing_outputs: bool) -> TInfoFlowTargetOutputs:
         return {
-            source: json.load(self.output_block_target_source_path(target, source).open("r"))
+            source: self.load_output(self.output_block_target_source_path(target, source))
             for source in self.knockout_map[target]
             if not skip_task(self.model_arch, source)
             and (not enforce_no_missing_outputs or self.output_block_target_source_path(target, source).exists())
@@ -126,7 +152,7 @@ class InfoFlowConfig(BaseConfig):
     def get_outputs(
         self,
         enforce_no_missing_outputs: bool = True,
-    ) -> dict[TokenType, dict[TInfoFlowSource, dict[str, dict[str, list[float]]]]]:
+    ) -> TInfoFlowOutputs:
         return {
             target: self.get_block_target_outputs(target, enforce_no_missing_outputs) for target in self.knockout_map
         }
@@ -198,7 +224,7 @@ def plot(args: InfoFlowConfig, enforce_no_missing_outputs: bool = True):
 
 def forward_eval(
     prompt: Prompt,
-    window: list[int],
+    window: TWindow,
     knockout_source: TInfoFlowSource,
     knockout_target: TokenType,
     model_interface: ModelInterface,
@@ -260,31 +286,23 @@ def run(args: InfoFlowConfig):
     device = model_interface.device
 
     n_layers = model_interface.n_layers()
-    banned_prompt_indices: set[int] = set()
+    banned_prompt_indices: set[TPromptOriginalIndex] = set()
 
     def evaluate(
-        prompt_indices: list[int],
-        windows: list[list[int]],
+        prompt_indices: list[TPromptOriginalIndex],
+        windows: list[TWindow],
         knockout_source: TInfoFlowSource,
         knockout_target: TokenType,
         print_period=100,
     ):
         # Try to load intermediate results
         windows_true_probs, start_window_idx = args.load_intermediate_results(knockout_target, knockout_source)
-        if windows_true_probs is None:
-            windows_true_probs = defaultdict(lambda: defaultdict(list))
-            start_window_idx = 0
-        else:
-            print(f"Resuming from window {start_window_idx}")
-            # Convert the loaded dict back to defaultdict
-            windows_true_probs = defaultdict(lambda: defaultdict(list), windows_true_probs)
-
         last_save_time = time.time()
 
         for i, window in enumerate(
             tqdm(windows[start_window_idx:], desc="Windows", initial=float(start_window_idx)), start=start_window_idx
         ):
-            windows_true_probs[i] = defaultdict(list)
+            windows_true_probs[i] = cast(TInfoFlowWindowValue, defaultdict(list))
             model_interface.setup(layers=window)
             for _, prompt_idx in enumerate(tqdm(prompt_indices, desc="Prompts", mininterval=print_period)):
                 if prompt_idx in banned_prompt_indices:
@@ -310,7 +328,7 @@ def run(args: InfoFlowConfig):
                 windows_true_probs[i][COLUMNS.IF_TRUE_PROBS].append(float(true_prob))
                 windows_true_probs[i][COLUMNS.IF_DIFFS].append(float(diff))
                 # Store original index for traceability
-                windows_true_probs[i][COLUMNS.ORIGINAL_IDX].append(int(prompt_idx))
+                windows_true_probs[i][COLUMNS.ORIGINAL_IDX].append(TPromptOriginalIndex(int(prompt_idx)))
 
             # Check if it's time to save intermediate results
             current_time = time.time()
@@ -321,8 +339,10 @@ def run(args: InfoFlowConfig):
 
         return windows_true_probs
 
-    prompt_indices = list(data.index)
-    windows = [list(range(i, i + args.window_size)) for i in range(0, n_layers - args.window_size + 1)]
+    prompt_indices: list[TPromptOriginalIndex] = list(data.index)
+    windows: list[TWindow] = [
+        TWindow(list(range(i, i + args.window_size))) for i in range(0, n_layers - args.window_size + 1)
+    ]
 
     if args.DEBUG_LAST_WINDOWS:
         windows = windows[-args.DEBUG_LAST_WINDOWS :]

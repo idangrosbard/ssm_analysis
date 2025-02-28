@@ -1,6 +1,5 @@
 from dataclasses import dataclass
 from enum import StrEnum
-from pathlib import Path
 from typing import TYPE_CHECKING, Literal, NamedTuple, NewType, Sequence, TypeAlias, TypedDict, Union, assert_never
 
 import pandas as pd
@@ -31,6 +30,33 @@ else:
     TModel = ...
 
 
+class SLURM_GPU_TYPE(StrEnum):
+    TITAN_XP_STUDENTRUN = "titan_xp-studentrun"
+    L40S = "l40s"
+    A100 = "a100"
+    H100 = "h100"
+    GEFORCE_RTX_3090 = "geforce_rtx_3090"
+    V100 = "v100"
+    A5000 = "a5000"
+    A6000 = "a6000"
+    QUADRO_RTX_8000 = "quadro_rtx_8000"
+    TESLA_V100_SXM2_32GB = "tesla_v100_sxm2_32gb"
+    TITAN_XP_STUDENTRUN_BATCH = "titan_xp-studentrun-batch"
+    TITAN_XP_STUDENTRUN_KILLABLE = "titan_xp-studentrun-killable"
+
+    @property
+    def gpu_name(self) -> str:
+        match self:
+            case (
+                SLURM_GPU_TYPE.TITAN_XP_STUDENTRUN
+                | SLURM_GPU_TYPE.TITAN_XP_STUDENTRUN_BATCH
+                | SLURM_GPU_TYPE.TITAN_XP_STUDENTRUN_KILLABLE
+            ):
+                return "titan_xp"
+            case _:
+                return self.value
+
+
 class SPLIT(StrEnum):
     TRAIN1 = "train1"
     TRAIN2 = "train2"
@@ -38,6 +64,9 @@ class SPLIT(StrEnum):
     TRAIN4 = "train4"
     TRAIN5 = "train5"
     TEST = "test"
+
+
+TSplitChoise = Union[SPLIT, Sequence[SPLIT], Literal["all"]]
 
 
 class MODEL_ARCH(StrEnum):
@@ -74,24 +103,6 @@ class DATASETS(StrEnum):
     COUNTER_FACT = "counter_fact"
 
 
-TModelID = NewType("TModelID", str)
-TDatasetID = NewType("TDatasetID", str)
-TSplit = Union[SPLIT, Sequence[SPLIT], Literal["all"]]
-
-TNum2Mask = NewType("TNum2Mask", dict[int, list[tuple[int, int]]])
-TWindow = NewType("TWindow", list[int])
-TPromptData = NewType("TPromptData", pd.DataFrame)
-
-
-class TokenType(StrEnum):
-    first = "first"
-    last = "last"
-    subject = "subject"
-    relation = "relation"
-    context = "context"
-    all = "all"
-
-
 class FILTERATIONS(StrEnum):
     all_correct = "all_correct"
     current_model_correct = "current_model_correct"
@@ -101,7 +112,7 @@ class FILTERATIONS(StrEnum):
 @dataclass
 class DatasetArgs:
     name: DATASETS
-    splits: TSplit = "all"
+    splits: TSplitChoise = "all"
 
     def __post_init__(self):
         if self.splits != "all" and isinstance(self.splits, str):
@@ -114,6 +125,31 @@ class DatasetArgs:
             split_name = f"_{self.splits}"
 
         return self.name + split_name
+
+
+TLayerIndex: TypeAlias = int
+TTokenIndex: TypeAlias = int
+TBatchSize = NewType("TBatchSize", int)
+TModelID = NewType("TModelID", str)
+TDatasetID = NewType("TDatasetID", str)
+TVariationName = NewType("TVariationName", str)
+TModelSize = NewType("TModelSize", str)
+TWindowSize = NewType("TWindowSize", int)
+TWindowStartIndex = NewType("TWindowStartIndex", TLayerIndex)
+TWindow = NewType("TWindow", list[TLayerIndex])
+TPromptData = NewType("TPromptData", pd.DataFrame)
+TNum2Mask = NewType("TNum2Mask", dict[TLayerIndex, list[tuple[TTokenIndex, TTokenIndex]]])
+TPromptOriginalIndex = NewType("TPromptOriginalIndex", int)
+TRowIndex = NewType("TRowIndex", int)
+
+
+class TokenType(StrEnum):
+    first = "first"
+    last = "last"
+    subject = "subject"
+    relation = "relation"
+    context = "context"
+    all = "all"
 
 
 TSSMState = Float[Tensor, "batch hidden_size ssm_dim"]
@@ -141,56 +177,27 @@ class FeatureCategory(StrEnum):
     SLOW_DECAY = "SLOW_DECAY"
 
 
-class SLURM_GPU_TYPE(StrEnum):
-    TITAN_XP_STUDENTRUN = "titan_xp-studentrun"
-    L40S = "l40s"
-    A100 = "a100"
-    H100 = "h100"
-    GEFORCE_RTX_3090 = "geforce_rtx_3090"
-    V100 = "v100"
-    A5000 = "a5000"
-    A6000 = "a6000"
-    QUADRO_RTX_8000 = "quadro_rtx_8000"
-    TESLA_V100_SXM2_32GB = "tesla_v100_sxm2_32gb"
-    TITAN_XP_STUDENTRUN_BATCH = "titan_xp-studentrun-batch"
-    TITAN_XP_STUDENTRUN_KILLABLE = "titan_xp-studentrun-killable"
-
-    @property
-    def gpu_name(self) -> str:
-        match self:
-            case (
-                SLURM_GPU_TYPE.TITAN_XP_STUDENTRUN
-                | SLURM_GPU_TYPE.TITAN_XP_STUDENTRUN_BATCH
-                | SLURM_GPU_TYPE.TITAN_XP_STUDENTRUN_KILLABLE
-            ):
-                return "titan_xp"
-            case _:
-                return self.value
+class TInfoFlowWindowValue(TypedDict):
+    hit: list[bool]
+    true_probs: list[float]
+    diffs: list[float]
+    original_idx: list[TPromptOriginalIndex]
 
 
 TInfoFlowSource = Union[TokenType, tuple[TokenType, FeatureCategory]]
+TInfoFlowOutputJSONOutput = dict[str, TInfoFlowWindowValue]
+TInfoFlowOutput = dict[TLayerIndex, TInfoFlowWindowValue]
+TInfoFlowTargetOutputs = dict[TInfoFlowSource, TInfoFlowOutput]
+TInfoFlowOutputs = dict[TokenType, TInfoFlowTargetOutputs]
 
 
 class MODEL_ARCH_AND_SIZE(NamedTuple):
     arch: MODEL_ARCH
-    size: str
+    size: TModelSize
 
     @property
     def model_name(self) -> str:
         return f"{self.arch}-{self.size}"
-
-
-# region Streamlit Types
-class DataRow(TypedDict):
-    experiment_name: str
-    model_arch: str
-    model_size: str
-    window_size: int
-    is_all_correct: bool
-    source: str
-    feature_category: str
-    target: str
-    data_path: Path
 
 
 # endregion

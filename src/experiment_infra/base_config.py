@@ -9,7 +9,7 @@ import pandas as pd
 import pyrallis
 from submitit.slurm.slurm import SlurmJob
 
-from src.consts import COLUMNS, MODEL_SIZES_PER_ARCH_TO_MODEL_ID, PATHS
+from src.consts import COLUMNS, EXPERIMENT_NAMES, MODEL_SIZES_PER_ARCH_TO_MODEL_ID, PATHS
 from src.datasets.download_dataset import load_splitted_counter_fact
 from src.experiment_infra.output_path import (
     _ATTRIBUTE_TYPE,
@@ -21,8 +21,12 @@ from src.types import (
     MODEL_ARCH,
     SLURM_GPU_TYPE,
     DatasetArgs,
+    TBatchSize,
     TModelID,
+    TModelSize,
     TPromptData,
+    TVariationName,
+    TWindowSize,
 )
 from src.utils.experiment_helper import create_run_id
 from src.utils.slurm import submit_job
@@ -45,11 +49,11 @@ def create_mutable_field(
 class BASE_OUTPUT_KEYS:
     MODEL_ID = OutputKey[TModelID]("model_id", key_display_name="")
     MODEL_ARCH = OutputKey[MODEL_ARCH]("model_arch", key_display_name="arch=")
-    MODEL_SIZE = OutputKey[str]("model_size", key_display_name="size=")
-    VARIATION = OutputKey[str]("variation", key_display_name="v=")
-    EXPERIMENT_NAME = OutputKey[str]("experiment_name", key_display_name="")
-    DATASET_NAME = OutputKey[str]("dataset_name", key_display_name="ds=")
-    WINDOW_SIZE = OutputKey[int]("window_size", key_display_name="ws=")
+    MODEL_SIZE = OutputKey[TModelSize]("model_size", key_display_name="size=")
+    VARIATION = OutputKey[TVariationName]("variation", key_display_name="v=")
+    EXPERIMENT_NAME = OutputKey[EXPERIMENT_NAMES]("experiment_name", key_display_name="")
+    DATASET_NAME = OutputKey[DATASETS]("dataset_name", key_display_name="ds=")
+    WINDOW_SIZE = OutputKey[TWindowSize]("window_size", key_display_name="ws=")
 
 
 _TConfigOutputs = TypeVar("_TConfigOutputs", bound=Any)
@@ -59,18 +63,18 @@ _TConfigOutputs = TypeVar("_TConfigOutputs", bound=Any)
 class BaseConfig(ABC, Generic[_TConfigOutputs]):
     """Base configuration class with common parameters across all scripts."""
 
-    experiment_base_name: str
-    variation: str = "v3"
+    experiment_base_name: EXPERIMENT_NAMES
+    variation: TVariationName = TVariationName("v3")
 
     model_arch: MODEL_ARCH = MODEL_ARCH.MAMBA1
-    model_size: str = "130M"
+    model_size: TModelSize = TModelSize("130M")
     dataset_args: DatasetArgs = create_mutable_field(
         lambda: DatasetArgs(
             name=DATASETS.COUNTER_FACT,
             splits="all",
         ),
     )
-    _batch_size: int = 1  # Adjust based on GPU memory
+    _batch_size: TBatchSize = TBatchSize(1)  # Adjust based on GPU memory
     with_slurm: bool = False
     # slurm_gpu_type: SLURM_GPU_TYPE = SLURM_GPU_TYPE.TITAN_XP_STUDENTRUN
     slurm_gpu_type: SLURM_GPU_TYPE = SLURM_GPU_TYPE.L40S
@@ -78,22 +82,16 @@ class BaseConfig(ABC, Generic[_TConfigOutputs]):
     overwrite_existing_outputs: bool = False
 
     @property
-    def dataset_name(self) -> str:
+    def dataset_name(self) -> DATASETS:
         return self.dataset_args.name
 
     @property
-    def batch_size(self) -> int:
-        return 1 if (self.model_arch == MODEL_ARCH.MAMBA2) else self._batch_size
+    def batch_size(self) -> TBatchSize:
+        return TBatchSize(1) if (self.model_arch == MODEL_ARCH.MAMBA2) else self._batch_size
 
     @property
     def model_id(self) -> TModelID:
         return MODEL_SIZES_PER_ARCH_TO_MODEL_ID[self.model_arch][self.model_size]
-
-    @final
-    @property
-    def experiment_name(self) -> str:
-        name = f"{self.experiment_base_name}"
-        return name
 
     @property
     @abstractmethod

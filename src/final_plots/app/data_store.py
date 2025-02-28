@@ -9,6 +9,7 @@ from streamlit import cache_resource
 
 from src.consts import EXPERIMENT_NAMES
 from src.experiments.heatmap import HeatmapConfig
+from src.experiments.info_flow import InfoFlowConfig
 from src.final_plots.app.app_consts import (
     GLOBAL_APP_CONSTS,
     DataReqCols,
@@ -31,20 +32,22 @@ from src.final_plots.results_bank import (
     ResultRecord,
     get_experiment_results_bank,
 )
-from src.plots.info_flow_confidence import PlotMetadata, create_confidence_plot, load_window_outputs
-from src.types import MODEL_ARCH_AND_SIZE
+
+# from src.plots.info_flow_confidence import PlotMetadata, create_confidence_plot
+from src.plots.info_flow_confidence import PlotMetadata, create_confidence_plot
+from src.types import MODEL_ARCH_AND_SIZE, TPromptOriginalIndex, TVariationName, TWindowSize
 from src.utils.streamlit_utils import CacheWithDependencies
 
 
 # Constants
 @CacheWithDependencies()
-def load_model_evaluations(variation: str) -> dict[MODEL_ARCH_AND_SIZE, pd.DataFrame]:
+def load_model_evaluations(variation: TVariationName) -> dict[MODEL_ARCH_AND_SIZE, pd.DataFrame]:
     """Load evaluation data for all models with caching"""
     return get_model_evaluations(variation, GLOBAL_APP_CONSTS.MODELS_COMBINATIONS)
 
 
 @cache_resource
-def merge_model_evaluations_streamlit_rendered(variation: str) -> StreamlitRenderer:
+def merge_model_evaluations_streamlit_rendered(variation: TVariationName) -> StreamlitRenderer:
     """Load evaluation data for all models with caching"""
     return StreamlitRenderer(
         pd.concat(
@@ -80,6 +83,13 @@ def load_experiment_results() -> pd.DataFrame:
 @CacheWithDependencies()
 def load_data_reqs() -> IDataFulfilled:
     return get_data_reqs()
+
+
+@CacheWithDependencies()
+def load_latest_fulfilled_reqs() -> IDataFulfilled:
+    """Load the latest fulfilled requirements"""
+    data_reqs_options = get_data_fullfment_options(load_data_reqs(), load_results_bank())
+    return choose_latest_data_fulfilled(data_reqs_options)
 
 
 # Data Requirements hooks
@@ -126,14 +136,7 @@ def load_experiment_fulfilled_reqs_df(experiment_name: EXPERIMENT_NAMES) -> pd.D
 
 
 @CacheWithDependencies()
-def load_latest_fulfilled_reqs() -> IDataFulfilled:
-    """Load the latest fulfilled requirements"""
-    data_reqs_options = get_data_fullfment_options(load_data_reqs(), load_results_bank())
-    return choose_latest_data_fulfilled(data_reqs_options)
-
-
-@CacheWithDependencies()
-def get_merged_evaluations(prompt_idx: int, variation: str) -> pd.DataFrame:
+def get_merged_evaluations(prompt_idx: TPromptOriginalIndex, variation: TVariationName) -> pd.DataFrame:
     """Get merged evaluations for a specific prompt.
 
     Args:
@@ -170,7 +173,7 @@ def get_merged_evaluations(prompt_idx: int, variation: str) -> pd.DataFrame:
 
 @CacheWithDependencies()
 def get_models_is_heatmap_available(
-    prompt_idx: int, variation: str, window_size: int
+    prompt_idx: TPromptOriginalIndex, variation: TVariationName, window_size: TWindowSize
 ) -> dict[MODEL_ARCH_AND_SIZE, Path]:
     """Check if a model has a heatmap for a given prompt index."""
     return {
@@ -253,7 +256,7 @@ def create_info_flow_plots(
                             continue
 
                         try:
-                            window_outputs = load_window_outputs(row["data_path"])
+                            window_outputs = InfoFlowConfig.load_output(row["data_path"])
                             targets_window_outputs[line_val] = window_outputs
                             paths.append(format_path_for_display(row["data_path"]))
                         except Exception as e:
@@ -315,9 +318,9 @@ def create_info_flow_plots(
 @CacheWithDependencies()
 def get_models_remaining_prompts(
     model_combinations: list[MODEL_ARCH_AND_SIZE],
-    window_size: int,
-    variation: str,
-    prompt_original_indices: list[int],
+    window_size: TWindowSize,
+    variation: TVariationName,
+    prompt_original_indices: list[TPromptOriginalIndex],
 ) -> dict[MODEL_ARCH_AND_SIZE, HeatmapConfig]:
     """Get the remaining prompts for each model."""
     res = {}
@@ -338,7 +341,7 @@ def get_models_remaining_prompts(
 
 @CacheWithDependencies()
 def load_model_combinations_prompts(
-    variation: str, model_arch_and_sizes: list[MODEL_ARCH_AND_SIZE]
+    variation: TVariationName, model_arch_and_sizes: list[MODEL_ARCH_AND_SIZE]
 ) -> list[ModelCombination]:
     """Get all possible model combinations and their corresponding prompts."""
     return get_model_combinations_prompts(variation, model_arch_and_sizes)

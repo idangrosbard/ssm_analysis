@@ -190,3 +190,4 @@ data/raw/
 .mlflow/
 *.code-workspace
 profile.pyspy
+.history/

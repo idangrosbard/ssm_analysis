@@ -52,7 +52,7 @@ def select_models_and_sizes(available_models: list[MODEL_ARCH_AND_SIZE]) -> list
     model_display_names = [model_arch_and_size.model_name for model_arch_and_size in model_options]
 
     # Create mapping from display name back to tuple
-    name_to_model = dict(zip(model_display_names, model_options))
+    name_to_model: dict[str, MODEL_ARCH_AND_SIZE] = dict(zip(model_display_names, model_options))
 
     with st.expander("Filter Models", expanded=False):
         selected_names = st.pills(

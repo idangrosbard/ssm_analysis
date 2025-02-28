@@ -21,25 +21,33 @@ from src.experiments.evaluate_model import EvaluateModelConfig
 from src.experiments.heatmap import HeatmapConfig
 from src.experiments.info_flow import InfoFlowConfig
 from src.final_plots.results_bank import HeatmapRecord, InfoFlowRecord, ResultRecord
-from src.types import MODEL_ARCH_AND_SIZE, FeatureCategory, TInfoFlowSource
+from src.types import (
+    MODEL_ARCH_AND_SIZE,
+    FeatureCategory,
+    TInfoFlowSource,
+    TModelSize,
+    TPromptOriginalIndex,
+    TVariationName,
+    TWindowSize,
+)
 
 
 class DataReq(NamedTuple):
     experiment_name: EXPERIMENT_NAMES
     model_arch: MODEL_ARCH
-    model_size: str
-    window_size: int
+    model_size: TModelSize
+    window_size: TWindowSize
     is_all_correct: bool
     source: Optional[TokenType]
     feature_category: Optional[FeatureCategory]
     target: Optional[TokenType]
-    prompt_idx: Optional[int]
+    prompt_idx: Optional[TPromptOriginalIndex]
 
     @property
     def model_arch_and_size(self) -> MODEL_ARCH_AND_SIZE:
         return MODEL_ARCH_AND_SIZE(self.model_arch, self.model_size)
 
-    def get_config(self, variation: Optional[str] = None) -> Union[InfoFlowConfig, HeatmapConfig]:
+    def get_config(self, variation: Optional[TVariationName] = None) -> Union[InfoFlowConfig, HeatmapConfig]:
         assert not self.is_all_correct
 
         if self.experiment_name == EXPERIMENT_NAMES.INFO_FLOW:
@@ -154,9 +162,9 @@ def _load_data_fulfilled(path: Path = DATA_FULFILLED_PATH) -> IDataFulfilled:
 
 
 # region Add data reqs
-STANDARD_WINDOW_SIZE_FOR_INFO_FLOW = 9
-STANDARD_WINDOW_SIZE_FOR_HEATMAP = 5
-ALL_WINDOW_SIZES = [1, 3, 5, 9, 12, 15]
+STANDARD_WINDOW_SIZE_FOR_INFO_FLOW = TWindowSize(9)
+STANDARD_WINDOW_SIZE_FOR_HEATMAP = TWindowSize(5)
+ALL_WINDOW_SIZES = [TWindowSize(size) for size in [1, 3, 5, 9, 12, 15]]
 
 
 def get_data_reqs() -> IDataFulfilled:
@@ -170,7 +178,7 @@ def get_data_reqs() -> IDataFulfilled:
     3. Rows        - Comparison between [Mamba1 2.8B \\ Mamba2 2.8B] and GPT2 1.5B
     4. Different colours indicate different source for knockout
     5. Trend shape indicate the model (solid for Mamba, dots for GPT)
-        
+
     model sizes = ALL
     model archs = ALL
     window sizes = [STANDARD_WINDOW_SIZE_FOR_INFO_FLOW]
@@ -479,7 +487,7 @@ def load_prompt_selections() -> list[tuple[set[MODEL_ARCH_AND_SIZE], int]]:
 
 
 def get_model_evaluations(
-    variation: str, model_arch_and_sizes: list[MODEL_ARCH_AND_SIZE]
+    variation: TVariationName, model_arch_and_sizes: list[MODEL_ARCH_AND_SIZE]
 ) -> dict[MODEL_ARCH_AND_SIZE, pd.DataFrame]:
     return {
         model_arch_and_size: EvaluateModelConfig(
@@ -497,8 +505,8 @@ def get_model_evaluations(
 class ModelCombination:
     correct_models: set[MODEL_ARCH_AND_SIZE]
     incorrect_models: set[MODEL_ARCH_AND_SIZE]
-    prompts: list[int]
-    chosen_prompt: Optional[int]
+    prompts: list[TPromptOriginalIndex]
+    chosen_prompt: Optional[TPromptOriginalIndex]
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -526,7 +534,7 @@ def save_model_combinations_prompts(model_combinations: list[ModelCombination]) 
 
 
 def get_model_combinations_prompts(
-    variation: Optional[str], model_arch_and_sizes: list[MODEL_ARCH_AND_SIZE], seed: Optional[int] = 42
+    variation: Optional[TVariationName], model_arch_and_sizes: list[MODEL_ARCH_AND_SIZE], seed: Optional[int] = 42
 ) -> list[ModelCombination]:
     """Get all possible model combinations and their corresponding prompts.
     Each combination specifies which models should be correct and which should be incorrect.
@@ -612,7 +620,7 @@ def derive_subset_model_combinations(
 ) -> list[ModelCombination]:
     """Derive model combinations for a subset using saved combinations with O(|C|) complexity."""
     requested_set = set(requested_models)
-    pattern_map: dict[tuple[frozenset, frozenset], tuple[list[int], list[int]]] = {}
+    pattern_map: dict[tuple[frozenset, frozenset], tuple[list[TPromptOriginalIndex], list[TPromptOriginalIndex]]] = {}
 
     # First pass: Group by projected patterns and collect prompts
     for combo in saved_combinations:

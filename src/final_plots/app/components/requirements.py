@@ -9,7 +9,7 @@ from src.final_plots.app.components.inputs import select_gpu_type, select_variat
 from src.final_plots.app.data_store import get_models_remaining_prompts
 from src.final_plots.app.texts import HEATMAP_TEXTS
 from src.final_plots.app.utils import get_data_req_from_df_row
-from src.types import MODEL_ARCH_AND_SIZE
+from src.types import MODEL_ARCH_AND_SIZE, TPromptOriginalIndex
 from src.utils.streamlit_utils import StreamlitComponent
 
 
@@ -138,7 +138,9 @@ class HeatmapGenerationComponent(StreamlitComponent):
         if test_existing_prompts:
             if st.button("reset remaining prompts"):
                 get_models_remaining_prompts.clear()  # type: ignore
-            prompt_original_indices = [int(x) for x in self.filtered_df[HeatmapCols.SELECTED_PROMPT]]
+            prompt_original_indices = [
+                TPromptOriginalIndex(int(x)) for x in self.filtered_df[HeatmapCols.SELECTED_PROMPT]
+            ]
             with st.spinner("Calculating remaining prompts to run...", show_time=True):
                 models_remaining_prompts = get_models_remaining_prompts(
                     GLOBAL_APP_CONSTS.MODELS_COMBINATIONS,

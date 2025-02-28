@@ -68,7 +68,7 @@ class RESULTS_BANK_TEXTS:
 
 class DATA_REQUIREMENTS_TEXTS:
     icon = "📊"
-    title = "Data Requirements and Overrides"
+    title = "Data Requirements"
     update_requirements = "🔄 Update Latest Requirements"
     requirements_updated = "Requirements updated successfully!"
     save_overrides = "💾 Save Overrides"
@@ -84,3 +84,12 @@ class COMMON_TEXTS:
     error_status = lambda count, run_what: f"Failed to submit {count} {run_what}..."
     submit_failed = lambda prompt_idx, error, run_what: f"Failed to submit job for {prompt_idx} {run_what}: {error}"
     LOADING = lambda what: f"Loading {what}..."
+
+
+class INFO_FLOW_ANALYSIS_TEXTS:
+    title = "Info Flow Analysis"
+    icon = str("📊")
+    no_requirements = "No info flow requirements found in latest fulfilled requirements."
+    select_requirement = "Select requirement to analyze"
+    accuracy_over_windows = "Accuracy over windows"
+    probability_distribution = "Probability Distribution"

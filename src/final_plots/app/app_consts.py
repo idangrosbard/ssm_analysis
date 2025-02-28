@@ -3,7 +3,7 @@ from typing import Any, ClassVar, Generic, Literal, Type, TypeVar, Union, cast
 
 from src.consts import COLUMNS, GRAPHS_ORDER, model_and_size_to_slurm_gpu_type
 from src.final_plots.results_bank import ParamNames
-from src.types import MODEL_ARCH_AND_SIZE, SLURM_GPU_TYPE
+from src.types import MODEL_ARCH_AND_SIZE, SLURM_GPU_TYPE, TVariationName, TWindowSize
 from src.utils.streamlit_utils import SessionKey, SessionKeyDescriptor
 
 
@@ -13,8 +13,8 @@ class AppCols:
 
 
 class GLOBAL_APP_CONSTS:
-    DEFAULT_VARIATION = "v3"
-    DEFAULT_WINDOW_SIZE = 9
+    DEFAULT_VARIATION = TVariationName("v3")
+    DEFAULT_WINDOW_SIZE = TWindowSize(9)
     MODELS_COMBINATIONS = list(GRAPHS_ORDER.keys())
     PROMPT_RELATED_COLUMNS = [
         COLUMNS.PROMPT,
@@ -48,9 +48,9 @@ class SessionKeysBase(Generic[T]):
 
 class _AppSessionKeys(SessionKeysBase["_AppSessionKeys"]):
     # Each descriptor creates a SessionKey with the class name prefix
-    variation = SessionKeyDescriptor[str](GLOBAL_APP_CONSTS.DEFAULT_VARIATION)
+    variation = SessionKeyDescriptor[TVariationName](GLOBAL_APP_CONSTS.DEFAULT_VARIATION)
     _selected_gpu = SessionKeyDescriptor[Union[SLURM_GPU_TYPE, Literal["smart"]]]("smart")
-    window_size = SessionKeyDescriptor[int](GLOBAL_APP_CONSTS.DEFAULT_WINDOW_SIZE)
+    window_size = SessionKeyDescriptor[TWindowSize](GLOBAL_APP_CONSTS.DEFAULT_WINDOW_SIZE)
 
     def get_selected_gpu(self, model_arch_and_size: MODEL_ARCH_AND_SIZE) -> SLURM_GPU_TYPE:
         selected_gpu = self._selected_gpu.value

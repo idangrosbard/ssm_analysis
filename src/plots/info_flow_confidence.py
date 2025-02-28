@@ -1,4 +1,3 @@
-import json
 from collections import defaultdict
 from pathlib import Path
 from typing import Dict, Literal, Optional, TypedDict, cast
@@ -12,7 +11,7 @@ from numpy.typing import NDArray
 from scipy import stats
 
 from src.consts import COLUMNS, TOKEN_TYPE_COLORS, TOKEN_TYPE_LINE_STYLES
-from src.types import TInfoFlowSource, TokenType
+from src.types import TInfoFlowOutput, TInfoFlowSource, TInfoFlowTargetOutputs, TokenType
 
 
 class MetricData(TypedDict):
@@ -38,12 +37,6 @@ class PlotMetadata(TypedDict):
     ylabel_loc: Literal["bottom", "center", "top"]
     axhline_value: float
     ylim: Optional[tuple[float, float]]
-
-
-def load_window_outputs(file_path: Path) -> dict[str, dict[str, list[float]]]:
-    """Load the raw window outputs from json file."""
-    with open(file_path) as f:
-        return json.load(f)
 
 
 def calculate_ci(data: NDArray[np.float64], confidence_level: float = 0.95) -> Confidence:
@@ -176,7 +169,7 @@ def calculate_confidence(
 
 
 def calculate_metrics_with_confidence(
-    window_outputs: dict[str, dict[str, list[float]]],
+    window_outputs: TInfoFlowOutput,
     metric_types: list[Literal["acc", "diff"]],
     confidence_level: float = 0.95,
     confidence_method: Literal["CI", "PI", "bootstrap", "SE"] = "CI",
@@ -250,7 +243,7 @@ def plot_with_confidence(
 
 
 def create_confidence_plot(
-    targets_window_outputs: dict[TInfoFlowSource, dict[str, dict[str, list[float]]]],
+    targets_window_outputs: TInfoFlowTargetOutputs,
     confidence_level: float,
     title: str,
     plots_meta_data: dict[Literal["acc", "diff"], PlotMetadata],
@@ -487,7 +480,11 @@ def process_info_flow_files(
     Returns:
         The matplotlib figure containing the plots
     """
-    targets_window_outputs = {target: load_window_outputs(file_path) for target, (_, file_path) in from_blocks.items()}
+    from src.experiments.info_flow import InfoFlowConfig
+
+    targets_window_outputs = {
+        target: InfoFlowConfig.load_output(file_path) for target, (_, file_path) in from_blocks.items()
+    }
     # Create plots
     first_details = next(iter(from_blocks.values()))[0]
     model_id = first_details["model_id"]

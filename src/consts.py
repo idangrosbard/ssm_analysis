@@ -14,6 +14,7 @@ from src.types import (
     TDatasetID,
     TInfoFlowSource,
     TModelID,
+    TModelSize,
     TokenType,
 )
 from src.utils.types_utils import class_values
@@ -97,50 +98,50 @@ class DDP:
     NUM_WORKERS = 0
 
 
-MODEL_SIZES_PER_ARCH_TO_MODEL_ID: dict[MODEL_ARCH, dict[str, TModelID]] = {
+MODEL_SIZES_PER_ARCH_TO_MODEL_ID: dict[MODEL_ARCH, dict[TModelSize, TModelID]] = {
     MODEL_ARCH.MAMBA1: {
-        "130M": TModelID("state-spaces/mamba-130M-hf"),
-        "1.4B": TModelID("state-spaces/mamba-1.4B-hf"),
-        "2.8B": TModelID("state-spaces/mamba-2.8B-hf"),
-        "7B": TModelID("TRI-ML/mamba-7b-rw"),
-        "7B-falcon": TModelID("tiiuae/falcon-mamba-7b"),
-        "7B-falcon-base": TModelID("tiiuae/Falcon3-Mamba-7B-Base"),
+        TModelSize("130M"): TModelID("state-spaces/mamba-130M-hf"),
+        TModelSize("1.4B"): TModelID("state-spaces/mamba-1.4B-hf"),
+        TModelSize("2.8B"): TModelID("state-spaces/mamba-2.8B-hf"),
+        TModelSize("7B"): TModelID("TRI-ML/mamba-7b-rw"),
+        TModelSize("7B-falcon"): TModelID("tiiuae/falcon-mamba-7b"),
+        TModelSize("7B-falcon-base"): TModelID("tiiuae/Falcon3-Mamba-7B-Base"),
     },
     MODEL_ARCH.MAMBA2: {
-        "130M": TModelID("state-spaces/mamba2-130M"),
-        "1.3B": TModelID("state-spaces/mamba2-1.3b"),
-        "2.7B": TModelID("state-spaces/mamba2-2.7B"),
-        # "8B": TModelID("nvidia/mamba2-8b-3t-4k"),
+        TModelSize("130M"): TModelID("state-spaces/mamba2-130M"),
+        TModelSize("1.3B"): TModelID("state-spaces/mamba2-1.3b"),
+        TModelSize("2.7B"): TModelID("state-spaces/mamba2-2.7B"),
+        # TModelSize("8B"): TModelID("nvidia/mamba2-8b-3t-4k"),
     },
     MODEL_ARCH.LLAMA2: {
-        "7B": TModelID("meta-llama/Llama-2-7b-hf"),
+        TModelSize("7B"): TModelID("meta-llama/Llama-2-7b-hf"),
     },
     MODEL_ARCH.LLAMA3_2: {
-        "1B": TModelID("meta-llama/Llama-3.2-1B"),
-        "3B": TModelID("meta-llama/Llama-3.2-3B"),
+        TModelSize("1B"): TModelID("meta-llama/Llama-3.2-1B"),
+        TModelSize("3B"): TModelID("meta-llama/Llama-3.2-3B"),
     },
     MODEL_ARCH.GPT2: {
-        "124M": TModelID("openai-community/gpt2"),
-        "355M": TModelID("openai-community/gpt2-medium"),
-        "774M": TModelID("openai-community/gpt2-large"),
-        "1.5B": TModelID("openai-community/gpt2-xl"),
+        TModelSize("124M"): TModelID("openai-community/gpt2"),
+        TModelSize("355M"): TModelID("openai-community/gpt2-medium"),
+        TModelSize("774M"): TModelID("openai-community/gpt2-large"),
+        TModelSize("1.5B"): TModelID("openai-community/gpt2-xl"),
     },
 }
 
 GRAPHS_ORDER: dict[MODEL_ARCH_AND_SIZE, MODEL_SIZE_CAT] = {
     # MODEL_ARCH_AND_SIZE(MODEL_ARCH.GPT2, "124M"): MODEL_SIZE_CAT.SMALL,
-    MODEL_ARCH_AND_SIZE(MODEL_ARCH.MAMBA1, "130M"): MODEL_SIZE_CAT.SMALL,
-    MODEL_ARCH_AND_SIZE(MODEL_ARCH.MAMBA2, "130M"): MODEL_SIZE_CAT.SMALL,
-    MODEL_ARCH_AND_SIZE(MODEL_ARCH.GPT2, "355M"): MODEL_SIZE_CAT.SMALL,
-    MODEL_ARCH_AND_SIZE(MODEL_ARCH.GPT2, "774M"): MODEL_SIZE_CAT.MEDIUM,
-    MODEL_ARCH_AND_SIZE(MODEL_ARCH.MAMBA1, "1.4B"): MODEL_SIZE_CAT.MEDIUM,
-    MODEL_ARCH_AND_SIZE(MODEL_ARCH.MAMBA2, "1.3B"): MODEL_SIZE_CAT.MEDIUM,
-    MODEL_ARCH_AND_SIZE(MODEL_ARCH.GPT2, "1.5B"): MODEL_SIZE_CAT.LARGE,
-    MODEL_ARCH_AND_SIZE(MODEL_ARCH.MAMBA1, "2.8B"): MODEL_SIZE_CAT.LARGE,
-    MODEL_ARCH_AND_SIZE(MODEL_ARCH.MAMBA2, "2.7B"): MODEL_SIZE_CAT.LARGE,
-    MODEL_ARCH_AND_SIZE(MODEL_ARCH.MAMBA1, "7B"): MODEL_SIZE_CAT.HUGE,
-    MODEL_ARCH_AND_SIZE(MODEL_ARCH.MAMBA1, "7B-falcon"): MODEL_SIZE_CAT.HUGE,
-    MODEL_ARCH_AND_SIZE(MODEL_ARCH.MAMBA1, "7B-falcon-base"): MODEL_SIZE_CAT.HUGE,
+    MODEL_ARCH_AND_SIZE(MODEL_ARCH.MAMBA1, TModelSize("130M")): MODEL_SIZE_CAT.SMALL,
+    MODEL_ARCH_AND_SIZE(MODEL_ARCH.MAMBA2, TModelSize("130M")): MODEL_SIZE_CAT.SMALL,
+    MODEL_ARCH_AND_SIZE(MODEL_ARCH.GPT2, TModelSize("355M")): MODEL_SIZE_CAT.SMALL,
+    MODEL_ARCH_AND_SIZE(MODEL_ARCH.GPT2, TModelSize("774M")): MODEL_SIZE_CAT.MEDIUM,
+    MODEL_ARCH_AND_SIZE(MODEL_ARCH.MAMBA1, TModelSize("1.4B")): MODEL_SIZE_CAT.MEDIUM,
+    MODEL_ARCH_AND_SIZE(MODEL_ARCH.MAMBA2, TModelSize("1.3B")): MODEL_SIZE_CAT.MEDIUM,
+    MODEL_ARCH_AND_SIZE(MODEL_ARCH.GPT2, TModelSize("1.5B")): MODEL_SIZE_CAT.LARGE,
+    MODEL_ARCH_AND_SIZE(MODEL_ARCH.MAMBA1, TModelSize("2.8B")): MODEL_SIZE_CAT.LARGE,
+    MODEL_ARCH_AND_SIZE(MODEL_ARCH.MAMBA2, TModelSize("2.7B")): MODEL_SIZE_CAT.LARGE,
+    MODEL_ARCH_AND_SIZE(MODEL_ARCH.MAMBA1, TModelSize("7B")): MODEL_SIZE_CAT.HUGE,
+    MODEL_ARCH_AND_SIZE(MODEL_ARCH.MAMBA1, TModelSize("7B-falcon")): MODEL_SIZE_CAT.HUGE,
+    MODEL_ARCH_AND_SIZE(MODEL_ARCH.MAMBA1, TModelSize("7B-falcon-base")): MODEL_SIZE_CAT.HUGE,
     # MODEL_ARCH_AND_SIZE(MODEL_ARCH.MAMBA2, "8B"): MODEL_SIZE_CAT.HUGE,
 }
 
@@ -153,7 +154,7 @@ def get_model_by_cat_size(cat_size: MODEL_SIZE_CAT) -> list[MODEL_ARCH_AND_SIZE]
     ]
 
 
-def reverse_model_id(model_id: str) -> MODEL_ARCH_AND_SIZE:
+def reverse_model_id(model_id: TModelID) -> MODEL_ARCH_AND_SIZE:
     for model_arch_and_size in GRAPHS_ORDER.keys():
         for model_id_prefix in ["", "state-spaces/", "tiiuae/"]:
             if (
@@ -190,6 +191,7 @@ class EXPERIMENT_NAMES(StrEnum):
     EVALUATE_MODEL = "evaluate_model"
     INFO_FLOW = "info_flow"
     HEATMAP = "heatmap"
+    FULL_PIPELINE = "full_pipeline"
 
 
 class COLUMNS:

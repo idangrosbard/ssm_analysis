@@ -5,7 +5,7 @@ import torch
 from huggingface_hub import login
 
 from src.consts import MODEL_SIZES_PER_ARCH_TO_MODEL_ID, is_falcon
-from src.types import MODEL_ARCH, TModel, TModelID, TTokenizer
+from src.types import MODEL_ARCH, TModel, TModelID, TModelSize, TTokenizer
 
 
 def _get_tokenizer_id(model_id: str) -> str:
@@ -18,7 +18,7 @@ def _get_tokenizer_id(model_id: str) -> str:
 MODEL_TOKENIZER_CACHE: dict[TModelID, TTokenizer] = {}
 
 
-def get_tokenizer(model_arch: MODEL_ARCH, model_size: str) -> TTokenizer:
+def get_tokenizer(model_arch: MODEL_ARCH, model_size: TModelSize) -> TTokenizer:
     from transformers import AutoTokenizer
 
     model_id = MODEL_SIZES_PER_ARCH_TO_MODEL_ID[model_arch][model_size]
@@ -31,7 +31,7 @@ def get_tokenizer(model_arch: MODEL_ARCH, model_size: str) -> TTokenizer:
 
 
 def get_tokenizer_and_model(
-    model_arch: MODEL_ARCH, model_size: str, device: Optional[torch.device] = None
+    model_arch: MODEL_ARCH, model_size: TModelSize, device: Optional[torch.device] = None
 ) -> tuple[TTokenizer, TModel]:
     if os.getenv("HUGGINGFACE_TOKEN") is not None:
         login(token=os.getenv("HUGGINGFACE_TOKEN"))

@@ -11,7 +11,7 @@ from src.experiments.heatmap import HeatmapConfig
 from src.final_plots.app.app_consts import HeatmapCols, HeatmapConsts
 from src.final_plots.data_reqs import DataReq
 from src.final_plots.results_bank import ParamNames
-from src.types import MODEL_ARCH
+from src.types import MODEL_ARCH, TModelSize, TPromptOriginalIndex, TVariationName, TWindowSize
 
 T = TypeVar("T")
 
@@ -109,8 +109,7 @@ def create_filters(
             for col in filter_columns:
                 if col in exclude_columns:
                     continue
-
-                unique_values = sorted(df[col].dropna().unique())
+                unique_values = sorted(df[col].dropna().unique())  # type: ignore
                 if len(unique_values) <= 1:
                     continue
 
@@ -142,6 +141,11 @@ def get_data_req_from_df_row(row: pd.Series) -> DataReq:
     )
 
 
+def get_config_from_df_row(row: pd.Series):
+    data_req = get_data_req_from_df_row(row)
+    return data_req.get_config(row[ParamNames.variation])
+
+
 def format_path_for_display(path: Path | str | None) -> str:
     """Format a path for display in the UI.
 
@@ -161,6 +165,18 @@ def format_path_for_display(path: Path | str | None) -> str:
             return str(path)
 
     return format_path_for_display(Path(path))
+
+
+def reverse_format_path_for_display(path: Path) -> Path:
+    """Reverse format a path for display in the UI.
+
+    Args:
+        path: Path to reverse format
+
+    Returns:
+        Reversed formatted path
+    """
+    return PATHS.PROJECT_DIR / path
 
 
 def get_param_values(df: pd.DataFrame, param: str) -> list[Any]:
@@ -247,7 +263,11 @@ def filter_combinations(df: pd.DataFrame, model_names: list[str]) -> pd.DataFram
 
 
 def get_model_heatmap_config(
-    model_arch: MODEL_ARCH, model_size: str, window_size: int, variation: str, prompt_original_indices: list[int]
+    model_arch: MODEL_ARCH,
+    model_size: TModelSize,
+    window_size: TWindowSize,
+    variation: TVariationName,
+    prompt_original_indices: list[TPromptOriginalIndex],
 ) -> HeatmapConfig:
     """Get the data requirement for a specific model.
 

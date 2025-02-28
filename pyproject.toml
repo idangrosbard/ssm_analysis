@@ -5,6 +5,9 @@ extend-include = [
     "src",
     # "app"
 ]
+exclude = [
+    "**/*.ipynb.py"
+]
 
 [tool.ruff.lint]
 select = ["E", "F", "I"]
@@ -100,10 +103,12 @@ venvPath = "/home/yandex/DL20232024a/nirendy/repos/ADL_2/"
 venv = 'venv'
 include = [
     "src",
+    # "scripts",
     # "app/**"
 ]
 exclude = [
     "**/__pycache__",
+    "notebooks/**"
 ]
 ignore = [
     # "src/embeddings",
@@ -119,7 +124,7 @@ ignore = [
     # 'src/experiments/info_flow.py',
     # 'src/experiments/info_flow_plot.py',
     # "notebooks/**"
-    "notebooks/idan_plots.ipynb"
+    "*.ipynb.py"
 ]
 
 executionEnvironments = [

@@ -17,7 +17,7 @@ import pandas as pd
 import torch
 from tqdm import tqdm
 
-from src.consts import COLUMNS, COUNTER_FACT_2_KNOWN1000_COL_CONV
+from src.consts import COLUMNS, COUNTER_FACT_2_KNOWN1000_COL_CONV, EXPERIMENT_NAMES
 from src.experiment_infra.base_config import BaseConfig, create_mutable_field
 from src.experiment_infra.model_interface import get_model_interface
 from src.types import DATASETS, MODEL_ARCH, MODEL_ARCH_AND_SIZE, DatasetArgs, TTokenizer
@@ -28,7 +28,7 @@ from src.utils.logits import get_last_token_logits, logits_to_probs
 class EvaluateModelConfig(BaseConfig):
     """Configuration for model evaluation."""
 
-    experiment_base_name: str = "evaluate"
+    experiment_base_name: EXPERIMENT_NAMES = EXPERIMENT_NAMES.EVALUATE_MODEL
     drop_subject: bool = False
     drop_subj_last_token: bool = False
     with_3_dots: bool = False

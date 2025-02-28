@@ -9,14 +9,15 @@ from matplotlib import pyplot as plt
 
 from src.consts import GRAPHS_ORDER
 from src.experiments.heatmap import HeatmapConfig
+from src.experiments.info_flow import InfoFlowConfig
 from src.final_plots.app.app_consts import GLOBAL_APP_CONSTS, AppSessionKeys, InfoFlowConsts
 from src.final_plots.app.components.inputs import choose_heatmap_parms
 from src.final_plots.app.texts import COMMON_TEXTS, INFO_FLOW_TEXTS
 from src.final_plots.app.utils import format_path_for_display, get_param_values
 from src.final_plots.image_combiner import ImageGridParams, combine_image_grid
 from src.final_plots.results_bank import ParamNames
-from src.plots.info_flow_confidence import PlotMetadata, create_confidence_plot, load_window_outputs
-from src.types import MODEL_SIZE_CAT
+from src.plots.info_flow_confidence import PlotMetadata, create_confidence_plot
+from src.types import MODEL_SIZE_CAT, TPromptOriginalIndex
 from src.utils.extended_streamlit_pydantic import pydantic_input
 from src.utils.streamlit_utils import StreamlitComponent
 
@@ -85,7 +86,7 @@ class ParameterConfiguration(StreamlitComponent):
 
 
 class HeatmapPlotGenerationComponent(StreamlitComponent):
-    def __init__(self, prompt_idx: int):
+    def __init__(self, prompt_idx: TPromptOriginalIndex):
         self.prompt_idx = prompt_idx
 
     def render(self):
@@ -211,7 +212,7 @@ class PlotCreation(StreamlitComponent):
                     col_values = sorted(grid_df[self.param_roles["column"]].unique())
 
                     # Create fixture with subplots
-                    fig, axes = plt.subplots(
+                    fig, _ = plt.subplots(
                         len(row_values),
                         len(col_values),
                         figsize=(self.plot_config["plot_width"] / 100, self.plot_config["plot_height"] / 100),
@@ -240,7 +241,7 @@ class PlotCreation(StreamlitComponent):
                                     continue
 
                                 try:
-                                    window_outputs = load_window_outputs(row["data_path"])
+                                    window_outputs = InfoFlowConfig.load_output(row["data_path"])
                                     targets_window_outputs[line_val] = window_outputs
                                     paths.append(format_path_for_display(row["data_path"]))
                                 except Exception as e:

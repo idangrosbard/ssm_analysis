@@ -14,8 +14,10 @@ from src.types import (
     FeatureCategory,
     KnockoutMode,
     TGP2Model,
+    TLayerIndex,
     TMamba1Model,
     TMamba2Model,
+    TModelSize,
     TTokenizer,
 )
 from src.utils.setup_models import get_tokenizer_and_model
@@ -27,7 +29,7 @@ class ModelInterface(ABC):
     def __init__(
         self,
         model_arch: MODEL_ARCH,
-        model_size: str,
+        model_size: TModelSize,
         device: Optional[torch.device] = None,
         tokenizer: Optional[TTokenizer] = None,
     ):
@@ -39,7 +41,7 @@ class ModelInterface(ABC):
 
         self.device = self.model.device
 
-    def setup(self, layers: Optional[Iterable[int]] = None):
+    def setup(self, layers: Optional[Iterable[TLayerIndex]] = None):
         self.model.eval()
 
     @abstractmethod
@@ -74,7 +76,7 @@ class Mamba1Interface(ModelInterface):
 
     def __init__(
         self,
-        model_size: str,
+        model_size: TModelSize,
         device: Optional[torch.device] = None,
         tokenizer: Optional[TTokenizer] = None,
         is_falcon: bool = False,
@@ -92,7 +94,7 @@ class Mamba1Interface(ModelInterface):
         self.knockout_mode = KnockoutMode.ZERO_ATTENTION
         self.feature_masks = {}
 
-    def setup(self, layers: Optional[Iterable[int]] = None):
+    def setup(self, layers: Optional[Iterable[TLayerIndex]] = None):
         super().setup(layers)
 
         for handle in self.handles:
@@ -174,7 +176,7 @@ class Mamba2Interface(ModelInterface):
 
     def __init__(
         self,
-        model_size: str,
+        model_size: TModelSize,
         device: Optional[torch.device] = None,
         tokenizer: Optional[TTokenizer] = None,
         feature_category: Optional[FeatureCategory] = None,
@@ -243,7 +245,7 @@ class GPT2Interface(ModelInterface):
 
     def __init__(
         self,
-        model_size: str,
+        model_size: TModelSize,
         device: Optional[torch.device] = None,
         tokenizer: Optional[TTokenizer] = None,
     ):

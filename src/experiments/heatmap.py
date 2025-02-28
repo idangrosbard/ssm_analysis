@@ -21,7 +21,7 @@ import pandas as pd
 import torch
 from tqdm import tqdm
 
-from src.consts import MODEL_SIZES_PER_ARCH_TO_MODEL_ID
+from src.consts import EXPERIMENT_NAMES, MODEL_SIZES_PER_ARCH_TO_MODEL_ID
 from src.experiment_infra.base_config import (
     BASE_OUTPUT_KEYS,
     BaseConfig,
@@ -29,7 +29,7 @@ from src.experiment_infra.base_config import (
 )
 from src.experiment_infra.model_interface import get_model_interface
 from src.plots.heatmaps import simple_diff_fixed
-from src.types import MODEL_ARCH_AND_SIZE
+from src.types import MODEL_ARCH_AND_SIZE, TPromptOriginalIndex, TRowIndex, TWindow, TWindowSize
 from src.utils.logits import Prompt, decode_tokens, get_prompt_row, get_prompt_row_index
 from src.utils.setup_models import get_tokenizer
 
@@ -49,10 +49,10 @@ plot_suffix_to_function: dict[HEATMAP_PLOT_FUNCS, Callable] = {
 class HeatmapConfig(BaseConfig):
     """Configuration for heatmap generation."""
 
-    experiment_base_name: str = "heatmap"
-    window_size: int = 5
-    prompt_indices_rows: list[int] = create_mutable_field(lambda: [])
-    prompt_original_indices: list[int] = create_mutable_field(lambda: [])
+    experiment_base_name: EXPERIMENT_NAMES = EXPERIMENT_NAMES.HEATMAP
+    window_size: TWindowSize = TWindowSize(5)
+    prompt_indices_rows: list[TRowIndex] = create_mutable_field(lambda: [])
+    prompt_original_indices: list[TPromptOriginalIndex] = create_mutable_field(lambda: [])
 
     @property
     def experiment_output_keys(self):
@@ -60,10 +60,10 @@ class HeatmapConfig(BaseConfig):
             BASE_OUTPUT_KEYS.WINDOW_SIZE,
         ]
 
-    def output_heatmap_path(self, prompt_idx: int) -> Path:
+    def output_heatmap_path(self, prompt_idx: TPromptOriginalIndex):
         return self.outputs_path / f"idx={prompt_idx}.csv"
 
-    def get_prompt_original_idx_combined(self) -> list[int]:
+    def get_prompt_original_idx_combined(self) -> list[TPromptOriginalIndex]:
         data = self.get_prompt_data()
 
         return list(
@@ -75,17 +75,17 @@ class HeatmapConfig(BaseConfig):
             )
         )
 
-    def get_remaining_prompt_original_indices(self) -> list[int]:
+    def get_remaining_prompt_original_indices(self):
         return [
             idx
             for idx in self.get_prompt_original_idx_combined()
             if not self.output_heatmap_path(idx).exists() or self.overwrite_existing_outputs
         ]
 
-    def get_outputs(self) -> dict[int, IHeatmap]:
+    def get_outputs(self) -> dict[TPromptOriginalIndex, IHeatmap]:
         return {idx: pd.read_csv(self.output_heatmap_path(idx)) for idx in self.get_prompt_original_idx_combined()}
 
-    def get_plot_output_path(self, prompt_idx: int, plot_name: str) -> Path:
+    def get_plot_output_path(self, prompt_idx: TPromptOriginalIndex, plot_name: HEATMAP_PLOT_FUNCS) -> Path:
         return self.plots_path / f"idx={prompt_idx}{plot_name}.png"
 
     def plot(self, plot_name: HEATMAP_PLOT_FUNCS) -> None:
@@ -138,7 +138,7 @@ def run(args: HeatmapConfig):
 
     n_layers = model_interface.n_layers()
 
-    def forward_eval(prompt: Prompt, window: list[int]):
+    def forward_eval(prompt: Prompt, window: TWindow):
         true_id = prompt.true_id(tokenizer, "cpu")
         input_ids = prompt.input_ids(tokenizer, device)
 
@@ -157,7 +157,7 @@ def run(args: HeatmapConfig):
             torch.cuda.empty_cache()
         return probs
 
-    windows = [list(range(i, i + args.window_size)) for i in range(0, n_layers - args.window_size + 1)]
+    windows = [TWindow(list(range(i, i + args.window_size))) for i in range(0, n_layers - args.window_size + 1)]
 
     for prompt_idx in tqdm(remaining_idx, desc="Prompts"):
         prob_mat = []

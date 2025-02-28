@@ -1,12 +1,12 @@
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import Any, assert_never, cast
+from typing import Any, Union, assert_never, cast
 
 import pandas as pd
 import torch
 
 from src.consts import COLUMNS
-from src.types import TNum2Mask, TokenType, TPromptData, TTokenizer
+from src.types import TNum2Mask, TokenType, TPromptData, TPromptOriginalIndex, TRowIndex, TTokenizer, TWindow
 
 
 def get_last_token_logits(logits: torch.Tensor) -> torch.Tensor:
@@ -46,7 +46,7 @@ def get_top_outputs(probs, tokenizer, top_k):
 
 
 # Taken from https://github.com/google-research/google-research/blob/master/dissecting_factual_predictions/utils.py
-def decode_tokens(tokenizer: TTokenizer, token_array: torch.Tensor) -> list[str | list[str]]:
+def decode_tokens(tokenizer: TTokenizer, token_array: torch.Tensor) -> Union[list[str], list[list[str]]]:
     if hasattr(token_array, "shape") and len(token_array.shape) > 1:
         return [cast(list[str], decode_tokens(tokenizer, row)) for row in token_array]
     return [tokenizer.decode([t]) for t in token_array]
@@ -80,24 +80,24 @@ class Prompt:
     prompt_row: pd.DataFrame | pd.Series
 
     @property
-    def original_idx(self) -> int:
-        return cast(int, self.prompt_row.name)
+    def original_idx(self) -> TPromptOriginalIndex:
+        return cast(TPromptOriginalIndex, self.prompt_row.name)
 
     @property
-    def prompt(self):
-        return self.prompt_row[COLUMNS.PROMPT]
+    def prompt(self) -> str:
+        return str(self.prompt_row[COLUMNS.PROMPT])
 
     @property
-    def subject(self):
-        return self.prompt_row[COLUMNS.SUBJECT]
+    def subject(self) -> str:
+        return str(self.prompt_row[COLUMNS.SUBJECT])
 
     @property
-    def true_word(self):
-        return self.prompt_row[COLUMNS.TARGET_TRUE]
+    def true_word(self) -> str:
+        return str(self.prompt_row[COLUMNS.TARGET_TRUE])
 
     @property
-    def base_prob(self):
-        return self.prompt_row[COLUMNS.TARGET_PROBS]
+    def base_prob(self) -> float:
+        return cast(float, self.prompt_row[COLUMNS.TARGET_PROBS])
 
     def true_id(self, tokenizer, device) -> torch.Tensor:
         return tokenizer(self.true_word, return_tensors="pt", padding=True).input_ids.to(device="cpu")
@@ -112,7 +112,7 @@ class Prompt:
 def get_num_to_masks(
     prompt: Prompt,
     tokenizer,
-    window: list[int],
+    window: TWindow,
     knockout_source: TokenType,
     knockout_target: TokenType,
     device,
@@ -154,9 +154,9 @@ def get_num_to_masks(
     return num_to_masks, first_token
 
 
-def get_prompt_row(data: TPromptData, prompt_idx: int) -> Prompt:
+def get_prompt_row(data: TPromptData, prompt_idx: TRowIndex) -> Prompt:
     return Prompt(prompt_row=data.iloc[prompt_idx])  # type: ignore
 
 
-def get_prompt_row_index(data: TPromptData, prompt_idx: int) -> Prompt:
+def get_prompt_row_index(data: TPromptData, prompt_idx: TPromptOriginalIndex) -> Prompt:
     return Prompt(prompt_row=data.loc[prompt_idx])  # type: ignore

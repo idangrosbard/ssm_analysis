@@ -14,6 +14,7 @@ consistent configuration across all steps.
 from dataclasses import dataclass
 from typing import Optional
 
+from src.consts import EXPERIMENT_NAMES
 from src.experiment_infra.base_config import (
     BASE_OUTPUT_KEYS,
     BaseConfig,
@@ -22,14 +23,14 @@ from src.experiment_infra.base_config import (
 from src.experiments.evaluate_model import EvaluateModelConfig
 from src.experiments.heatmap import HEATMAP_PLOT_FUNCS, HeatmapConfig
 from src.experiments.info_flow import InfoFlowConfig
-from src.types import TInfoFlowSource, TokenType
+from src.types import TInfoFlowSource, TokenType, TPromptOriginalIndex, TRowIndex, TWindowSize
 
 
 @dataclass
 class FullPipelineConfig(BaseConfig):
     """Configuration for the full experiment pipeline."""
 
-    experiment_base_name: str = "full_pipeline"
+    experiment_base_name: EXPERIMENT_NAMES = EXPERIMENT_NAMES.FULL_PIPELINE
 
     with_plotting: bool = False
     enforce_no_missing_outputs: bool = True
@@ -43,9 +44,11 @@ class FullPipelineConfig(BaseConfig):
     top_k_tokens: int = EvaluateModelConfig.top_k_tokens
 
     # HeatmapConfig
-    window_size: int = HeatmapConfig.window_size
-    prompt_indices_rows: list[int] = create_mutable_field(lambda: HeatmapConfig().prompt_indices_rows)
-    prompt_original_indices: list[int] = create_mutable_field(lambda: HeatmapConfig().prompt_original_indices)
+    window_size: TWindowSize = HeatmapConfig.window_size
+    prompt_indices_rows: list[TRowIndex] = create_mutable_field(lambda: HeatmapConfig().prompt_indices_rows)
+    prompt_original_indices: list[TPromptOriginalIndex] = create_mutable_field(
+        lambda: HeatmapConfig().prompt_original_indices
+    )
 
     # InfoFlowConfig
     knockout_map: dict[TokenType, list[TInfoFlowSource]] = create_mutable_field(lambda: InfoFlowConfig().knockout_map)
