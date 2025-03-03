@@ -25,6 +25,20 @@ class GLOBAL_APP_CONSTS:
         COLUMNS.RELATION,
     ]
 
+    MODEL_EVALS_COLUMNS = [
+        COLUMNS.ORIGINAL_IDX,
+        COLUMNS.PROMPT,
+        COLUMNS.TARGET_TRUE,
+        COLUMNS.TARGET_PROBS,
+        COLUMNS.MODEL_TOP_OUTPUT_CONFIDENCE,
+        COLUMNS.MODEL_CORRECT,
+        COLUMNS.MODEL_OUTPUT,
+        COLUMNS.TARGET_RANK,
+        COLUMNS.MODEL_GENERATION,
+        COLUMNS.TARGET_TOKENS,
+        COLUMNS.MODEL_TOP_OUTPUTS,
+    ]
+
     class PaginationConfig:
         RESULTS_BANK = {"default_page_size": 20}
         DATA_REQS = {"default_page_size": 20}

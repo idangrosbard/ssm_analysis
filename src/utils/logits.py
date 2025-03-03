@@ -6,7 +6,7 @@ import pandas as pd
 import torch
 
 from src.consts import COLUMNS
-from src.types import TNum2Mask, TokenType, TPromptData, TPromptOriginalIndex, TRowIndex, TTokenizer, TWindow
+from src.types import TNum2Mask, TokenType, TPromptData, TPromptOriginalIndex, TRowPosition, TTokenizer, TWindow
 
 
 def get_last_token_logits(logits: torch.Tensor) -> torch.Tensor:
@@ -154,7 +154,7 @@ def get_num_to_masks(
     return num_to_masks, first_token
 
 
-def get_prompt_row(data: TPromptData, prompt_idx: TRowIndex) -> Prompt:
+def get_prompt_row(data: TPromptData, prompt_idx: TRowPosition) -> Prompt:
     return Prompt(prompt_row=data.iloc[prompt_idx])  # type: ignore
 
 

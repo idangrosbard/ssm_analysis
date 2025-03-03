@@ -29,7 +29,7 @@ from src.experiment_infra.base_config import (
 )
 from src.experiment_infra.model_interface import get_model_interface
 from src.plots.heatmaps import simple_diff_fixed
-from src.types import MODEL_ARCH_AND_SIZE, TPromptOriginalIndex, TRowIndex, TWindow, TWindowSize
+from src.types import MODEL_ARCH_AND_SIZE, TPromptOriginalIndex, TRowPosition, TWindow, TWindowSize
 from src.utils.logits import Prompt, decode_tokens, get_prompt_row, get_prompt_row_index
 from src.utils.setup_models import get_tokenizer
 
@@ -51,7 +51,7 @@ class HeatmapConfig(BaseConfig):
 
     experiment_name: EXPERIMENT_NAMES = EXPERIMENT_NAMES.HEATMAP
     window_size: TWindowSize = TWindowSize(5)
-    prompt_indices_rows: list[TRowIndex] = create_mutable_field(lambda: [])
+    prompt_indices_rows: list[TRowPosition] = create_mutable_field(lambda: [])
     prompt_original_indices: list[TPromptOriginalIndex] = create_mutable_field(lambda: [])
 
     @property

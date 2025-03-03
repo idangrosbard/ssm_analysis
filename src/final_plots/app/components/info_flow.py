@@ -3,7 +3,6 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
-import streamlit_antd_components as sac
 
 from src.final_plots.app.texts import INFO_FLOW_ANALYSIS_TEXTS
 from src.types import TInfoFlowOutput
@@ -168,7 +167,7 @@ class InfoFlowAnalysisComponent(StreamlitComponent):
 
         return fig
 
-    def render_info_flow_over_time(self):
+    def render_probability_distribution(self):
         """Render info flow over time analysis."""
         # Create columns for metrics
         col1, col2 = st.columns(2)
@@ -237,7 +236,7 @@ class InfoFlowAnalysisComponent(StreamlitComponent):
             st.write(f"Max Probability Change: {max_diff:.2%}")
             st.write(f"Min Probability Change: {min_diff:.2%}")
 
-    def render_probability_distribution(self):
+    def render_info_flow_over_time(self):
         """Render probability distribution analysis with interactive visualization."""
         st.write(f"### {INFO_FLOW_ANALYSIS_TEXTS.probability_distribution}")
 
@@ -274,36 +273,19 @@ class InfoFlowAnalysisComponent(StreamlitComponent):
         # Display the interactive visualization
         st.plotly_chart(fig, use_container_width=True)
 
-        # Add explanation
-        with st.expander("How to use this visualization"):
-            st.write("""
-            - **Green points**: Correct predictions
-            - **Red points**: Incorrect predictions
-            - Use the slider to navigate between windows
-            - Click 'Play' to animate through all windows
-            - The diagonal line represents where base probability equals knockout probability
-            - Points above the line indicate that knockout increased the probability
-            - Points below the line indicate that knockout decreased the probability
-            """)
-
     def render(self):
         # Display analysis
         st.subheader("Analysis")
 
+        plan = {
+            INFO_FLOW_ANALYSIS_TEXTS.TAB_PROBABILITY_DISTRIBUTION: self.render_probability_distribution,
+            INFO_FLOW_ANALYSIS_TEXTS.TAB_INFO_FLOW_OVER_TIME: self.render_info_flow_over_time,
+        }
         # Tabs for different analysis views
-        tab = sac.tabs(
-            [
-                sac.TabsItem(label="Info Flow Over Time"),
-                sac.TabsItem(label="Probability Distribution"),
-                sac.TabsItem(label="Raw Data"),
-            ]
-        )
+        # tab = st.tabs([tab_name for tab_name in plan])
+        tab = [st.expander(tab_name) for tab_name in plan]
 
-        if tab == "Info Flow Over Time":
-            self.render_info_flow_over_time()
-
-        elif tab == "Probability Distribution":
-            self.render_probability_distribution()
-
-        else:  # Raw Data
-            st.json(self.info_flow_output)
+        for i, render_func in enumerate(plan.values()):
+            with tab[i]:
+                with st.spinner("Loading...", show_time=True):
+                    render_func()

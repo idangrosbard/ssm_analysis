@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from enum import StrEnum
+from enum import Enum, StrEnum
 from typing import TYPE_CHECKING, Literal, NamedTuple, NewType, Sequence, TypeAlias, TypedDict, Union, assert_never
 
 import pandas as pd
@@ -92,11 +92,11 @@ class MODEL_ARCH(StrEnum):
         assert_never(self.value)
 
 
-class MODEL_SIZE_CAT(StrEnum):
-    SMALL = "small"
-    MEDIUM = "medium"
-    LARGE = "large"
-    HUGE = "huge"
+class MODEL_SIZE_CAT(Enum):
+    SMALL = 0
+    MEDIUM = 1
+    LARGE = 2
+    HUGE = 3
 
 
 class DATASETS(StrEnum):
@@ -140,7 +140,7 @@ TWindow = NewType("TWindow", list[TLayerIndex])
 TPromptData = NewType("TPromptData", pd.DataFrame)
 TNum2Mask = NewType("TNum2Mask", dict[TLayerIndex, list[tuple[TTokenIndex, TTokenIndex]]])
 TPromptOriginalIndex = NewType("TPromptOriginalIndex", int)
-TRowIndex = NewType("TRowIndex", int)
+TRowPosition = NewType("TRowPosition", int)
 
 
 class TokenType(StrEnum):

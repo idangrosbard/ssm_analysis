@@ -22,7 +22,7 @@ from src.experiment_infra.base_config import (
 from src.experiments.evaluate_model import EvaluateModelConfig
 from src.experiments.heatmap import HEATMAP_PLOT_FUNCS, HeatmapConfig
 from src.experiments.info_flow import InfoFlowConfig
-from src.types import TInfoFlowSource, TokenType, TPromptOriginalIndex, TRowIndex, TWindowSize
+from src.types import TInfoFlowSource, TokenType, TPromptOriginalIndex, TRowPosition, TWindowSize
 
 
 @dataclass
@@ -44,7 +44,7 @@ class FullPipelineConfig(BaseConfig):
 
     # HeatmapConfig
     window_size: TWindowSize = HeatmapConfig.window_size
-    prompt_indices_rows: list[TRowIndex] = create_mutable_field(lambda: HeatmapConfig().prompt_indices_rows)
+    prompt_indices_rows: list[TRowPosition] = create_mutable_field(lambda: HeatmapConfig().prompt_indices_rows)
     prompt_original_indices: list[TPromptOriginalIndex] = create_mutable_field(
         lambda: HeatmapConfig().prompt_original_indices
     )

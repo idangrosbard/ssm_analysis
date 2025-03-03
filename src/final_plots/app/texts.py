@@ -97,3 +97,5 @@ class INFO_FLOW_ANALYSIS_TEXTS:
     sample_results_count = "Sample Results Count"
     seed = "Seed"
     layers_range = "Layers Range"
+    TAB_INFO_FLOW_OVER_TIME = "Info Flow Over Time"
+    TAB_PROBABILITY_DISTRIBUTION = "Probability Distribution"
