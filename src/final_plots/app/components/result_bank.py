@@ -6,6 +6,7 @@ from src.consts import EXPERIMENT_NAMES
 from src.final_plots.app.data_store import load_experiment_results
 from src.final_plots.results_bank import ParamNames
 from src.utils.streamlit.aagrid import SelectionMode, base_grid_builder, set_aagrid_apply_default_filters
+from src.utils.streamlit.dataframe import validate_one_selected_row_dataframe
 from src.utils.streamlit_utils import StreamlitComponent
 
 
@@ -63,3 +64,7 @@ class ShowResultsBank(StreamlitComponent):
             allow_unsafe_jscode=True,
         )
         return grid_response
+
+    def render_validate_single_selection(self):
+        grid_results = self.render()
+        return validate_one_selected_row_dataframe(grid_results.selected_data)

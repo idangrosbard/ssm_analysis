@@ -20,12 +20,11 @@ from src.consts import COLUMNS, EXPERIMENT_NAMES, GRAPHS_ORDER
 from src.experiments.info_flow import InfoFlowConfig
 from src.final_plots.app.components.info_flow import InfoFlowAnalysisComponent
 from src.final_plots.app.components.result_bank import SelectionMode, ShowResultsBank
-from src.final_plots.app.data_store import load_model_evaluations
 from src.final_plots.app.texts import INFO_FLOW_ANALYSIS_TEXTS
 from src.final_plots.app.utils import reverse_format_path_for_display
+from src.final_plots.data_reqs import get_model_evaluations
 from src.final_plots.results_bank import ParamNames
 from src.types import MODEL_ARCH_AND_SIZE, MODEL_SIZE_CAT, TInfoFlowOutput, TInfoFlowWindowValue
-from src.utils.streamlit.dataframe import validate_one_selected_row_dataframe
 from src.utils.streamlit_utils import StreamlitPage
 from src.utils.types_utils import select_indexes_from_list
 
@@ -88,38 +87,35 @@ class SubsetInfoFlowResults:
 
 class InfoFlowAnalysisPage(StreamlitPage):
     def render(self):
-        selected_info_flow_result = validate_one_selected_row_dataframe(
-            ShowResultsBank(
-                filter_experiment_name=EXPERIMENT_NAMES.INFO_FLOW,
-                filter_is_all_correct=False,
-                selection_mode=SelectionMode.SINGLE,
-                height=300,
-                filters={
-                    ParamNames.variation: ["v3"],
-                    ParamNames.model_size: [
-                        model_arch_and_size.size
-                        for model_arch_and_size, size_cat in GRAPHS_ORDER.items()
-                        if size_cat.value > MODEL_SIZE_CAT.MEDIUM.value
-                    ],
-                    ParamNames.window_size: ["9", "15"],
-                },
-                hide_columns=[ParamNames.experiment_name, ParamNames.prompt_idx, ParamNames.is_all_correct],
-                key="info_flow_results_bank",
-            )
-            .render()
-            .selected_data
-        )
+        selected_info_flow_result = ShowResultsBank(
+            filter_experiment_name=EXPERIMENT_NAMES.INFO_FLOW,
+            filter_is_all_correct=False,
+            selection_mode=SelectionMode.SINGLE,
+            height=300,
+            filters={
+                ParamNames.variation: ["v3"],
+                ParamNames.model_size: [
+                    model_arch_and_size.size
+                    for model_arch_and_size, size_cat in GRAPHS_ORDER.items()
+                    if size_cat.value > MODEL_SIZE_CAT.MEDIUM.value
+                ],
+                ParamNames.window_size: ["9", "15"],
+            },
+            hide_columns=[ParamNames.experiment_name, ParamNames.prompt_idx, ParamNames.is_all_correct],
+            key="info_flow_results_bank",
+        ).render_validate_single_selection()
 
         if selected_info_flow_result is None:
             st.warning(INFO_FLOW_ANALYSIS_TEXTS.no_requirements)
             return
-
-        model_evaluations = load_model_evaluations(selected_info_flow_result[ParamNames.variation])[
-            MODEL_ARCH_AND_SIZE(
-                selected_info_flow_result[ParamNames.model_arch],
-                selected_info_flow_result[ParamNames.model_size],
-            )
-        ]
+        model_arch_and_size = MODEL_ARCH_AND_SIZE(
+            selected_info_flow_result[ParamNames.model_arch],
+            selected_info_flow_result[ParamNames.model_size],
+        )
+        model_evaluations = get_model_evaluations(
+            selected_info_flow_result[ParamNames.variation],
+            [model_arch_and_size],
+        )[model_arch_and_size]
 
         # Display requirements table and get selection
         st.subheader("Latest Fulfilled Info Flow Requirements")
@@ -130,8 +126,10 @@ class InfoFlowAnalysisPage(StreamlitPage):
         with st.sidebar:
             info_flow_results = SubsetInfoFlowResults(info_flow_results).render()
 
-        st.write(model_evaluations.iloc[:10].to_dict())
-        InfoFlowAnalysisComponent(info_flow_results).render()
+        filtered_model_evaluations = model_evaluations.loc[
+            info_flow_results[next(iter(info_flow_results))][COLUMNS.ORIGINAL_IDX]
+        ]
+        InfoFlowAnalysisComponent(info_flow_results, filtered_model_evaluations).render()
 
 
 if __name__ == "__main__":
