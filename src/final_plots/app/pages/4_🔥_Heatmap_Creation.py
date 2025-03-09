@@ -26,7 +26,7 @@ from src.final_plots.app.components.prompt_filteration import ModelCombinations,
 from src.final_plots.app.components.requirements import HeatmapGenerationComponent
 from src.final_plots.app.data_store import (
     load_model_combinations_prompts,
-    load_model_evaluations,
+    load_model_evaluations_dict,
 )
 from src.final_plots.app.texts import COMMON_TEXTS, HEATMAP_TEXTS
 from src.utils.streamlit_utils import StreamlitPage
@@ -43,7 +43,7 @@ class HeatmapCreationPage(StreamlitPage):
 
         with st.spinner(COMMON_TEXTS.LOADING("data"), show_time=True):
             # Get combinations data
-            model_evaluations = load_model_evaluations(AppSessionKeys.variation.value)
+            model_evaluations = load_model_evaluations_dict(AppSessionKeys.variation.value)
             representative_model_evaluations = next(iter(model_evaluations.values()))
             # Get combinations using selected models
             combinations_df = load_model_combinations_prompts(AppSessionKeys.variation.value, selected_models)

@@ -279,3 +279,59 @@ TOKEN_TYPE_LINE_STYLES: dict[TInfoFlowSource, str] = {
     (TokenType.subject, FeatureCategory.FAST_DECAY): "--",
     (TokenType.subject, FeatureCategory.SLOW_DECAY): ":",
 }
+CONVERT_TO_PLOTLY_LINE_STYLE = {
+    "-": "solid",
+    ":": "dot",
+    "--": "dash",
+    "-.": "longdashdot",
+    "-.-": "dashdot",
+    "-.-.": "longdash",
+}
+
+
+def get_item_from_token_from_info_flow_source_dict(
+    token_type: TInfoFlowSource,
+    d: dict[TInfoFlowSource, str],
+    default: str,
+) -> str:
+    if isinstance(token_type, tuple):
+        if token_type[1] is not None:
+            return d.get((TokenType(token_type[0]), FeatureCategory(token_type[1])), default)
+        return d.get(TokenType(token_type[0]), default)
+    return d.get(token_type, default)
+
+
+def format_params_for_title(params: dict) -> str:
+    """Format parameters for title display in a consistent order."""
+    from src.final_plots.results_bank import ParamNames
+
+    parts_remaining = set(params.keys())
+    ordered_parts = []
+    for param in ParamNames:
+        if param in parts_remaining:
+            parts_remaining.remove(param)
+            match param:
+                case ParamNames.experiment_name | ParamNames.variation:
+                    ordered_parts.append(params[param])
+                case ParamNames.model_arch:
+                    if ParamNames.model_size in parts_remaining:
+                        ordered_parts.append(f"{params[ParamNames.model_arch]} {params[ParamNames.model_size]}")
+                        parts_remaining.remove(ParamNames.model_size)
+                    else:
+                        ordered_parts.append(params[ParamNames.model_arch])
+                case ParamNames.window_size:
+                    ordered_parts.append(f"ws={params[ParamNames.window_size]}")
+                case ParamNames.source:
+                    base_str = f"From {params[ParamNames.source]}"
+                    if ParamNames.feature_category in parts_remaining:
+                        if params[ParamNames.feature_category] is not None:
+                            base_str = f"{base_str} - {params[ParamNames.feature_category]}"
+                        parts_remaining.remove(ParamNames.feature_category)
+                    ordered_parts.append(base_str)
+                case _:
+                    ordered_parts.append(f"{param}={params[param]}")
+
+    for param in parts_remaining:
+        ordered_parts.append(f"{param}={params[param]}")
+
+    return " | ".join(ordered_parts)

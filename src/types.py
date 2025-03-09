@@ -184,7 +184,7 @@ class TInfoFlowWindowValue(TypedDict):
     original_idx: list[TPromptOriginalIndex]
 
 
-TInfoFlowSource = Union[TokenType, tuple[TokenType, FeatureCategory]]
+TInfoFlowSource = Union[TokenType, tuple[TokenType, FeatureCategory | None]]
 TInfoFlowOutputJSONOutput = dict[str, TInfoFlowWindowValue]
 TInfoFlowOutput = dict[TLayerIndex, TInfoFlowWindowValue]
 TInfoFlowTargetOutputs = dict[TInfoFlowSource, TInfoFlowOutput]

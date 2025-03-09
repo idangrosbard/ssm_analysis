@@ -39,11 +39,18 @@ from src.types import MODEL_ARCH_AND_SIZE, TPromptOriginalIndex, TVariationName,
 from src.utils.streamlit_utils import CacheWithDependencies
 
 
-# Constants
 @CacheWithDependencies()
-def load_model_evaluations(variation: TVariationName) -> dict[MODEL_ARCH_AND_SIZE, pd.DataFrame]:
+def load_model_evaluations(variation: TVariationName, model_arch_and_size: MODEL_ARCH_AND_SIZE) -> pd.DataFrame:
+    return get_model_evaluations(variation, [model_arch_and_size])[model_arch_and_size]
+
+
+@CacheWithDependencies()
+def load_model_evaluations_dict(variation: TVariationName) -> dict[MODEL_ARCH_AND_SIZE, pd.DataFrame]:
     """Load evaluation data for all models with caching"""
-    return get_model_evaluations(variation, GLOBAL_APP_CONSTS.MODELS_COMBINATIONS)
+    return {
+        model_arch_and_size: load_model_evaluations(variation, model_arch_and_size)
+        for model_arch_and_size in GLOBAL_APP_CONSTS.MODELS_COMBINATIONS
+    }
 
 
 @cache_resource
@@ -53,7 +60,7 @@ def merge_model_evaluations_streamlit_rendered(variation: TVariationName) -> Str
         pd.concat(
             [
                 df.assign(model_arch=key.arch, model_size=key.size)
-                for key, df in load_model_evaluations(variation).items()
+                for key, df in load_model_evaluations_dict(variation).items()
             ]
         ),
         spec=f"model_evals_{variation}.csv",
@@ -146,7 +153,7 @@ def get_merged_evaluations(prompt_idx: TPromptOriginalIndex, variation: TVariati
         tuple of:
             - DataFrame with model-specific evaluations merged
     """
-    model_evaluations = load_model_evaluations(variation)
+    model_evaluations = load_model_evaluations_dict(variation)
 
     # Create list to hold each model's evaluation
     model_evals = []

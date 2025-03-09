@@ -1,261 +1,476 @@
+from typing import Dict, List, Literal, Tuple, cast
+
 import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
+from pandas import DataFrame
 
-from src.consts import COLUMNS
+from src.consts import (
+    COLUMNS,
+    TOKEN_TYPE_COLORS,
+    TOKEN_TYPE_LINE_STYLES,
+    format_params_for_title,
+    get_item_from_token_from_info_flow_source_dict,
+)
 from src.final_plots.app.texts import INFO_FLOW_ANALYSIS_TEXTS
+from src.final_plots.results_bank import ParamNames
+from src.plots.info_flow_confidence import (
+    create_plotly_confidence_chart,
+)
 from src.types import TInfoFlowOutput
 from src.utils.streamlit_utils import StreamlitComponent
 
 
 class InfoFlowAnalysisComponent(StreamlitComponent):
-    def __init__(self, info_flow_output: TInfoFlowOutput, model_evaluations: pd.DataFrame):
-        self.info_flow_output = info_flow_output
+    def __init__(
+        self,
+        info_flow_outputs: list[TInfoFlowOutput],
+        metadata_list: list[dict],
+        model_evaluations: list[pd.DataFrame],
+    ):
+        self.info_flow_outputs = info_flow_outputs
         self.model_evaluations = model_evaluations
+        self.metadata_list = metadata_list
+        self.metric_options = {"Accuracy": "acc", "Probability Difference": "diff"}
+
+    def _get_common_and_different_params(self) -> Tuple[Dict, List[Dict]]:
+        """
+        Identify common and different parameters across all info flow outputs.
+        Returns a tuple of (common_params, different_params_list)
+        """
+        if not self.info_flow_outputs:
+            return {}, []
+
+        # Extract all metadata
+
+        # Find common parameters
+        common_params = {}
+        different_params_list = []
+
+        # Get all parameter keys
+        all_keys = set()
+        for metadata in self.metadata_list:
+            all_keys.update(metadata.keys())
+
+        # Check each parameter
+        for key in all_keys:
+            values = [metadata.get(key) for metadata in self.metadata_list if key in metadata]
+            unique_values = set(values)
+
+            if len(unique_values) == 1:
+                # All values are the same
+                common_params[key] = next(iter(unique_values))
+            else:
+                # Values differ
+                for i, metadata in enumerate(self.metadata_list):
+                    if i >= len(different_params_list):
+                        different_params_list.append({})
+                    if key in metadata:
+                        different_params_list[i][key] = metadata[key]
+
+        return common_params, different_params_list
 
     def render_probability_distribution(self):
-        """Render info flow over time analysis."""
-        # Create columns for metrics
-        col1, col2 = st.columns(2)
+        """Render info flow over time analysis with confidence intervals using Plotly."""
+        if not self.info_flow_outputs:
+            st.warning("No info flow data available")
+            return
 
-        with col1:
-            st.write("### Accuracy Over Time")
-            # Extract hit data for each window
+        # Get common and different parameters
+        common_params, different_params_list = self._get_common_and_different_params()
+
+        # Create title based on common parameters
+        title = format_params_for_title(common_params)
+
+        # Create legend labels based on different parameters
+
+        # Add metric selection
+        st.subheader("Metric Selection")
+        selected_metrics = st.multiselect(
+            INFO_FLOW_ANALYSIS_TEXTS.select_metric,
+            options=list(self.metric_options.keys()),
+            default=list(self.metric_options.keys()),
+        )
+
+        if not selected_metrics:
+            st.warning("Please select at least one metric to display")
+            return
+
+        # Determine number of columns based on selected metrics
+        num_cols = len(selected_metrics)
+
+        # Prepare data for confidence plots
+        targets_window_outputs = []
+        colors = []
+        line_styles = []
+        legend_labels = [format_params_for_title(diff_params) for diff_params in different_params_list]
+        if not legend_labels:
+            legend_labels = ["Flow"]
+
+        for i, info_flow in enumerate(self.info_flow_outputs):
+            # Create a unique source identifier for each info flow
+            targets_window_outputs.append(info_flow)
+            token_type = (self.metadata_list[i][ParamNames.target], self.metadata_list[i][ParamNames.feature_category])
+
+            # Assign a custom color
+            colors.append(
+                get_item_from_token_from_info_flow_source_dict(
+                    token_type,
+                    TOKEN_TYPE_COLORS,
+                    px.colors.qualitative.Plotly[i % len(px.colors.qualitative.Plotly)],
+                )
+            )
+            line_styles.append(get_item_from_token_from_info_flow_source_dict(token_type, TOKEN_TYPE_LINE_STYLES, "-"))
+
+        # Find the maximum layer range across all info flows
+
+        st.subheader(title, divider="rainbow")
+        cols = st.columns(num_cols, border=True)
+        # Create and display plots for each selected metric
+        for i, metric_name in enumerate(selected_metrics):
+            metric_type = cast(Literal["acc", "diff"], self.metric_options[metric_name])
+
+            with cols[i]:
+                st.subheader(f"{metric_name} Over Time")
+
+                # Create confidence plot using Plotly
+                fig = create_plotly_confidence_chart(
+                    targets_window_outputs=targets_window_outputs,
+                    metric_type=metric_type,
+                    confidence_level=0.95,
+                    colors=colors,
+                    line_styles=line_styles,
+                    legend_labels=legend_labels,
+                )
+
+                st.plotly_chart(fig, use_container_width=True)
+
+        # Create a combined table with statistics for all metrics
+        stats_data = []
+
+        for i, info_flow in enumerate(self.info_flow_outputs):
+            # Extract hit data for accuracy
             hit_data = {}
-            for window_idx, window_data in self.info_flow_output.items():
+            for window_idx, window_data in info_flow.items():
                 hit_data[window_idx] = window_data["hit"]
             accuracy_df = pd.DataFrame(hit_data).mean()
 
-            # Create a Plotly line chart for accuracy
-            fig = px.line(
-                x=accuracy_df.index,
-                y=accuracy_df.values,
-                labels={"x": "Window Index", "y": "Accuracy"},
-                title=INFO_FLOW_ANALYSIS_TEXTS.accuracy_over_windows,
-            )
-            fig.update_layout(height=400)
-            st.plotly_chart(fig, use_container_width=True)
+            # Extract probability data
+            true_probs = {}
+            base_probs = {}
+            for window_idx, window_data in info_flow.items():
+                true_probs[window_idx] = window_data[COLUMNS.IF_TRUE_PROBS]
+                # Use diffs as a proxy for base_probs if available
+                base_probs[window_idx] = self.model_evaluations[i][COLUMNS.TARGET_PROBS]
 
-            # Add accuracy statistics
+            true_probs_df = pd.DataFrame(true_probs)
+            base_probs_df = pd.DataFrame(base_probs).reset_index(drop=True)
+            prob_diffs = true_probs_df - base_probs_df
+
+            # Calculate statistics
             mean_acc = accuracy_df.mean()
             max_acc = accuracy_df.max()
             min_acc = accuracy_df.min()
-            st.write(f"Mean Accuracy: {mean_acc:.2%}")
-            st.write(f"Max Accuracy: {max_acc:.2%}")
-            st.write(f"Min Accuracy: {min_acc:.2%}")
 
-        with col2:
-            st.write("### Probability Changes")
-            # Extract probability data for each window
-            true_probs = {}
-            base_probs = {}
-            for window_idx, window_data in self.info_flow_output.items():
-                true_probs[window_idx] = window_data["true_probs"]
-                # Use diffs as a proxy for base_probs if available
-                if "diffs" in window_data:
-                    diffs = window_data["diffs"]
-                    # Approximate base_probs from true_probs and diffs
-                    base_probs[window_idx] = [tp - d for tp, d in zip(window_data["true_probs"], diffs)]
-                else:
-                    # If no diffs, use zeros as placeholder
-                    base_probs[window_idx] = [0] * len(window_data["true_probs"])
-
-            true_probs_df = pd.DataFrame(true_probs)
-            base_probs_df = pd.DataFrame(base_probs)
-            prob_diffs = true_probs_df - base_probs_df
-
-            # Create a Plotly line chart for probability differences
-            fig = px.line(
-                x=prob_diffs.mean().index,
-                y=prob_diffs.mean().values,
-                labels={"x": "Window Index", "y": "Probability Difference"},
-                title="Probability Changes Over Windows",
-            )
-            fig.update_layout(height=400)
-            st.plotly_chart(fig, use_container_width=True)
-
-            # Add probability statistics
             mean_diff = prob_diffs.mean().mean()
             max_diff = prob_diffs.max().max()
             min_diff = prob_diffs.min().min()
-            st.write(f"Mean Probability Change: {mean_diff:.2%}")
-            st.write(f"Max Probability Change: {max_diff:.2%}")
-            st.write(f"Min Probability Change: {min_diff:.2%}")
+
+            # Add to stats data
+            stats_data.append(
+                {
+                    "Flow": legend_labels[i],
+                    "Mean Accuracy": f"{mean_acc:.2%}",
+                    "Max Accuracy": f"{max_acc:.2%}",
+                    "Min Accuracy": f"{min_acc:.2%}",
+                    "Mean Probability Change": f"{mean_diff:.2%}",
+                    "Max Probability Change": f"{max_diff:.2%}",
+                    "Min Probability Change": f"{min_diff:.2%}",
+                }
+            )
+
+        # Display the combined statistics table
+        st.subheader(INFO_FLOW_ANALYSIS_TEXTS.statistics)
+        st.table(pd.DataFrame(stats_data))
 
     def render_info_flow_over_time(self):
-        """Render probability distribution analysis with interactive visualization."""
-        # Get sample data for visualization
+        """Render info flow over time analysis."""
+        if not self.info_flow_outputs:
+            st.warning("No info flow data available")
+            return
 
-        window_indices = sorted(list(self.info_flow_output.keys()))
+        # Get common and different parameters
+        common_params, different_params_list = self._get_common_and_different_params()
 
-        # Create base probabilities (this is a simplification)
-        base_probs = self.model_evaluations[COLUMNS.TARGET_PROBS]
+        # Create title based on common parameters
+        title = format_params_for_title(common_params)
 
-        # Create a figure with slider
+        # Create legend labels based on different parameters
+        legend_labels = [format_params_for_title(diff_params) for diff_params in different_params_list]
+        if not legend_labels:
+            legend_labels = ["Flow"]
+
+        # Define axis options
+        axes_options = {
+            "Base Probability": COLUMNS.TARGET_PROBS,
+            "True Probability": COLUMNS.IF_TRUE_PROBS,
+            "Probability Difference": COLUMNS.IF_DIFFS,
+        }
+
+        # Create axis selection
+        st.subheader(INFO_FLOW_ANALYSIS_TEXTS.axis_selection)
+        cols = st.columns(2)
+        selected_info_flow_indices = []
+        selected_metrics = []
+
+        for i, col in enumerate(cols):
+            with col:
+                st.subheader(INFO_FLOW_ANALYSIS_TEXTS.col_to_axis_name(i))
+                if len(self.info_flow_outputs) == 1:
+                    selected_info_flow_indices.append(0)
+                else:
+                    selected_info_flow_indices.append(
+                        st.selectbox(
+                            INFO_FLOW_ANALYSIS_TEXTS.select_flow,
+                            options=range(len(self.info_flow_outputs)),
+                            key=f"info_flow_output_{i}",
+                            format_func=lambda i: legend_labels[i],
+                        )
+                    )
+                selected_metrics.append(
+                    st.selectbox(
+                        INFO_FLOW_ANALYSIS_TEXTS.metric_selection, list(axes_options.keys()), index=i, key=f"metric_{i}"
+                    )
+                )
+
+        st.subheader(title, divider="rainbow")
+        # Create a figure
         fig = go.Figure()
 
-        # Prepare hover text with additional information from model_evaluations
-        hover_data = [
-            "<br>".join(
-                [
-                    f"<b>{k}:</b> {v}"
-                    for k, v in {
-                        col: self.model_evaluations.iloc[idx].get(col, "N/A")
-                        for col in self.model_evaluations.columns
-                        if col
-                        in [
-                            COLUMNS.SUBJECT,
-                            COLUMNS.RELATION,
-                            COLUMNS.TARGET_TRUE,
-                            COLUMNS.TARGET_FALSE,
-                            COLUMNS.MODEL_OUTPUT,
-                            COLUMNS.TARGET_RANK,
-                            COLUMNS.MODEL_TOP_OUTPUT_CONFIDENCE,
-                        ]
-                    }.items()
-                ]
-            )
-            for idx in range(len(base_probs))
+        # Prepare hover data with additional information from model_evaluations
+        hover_columns = [
+            COLUMNS.SUBJECT,
+            COLUMNS.RELATION,
+            COLUMNS.TARGET_TRUE,
+            COLUMNS.TARGET_FALSE,
+            COLUMNS.MODEL_OUTPUT,
+            COLUMNS.TARGET_RANK,
+            COLUMNS.MODEL_TOP_OUTPUT_CONFIDENCE,
         ]
 
-        # Add initial scatter plot
-        first_window = window_indices[0]
-        colors = ["green" if c else "red" for c in self.info_flow_output[first_window][COLUMNS.IF_HIT]]
+        # Get window indices from both selected info flows
+        all_window_indices = set()
+        info_flows = []
 
-        # Add initial data trace for the first window
-        fig.add_trace(
-            go.Scatter(
-                x=base_probs,
-                y=self.info_flow_output[first_window][COLUMNS.IF_TRUE_PROBS],
-                mode="markers",
-                marker=dict(size=10, color=colors, line=dict(width=1, color="black")),
-                name=f"Window {first_window}",
-                hoverinfo="text",
-                hovertext=hover_data,
-                hoverlabel=dict(font_size=12, font_family="Arial"),
-            )
-        )
+        for idx in selected_info_flow_indices:
+            info_flow = self.info_flow_outputs[idx]
+            info_flows.append(info_flow)
+            all_window_indices.update(info_flow.keys())
 
-        # Add diagonal reference line
-        fig.add_trace(
-            go.Scatter(
-                x=[0, 1],
-                y=[0, 1],
-                mode="lines",
-                line=dict(dash="dash", color="blue", width=1),
-                name="y=x",
-                opacity=0.5,
-                hoverinfo="skip",
+        # Sort window indices
+        all_window_indices = sorted(all_window_indices)
+        hover_data = [
+            "<br>".join([f"<b>{col}:</b> {row[col]}" for col in hover_columns])
+            for _, row in self.model_evaluations[selected_info_flow_indices[0]].iterrows()
+        ]
+        if not all_window_indices:
+            st.warning("No window indices found in the selected info flows")
+            return
+
+        # Prepare data for each axis
+        axes_data = []
+        for flow_idx, axis_name in zip(selected_info_flow_indices, selected_metrics):
+            info_flow = self.info_flow_outputs[flow_idx]
+            axis_column = axes_options[axis_name]
+
+            # Prepare data for this axis
+            metric_per_window = {}
+            accuracy_by_window = {}
+            hit_per_window = {}
+
+            for window_idx in all_window_indices:
+                if window_idx not in info_flow:
+                    continue
+
+                window_data = info_flow[window_idx]
+                accuracy_by_window[window_idx] = np.mean(window_data[COLUMNS.IF_HIT])
+                hit_per_window[window_idx] = window_data[COLUMNS.IF_HIT]
+                match axis_column:
+                    case COLUMNS.IF_DIFFS | COLUMNS.IF_TRUE_PROBS:
+                        values = window_data[axis_column]
+                    case COLUMNS.TARGET_PROBS:
+                        values: DataFrame = self.model_evaluations[flow_idx][axis_column]
+                    case _:
+                        raise ValueError(f"Unknown axis column: {axis_column}")
+
+                metric_per_window[window_idx] = values
+
+            axes_data.append(
+                {
+                    "data": pd.DataFrame(metric_per_window),
+                    "accuracy_by_window": accuracy_by_window,
+                    "flow_name": legend_labels[flow_idx],
+                    "hover_data": hover_data,
+                    "hit_per_window": hit_per_window,
+                }
             )
-        )
+
+        # Check if we have data for both axes
+        if not all(axes_data):
+            st.warning("Missing data for one or both axes")
+            pass
+            return
 
         # Create frames for animation
-        accuracy = []
         frames = []
-        for window_idx in window_indices:
-            hit_data = self.info_flow_output[window_idx][COLUMNS.IF_HIT]
-            accuracy.append(np.array(hit_data).mean())
-            colors = ["green" if c else "red" for c in hit_data]
+        for window_idx in all_window_indices:
+            # Filter data for this window
+            x_window_data = np.array(axes_data[0]["data"][window_idx])
+            y_window_data = np.array(axes_data[1]["data"][window_idx])
 
-            frame = go.Frame(
-                data=[
-                    go.Scatter(
-                        x=base_probs,
-                        y=self.info_flow_output[window_idx][COLUMNS.IF_TRUE_PROBS],
-                        mode="markers",
-                        marker=dict(size=10, color=colors, line=dict(width=1, color="black")),
-                        name=f"Window {window_idx}",
-                        hoverinfo="text",
-                        hovertext=hover_data,
-                        hoverlabel=dict(font_size=12, font_family="Arial"),
-                    ),
-                ],
-                name=str(window_idx + 1),
+            # Check if lengths match
+            if len(x_window_data) != len(y_window_data):
+                # Only show warning for the first window with mismatched lengths
+                raise ValueError(
+                    f"Data length mismatch for window {window_idx}. Some data points may not be displayed correctly."
+                )
+
+            marker_colors = []
+            for i in range(len(x_window_data)):
+                # Get hit/miss information if available
+                x_hit = axes_data[0]["hit_per_window"][window_idx][i]
+                y_hit = axes_data[1]["hit_per_window"][window_idx][i]
+
+                if x_hit and y_hit:
+                    color = "green"  # Both hit
+                elif x_hit:
+                    color = "blue"  # X hit only
+                elif y_hit:
+                    color = "orange"  # Y hit only
+                else:
+                    color = "red"  # Both miss
+
+                marker_colors.append(color)
+
+            # Create frame
+            label = (
+                f"{window_idx} ({axes_data[0]['accuracy_by_window'][window_idx]:.1%} avg acc)"
+                if window_idx in axes_data[0]["accuracy_by_window"]
+                else f"{window_idx}"
             )
-            frames.append(frame)
 
-        fig.frames = frames
-
-        # Add slider and buttons
-        sliders = [
-            dict(
-                active=0,
-                yanchor="top",
-                xanchor="left",
-                currentvalue=dict(font=dict(size=16), prefix="Window: ", visible=True, xanchor="right"),
-                transition=dict(duration=300, easing="cubic-in-out"),
-                pad=dict(b=10, t=50),
-                len=0.9,
-                x=0.1,
-                y=0,
-                steps=[
-                    dict(
-                        args=[
-                            [window_idx],
-                            dict(
-                                frame=dict(duration=300, redraw=True), mode="immediate", transition=dict(duration=300)
-                            ),
-                        ],
-                        label=f"{window_idx} ({accuracy[i]:.1%} acc)",
-                        method="animate",
-                    )
-                    for i, window_idx in enumerate(window_indices)
-                ],
+            frames.append(
+                {
+                    "name": label,
+                    "data": [
+                        {
+                            "x": x_window_data,
+                            "y": y_window_data,
+                            "mode": "markers",
+                            "marker": {
+                                "color": marker_colors,
+                                "size": 10,
+                            },
+                            "text": hover_data,
+                            "hoverinfo": "text",
+                        }
+                    ],
+                }
             )
-        ]
 
-        # Add play and pause buttons
-        updatemenus = [
-            dict(
-                type="buttons",
-                showactive=False,
-                y=0,
-                x=0,
-                xanchor="right",
-                yanchor="top",
-                pad=dict(t=0, r=10),
-                buttons=[
-                    dict(
-                        label="Play",
-                        method="animate",
-                        args=[
-                            None,
-                            dict(
-                                frame=dict(duration=100, redraw=True),
-                                fromcurrent=True,
-                                transition=dict(duration=100, easing="quadratic-in-out"),
-                            ),
+        # Create figure
+        fig = go.Figure(
+            data=frames[0]["data"],
+            layout=go.Layout(
+                title=title,
+                showlegend=True,
+                legend=dict(
+                    orientation="h",
+                    yanchor="bottom",
+                    y=1.02,
+                    xanchor="right",
+                    x=1,
+                ),
+                xaxis=dict(
+                    title=f"{axes_data[0]['flow_name']} - {axes_options[selected_metrics[0]]}",
+                    zeroline=True,
+                    range=[0, 1],  # Fix scale from 0 to 1
+                ),
+                yaxis=dict(
+                    title=f"{axes_data[1]['flow_name']} - {axes_options[selected_metrics[1]]}",
+                    zeroline=True,
+                    range=[0, 1],  # Fix scale from 0 to 1
+                ),
+                updatemenus=[
+                    {
+                        "type": "buttons",
+                        "showactive": False,
+                        "y": 0,
+                        "x": 0,
+                        "xanchor": "right",
+                        "yanchor": "top",
+                        "pad": dict(t=0, r=10),
+                        "buttons": [
+                            {
+                                "label": "Play",
+                                "method": "animate",
+                                "args": [
+                                    None,
+                                    {
+                                        "frame": {"duration": 500, "redraw": True},
+                                        "fromcurrent": True,
+                                    },
+                                ],
+                            },
+                            {
+                                "label": "Pause",
+                                "method": "animate",
+                                "args": [
+                                    [None],
+                                    {
+                                        "frame": {"duration": 0, "redraw": False},
+                                        "mode": "immediate",
+                                        "transition": {"duration": 0},
+                                    },
+                                ],
+                            },
                         ],
-                    ),
-                    dict(
-                        label="Pause",
-                        method="animate",
-                        args=[
-                            [None],
-                            dict(frame=dict(duration=0, redraw=True), mode="immediate", transition=dict(duration=0)),
-                        ],
-                    ),
+                    }
                 ],
-            )
-        ]
-
-        # Update layout
-        fig.update_layout(
-            title=INFO_FLOW_ANALYSIS_TEXTS.TAB_INFO_FLOW_OVER_TIME,
-            xaxis_title="Base Probability",
-            yaxis_title="Knockout Probability",
-            xaxis=dict(range=[0, 1]),
-            yaxis=dict(range=[0, 1]),
-            updatemenus=updatemenus,
-            sliders=sliders,
-            height=600,
-            width=800,
-            showlegend=False,
-            hovermode="closest",
+                sliders=[
+                    {
+                        "steps": [
+                            {
+                                "method": "animate",
+                                "label": frame["name"],
+                                "args": [
+                                    [frame["name"]],
+                                    {
+                                        "frame": {"duration": 500, "redraw": True},
+                                        "mode": "immediate",
+                                        "transition": {"duration": 300},
+                                    },
+                                ],
+                            }
+                            for frame in frames
+                        ],
+                        "active": 0,
+                        "currentvalue": {"prefix": "Window: "},
+                    }
+                ],
+            ),
+            frames=[
+                go.Frame(
+                    name=frame["name"],
+                    data=frame["data"],
+                )
+                for frame in frames
+            ],
         )
 
+        # Display the figure
         st.plotly_chart(fig, use_container_width=True)
 
     def render(self):

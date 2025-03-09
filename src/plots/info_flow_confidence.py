@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Dict, Literal, Optional, TypedDict, cast
 
 import numpy as np
+import plotly.graph_objects as go
 from matplotlib import pyplot as plt
 from matplotlib.axes import Axes
 from matplotlib.collections import PolyCollection
@@ -10,7 +11,12 @@ from matplotlib.figure import Figure
 from numpy.typing import NDArray
 from scipy import stats
 
-from src.consts import COLUMNS, TOKEN_TYPE_COLORS, TOKEN_TYPE_LINE_STYLES
+from src.consts import (
+    COLUMNS,
+    CONVERT_TO_PLOTLY_LINE_STYLE,
+    TOKEN_TYPE_COLORS,
+    TOKEN_TYPE_LINE_STYLES,
+)
 from src.types import TInfoFlowOutput, TInfoFlowSource, TInfoFlowTargetOutputs, TokenType
 
 
@@ -285,8 +291,8 @@ def create_confidence_plot(
                 metrics=metrics,
                 metric_type=metric_type,
                 block=block,
-                color=TOKEN_TYPE_COLORS[block],
-                linestyle=TOKEN_TYPE_LINE_STYLES[block],
+                color=TOKEN_TYPE_COLORS.get(block, "#000000"),
+                linestyle=TOKEN_TYPE_LINE_STYLES.get(block, "-"),
                 ax=ax,
             )
 
@@ -511,5 +517,115 @@ def process_info_flow_files(
         pass
     else:
         plt.close(fig)
+
+    return fig
+
+
+def create_plotly_confidence_chart(
+    targets_window_outputs: list[TInfoFlowOutput],
+    metric_type: Literal["acc", "diff"],
+    colors: list[str],
+    line_styles: list[str],
+    legend_labels: list[str],
+    confidence_level: float = 0.95,
+) -> go.Figure:
+    """
+    Create a Plotly figure with confidence intervals for the specified metric.
+
+    Args:
+        targets_window_outputs: Dictionary mapping sources to their window outputs
+        metric_type: Type of metric to plot ('acc' for accuracy or 'diff' for probability difference)
+        confidence_level: Confidence level for intervals (0-1)
+        title: Title for the plot
+        custom_colors: Optional dictionary mapping sources to custom colors
+        custom_line_styles: Optional dictionary mapping sources to custom line styles
+
+    Returns:
+        Plotly figure with confidence intervals
+    """
+    fig = go.Figure()
+
+    # Set up y-axis parameters based on metric type
+    if metric_type == "acc":
+        y_title = "Accuracy (%)"
+        y_range = [0, 100]
+        axhline_value = 100
+        multiplier = 100  # Convert to percentage
+    else:  # diff
+        y_title = "Probability Difference"
+        y_range = None
+        axhline_value = 0
+        multiplier = 1
+
+    # Add horizontal reference line
+    fig.add_hline(
+        y=axhline_value,
+        line_dash="dash",
+        line_color="gray",
+        line_width=1,
+    )
+
+    max_layers = max(len(info_flow.keys()) for info_flow in targets_window_outputs)
+
+    # Process each source
+    for i, window_outputs in enumerate(targets_window_outputs):
+        # Calculate metrics with confidence intervals
+        metrics = calculate_metrics_with_confidence(window_outputs, [metric_type], confidence_level)
+
+        # Get color and line style
+        x_values = list(window_outputs.keys())
+
+        # Create a legend group for this source
+        legend_group = f"group_{i}"
+
+        # Add main line
+        fig.add_trace(
+            go.Scatter(
+                x=x_values,
+                y=metrics[metric_type]["mean"] * multiplier,
+                mode="lines",
+                line=dict(color=colors[i], dash=CONVERT_TO_PLOTLY_LINE_STYLE[line_styles[i]], width=2),
+                name=legend_labels[i],
+                legendgroup=legend_group,
+                showlegend=True,
+            )
+        )
+
+        # Add confidence interval as a filled area
+        fig.add_trace(
+            go.Scatter(
+                x=x_values + x_values[::-1],
+                y=list(metrics[metric_type]["ci_upper"] * multiplier)
+                + list(metrics[metric_type]["ci_lower"] * multiplier)[::-1],
+                fill="toself",
+                fillcolor=colors[i],
+                line=dict(color="rgba(255,255,255,0)"),
+                hoverinfo="skip",
+                legendgroup=legend_group,
+                showlegend=False,
+                opacity=0.2,
+            )
+        )
+
+    # Update layout
+    fig.update_layout(
+        xaxis_title="Layers",
+        yaxis_title=y_title,
+        hovermode="closest",
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+    )
+
+    fig.update_xaxes(
+        tickmode="linear",
+        dtick=max(1, max_layers // 10),  # Adjust tick spacing based on max layer
+    )
+
+    # Only show legend if there are multiple flows
+    if len(targets_window_outputs) <= 1:
+        fig.update_layout(showlegend=False)
+
+    # Set y-axis range if specified
+    if y_range:
+        fig.update_yaxes(range=y_range)
 
     return fig

@@ -1,5 +1,5 @@
 from enum import StrEnum
-from typing import Type, TypeVar
+from typing import Any, Type, TypeVar
 
 
 def class_values(cls: Type) -> list[str]:
@@ -13,3 +13,15 @@ _T = TypeVar("_T")
 
 def select_indexes_from_list(lst: list[_T], indexes: list[int]) -> list[_T]:
     return [lst[i] for i in indexes]
+
+
+def get_list_indexes_of_set_values(lst: list[_T], values: set[_T]) -> list[int]:
+    return [i for i, v in enumerate(lst) if v in values]
+
+
+def first_dict_value(d: dict[Any, _T]) -> _T:
+    return next(iter(d.values()))
+
+
+def first_dict_key(d: dict[Any, _T]) -> Any:
+    return next(iter(d.keys()))
