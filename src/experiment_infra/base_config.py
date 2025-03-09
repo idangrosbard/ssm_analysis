@@ -10,14 +10,13 @@ import pyrallis
 from submitit.slurm.slurm import SlurmJob
 
 from src.consts import MODEL_SIZES_PER_ARCH_TO_MODEL_ID, PATHS
-from src.names import COLUMNS
-from src.names import EXPERIMENT_NAMES
 from src.datasets.download_dataset import load_splitted_counter_fact
 from src.experiment_infra.output_path import (
     _ATTRIBUTE_TYPE,
     OutputKey,
     combine_output_keys,
 )
+from src.names import COLS, EXPERIMENT_NAMES
 from src.types import (
     DATASETS,
     MODEL_ARCH,
@@ -124,7 +123,10 @@ class BaseConfig(ABC, Generic[_TConfigOutputs]):
         )
 
     def set_running_params(
-        self, with_slurm: bool, slurm_gpu_type: SLURM_GPU_TYPE, slurm_gpus_per_node: Optional[int] = None
+        self,
+        with_slurm: bool,
+        slurm_gpu_type: SLURM_GPU_TYPE,
+        slurm_gpus_per_node: Optional[int] = None,
     ):
         self.with_slurm = with_slurm
         self.slurm_gpu_type = slurm_gpu_type
@@ -227,7 +229,7 @@ class BaseConfig(ABC, Generic[_TConfigOutputs]):
 
         return cast(
             TPromptData,
-            df[df[COLUMNS.MODEL_CORRECT]].set_index(COLUMNS.ORIGINAL_IDX),
+            df[df[COLS.EVALUATE_MODEL.MODEL_CORRECT]].set_index(COLS.ORIGINAL_IDX),
         )
 
     @abstractmethod

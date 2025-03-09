@@ -1,7 +1,7 @@
 import random
 
 from datasets import DatasetDict
-from src.names import COLUMNS
+from src.names import COLS
 
 
 def split_dataset(dataset, num_splits, split_ratio, seed):
@@ -26,7 +26,7 @@ def split_dataset(dataset, num_splits, split_ratio, seed):
     random.shuffle(indices)
     dataset = dataset.select(indices)
     # Add original indices as a feature
-    dataset = dataset.map(lambda example, idx: {COLUMNS.ORIGINAL_IDX: indices[idx]}, with_indices=True)
+    dataset = dataset.map(lambda example, idx: {COLS.ORIGINAL_IDX: indices[idx]}, with_indices=True)
     # Calculate sizes
     num_examples = len(dataset)
     split_size = int(split_ratio * num_examples)

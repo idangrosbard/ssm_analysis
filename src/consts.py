@@ -2,9 +2,8 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import assert_never
-from src.names import COLUMNS
-from src.names import ResultBankParamNames
 
+from src.names import COLS, ResultBankParamNames
 from src.types import (
     DATASETS,
     MODEL_ARCH,
@@ -165,7 +164,9 @@ def reverse_model_id(model_id: TModelID) -> MODEL_ARCH_AND_SIZE:
     raise ValueError(f"Model id {model_id} not found in MODEL_SIZES_PER_ARCH_TO_MODEL_ID")
 
 
-def model_and_size_to_slurm_gpu_type(model_arch_and_size: MODEL_ARCH_AND_SIZE) -> SLURM_GPU_TYPE:
+def model_and_size_to_slurm_gpu_type(
+    model_arch_and_size: MODEL_ARCH_AND_SIZE,
+) -> SLURM_GPU_TYPE:
     model_cat_size = GRAPHS_ORDER[model_arch_and_size]
     match model_cat_size:
         case MODEL_SIZE_CAT.SMALL | MODEL_SIZE_CAT.MEDIUM:
@@ -187,15 +188,9 @@ def is_falcon(model_size: str) -> bool:
 DATASETS_IDS: dict[DATASETS, TDatasetID] = {DATASETS.COUNTER_FACT: TDatasetID("NeelNanda/counterfact-tracing")}  # type: ignore
 
 COUNTER_FACT_2_KNOWN1000_COL_CONV = {
-    COLUMNS.TARGET_TRUE: "attribute",
+    COLS.COUNTER_FACT.TARGET_TRUE: "attribute",
 }
 
-EVAL_MODEL_2_DATA_CONST_COL_CONV = {
-    COLUMNS.TARGET_PROBS: COLUMNS.TRUE_PROB,
-    COLUMNS.MODEL_TOP_OUTPUT_CONFIDENCE: COLUMNS.MAX_PROB,
-    COLUMNS.MODEL_CORRECT: COLUMNS.HIT,
-    COLUMNS.MODEL_OUTPUT: COLUMNS.PRED,
-}
 
 TOKEN_TYPE_COLORS: dict[TInfoFlowSource, str] = {
     TokenType.last: "#D2691E",  # orange
@@ -253,7 +248,9 @@ def format_params_for_title(params: dict) -> str:
                     ordered_parts.append(params[param])
                 case ResultBankParamNames.model_arch:
                     if ResultBankParamNames.model_size in parts_remaining:
-                        ordered_parts.append(f"{params[ResultBankParamNames.model_arch]} {params[ResultBankParamNames.model_size]}")
+                        ordered_parts.append(
+                            f"{params[ResultBankParamNames.model_arch]} {params[ResultBankParamNames.model_size]}"
+                        )
                         parts_remaining.remove(ResultBankParamNames.model_size)
                     else:
                         ordered_parts.append(params[ResultBankParamNames.model_arch])
@@ -273,5 +270,3 @@ def format_params_for_title(params: dict) -> str:
         ordered_parts.append(f"{param}={params[param]}")
 
     return " | ".join(ordered_parts)
-
-

@@ -1,23 +1,10 @@
 from enum import StrEnum
-from typing import Any
-from typing import ClassVar
-from typing import Generic
-from typing import Literal
-from typing import Type
-from typing import TypeVar
-from typing import Union
-from typing import cast
+from typing import Any, ClassVar, Generic, Literal, Type, TypeVar, Union, cast
 
-from src.consts import GRAPHS_ORDER
-from src.consts import model_and_size_to_slurm_gpu_type
-from src.names import COLUMNS
-from src.names import ResultBankParamNames
-from src.types import MODEL_ARCH_AND_SIZE
-from src.types import SLURM_GPU_TYPE
-from src.types import TVariationName
-from src.types import TWindowSize
-from src.utils.streamlit_utils import SessionKey
-from src.utils.streamlit_utils import SessionKeyDescriptor
+from src.consts import GRAPHS_ORDER, model_and_size_to_slurm_gpu_type
+from src.names import COLS, ResultBankParamNames
+from src.types import MODEL_ARCH_AND_SIZE, SLURM_GPU_TYPE, TVariationName, TWindowSize
+from src.utils.streamlit_utils import SessionKey, SessionKeyDescriptor
 
 
 # region Global App constants
@@ -30,26 +17,26 @@ class GLOBAL_APP_CONSTS:
     DEFAULT_WINDOW_SIZE = TWindowSize(9)
     MODELS_COMBINATIONS = list(GRAPHS_ORDER.keys())
     PROMPT_RELATED_COLUMNS = [
-        COLUMNS.PROMPT,
-        COLUMNS.TARGET_TRUE,
-        COLUMNS.TARGET_FALSE,
-        COLUMNS.SUBJECT,
-        COLUMNS.TARGET_FALSE_ID,
-        COLUMNS.RELATION,
+        COLS.COUNTER_FACT.PROMPT,
+        COLS.COUNTER_FACT.TARGET_TRUE,
+        COLS.COUNTER_FACT.TARGET_FALSE,
+        COLS.COUNTER_FACT.SUBJECT,
+        COLS.COUNTER_FACT.TARGET_FALSE_ID,
+        COLS.COUNTER_FACT.RELATION,
     ]
 
     MODEL_EVALS_COLUMNS = [
-        COLUMNS.ORIGINAL_IDX,
-        COLUMNS.PROMPT,
-        COLUMNS.TARGET_TRUE,
-        COLUMNS.TARGET_PROBS,
-        COLUMNS.MODEL_TOP_OUTPUT_CONFIDENCE,
-        COLUMNS.MODEL_CORRECT,
-        COLUMNS.MODEL_OUTPUT,
-        COLUMNS.TARGET_RANK,
-        COLUMNS.MODEL_GENERATION,
-        COLUMNS.TARGET_TOKENS,
-        COLUMNS.MODEL_TOP_OUTPUTS,
+        COLS.ORIGINAL_IDX,
+        COLS.COUNTER_FACT.PROMPT,
+        COLS.COUNTER_FACT.TARGET_TRUE,
+        COLS.EVALUATE_MODEL.TARGET_PROBS,
+        COLS.EVALUATE_MODEL.MODEL_TOP_OUTPUT_CONFIDENCE,
+        COLS.EVALUATE_MODEL.MODEL_CORRECT,
+        COLS.EVALUATE_MODEL.MODEL_OUTPUT,
+        COLS.EVALUATE_MODEL.TARGET_RANK,
+        COLS.EVALUATE_MODEL.MODEL_GENERATION,
+        COLS.EVALUATE_MODEL.TARGET_TOKENS,
+        COLS.EVALUATE_MODEL.MODEL_TOP_OUTPUTS,
     ]
 
     class PaginationConfig:
@@ -174,7 +161,7 @@ InfoFlowSessionKeys = _InfoFlowSessionKeys()
 # region Heatmap Creation
 
 
-class HeatmapConsts(StrEnum):
+class HeatmapConsts:
     MINIMUM_COMBINATIONS_FOR_FILTERING = 30
 
 

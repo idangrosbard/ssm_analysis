@@ -11,10 +11,13 @@ import torch
 from tqdm import tqdm
 
 from src.consts import is_mamba_arch
-from src.names import COLUMNS
-from src.names import EXPERIMENT_NAMES
-from src.experiment_infra.base_config import BASE_OUTPUT_KEYS, BaseConfig, create_mutable_field
+from src.experiment_infra.base_config import (
+    BASE_OUTPUT_KEYS,
+    BaseConfig,
+    create_mutable_field,
+)
 from src.experiment_infra.model_interface import ModelInterface, get_model_interface
+from src.names import COLS, EXPERIMENT_NAMES
 from src.plots.info_flow_confidence import create_confidence_plot
 from src.types import (
     MODEL_ARCH,
@@ -84,13 +87,21 @@ class InfoFlowConfig(BaseConfig):
         return self.intermediate_outputs_path() / f"intermediate_{target}_{source}.json"
 
     def save_intermediate_results(
-        self, target: TokenType, source: TInfoFlowSource, window_outputs: TInfoFlowOutput, current_window: TLayerIndex
+        self,
+        target: TokenType,
+        source: TInfoFlowSource,
+        window_outputs: TInfoFlowOutput,
+        current_window: TLayerIndex,
     ) -> None:
         """Save intermediate results to a temporary file."""
         path = self.get_intermediate_output_path(target, source)
         path.parent.mkdir(parents=True, exist_ok=True)
         # Save current progress and metadata
-        data = {"window_outputs": window_outputs, "current_window": current_window, "timestamp": time.time()}
+        data = {
+            "window_outputs": window_outputs,
+            "current_window": current_window,
+            "timestamp": time.time(),
+        }
         json.dump(data, path.open("w"))
 
     def load_intermediate_results(
@@ -129,7 +140,9 @@ class InfoFlowConfig(BaseConfig):
         return self.output_block_target_path(target, is_intermediate) / f"{feature_category_str}.csv"
 
     @staticmethod
-    def convert_json_output_to_output(json_output: TInfoFlowOutputJSONOutput) -> TInfoFlowOutput:
+    def convert_json_output_to_output(
+        json_output: TInfoFlowOutputJSONOutput,
+    ) -> TInfoFlowOutput:
         return {int(k): v for k, v in json_output.items()}
 
     @staticmethod
@@ -227,12 +240,12 @@ def forward_eval(
     device,
 ):
     source, feature_category = (
-        (
+        (knockout_source[0], FeatureCategory.ALL if knockout_source[1] is None else knockout_source[1])
+        if isinstance(knockout_source, tuple)
+        else (
             knockout_source,
             FeatureCategory.ALL,
         )
-        if isinstance(knockout_source, TokenType)
-        else knockout_source
     )
     num_to_masks, first_token = get_num_to_masks(prompt, tokenizer, window, source, knockout_target, device)
 
@@ -295,7 +308,8 @@ def run(args: InfoFlowConfig):
         last_save_time = time.time()
 
         for i, window in enumerate(
-            tqdm(windows[start_window_idx:], desc="Windows", initial=start_window_idx), start=start_window_idx
+            tqdm(windows[start_window_idx:], desc="Windows", initial=start_window_idx),
+            start=start_window_idx,
         ):
             windows_true_probs[i] = cast(TInfoFlowWindowValue, defaultdict(list))
             model_interface.setup(layers=window)
@@ -319,11 +333,11 @@ def run(args: InfoFlowConfig):
                     print(f" Error evaluating {prompt_idx = } with {knockout_source = }, {knockout_target = }: {e}")
                     banned_prompt_indices.add(prompt_idx)
                     continue
-                windows_true_probs[i][COLUMNS.IF_HIT].append(bool(hit))
-                windows_true_probs[i][COLUMNS.IF_TRUE_PROBS].append(float(true_prob))
-                windows_true_probs[i][COLUMNS.IF_DIFFS].append(float(diff))
+                windows_true_probs[i][COLS.INFO_FLOW.HIT.value].append(bool(hit))
+                windows_true_probs[i][COLS.INFO_FLOW.TRUE_PROBS.value].append(float(true_prob))
+                windows_true_probs[i][COLS.INFO_FLOW.DIFFS.value].append(float(diff))
                 # Store original index for traceability
-                windows_true_probs[i][COLUMNS.ORIGINAL_IDX].append(TPromptOriginalIndex(int(prompt_idx)))
+                windows_true_probs[i][COLS.ORIGINAL_IDX].append(TPromptOriginalIndex(int(prompt_idx)))
 
             # Check if it's time to save intermediate results
             current_time = time.time()
@@ -349,6 +363,9 @@ def run(args: InfoFlowConfig):
             knockout_target=target,
         )
         args.output_block_target_source_path(target, source).parent.mkdir(parents=True, exist_ok=True)
-        json.dump(window_outputs, args.output_block_target_source_path(target, source).open("w"))
+        json.dump(
+            window_outputs,
+            args.output_block_target_source_path(target, source).open("w"),
+        )
         # Clean up intermediate results after successful completion
         args.cleanup_intermediate_results(target, source)

@@ -11,7 +11,7 @@ from datasets import (
 )
 from scripts.counterfact.splitting import split_dataset
 from src.consts import COUNTER_FACT_2_KNOWN1000_COL_CONV, DATASETS_IDS, PATHS
-from src.names import COLUMNS
+from src.names import COLS
 from src.types import DATASETS, FILTERATIONS, SPLIT, DatasetArgs, TSplitChoise
 
 
@@ -57,7 +57,7 @@ def load_splitted_counter_fact(
             known1000_col,
         ) in COUNTER_FACT_2_KNOWN1000_COL_CONV.items():
             dataset = dataset.rename_column(counter_fact_col, known1000_col)
-        dataset = dataset.remove_columns([COLUMNS.TARGET_FALSE, COLUMNS.TARGET_FALSE_ID])
+        dataset = dataset.remove_columns([COLS.COUNTER_FACT.TARGET_FALSE, COLS.COUNTER_FACT.TARGET_FALSE_ID])
     return dataset
 
 

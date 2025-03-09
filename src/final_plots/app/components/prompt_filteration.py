@@ -6,18 +6,28 @@ from annotated_text import annotated_text, annotation
 from pandas import DataFrame
 from st_aggrid import AgGrid, DataReturnMode, GridUpdateMode
 
-from src.names import COLUMNS
 from src.final_plots.app.app_consts import GLOBAL_APP_CONSTS, AppSessionKeys
-from src.names import HeatmapCols
 from src.final_plots.app.data_store import get_merged_evaluations
 from src.final_plots.app.texts import HEATMAP_TEXTS
-from src.final_plots.app.utils import filter_combinations, get_steamlit_dataframe_selected_row
+from src.final_plots.app.utils import (
+    filter_combinations,
+    get_steamlit_dataframe_selected_row,
+)
 from src.final_plots.data_reqs import ModelCombination, save_model_combinations_prompts
+from src.names import COLS, HeatmapCols
 from src.types import TPromptOriginalIndex
 from src.utils.logits import Prompt
-from src.utils.streamlit.aagrid import SelectionMode, base_grid_builder, set_pre_selected_rows
-from src.utils.streamlit.dataframe import index_to_row_position, validate_one_selected_row_dataframe
+from src.utils.streamlit.aagrid import (
+    SelectionMode,
+    base_grid_builder,
+    set_pre_selected_rows,
+)
+from src.utils.streamlit.dataframe import (
+    index_to_row_position,
+    validate_one_selected_row_dataframe,
+)
 from src.utils.streamlit_utils import StreamlitComponent
+from src.utils.types_utils import str_enum_values
 
 
 def show_prompt(prompt: Prompt):
@@ -25,10 +35,10 @@ def show_prompt(prompt: Prompt):
         [
             annotation(val.format(""), col)
             for col in [
-                COLUMNS.COUNTER_FACT_COLS.RELATION_PREFIX,
-                COLUMNS.COUNTER_FACT_COLS.SUBJECT,
-                COLUMNS.COUNTER_FACT_COLS.RELATION_SUFFIX,
-                COLUMNS.COUNTER_FACT_COLS.TARGET_TRUE,
+                COLS.COUNTER_FACT.RELATION_PREFIX,
+                COLS.COUNTER_FACT.SUBJECT,
+                COLS.COUNTER_FACT.RELATION_SUFFIX,
+                COLS.COUNTER_FACT.TARGET_TRUE,
             ]
             if pd.notna(val := prompt.get_column(col))
         ]
@@ -116,7 +126,7 @@ class ShowPromptsComponent(StreamlitComponent):
     def render(self):
         df, grid_builder = base_grid_builder(self.model_evals, self.selection_mode, [])
         grid_builder.configure_first_column_as_index()
-        grid_builder.configure_column(COLUMNS.PROMPT, pinned=True)
+        grid_builder.configure_column(COLS.COUNTER_FACT.PROMPT, pinned=True)
         set_pre_selected_rows(grid_builder, self.pre_selected_rows)
         grid_options = grid_builder.build()
         grid_results = AgGrid(
@@ -161,7 +171,7 @@ class PromptSelectionComponent(StreamlitComponent):
             ),
         ).render_validate_single_selection()
         if selected_prompt_row is not None:
-            selected_prompt_idx_new = int(selected_prompt_row[COLUMNS.ORIGINAL_IDX])
+            selected_prompt_idx_new = int(selected_prompt_row[COLS.ORIGINAL_IDX])
             if selected_prompt_idx_new != chosen_prompt_idx:
                 if st.button(HEATMAP_TEXTS.BUT_SAVE_NEW_SELECTION(chosen_prompt_idx, selected_prompt_idx_new)):
                     # selected_prompt = possible_prompts.iloc[selected_row_idx]  # type: ignore
@@ -174,14 +184,17 @@ class PromptSelectionComponent(StreamlitComponent):
         if chosen_prompt_idx is not None:
             show_prompt(Prompt(possible_prompts.loc[chosen_prompt_idx]))
             model_evals: DataFrame = get_merged_evaluations(chosen_prompt_idx, AppSessionKeys.variation.value)
-
             st.dataframe(
-                (model_evals.pipe(lambda df: df[[col for col in df.columns if col not in COLUMNS.PROMPT_DATA_COLS]])),
+                (
+                    model_evals.pipe(
+                        lambda df: df[[col for col in df.columns if col not in str_enum_values(COLS.COUNTER_FACT)]]
+                    )
+                ),
                 hide_index=True,
                 column_config={
                     "model_arch": st.column_config.TextColumn(pinned=True),
                     "model_size": st.column_config.TextColumn(pinned=True),
-                    COLUMNS.MODEL_TOP_OUTPUTS: st.column_config.ListColumn(),
+                    COLS.EVALUATE_MODEL.MODEL_TOP_OUTPUTS: st.column_config.ListColumn(),
                 },
             )
         return chosen_prompt_idx

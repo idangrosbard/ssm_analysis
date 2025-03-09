@@ -5,8 +5,16 @@ from typing import Any, Union, assert_never, cast
 import pandas as pd
 import torch
 
-from src.names import COLUMNS
-from src.types import TNum2Mask, TokenType, TPromptData, TPromptOriginalIndex, TRowPosition, TTokenizer, TWindow
+from src.names import COLS
+from src.types import (
+    TNum2Mask,
+    TokenType,
+    TPromptData,
+    TPromptOriginalIndex,
+    TRowPosition,
+    TTokenizer,
+    TWindow,
+)
 
 
 def get_last_token_logits(logits: torch.Tensor) -> torch.Tensor:
@@ -85,19 +93,19 @@ class Prompt:
 
     @property
     def prompt(self) -> str:
-        return str(self.prompt_row[COLUMNS.PROMPT])
+        return str(self.prompt_row[COLS.COUNTER_FACT.PROMPT])
 
     @property
     def subject(self) -> str:
-        return str(self.prompt_row[COLUMNS.SUBJECT])
+        return str(self.prompt_row[COLS.COUNTER_FACT.SUBJECT])
 
     @property
     def true_word(self) -> str:
-        return str(self.prompt_row[COLUMNS.TARGET_TRUE])
+        return str(self.prompt_row[COLS.COUNTER_FACT.TARGET_TRUE])
 
     @property
     def base_prob(self) -> float:
-        return cast(float, self.prompt_row[COLUMNS.TARGET_PROBS])
+        return cast(float, self.prompt_row[COLS.EVALUATE_MODEL.TARGET_PROBS])
 
     def true_id(self, tokenizer, device) -> torch.Tensor:
         return tokenizer(self.true_word, return_tensors="pt", padding=True).input_ids.to(device="cpu")
@@ -105,7 +113,7 @@ class Prompt:
     def input_ids(self, tokenizer, device) -> torch.Tensor:
         return tokenizer(self.prompt, return_tensors="pt", padding=True).input_ids.to(device=device)
 
-    def get_column(self, column: COLUMNS.COUNTER_FACT_COLS) -> Any:
+    def get_column(self, column: COLS.COUNTER_FACT) -> Any:
         return self.prompt_row[column]
 
 

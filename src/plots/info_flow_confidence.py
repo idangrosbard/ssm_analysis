@@ -16,8 +16,14 @@ from src.consts import (
     TOKEN_TYPE_COLORS,
     TOKEN_TYPE_LINE_STYLES,
 )
-from src.names import COLUMNS
-from src.types import TInfoFlowOutput, TInfoFlowSource, TInfoFlowTargetOutputs, TokenType
+from src.names import COLS
+from src.types import (
+    TInfoFlowOutput,
+    TInfoFlowSource,
+    TInfoFlowTargetOutputs,
+    TokenType,
+)
+from src.utils.types_utils import first_dict_value
 
 
 class MetricData(TypedDict):
@@ -192,8 +198,8 @@ def calculate_metrics_with_confidence(
     metrics: Dict[str, Dict[str, list[float]]] = defaultdict(lambda: defaultdict(list))
 
     metric_to_name = {
-        "acc": COLUMNS.IF_HIT,
-        "diff": COLUMNS.IF_DIFFS,
+        "acc": COLS.INFO_FLOW.HIT,
+        "diff": COLS.INFO_FLOW.DIFFS,
     }
 
     for window_idx in window_outputs.keys():
@@ -202,7 +208,7 @@ def calculate_metrics_with_confidence(
         for metric_type in metric_types:
             confidence = calculate_confidence(
                 confidence_method=confidence_method,
-                data=np.array(window_data[metric_to_name[metric_type]]),
+                data=np.array(window_data[metric_to_name[metric_type].value]),
                 confidence_level=confidence_level,
             )
             for key in confidence:
@@ -275,9 +281,9 @@ def create_confidence_plot(
     unique_handles = {}
 
     # Get number of points from first window of first block
-    first_block = next(iter(targets_window_outputs.values()))
-    first_window = next(iter(first_block.values()))
-    n_points = len(first_window[COLUMNS.IF_HIT])
+    first_block = first_dict_value(targets_window_outputs)
+    first_window = first_dict_value(first_block)
+    n_points = len(first_window[COLS.INFO_FLOW.HIT.value])
 
     # Process each metric type (accuracy and diff)
     for i, (metric_type, plot_metadata) in enumerate(plots_meta_data.items()):
@@ -510,7 +516,10 @@ def process_info_flow_files(
         output_dir = first_file_path.parent.parent
         results_dir = output_dir / "results"
         results_dir.mkdir(parents=True, exist_ok=True)
-        fig.savefig(results_dir / f"knockout_target={target_block}_with_confidence.png", bbox_inches="tight")
+        fig.savefig(
+            results_dir / f"knockout_target={target_block}_with_confidence.png",
+            bbox_inches="tight",
+        )
 
     if show_fig:
         # plt.show()
@@ -584,7 +593,11 @@ def create_plotly_confidence_chart(
                 x=x_values,
                 y=metrics[metric_type]["mean"] * multiplier,
                 mode="lines",
-                line=dict(color=colors[i], dash=CONVERT_TO_PLOTLY_LINE_STYLE[line_styles[i]], width=2),
+                line=dict(
+                    color=colors[i],
+                    dash=CONVERT_TO_PLOTLY_LINE_STYLE[line_styles[i]],
+                    width=2,
+                ),
                 name=legend_labels[i],
                 legendgroup=legend_group,
                 showlegend=True,

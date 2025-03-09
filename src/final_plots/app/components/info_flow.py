@@ -13,9 +13,8 @@ from src.consts import (
     format_params_for_title,
     get_item_from_token_from_info_flow_source_dict,
 )
-from src.names import COLUMNS
 from src.final_plots.app.texts import INFO_FLOW_ANALYSIS_TEXTS
-from src.names import ResultBankParamNames
+from src.names import COLS, ResultBankParamNames
 from src.plots.info_flow_confidence import (
     create_plotly_confidence_chart,
 )
@@ -112,7 +111,10 @@ class InfoFlowAnalysisComponent(StreamlitComponent):
         for i, info_flow in enumerate(self.info_flow_outputs):
             # Create a unique source identifier for each info flow
             targets_window_outputs.append(info_flow)
-            token_type = (self.metadata_list[i][ResultBankParamNames.target], self.metadata_list[i][ResultBankParamNames.feature_category])
+            token_type = (
+                self.metadata_list[i][ResultBankParamNames.target],
+                self.metadata_list[i][ResultBankParamNames.feature_category],
+            )
 
             # Assign a custom color
             colors.append(
@@ -161,9 +163,9 @@ class InfoFlowAnalysisComponent(StreamlitComponent):
             true_probs = {}
             base_probs = {}
             for window_idx, window_data in info_flow.items():
-                true_probs[window_idx] = window_data[COLUMNS.IF_TRUE_PROBS]
+                true_probs[window_idx] = window_data[COLS.INFO_FLOW.TRUE_PROBS.value]
                 # Use diffs as a proxy for base_probs if available
-                base_probs[window_idx] = self.model_evaluations[i][COLUMNS.TARGET_PROBS]
+                base_probs[window_idx] = self.model_evaluations[i][COLS.EVALUATE_MODEL.TARGET_PROBS]
 
             true_probs_df = pd.DataFrame(true_probs)
             base_probs_df = pd.DataFrame(base_probs).reset_index(drop=True)
@@ -214,9 +216,9 @@ class InfoFlowAnalysisComponent(StreamlitComponent):
 
         # Define axis options
         axes_options = {
-            "Base Probability": COLUMNS.TARGET_PROBS,
-            "True Probability": COLUMNS.IF_TRUE_PROBS,
-            "Probability Difference": COLUMNS.IF_DIFFS,
+            "Base Probability": COLS.EVALUATE_MODEL.TARGET_PROBS,
+            "True Probability": COLS.INFO_FLOW.TRUE_PROBS,
+            "Probability Difference": COLS.INFO_FLOW.DIFFS,
         }
 
         # Create axis selection
@@ -241,7 +243,10 @@ class InfoFlowAnalysisComponent(StreamlitComponent):
                     )
                 selected_metrics.append(
                     st.selectbox(
-                        INFO_FLOW_ANALYSIS_TEXTS.metric_selection, list(axes_options.keys()), index=i, key=f"metric_{i}"
+                        INFO_FLOW_ANALYSIS_TEXTS.metric_selection,
+                        list(axes_options.keys()),
+                        index=i,
+                        key=f"metric_{i}",
                     )
                 )
 
@@ -251,13 +256,13 @@ class InfoFlowAnalysisComponent(StreamlitComponent):
 
         # Prepare hover data with additional information from model_evaluations
         hover_columns = [
-            COLUMNS.SUBJECT,
-            COLUMNS.RELATION,
-            COLUMNS.TARGET_TRUE,
-            COLUMNS.TARGET_FALSE,
-            COLUMNS.MODEL_OUTPUT,
-            COLUMNS.TARGET_RANK,
-            COLUMNS.MODEL_TOP_OUTPUT_CONFIDENCE,
+            COLS.COUNTER_FACT.SUBJECT,
+            COLS.COUNTER_FACT.RELATION,
+            COLS.COUNTER_FACT.TARGET_TRUE,
+            COLS.COUNTER_FACT.TARGET_FALSE,
+            COLS.EVALUATE_MODEL.MODEL_OUTPUT,
+            COLS.EVALUATE_MODEL.TARGET_RANK,
+            COLS.EVALUATE_MODEL.MODEL_TOP_OUTPUT_CONFIDENCE,
         ]
 
         # Get window indices from both selected info flows
@@ -295,12 +300,12 @@ class InfoFlowAnalysisComponent(StreamlitComponent):
                     continue
 
                 window_data = info_flow[window_idx]
-                accuracy_by_window[window_idx] = np.mean(window_data[COLUMNS.IF_HIT])
-                hit_per_window[window_idx] = window_data[COLUMNS.IF_HIT]
+                accuracy_by_window[window_idx] = np.mean(window_data[COLS.INFO_FLOW.HIT])
+                hit_per_window[window_idx] = window_data[COLS.INFO_FLOW.HIT]
                 match axis_column:
-                    case COLUMNS.IF_DIFFS | COLUMNS.IF_TRUE_PROBS:
+                    case COLS.INFO_FLOW.DIFFS | COLS.INFO_FLOW.TRUE_PROBS:
                         values = window_data[axis_column]
-                    case COLUMNS.TARGET_PROBS:
+                    case COLS.EVALUATE_MODEL.TARGET_PROBS:
                         values: DataFrame = self.model_evaluations[flow_idx][axis_column]
                     case _:
                         raise ValueError(f"Unknown axis column: {axis_column}")

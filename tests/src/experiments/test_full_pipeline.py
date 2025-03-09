@@ -9,17 +9,17 @@ import pytest
 
 from datasets import DatasetDict
 from src.consts import PathsConfig
-from src.names import COLUMNS
 from src.datasets.download_dataset import load_splitted_counter_fact
 from src.experiments.full_pipeline import FullPipelineConfig, main_local
 from src.experiments.info_flow import forward_eval
+from src.names import COLS
 from src.types import (
     FILTERATIONS,
     MODEL_ARCH,
     TBatchSize,
     TModelSize,
     TokenType,
-    TRowIndex,
+    TRowPosition,
     TVariationName,
     TWindowSize,
 )
@@ -47,7 +47,7 @@ def get_config(variation_name: str, model_arch: MODEL_ARCH, model_size: str) -> 
         model_size=TModelSize(model_size),
         _batch_size=TBatchSize(1),
         window_size=TWindowSize(15),
-        prompt_indices_rows=[TRowIndex(i) for i in range(HEATMAP_SIZE)],
+        prompt_indices_rows=[TRowPosition(i) for i in range(HEATMAP_SIZE)],
         with_plotting=True,
     )
 
@@ -66,15 +66,16 @@ def create_test_data(test_base_path: Path):
         "all",
         align_to_known=False,
         filteration=FILTERATIONS.all_correct,
-    ).filter(lambda x: x[COLUMNS.ORIGINAL_IDX] in ORIGINAL_IDS)
+    ).filter(lambda x: x[COLS.ORIGINAL_IDX] in ORIGINAL_IDS)
 
     # save dataset to disk
     DatasetDict({"train1": dataset}).save_to_disk(test_paths.COUNTER_FACT_DIR / "splitted")
 
     # save filteration to disk
     (
-        pd.DataFrame({COLUMNS.ORIGINAL_IDX: dataset[COLUMNS.ORIGINAL_IDX]}).to_csv(
-            test_paths.COUNTER_FACT_FILTERATIONS_DIR / f"{FILTERATIONS.all_correct}.csv", index=False
+        pd.DataFrame({COLS.ORIGINAL_IDX: dataset[COLS.ORIGINAL_IDX]}).to_csv(
+            test_paths.COUNTER_FACT_FILTERATIONS_DIR / f"{FILTERATIONS.all_correct}.csv",
+            index=False,
         )
     )
 
@@ -87,7 +88,11 @@ def create_test_experiment(test_base_path: Path):
             (MODEL_ARCH.MAMBA2, "130M"),
             (MODEL_ARCH.GPT2, "355M"),
         ]:
-            config = get_config(variation_name="test_baseline", model_arch=model_arch, model_size=model_size)
+            config = get_config(
+                variation_name="test_baseline",
+                model_arch=model_arch,
+                model_size=model_size,
+            )
             main_local(config)
             print(f"Baseline updated at: {test_base_path}")
 

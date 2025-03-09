@@ -4,9 +4,11 @@ target-version = "py312"
 extend-include = [
     "src",
     # "app"
+    "tests",
 ]
 exclude = [
-    "**/*.ipynb.py"
+    "**/*.ipynb.py",
+    ".history/**",
 ]
 
 [tool.ruff.lint]
@@ -78,6 +80,7 @@ files = [
 ] # Target specific directories for type checking
 exclude = [
     ".*/__pycache__",
+    ".history/**",
     # "src/embeddings",
     # "src/evaluate",
     # "src/knockout",
@@ -103,12 +106,14 @@ venvPath = "/home/yandex/DL20232024a/nirendy/repos/ADL_2/"
 venv = 'venv'
 include = [
     "src",
+    "tests",
     # "scripts",
     # "app/**"
 ]
 exclude = [
     "**/__pycache__",
-    "notebooks/**"
+    "notebooks/**",
+    ".history/**",
 ]
 ignore = [
     # "src/embeddings",

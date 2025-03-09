@@ -1,11 +1,18 @@
 from enum import StrEnum
-from typing import Any, Type, TypeVar
+from typing import Any, Type, TypeVar, cast
 
 
 def class_values(cls: Type) -> list[str]:
     if issubclass(cls, StrEnum):
         return [member.value for member in cls]  # Handle StrEnum
     return [value for key, value in vars(cls).items() if not key.startswith("__")]
+
+
+_T_STR_ENUM = TypeVar("_T_STR_ENUM", bound=StrEnum)
+
+
+def str_enum_values(cls: Type[_T_STR_ENUM]) -> list[_T_STR_ENUM]:
+    return cast(list[_T_STR_ENUM], class_values(cls))
 
 
 _T = TypeVar("_T")

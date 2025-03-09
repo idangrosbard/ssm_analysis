@@ -15,12 +15,11 @@ from src.consts import (
     is_falcon,
     is_mamba_arch,
 )
-from src.names import COLUMNS
-from src.names import EXPERIMENT_NAMES
 from src.experiments.evaluate_model import EvaluateModelConfig
 from src.experiments.heatmap import HeatmapConfig
 from src.experiments.info_flow import InfoFlowConfig
 from src.final_plots.results_bank import HeatmapRecord, InfoFlowRecord, ResultRecord
+from src.names import COLS, EXPERIMENT_NAMES
 from src.types import (
     MODEL_ARCH_AND_SIZE,
     FeatureCategory,
@@ -127,7 +126,9 @@ def merge_data_reqs(first: IDataFulfilled, second: IDataFulfilled, keys_by_first
     return {data_req: first.get(data_req) or second.get(data_req) for data_req in (first if keys_by_first else second)}
 
 
-def choose_latest_data_fulfilled(data_reqs_options: IDataFulfilledOptions) -> IDataFulfilled:
+def choose_latest_data_fulfilled(
+    data_reqs_options: IDataFulfilledOptions,
+) -> IDataFulfilled:
     return {data_req: max(options) if options else None for data_req, options in data_reqs_options.items()}
 
 
@@ -189,7 +190,12 @@ def get_data_reqs() -> IDataFulfilled:
     """
 
     for model_arch_and_size in GRAPHS_ORDER:
-        for source in [TokenType.last, TokenType.first, TokenType.subject, TokenType.relation]:
+        for source in [
+            TokenType.last,
+            TokenType.first,
+            TokenType.subject,
+            TokenType.relation,
+        ]:
             data_reqs[
                 DataReq(
                     experiment_name=EXPERIMENT_NAMES.INFO_FLOW,
@@ -368,7 +374,10 @@ def get_data_reqs() -> IDataFulfilled:
     for source in [TokenType.relation, TokenType.first, TokenType.last, TokenType.all]:
         for model_arch_and_size, model_size_cat in GRAPHS_ORDER.items():
             if is_mamba_arch(model_arch_and_size.arch) and model_size_cat == MODEL_SIZE_CAT.LARGE:
-                for feature_category in [FeatureCategory.SLOW_DECAY, FeatureCategory.FAST_DECAY]:
+                for feature_category in [
+                    FeatureCategory.SLOW_DECAY,
+                    FeatureCategory.FAST_DECAY,
+                ]:
                     data_reqs[
                         DataReq(
                             experiment_name=EXPERIMENT_NAMES.INFO_FLOW,
@@ -412,7 +421,12 @@ def get_data_reqs() -> IDataFulfilled:
     for model_arch_and_size in GRAPHS_ORDER:
         if is_mamba_arch(model_arch_and_size.arch):
             for window_size in ALL_WINDOW_SIZES:
-                for source in [TokenType.last, TokenType.first, TokenType.subject, TokenType.relation]:
+                for source in [
+                    TokenType.last,
+                    TokenType.first,
+                    TokenType.subject,
+                    TokenType.relation,
+                ]:
                     data_reqs[
                         DataReq(
                             experiment_name=EXPERIMENT_NAMES.INFO_FLOW,
@@ -446,7 +460,12 @@ def get_data_reqs() -> IDataFulfilled:
 
     for model_arch_and_size in GRAPHS_ORDER:
         if is_mamba_arch(model_arch_and_size.arch):
-            for source in [TokenType.last, TokenType.first, TokenType.subject, TokenType.relation]:
+            for source in [
+                TokenType.last,
+                TokenType.first,
+                TokenType.subject,
+                TokenType.relation,
+            ]:
                 data_reqs[
                     DataReq(
                         experiment_name=EXPERIMENT_NAMES.INFO_FLOW,
@@ -478,7 +497,9 @@ def get_data_reqs() -> IDataFulfilled:
     return data_reqs
 
 
-def save_prompt_selections(prompt_selections: list[tuple[set[MODEL_ARCH_AND_SIZE], int]]) -> None:
+def save_prompt_selections(
+    prompt_selections: list[tuple[set[MODEL_ARCH_AND_SIZE], int]],
+) -> None:
     pd.DataFrame(prompt_selections).to_csv(PROMPT_SELECTION_PATH, index=False)
 
 
@@ -496,7 +517,7 @@ def get_model_evaluations(
             variation=variation,
         )
         .get_outputs()
-        .set_index(COLUMNS.ORIGINAL_IDX)
+        .set_index(COLS.ORIGINAL_IDX)
         for model_arch_and_size in model_arch_and_sizes
     }
 
@@ -534,7 +555,9 @@ def save_model_combinations_prompts(model_combinations: list[ModelCombination]) 
 
 
 def get_model_combinations_prompts(
-    variation: Optional[TVariationName], model_arch_and_sizes: list[MODEL_ARCH_AND_SIZE], seed: Optional[int] = 42
+    variation: Optional[TVariationName],
+    model_arch_and_sizes: list[MODEL_ARCH_AND_SIZE],
+    seed: Optional[int] = 42,
 ) -> list[ModelCombination]:
     """Get all possible model combinations and their corresponding prompts.
     Each combination specifies which models should be correct and which should be incorrect.
@@ -570,7 +593,8 @@ def get_model_combinations_prompts(
     for model_arch_and_size in model_arch_and_sizes:
         model_df = model_evaluations[model_arch_and_size]
         correctness_df[model_arch_and_size] = [
-            model_df.at[idx, COLUMNS.MODEL_CORRECT] if idx in model_df.index else False for idx in correctness_df.index
+            model_df.at[idx, COLS.EVALUATE_MODEL.MODEL_CORRECT] if idx in model_df.index else False
+            for idx in correctness_df.index
         ]
 
     # Generate all possible combinations
@@ -616,11 +640,15 @@ def get_model_combinations_prompts(
 
 
 def derive_subset_model_combinations(
-    saved_combinations: list[ModelCombination], requested_models: list[MODEL_ARCH_AND_SIZE]
+    saved_combinations: list[ModelCombination],
+    requested_models: list[MODEL_ARCH_AND_SIZE],
 ) -> list[ModelCombination]:
     """Derive model combinations for a subset using saved combinations with O(|C|) complexity."""
     requested_set = set(requested_models)
-    pattern_map: dict[tuple[frozenset, frozenset], tuple[list[TPromptOriginalIndex], list[TPromptOriginalIndex]]] = {}
+    pattern_map: dict[
+        tuple[frozenset, frozenset],
+        tuple[list[TPromptOriginalIndex], list[TPromptOriginalIndex]],
+    ] = {}
 
     # First pass: Group by projected patterns and collect prompts
     for combo in saved_combinations:

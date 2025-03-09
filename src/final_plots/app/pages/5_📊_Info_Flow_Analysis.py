@@ -19,15 +19,13 @@ import streamlit as st
 from st_aggrid import AgGridReturn
 
 from src.consts import GRAPHS_ORDER
-from src.names import COLUMNS
-from src.names import EXPERIMENT_NAMES
 from src.experiments.info_flow import InfoFlowConfig
 from src.final_plots.app.components.info_flow import InfoFlowAnalysisComponent
 from src.final_plots.app.components.result_bank import SelectionMode, ShowResultsBank
 from src.final_plots.app.data_store import load_model_evaluations
 from src.final_plots.app.texts import INFO_FLOW_ANALYSIS_TEXTS
 from src.final_plots.app.utils import reverse_format_path_for_display
-from src.names import ResultBankParamNames
+from src.names import COLS, EXPERIMENT_NAMES, ResultBankParamNames
 from src.types import (
     MODEL_ARCH_AND_SIZE,
     MODEL_SIZE_CAT,
@@ -37,25 +35,37 @@ from src.types import (
     TPromptOriginalIndex,
 )
 from src.utils.streamlit_utils import StreamlitPage
-from src.utils.types_utils import first_dict_value, get_list_indexes_of_set_values, select_indexes_from_list
+from src.utils.types_utils import (
+    first_dict_value,
+    get_list_indexes_of_set_values,
+    select_indexes_from_list,
+)
 
-st.set_page_config(page_title=INFO_FLOW_ANALYSIS_TEXTS.title, page_icon=INFO_FLOW_ANALYSIS_TEXTS.icon, layout="wide")
+st.set_page_config(
+    page_title=INFO_FLOW_ANALYSIS_TEXTS.title,
+    page_icon=INFO_FLOW_ANALYSIS_TEXTS.icon,
+    layout="wide",
+)
 st.title(f"{INFO_FLOW_ANALYSIS_TEXTS.title} {INFO_FLOW_ANALYSIS_TEXTS.icon}")
 
 
 def select_indexes_from_window_values(
     window_values: TInfoFlowWindowValue, prompt_ids: list[TPromptOriginalIndex]
 ) -> TInfoFlowWindowValue:
-    indexes = get_list_indexes_of_set_values(window_values[COLUMNS.ORIGINAL_IDX], set(prompt_ids))
+    indexes = get_list_indexes_of_set_values(window_values[COLS.ORIGINAL_IDX], set(prompt_ids))
     return {
-        COLUMNS.IF_HIT: select_indexes_from_list(window_values[COLUMNS.IF_HIT], indexes),
-        COLUMNS.IF_TRUE_PROBS: select_indexes_from_list(window_values[COLUMNS.IF_TRUE_PROBS], indexes),
-        COLUMNS.IF_DIFFS: select_indexes_from_list(window_values[COLUMNS.IF_DIFFS], indexes),
-        COLUMNS.ORIGINAL_IDX: prompt_ids,
+        COLS.INFO_FLOW.HIT.value: select_indexes_from_list(window_values[COLS.INFO_FLOW.HIT.value], indexes),
+        COLS.INFO_FLOW.TRUE_PROBS.value: select_indexes_from_list(
+            window_values[COLS.INFO_FLOW.TRUE_PROBS.value], indexes
+        ),
+        COLS.INFO_FLOW.DIFFS.value: select_indexes_from_list(window_values[COLS.INFO_FLOW.DIFFS.value], indexes),
+        COLS.ORIGINAL_IDX: prompt_ids,
     }
 
 
-def find_common_indices(info_flow_results_list: List[TInfoFlowOutput]) -> list[TPromptOriginalIndex]:
+def find_common_indices(
+    info_flow_results_list: List[TInfoFlowOutput],
+) -> list[TPromptOriginalIndex]:
     """Find the intersection of original_idx across all info flow results."""
     if not info_flow_results_list:
         return []
@@ -66,7 +76,7 @@ def find_common_indices(info_flow_results_list: List[TInfoFlowOutput]) -> list[T
         if not info_flow_results:
             continue
         first_window = first_dict_value(info_flow_results)
-        indices = set(first_window[COLUMNS.ORIGINAL_IDX])
+        indices = set(first_window[COLS.ORIGINAL_IDX])
         all_indices_sets.append(indices)
 
     common_indices = all_indices_sets[0]
@@ -80,7 +90,9 @@ class SubsetInfoFlowResults:
     def __init__(self, info_flow_results_list: list[TInfoFlowOutput]):
         self.info_flow_results_list = info_flow_results_list
 
-    def render(self) -> tuple[list[TPromptOriginalIndex], tuple[TLayerIndex, TLayerIndex]]:
+    def render(
+        self,
+    ) -> tuple[list[TPromptOriginalIndex], tuple[TLayerIndex, TLayerIndex]]:
         if not self.info_flow_results_list:
             return [], (0, 0)
 
@@ -117,7 +129,13 @@ class SubsetInfoFlowResults:
                 step=1,
             )
 
-            seed = st.number_input(INFO_FLOW_ANALYSIS_TEXTS.seed, value=42, min_value=0, max_value=1000000, step=1)
+            seed = st.number_input(
+                INFO_FLOW_ANALYSIS_TEXTS.seed,
+                value=42,
+                min_value=0,
+                max_value=1000000,
+                step=1,
+            )
 
             # Sample from common indices
             random.seed(seed)
@@ -144,7 +162,11 @@ class InfoFlowAnalysisPage(StreamlitPage):
                 ],
                 ResultBankParamNames.window_size: ["9", "15"],
             },
-            hide_columns=[ResultBankParamNames.experiment_name, ResultBankParamNames.prompt_idx, ResultBankParamNames.is_all_correct],
+            hide_columns=[
+                ResultBankParamNames.experiment_name,
+                ResultBankParamNames.prompt_idx,
+                ResultBankParamNames.is_all_correct,
+            ],
             key="info_flow_results_bank",
         ).render()
 
@@ -166,12 +188,16 @@ class InfoFlowAnalysisPage(StreamlitPage):
             # Cast selected_result to Dict[str, Any] to avoid type errors
             result_dict = cast(Dict[str, Any], dict(selected_result))
             path = result_dict.pop(ResultBankParamNames.path)
-            for col in [ResultBankParamNames.is_all_correct, ResultBankParamNames.prompt_idx]:
+            for col in [
+                ResultBankParamNames.is_all_correct,
+                ResultBankParamNames.prompt_idx,
+            ]:
                 result_dict.pop(col)
             # Convert to proper types
 
             model_arch_and_size = MODEL_ARCH_AND_SIZE(
-                result_dict[ResultBankParamNames.model_arch], result_dict[ResultBankParamNames.model_size]
+                result_dict[ResultBankParamNames.model_arch],
+                result_dict[ResultBankParamNames.model_size],
             )
 
             # Get model evaluations if not already loaded
