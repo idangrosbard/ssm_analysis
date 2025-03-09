@@ -10,7 +10,8 @@ from datasets import (
     load_dataset as huggingface_load_dataset,
 )
 from scripts.counterfact.splitting import split_dataset
-from src.consts import COLUMNS, COUNTER_FACT_2_KNOWN1000_COL_CONV, DATASETS_IDS, PATHS
+from src.consts import COUNTER_FACT_2_KNOWN1000_COL_CONV, DATASETS_IDS, PATHS
+from src.names import COLUMNS
 from src.types import DATASETS, FILTERATIONS, SPLIT, DatasetArgs, TSplitChoise
 
 

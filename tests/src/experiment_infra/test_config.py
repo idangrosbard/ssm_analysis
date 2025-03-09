@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import cast
 
-from src.consts import EXPERIMENT_NAMES
+from src.names import EXPERIMENT_NAMES
 from src.experiment_infra.base_config import BaseConfig
 
 EXPERIMENT_NAME_BEFORE = "simple"

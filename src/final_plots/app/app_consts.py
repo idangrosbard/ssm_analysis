@@ -1,10 +1,23 @@
 from enum import StrEnum
-from typing import Any, ClassVar, Generic, Literal, Type, TypeVar, Union, cast
+from typing import Any
+from typing import ClassVar
+from typing import Generic
+from typing import Literal
+from typing import Type
+from typing import TypeVar
+from typing import Union
+from typing import cast
 
-from src.consts import COLUMNS, GRAPHS_ORDER, model_and_size_to_slurm_gpu_type
-from src.final_plots.results_bank import ParamNames
-from src.types import MODEL_ARCH_AND_SIZE, SLURM_GPU_TYPE, TVariationName, TWindowSize
-from src.utils.streamlit_utils import SessionKey, SessionKeyDescriptor
+from src.consts import GRAPHS_ORDER
+from src.consts import model_and_size_to_slurm_gpu_type
+from src.names import COLUMNS
+from src.names import ResultBankParamNames
+from src.types import MODEL_ARCH_AND_SIZE
+from src.types import SLURM_GPU_TYPE
+from src.types import TVariationName
+from src.types import TWindowSize
+from src.utils.streamlit_utils import SessionKey
+from src.utils.streamlit_utils import SessionKeyDescriptor
 
 
 # region Global App constants
@@ -94,19 +107,19 @@ class DataReqConsts:
     # Data Requirements filter columns
     DATA_REQS_FILTER_COLUMNS = [
         DataReqCols.AvailableOptions,
-        ParamNames.experiment_name,
-        ParamNames.model_arch,
-        ParamNames.model_size,
-        ParamNames.window_size,
-        ParamNames.is_all_correct,
-        ParamNames.source,
-        ParamNames.target,
-        ParamNames.prompt_idx,
+        ResultBankParamNames.experiment_name,
+        ResultBankParamNames.model_arch,
+        ResultBankParamNames.model_size,
+        ResultBankParamNames.window_size,
+        ResultBankParamNames.is_all_correct,
+        ResultBankParamNames.source,
+        ResultBankParamNames.target,
+        ResultBankParamNames.prompt_idx,
     ]
 
     DATA_REQS_DEFAULT_FILTER_VALUES = {
         DataReqCols.AvailableOptions: [0],
-        ParamNames.is_all_correct: [False],
+        ResultBankParamNames.is_all_correct: [False],
     }
 
 
@@ -121,6 +134,8 @@ class _DataReqsSessionKeys(SessionKeysBase["_DataReqsSessionKeys"]):
 
 
 DataReqsSessionKeys = _DataReqsSessionKeys()
+
+
 # endregion
 
 
@@ -152,19 +167,14 @@ class _InfoFlowSessionKeys(SessionKeysBase["_InfoFlowSessionKeys"]):
 
 InfoFlowSessionKeys = _InfoFlowSessionKeys()
 
+
 # endregion
 
 
 # region Heatmap Creation
 
 
-class HeatmapCols:
-    PROMPT_COUNT = "Prompt Count"
-    SELECTED_PROMPT = "Selected Prompt"
-    MODEL_CORRECT = "Model Correct"
-
-
-class HeatmapConsts:
+class HeatmapConsts(StrEnum):
     MINIMUM_COMBINATIONS_FOR_FILTERING = 30
 
 

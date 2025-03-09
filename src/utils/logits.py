@@ -5,7 +5,7 @@ from typing import Any, Union, assert_never, cast
 import pandas as pd
 import torch
 
-from src.consts import COLUMNS
+from src.names import COLUMNS
 from src.types import TNum2Mask, TokenType, TPromptData, TPromptOriginalIndex, TRowPosition, TTokenizer, TWindow
 
 

@@ -21,7 +21,8 @@ import pandas as pd
 import torch
 from tqdm import tqdm
 
-from src.consts import EXPERIMENT_NAMES, MODEL_SIZES_PER_ARCH_TO_MODEL_ID
+from src.consts import MODEL_SIZES_PER_ARCH_TO_MODEL_ID
+from src.names import EXPERIMENT_NAMES
 from src.experiment_infra.base_config import (
     BASE_OUTPUT_KEYS,
     BaseConfig,

@@ -1,37 +1,31 @@
-from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
+from abc import ABC
+from abc import abstractmethod
+from dataclasses import dataclass
+from dataclasses import field
 from enum import StrEnum
 from pathlib import Path
-from typing import Optional, Sequence, Type
+from typing import Optional
+from typing import Sequence
+from typing import Type
+from typing import Union
 
-from git import Union
-
-from src.consts import EXPERIMENT_NAMES, MODEL_SIZES_PER_ARCH_TO_MODEL_ID, PATHS, reverse_model_id
-from src.experiment_infra.base_config import BASE_OUTPUT_KEYS, DATASETS, MODEL_ARCH
-from src.experiment_infra.output_path import OutputKey, OutputPath
-from src.types import (
-    FeatureCategory,
-    TModelID,
-    TModelSize,
-    TokenType,
-    TPromptOriginalIndex,
-    TVariationName,
-    TWindowSize,
-)
-
-
-class ParamNames(StrEnum):
-    experiment_name = "experiment_name"
-    variation = "variation"
-    model_arch = "model_arch"
-    model_size = "model_size"
-    window_size = "window_size"
-    is_all_correct = "is_all_correct"
-    source = "source"
-    feature_category = "feature_category"
-    target = "target"
-    prompt_idx = "prompt_idx"
-    path = "path"
+from src.names import EXPERIMENT_NAMES
+from src.consts import MODEL_SIZES_PER_ARCH_TO_MODEL_ID
+from src.consts import PATHS
+from src.names import ResultBankParamNames
+from src.consts import reverse_model_id
+from src.experiment_infra.base_config import BASE_OUTPUT_KEYS
+from src.experiment_infra.base_config import DATASETS
+from src.experiment_infra.base_config import MODEL_ARCH
+from src.experiment_infra.output_path import OutputKey
+from src.experiment_infra.output_path import OutputPath
+from src.types import FeatureCategory
+from src.types import TModelID
+from src.types import TModelSize
+from src.types import TPromptOriginalIndex
+from src.types import TVariationName
+from src.types import TWindowSize
+from src.types import TokenType
 
 
 class IntermediateParamNames:
@@ -89,20 +83,20 @@ class RESULTS_BASE_PATH(StrEnum):
             )
 
     def process_values(self, values: dict[str, str]) -> Optional[dict[str, str]]:
-        experiment_name: str = values.pop(ParamNames.experiment_name)
+        experiment_name: str = values.pop(ResultBankParamNames.experiment_name)
         values.pop("_", None)
 
         if self == RESULTS_BASE_PATH.Prev:
             model_id_source = values.pop(IntermediateParamNames._model_id_source)
             model_id_name = values.pop(IntermediateParamNames._model_id_name)
             model_arch, model_size = reverse_model_id(TModelID(f"{model_id_source}/{model_id_name}"))
-            values[ParamNames.model_arch] = model_arch.value
-            values[ParamNames.model_size] = model_size
+            values[ResultBankParamNames.model_arch] = model_arch.value
+            values[ResultBankParamNames.model_size] = model_size
 
             experiment_name_and_variation = values.pop(IntermediateParamNames._experiment_name_and_variation)
             if not experiment_name_and_variation.startswith(experiment_name):
                 return None
-            values[ParamNames.variation] = experiment_name_and_variation[len(experiment_name) :]
+            values[ResultBankParamNames.variation] = experiment_name_and_variation[len(experiment_name):]
 
         return values
 
@@ -155,7 +149,7 @@ class ResultRecord(ABC):
     def is_all_correct(self) -> bool:
         if self.results_base_path == RESULTS_BASE_PATH.Prev:
             return True
-        filteration = self.dataset_and_filteration[len(self.dataset) :]
+        filteration = self.dataset_and_filteration[len(self.dataset):]
         if filteration:
             assert filteration == "_all_correct"
             return True
@@ -209,7 +203,8 @@ class HeatmapRecord(ResultRecord):
         ).add(
             [
                 OutputKey(
-                    key_name=ParamNames.prompt_idx, key_display_name="idx=", suffix=results_base_path.heatmap_suffix
+                    key_name=ResultBankParamNames.prompt_idx, key_display_name="idx=",
+                    suffix=results_base_path.heatmap_suffix
                 ),
             ]
         )
@@ -274,7 +269,7 @@ class InfoFlowRecord(ResultRecord):
         else:
             output_path = output_path.add(
                 [
-                    OutputKey(key_name=f"_{ParamNames.target}", key_display_name="target="),
+                    OutputKey(key_name=f"_{ResultBankParamNames.target}", key_display_name="target="),
                     OutputKey(
                         key_name=IntermediateParamNames._source_and_feature_category,
                         key_display_name="source=",
@@ -287,11 +282,11 @@ class InfoFlowRecord(ResultRecord):
 
 
 def get_experiment_results_bank(
-    results_base_paths: Sequence[RESULTS_BASE_PATH] = (
-        # RESULTS_BASE_PATH.Prev,
-        RESULTS_BASE_PATH.New,
-    ),
-    experiments: Sequence[Type[ResultRecord]] = (HeatmapRecord, InfoFlowRecord),
+        results_base_paths: Sequence[RESULTS_BASE_PATH] = (
+                # RESULTS_BASE_PATH.Prev,
+                RESULTS_BASE_PATH.New,
+        ),
+        experiments: Sequence[Type[ResultRecord]] = (HeatmapRecord, InfoFlowRecord),
 ) -> list[ResultRecord]:
     results: list[ResultRecord] = []
     for results_base_path in results_base_paths:
@@ -299,7 +294,7 @@ def get_experiment_results_bank(
             output_path = experiment.get_results_output_path(results_base_path.path)
             in_pattern, _ = output_path.process_path()
             for path, values in in_pattern:
-                values[ParamNames.experiment_name] = experiment.experiment_name
+                values[ResultBankParamNames.experiment_name] = experiment.experiment_name
                 processed_values = results_base_path.process_values(values=values)
                 if not processed_values:
                     continue

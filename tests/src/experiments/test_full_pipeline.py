@@ -8,7 +8,8 @@ import pandas as pd
 import pytest
 
 from datasets import DatasetDict
-from src.consts import COLUMNS, PathsConfig
+from src.consts import PathsConfig
+from src.names import COLUMNS
 from src.datasets.download_dataset import load_splitted_counter_fact
 from src.experiments.full_pipeline import FullPipelineConfig, main_local
 from src.experiments.info_flow import forward_eval

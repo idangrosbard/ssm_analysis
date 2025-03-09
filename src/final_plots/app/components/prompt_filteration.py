@@ -6,8 +6,9 @@ from annotated_text import annotated_text, annotation
 from pandas import DataFrame
 from st_aggrid import AgGrid, DataReturnMode, GridUpdateMode
 
-from src.consts import COLUMNS
-from src.final_plots.app.app_consts import GLOBAL_APP_CONSTS, AppSessionKeys, HeatmapCols
+from src.names import COLUMNS
+from src.final_plots.app.app_consts import GLOBAL_APP_CONSTS, AppSessionKeys
+from src.names import HeatmapCols
 from src.final_plots.app.data_store import get_merged_evaluations
 from src.final_plots.app.texts import HEATMAP_TEXTS
 from src.final_plots.app.utils import filter_combinations, get_steamlit_dataframe_selected_row

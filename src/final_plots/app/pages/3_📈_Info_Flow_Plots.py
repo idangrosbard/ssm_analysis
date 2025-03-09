@@ -15,13 +15,13 @@ from typing import cast
 import pandas as pd
 import streamlit as st
 
-from src.consts import EXPERIMENT_NAMES
+from src.names import EXPERIMENT_NAMES
 from src.final_plots.app.app_consts import InfoFlowConsts
 from src.final_plots.app.components.multi_plots import DataSourceDisplay, ParameterConfiguration, PlotCreation
 from src.final_plots.app.components.plot_customization import plotCustomization
 from src.final_plots.app.data_store import load_experiment_fulfilled_reqs_df
 from src.final_plots.app.texts import INFO_FLOW_TEXTS
-from src.final_plots.results_bank import ParamNames
+from src.names import ResultBankParamNames
 from src.utils.streamlit_utils import StreamlitPage
 
 st.set_page_config(page_title=INFO_FLOW_TEXTS.title, page_icon=INFO_FLOW_TEXTS.icon, layout="wide")
@@ -35,12 +35,12 @@ class InfoFlowPlotsPage(StreamlitPage):
 
         # Available parameters
         available_params = [
-            ParamNames.model_arch,
-            ParamNames.model_size,
-            ParamNames.window_size,
-            ParamNames.is_all_correct,
-            ParamNames.source,
-            ParamNames.target,
+            ResultBankParamNames.model_arch,
+            ResultBankParamNames.model_size,
+            ResultBankParamNames.window_size,
+            ResultBankParamNames.is_all_correct,
+            ResultBankParamNames.source,
+            ResultBankParamNames.target,
         ]
 
         # Initialize session state for parameter roles if not exists
@@ -49,10 +49,10 @@ class InfoFlowPlotsPage(StreamlitPage):
                 param: cast(InfoFlowConsts.ParamRole, "fixed") for param in available_params
             }
             # Set default roles
-            st.session_state.param_roles[ParamNames.model_arch] = cast(InfoFlowConsts.ParamRole, "grid")
-            st.session_state.param_roles[ParamNames.model_size] = cast(InfoFlowConsts.ParamRole, "column")
-            st.session_state.param_roles[ParamNames.window_size] = cast(InfoFlowConsts.ParamRole, "row")
-            st.session_state.param_roles[ParamNames.source] = cast(InfoFlowConsts.ParamRole, "line")
+            st.session_state.param_roles[ResultBankParamNames.model_arch] = cast(InfoFlowConsts.ParamRole, "grid")
+            st.session_state.param_roles[ResultBankParamNames.model_size] = cast(InfoFlowConsts.ParamRole, "column")
+            st.session_state.param_roles[ResultBankParamNames.window_size] = cast(InfoFlowConsts.ParamRole, "row")
+            st.session_state.param_roles[ResultBankParamNames.source] = cast(InfoFlowConsts.ParamRole, "line")
 
         # Configure parameters and get roles
         param_values, param_roles = ParameterConfiguration(df, available_params).render()

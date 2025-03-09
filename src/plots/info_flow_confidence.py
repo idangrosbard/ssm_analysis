@@ -12,11 +12,11 @@ from numpy.typing import NDArray
 from scipy import stats
 
 from src.consts import (
-    COLUMNS,
     CONVERT_TO_PLOTLY_LINE_STYLE,
     TOKEN_TYPE_COLORS,
     TOKEN_TYPE_LINE_STYLES,
 )
+from src.names import COLUMNS
 from src.types import TInfoFlowOutput, TInfoFlowSource, TInfoFlowTargetOutputs, TokenType
 
 

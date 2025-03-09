@@ -1,7 +1,7 @@
 import random
 
 from datasets import DatasetDict
-from src.consts import COLUMNS
+from src.names import COLUMNS
 
 
 def split_dataset(dataset, num_splits, split_ratio, seed):

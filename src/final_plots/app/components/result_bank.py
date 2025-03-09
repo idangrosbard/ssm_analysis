@@ -2,9 +2,9 @@ from typing import Optional
 
 from st_aggrid import AgGrid, AgGridReturn, DataReturnMode, GridUpdateMode
 
-from src.consts import EXPERIMENT_NAMES
+from src.names import EXPERIMENT_NAMES
 from src.final_plots.app.data_store import load_experiment_results
-from src.final_plots.results_bank import ParamNames
+from src.names import ResultBankParamNames
 from src.utils.streamlit.aagrid import SelectionMode, base_grid_builder, set_aagrid_apply_default_filters
 from src.utils.streamlit.dataframe import validate_one_selected_row_dataframe
 from src.utils.streamlit_utils import StreamlitComponent
@@ -34,9 +34,9 @@ class ShowResultsBank(StreamlitComponent):
         df = load_experiment_results()
         load_experiment_results.render()
         if self.filter_experiment_name is not None:
-            df = df[df[ParamNames.experiment_name] == self.filter_experiment_name]
+            df = df[df[ResultBankParamNames.experiment_name] == self.filter_experiment_name]
         if self.filter_is_all_correct is not None:
-            df = df[df[ParamNames.is_all_correct] == self.filter_is_all_correct]
+            df = df[df[ResultBankParamNames.is_all_correct] == self.filter_is_all_correct]
         return df
 
     def render(self) -> AgGridReturn:
@@ -45,7 +45,7 @@ class ShowResultsBank(StreamlitComponent):
             grid_builder,
             self.filters,
         )
-        for col in [ParamNames.window_size, ParamNames.prompt_idx]:
+        for col in [ResultBankParamNames.window_size, ResultBankParamNames.prompt_idx]:
             if col not in self.hide_columns:
                 grid_builder.configure_column(col, type=["textColumn"])
 

@@ -9,7 +9,8 @@ import streamlit as st
 from rich.console import Console
 from st_aggrid import AgGrid, DataReturnMode, GridOptionsBuilder, GridUpdateMode
 
-from src.final_plots.app.app_consts import GLOBAL_APP_CONSTS, AppSessionKeys, DataReqCols, DataReqConsts, HeatmapCols
+from src.final_plots.app.app_consts import GLOBAL_APP_CONSTS, AppSessionKeys, DataReqCols, DataReqConsts
+from src.names import HeatmapCols
 from src.final_plots.app.components.inputs import select_gpu_type, select_variation, select_window_size
 from src.final_plots.app.data_store import get_models_remaining_prompts
 from src.final_plots.app.texts import HEATMAP_TEXTS

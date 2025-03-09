@@ -18,14 +18,16 @@ from typing import Any, Dict, List, cast
 import streamlit as st
 from st_aggrid import AgGridReturn
 
-from src.consts import COLUMNS, EXPERIMENT_NAMES, GRAPHS_ORDER
+from src.consts import GRAPHS_ORDER
+from src.names import COLUMNS
+from src.names import EXPERIMENT_NAMES
 from src.experiments.info_flow import InfoFlowConfig
 from src.final_plots.app.components.info_flow import InfoFlowAnalysisComponent
 from src.final_plots.app.components.result_bank import SelectionMode, ShowResultsBank
 from src.final_plots.app.data_store import load_model_evaluations
 from src.final_plots.app.texts import INFO_FLOW_ANALYSIS_TEXTS
 from src.final_plots.app.utils import reverse_format_path_for_display
-from src.final_plots.results_bank import ParamNames
+from src.names import ResultBankParamNames
 from src.types import (
     MODEL_ARCH_AND_SIZE,
     MODEL_SIZE_CAT,
@@ -134,15 +136,15 @@ class InfoFlowAnalysisPage(StreamlitPage):
             selection_mode=SelectionMode.MULTIPLE,  # Changed to MULTIPLE
             height=300,
             filters={
-                ParamNames.variation: ["v3"],
-                ParamNames.model_size: [
+                ResultBankParamNames.variation: ["v3"],
+                ResultBankParamNames.model_size: [
                     model_arch_and_size.size
                     for model_arch_and_size, size_cat in GRAPHS_ORDER.items()
                     if size_cat.value > MODEL_SIZE_CAT.MEDIUM.value
                 ],
-                ParamNames.window_size: ["9", "15"],
+                ResultBankParamNames.window_size: ["9", "15"],
             },
-            hide_columns=[ParamNames.experiment_name, ParamNames.prompt_idx, ParamNames.is_all_correct],
+            hide_columns=[ResultBankParamNames.experiment_name, ResultBankParamNames.prompt_idx, ResultBankParamNames.is_all_correct],
             key="info_flow_results_bank",
         ).render()
 
@@ -163,18 +165,18 @@ class InfoFlowAnalysisPage(StreamlitPage):
         for _, selected_result in selected_info_flow_results.iterrows():
             # Cast selected_result to Dict[str, Any] to avoid type errors
             result_dict = cast(Dict[str, Any], dict(selected_result))
-            path = result_dict.pop(ParamNames.path)
-            for col in [ParamNames.is_all_correct, ParamNames.prompt_idx]:
+            path = result_dict.pop(ResultBankParamNames.path)
+            for col in [ResultBankParamNames.is_all_correct, ResultBankParamNames.prompt_idx]:
                 result_dict.pop(col)
             # Convert to proper types
 
             model_arch_and_size = MODEL_ARCH_AND_SIZE(
-                result_dict[ParamNames.model_arch], result_dict[ParamNames.model_size]
+                result_dict[ResultBankParamNames.model_arch], result_dict[ResultBankParamNames.model_size]
             )
 
             # Get model evaluations if not already loaded
             model_evaluations_list.append(
-                load_model_evaluations(result_dict[ParamNames.variation], model_arch_and_size)
+                load_model_evaluations(result_dict[ResultBankParamNames.variation], model_arch_and_size)
             )
 
             # Load info flow results

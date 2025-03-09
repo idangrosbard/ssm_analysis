@@ -7,8 +7,6 @@ from typing import Any, NamedTuple, Optional, Union, cast
 import pandas as pd
 
 from src.consts import (
-    COLUMNS,
-    EXPERIMENT_NAMES,
     GRAPHS_ORDER,
     MODEL_ARCH,
     MODEL_SIZE_CAT,
@@ -17,6 +15,8 @@ from src.consts import (
     is_falcon,
     is_mamba_arch,
 )
+from src.names import COLUMNS
+from src.names import EXPERIMENT_NAMES
 from src.experiments.evaluate_model import EvaluateModelConfig
 from src.experiments.heatmap import HeatmapConfig
 from src.experiments.info_flow import InfoFlowConfig

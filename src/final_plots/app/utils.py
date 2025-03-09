@@ -8,9 +8,10 @@ from streamlit.elements.arrow import DataframeState
 
 from src.consts import PATHS
 from src.experiments.heatmap import HeatmapConfig
-from src.final_plots.app.app_consts import HeatmapCols, HeatmapConsts
+from src.final_plots.app.app_consts import HeatmapConsts
+from src.names import HeatmapCols
 from src.final_plots.data_reqs import DataReq
-from src.final_plots.results_bank import ParamNames
+from src.names import ResultBankParamNames
 from src.types import MODEL_ARCH, TModelSize, TPromptOriginalIndex, TVariationName, TWindowSize
 
 T = TypeVar("T")
@@ -137,13 +138,13 @@ def apply_filters(df: pd.DataFrame, filters: dict[str, list]) -> pd.DataFrame:
 
 def get_data_req_from_df_row(row: pd.Series) -> DataReq:
     return DataReq(
-        **{param: row[param] for param in ParamNames if param not in [ParamNames.path, ParamNames.variation]},
+        **{param: row[param] for param in ResultBankParamNames if param not in [ResultBankParamNames.path, ResultBankParamNames.variation]},
     )
 
 
 def get_config_from_df_row(row: pd.Series):
     data_req = get_data_req_from_df_row(row)
-    return data_req.get_config(row[ParamNames.variation])
+    return data_req.get_config(row[ResultBankParamNames.variation])
 
 
 def format_path_for_display(path: Path | str | None) -> str:

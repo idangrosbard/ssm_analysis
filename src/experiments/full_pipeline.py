@@ -13,7 +13,7 @@ consistent configuration across all steps.
 
 from dataclasses import dataclass
 
-from src.consts import EXPERIMENT_NAMES
+from src.names import EXPERIMENT_NAMES
 from src.experiment_infra.base_config import (
     BASE_OUTPUT_KEYS,
     BaseConfig,

@@ -7,7 +7,7 @@ from matplotlib.figure import Figure
 from pygwalker.api.streamlit import StreamlitRenderer
 from streamlit import cache_resource
 
-from src.consts import EXPERIMENT_NAMES
+from src.names import EXPERIMENT_NAMES
 from src.experiments.heatmap import HeatmapConfig
 from src.experiments.info_flow import InfoFlowConfig
 from src.final_plots.app.app_consts import (
@@ -28,10 +28,10 @@ from src.final_plots.data_reqs import (
     get_model_evaluations,
 )
 from src.final_plots.results_bank import (
-    ParamNames,
     ResultRecord,
     get_experiment_results_bank,
 )
+from src.names import ResultBankParamNames
 
 # from src.plots.info_flow_confidence import PlotMetadata, create_confidence_plot
 from src.plots.info_flow_confidence import PlotMetadata, create_confidence_plot
@@ -80,8 +80,8 @@ def load_experiment_results() -> pd.DataFrame:
     results = load_results_bank()
     results_data = []
     for result in results:
-        result_dict = {param: getattr(result, param, None) for param in ParamNames}
-        result_dict[ParamNames.path] = format_path_for_display(result_dict[ParamNames.path])
+        result_dict = {param: getattr(result, param, None) for param in ResultBankParamNames}
+        result_dict[ResultBankParamNames.path] = format_path_for_display(result_dict[ResultBankParamNames.path])
         results_data.append(result_dict)
 
     return pd.DataFrame(results_data)
@@ -115,8 +115,8 @@ def load_fulfilled_reqs_df() -> pd.DataFrame:
         row = {
             **{
                 param: getattr(req, param, None)
-                for param in ParamNames
-                if param not in [ParamNames.path, ParamNames.variation]
+                for param in ResultBankParamNames
+                if param not in [ResultBankParamNames.path, ResultBankParamNames.variation]
             },
             DataReqCols.AvailableOptions: len(opts),
             DataReqCols.Options: opts,
@@ -139,7 +139,7 @@ def load_experiment_fulfilled_reqs_df(experiment_name: EXPERIMENT_NAMES) -> pd.D
         DataFrame with experiment data
     """
     df = load_fulfilled_reqs_df()
-    return df[df[ParamNames.experiment_name] == experiment_name]
+    return df[df[ResultBankParamNames.experiment_name] == experiment_name]
 
 
 @CacheWithDependencies()

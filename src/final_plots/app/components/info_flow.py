@@ -8,14 +8,14 @@ import streamlit as st
 from pandas import DataFrame
 
 from src.consts import (
-    COLUMNS,
     TOKEN_TYPE_COLORS,
     TOKEN_TYPE_LINE_STYLES,
     format_params_for_title,
     get_item_from_token_from_info_flow_source_dict,
 )
+from src.names import COLUMNS
 from src.final_plots.app.texts import INFO_FLOW_ANALYSIS_TEXTS
-from src.final_plots.results_bank import ParamNames
+from src.names import ResultBankParamNames
 from src.plots.info_flow_confidence import (
     create_plotly_confidence_chart,
 )
@@ -112,7 +112,7 @@ class InfoFlowAnalysisComponent(StreamlitComponent):
         for i, info_flow in enumerate(self.info_flow_outputs):
             # Create a unique source identifier for each info flow
             targets_window_outputs.append(info_flow)
-            token_type = (self.metadata_list[i][ParamNames.target], self.metadata_list[i][ParamNames.feature_category])
+            token_type = (self.metadata_list[i][ResultBankParamNames.target], self.metadata_list[i][ResultBankParamNames.feature_category])
 
             # Assign a custom color
             colors.append(

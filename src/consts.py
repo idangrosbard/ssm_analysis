@@ -1,8 +1,9 @@
 import os
 from dataclasses import dataclass
-from enum import StrEnum
 from pathlib import Path
 from typing import assert_never
+from src.names import COLUMNS
+from src.names import ResultBankParamNames
 
 from src.types import (
     DATASETS,
@@ -17,7 +18,6 @@ from src.types import (
     TModelSize,
     TokenType,
 )
-from src.utils.types_utils import class_values
 
 
 @dataclass
@@ -186,67 +186,6 @@ def is_falcon(model_size: str) -> bool:
 
 DATASETS_IDS: dict[DATASETS, TDatasetID] = {DATASETS.COUNTER_FACT: TDatasetID("NeelNanda/counterfact-tracing")}  # type: ignore
 
-
-class EXPERIMENT_NAMES(StrEnum):
-    EVALUATE_MODEL = "evaluate"
-    INFO_FLOW = "info_flow"
-    HEATMAP = "heatmap"
-    FULL_PIPELINE = "full_pipeline"
-
-
-class COLUMNS:
-    # Preprocessing
-    ORIGINAL_IDX = "original_idx"
-    SPLIT = "split"
-
-    # Counter Fact
-    class COUNTER_FACT_COLS(StrEnum):
-        PROMPT = "prompt"
-        TARGET_TRUE = "target_true"
-        RELATION = "relation"
-        SUBJECT = "subject"
-        TARGET_FALSE = "target_false"
-        RELATION_PREFIX = "relation_prefix"
-        RELATION_SUFFIX = "relation_suffix"
-        TARGET_TRUE_ID = "target_true_id"
-        TARGET_FALSE_ID = "target_false_id"
-        RELATION_ID = "relation_id"
-
-    PROMPT_DATA_COLS = class_values(COUNTER_FACT_COLS)
-    PROMPT = COUNTER_FACT_COLS.PROMPT
-    TARGET_TRUE = COUNTER_FACT_COLS.TARGET_TRUE
-    TARGET_FALSE = COUNTER_FACT_COLS.TARGET_FALSE
-    SUBJECT = COUNTER_FACT_COLS.SUBJECT
-    TARGET_FALSE_ID = COUNTER_FACT_COLS.TARGET_FALSE_ID
-    RELATION = COUNTER_FACT_COLS.RELATION
-    RELATION_ID = COUNTER_FACT_COLS.RELATION_ID
-    RELATION_PREFIX = "relation_prefix"
-    RELATION_SUFFIX = "relation_suffix"
-    RELATION_ID = "relation_id"
-    TARGET_TRUE_ID = "target_true_id"
-
-    # Evaluate Model
-    TARGET_PROBS = "target_probs"
-    MODEL_TOP_OUTPUT_CONFIDENCE = "model_top_output_confidence"
-    MODEL_CORRECT = "model_correct"
-    MODEL_OUTPUT = "model_output"
-    TARGET_RANK = "target_rank"
-    MODEL_TOP_OUTPUTS = "model_top_outputs"
-    MODEL_GENERATION = "model_generation"
-    TARGET_TOKENS = "target_tokens"
-
-    # Data Construction
-    HIT = "hit"
-    MAX_PROB = "max_prob"
-    TRUE_PROB = "true_prob"
-    PRED = "pred"
-
-    # Info Flow
-    IF_HIT = "hit"
-    IF_TRUE_PROBS = "true_probs"
-    IF_DIFFS = "diffs"
-
-
 COUNTER_FACT_2_KNOWN1000_COL_CONV = {
     COLUMNS.TARGET_TRUE: "attribute",
 }
@@ -303,30 +242,29 @@ def get_item_from_token_from_info_flow_source_dict(
 
 def format_params_for_title(params: dict) -> str:
     """Format parameters for title display in a consistent order."""
-    from src.final_plots.results_bank import ParamNames
 
     parts_remaining = set(params.keys())
     ordered_parts = []
-    for param in ParamNames:
+    for param in ResultBankParamNames:
         if param in parts_remaining:
             parts_remaining.remove(param)
             match param:
-                case ParamNames.experiment_name | ParamNames.variation:
+                case ResultBankParamNames.experiment_name | ResultBankParamNames.variation:
                     ordered_parts.append(params[param])
-                case ParamNames.model_arch:
-                    if ParamNames.model_size in parts_remaining:
-                        ordered_parts.append(f"{params[ParamNames.model_arch]} {params[ParamNames.model_size]}")
-                        parts_remaining.remove(ParamNames.model_size)
+                case ResultBankParamNames.model_arch:
+                    if ResultBankParamNames.model_size in parts_remaining:
+                        ordered_parts.append(f"{params[ResultBankParamNames.model_arch]} {params[ResultBankParamNames.model_size]}")
+                        parts_remaining.remove(ResultBankParamNames.model_size)
                     else:
-                        ordered_parts.append(params[ParamNames.model_arch])
-                case ParamNames.window_size:
-                    ordered_parts.append(f"ws={params[ParamNames.window_size]}")
-                case ParamNames.source:
-                    base_str = f"From {params[ParamNames.source]}"
-                    if ParamNames.feature_category in parts_remaining:
-                        if params[ParamNames.feature_category] is not None:
-                            base_str = f"{base_str} - {params[ParamNames.feature_category]}"
-                        parts_remaining.remove(ParamNames.feature_category)
+                        ordered_parts.append(params[ResultBankParamNames.model_arch])
+                case ResultBankParamNames.window_size:
+                    ordered_parts.append(f"ws={params[ResultBankParamNames.window_size]}")
+                case ResultBankParamNames.source:
+                    base_str = f"From {params[ResultBankParamNames.source]}"
+                    if ResultBankParamNames.feature_category in parts_remaining:
+                        if params[ResultBankParamNames.feature_category] is not None:
+                            base_str = f"{base_str} - {params[ResultBankParamNames.feature_category]}"
+                        parts_remaining.remove(ResultBankParamNames.feature_category)
                     ordered_parts.append(base_str)
                 case _:
                     ordered_parts.append(f"{param}={params[param]}")
@@ -335,3 +273,5 @@ def format_params_for_title(params: dict) -> str:
         ordered_parts.append(f"{param}={params[param]}")
 
     return " | ".join(ordered_parts)
+
+

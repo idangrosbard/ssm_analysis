@@ -10,7 +10,9 @@ import numpy as np
 import torch
 from tqdm import tqdm
 
-from src.consts import COLUMNS, EXPERIMENT_NAMES, is_mamba_arch
+from src.consts import is_mamba_arch
+from src.names import COLUMNS
+from src.names import EXPERIMENT_NAMES
 from src.experiment_infra.base_config import BASE_OUTPUT_KEYS, BaseConfig, create_mutable_field
 from src.experiment_infra.model_interface import ModelInterface, get_model_interface
 from src.plots.info_flow_confidence import create_confidence_plot

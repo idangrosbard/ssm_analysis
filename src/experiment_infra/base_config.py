@@ -9,7 +9,9 @@ import pandas as pd
 import pyrallis
 from submitit.slurm.slurm import SlurmJob
 
-from src.consts import COLUMNS, EXPERIMENT_NAMES, MODEL_SIZES_PER_ARCH_TO_MODEL_ID, PATHS
+from src.consts import MODEL_SIZES_PER_ARCH_TO_MODEL_ID, PATHS
+from src.names import COLUMNS
+from src.names import EXPERIMENT_NAMES
 from src.datasets.download_dataset import load_splitted_counter_fact
 from src.experiment_infra.output_path import (
     _ATTRIBUTE_TYPE,

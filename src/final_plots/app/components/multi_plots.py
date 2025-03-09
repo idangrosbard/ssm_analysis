@@ -15,7 +15,7 @@ from src.final_plots.app.components.inputs import choose_heatmap_parms
 from src.final_plots.app.texts import COMMON_TEXTS, INFO_FLOW_TEXTS
 from src.final_plots.app.utils import format_path_for_display, get_param_values
 from src.final_plots.image_combiner import ImageGridParams, combine_image_grid
-from src.final_plots.results_bank import ParamNames
+from src.names import ResultBankParamNames
 from src.plots.info_flow_confidence import PlotMetadata, create_confidence_plot
 from src.types import MODEL_SIZE_CAT, TPromptOriginalIndex
 from src.utils.extended_streamlit_pydantic import pydantic_input
@@ -23,7 +23,7 @@ from src.utils.streamlit_utils import StreamlitComponent
 
 
 class ParameterConfiguration(StreamlitComponent):
-    def __init__(self, df: pd.DataFrame, available_params: list[ParamNames]):
+    def __init__(self, df: pd.DataFrame, available_params: list[ResultBankParamNames]):
         self.df = df
         self.available_params = available_params
 
