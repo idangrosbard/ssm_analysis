@@ -207,7 +207,7 @@ class StreamlitComponent(ABC, Generic[OutputType]):
         pass
 
 
-class StreamlitPage(ABC):
+class StreamlitPage(StreamlitComponent[None]):
     pass
 
 
