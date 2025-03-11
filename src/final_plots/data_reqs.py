@@ -15,6 +15,7 @@ from src.consts import (
     is_falcon,
     is_mamba_arch,
 )
+from src.data_defs import DataReqs, FulfilledReqs, ResultBank
 from src.experiments.evaluate_model import EvaluateModelConfig
 from src.experiments.heatmap import HeatmapConfig
 from src.experiments.info_flow import InfoFlowConfig
@@ -81,7 +82,6 @@ class DataReq(NamedTuple):
 
 
 IDataFulfilled = dict[DataReq, Optional[Path]]
-IDataFulfilledOptions = dict[DataReq, list[Path]]
 
 DATA_FULFILLED_PATH = Path(__file__).parent / "data_fulfilled.csv"
 PROMPT_SELECTION_PATH = Path(__file__).parent / "prompt_selections.json"
@@ -113,12 +113,12 @@ def result_record_to_data_req(result_record: ResultRecord) -> DataReq:
     )
 
 
-def get_data_fullfment_options(data_reqs: IDataFulfilled, result_bank: list[ResultRecord]) -> IDataFulfilledOptions:
-    data_reqs_options: IDataFulfilledOptions = {data_req: [] for data_req in data_reqs}
-    for result in result_bank:
+def get_data_fullfment_options(data_reqs: DataReqs, result_bank: ResultBank) -> FulfilledReqs:
+    data_reqs_options: FulfilledReqs = FulfilledReqs({data_req: [] for data_req in data_reqs.to_rows()})
+    for result in result_bank.to_rows():
         data_req = result_record_to_data_req(result)
-        if data_req in data_reqs_options:
-            data_reqs_options[data_req].append(result.path)
+        if data_req in data_reqs_options._raw:
+            data_reqs_options._raw[data_req].append(result.path)
     return data_reqs_options
 
 
@@ -127,9 +127,9 @@ def merge_data_reqs(first: IDataFulfilled, second: IDataFulfilled, keys_by_first
 
 
 def choose_latest_data_fulfilled(
-    data_reqs_options: IDataFulfilledOptions,
+    data_reqs_options: FulfilledReqs,
 ) -> IDataFulfilled:
-    return {data_req: max(options) if options else None for data_req, options in data_reqs_options.items()}
+    return {data_req: max(options) if options else None for data_req, options in data_reqs_options._raw.items()}
 
 
 def _save_data_fulfilled(data_fulfilled: IDataFulfilled, path: Path = DATA_FULFILLED_PATH) -> None:
@@ -168,7 +168,7 @@ STANDARD_WINDOW_SIZE_FOR_HEATMAP = TWindowSize(5)
 ALL_WINDOW_SIZES = [TWindowSize(size) for size in [1, 3, 5, 9, 12, 15]]
 
 
-def get_data_reqs() -> IDataFulfilled:
+def get_data_reqs() -> DataReqs:
     data_reqs: IDataFulfilled = {}
 
     # region 1. Figure 1 Knockout information flow to the **last** token.
@@ -494,7 +494,7 @@ def get_data_reqs() -> IDataFulfilled:
     # TODO: Add data reqs
     # endregion
 
-    return data_reqs
+    return DataReqs(set(data_reqs.keys()))
 
 
 def save_prompt_selections(

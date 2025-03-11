@@ -2,9 +2,8 @@ from typing import Optional
 
 from st_aggrid import AgGrid, AgGridReturn, DataReturnMode, GridUpdateMode
 
-from src.names import EXPERIMENT_NAMES
 from src.final_plots.app.data_store import load_experiment_results
-from src.names import ResultBankParamNames
+from src.names import EXPERIMENT_NAMES, ResultBankParamNames
 from src.utils.streamlit.aagrid import SelectionMode, base_grid_builder, set_aagrid_apply_default_filters
 from src.utils.streamlit.dataframe import validate_one_selected_row_dataframe
 from src.utils.streamlit_utils import StreamlitComponent
@@ -31,7 +30,7 @@ class ShowResultsBank(StreamlitComponent):
         self.hide_columns = hide_columns
 
     def _get_df(self):
-        df = load_experiment_results()
+        df = load_experiment_results().to_df()
         load_experiment_results.render()
         if self.filter_experiment_name is not None:
             df = df[df[ResultBankParamNames.experiment_name] == self.filter_experiment_name]

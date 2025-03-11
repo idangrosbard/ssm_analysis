@@ -1,10 +1,10 @@
 from enum import StrEnum
-from typing import Any, ClassVar, Generic, Literal, Type, TypeVar, Union, cast
+from typing import Literal, Union
 
 from src.consts import GRAPHS_ORDER, model_and_size_to_slurm_gpu_type
 from src.names import COLS, ResultBankParamNames
 from src.types import MODEL_ARCH_AND_SIZE, SLURM_GPU_TYPE, TVariationName, TWindowSize
-from src.utils.streamlit_utils import SessionKey, SessionKeyDescriptor
+from src.utils.streamlit_utils import SessionKeyDescriptor, SessionKeysBase
 
 
 # region Global App constants
@@ -46,20 +46,6 @@ class GLOBAL_APP_CONSTS:
         PROMPTS = {"default_page_size": 10}
 
 
-T = TypeVar("T", bound="SessionKeysBase[Any]")
-
-
-class SessionKeysBase(Generic[T]):
-    """Base class for session key containers that ensures singleton pattern."""
-
-    _instance: ClassVar[dict[Type[Any], Any]] = {}
-
-    def __new__(cls) -> T:
-        if cls not in cls._instance:
-            cls._instance[cls] = super().__new__(cls)
-        return cast(T, cls._instance[cls])
-
-
 class _AppSessionKeys(SessionKeysBase["_AppSessionKeys"]):
     # Each descriptor creates a SessionKey with the class name prefix
     variation = SessionKeyDescriptor[TVariationName](GLOBAL_APP_CONSTS.DEFAULT_VARIATION)
@@ -83,7 +69,7 @@ AppSessionKeys = _AppSessionKeys()
 
 
 # region Data Requirements
-class DataReqCols:
+class SummarizedDataFulfilledReqsCols:
     AvailableOptions = "Available Options"
     Options = "Options"
     CurrentOverride = "Current Override"
@@ -93,7 +79,7 @@ class DataReqCols:
 class DataReqConsts:
     # Data Requirements filter columns
     DATA_REQS_FILTER_COLUMNS = [
-        DataReqCols.AvailableOptions,
+        SummarizedDataFulfilledReqsCols.AvailableOptions,
         ResultBankParamNames.experiment_name,
         ResultBankParamNames.model_arch,
         ResultBankParamNames.model_size,
@@ -105,22 +91,9 @@ class DataReqConsts:
     ]
 
     DATA_REQS_DEFAULT_FILTER_VALUES = {
-        DataReqCols.AvailableOptions: [0],
+        SummarizedDataFulfilledReqsCols.AvailableOptions: [0],
         ResultBankParamNames.is_all_correct: [False],
     }
-
-
-class _DataReqsSessionKeys(SessionKeysBase["_DataReqsSessionKeys"]):
-    @staticmethod
-    def select_requirement(key: str) -> SessionKey[bool]:
-        return SessionKey(f"datareqs_select_{key}", False)
-
-    @staticmethod
-    def override_requirement(key: str) -> SessionKey[bool]:
-        return SessionKey(f"datareqs_override_{key}", False)
-
-
-DataReqsSessionKeys = _DataReqsSessionKeys()
 
 
 # endregion
@@ -142,19 +115,6 @@ class InfoFlowConsts:
     }
 
 
-class _InfoFlowSessionKeys(SessionKeysBase["_InfoFlowSessionKeys"]):
-    param_roles = SessionKeyDescriptor[dict[str, InfoFlowConsts.ParamRole]]({})
-
-    def param_value(self, param: str) -> SessionKey[str]:
-        return SessionKey(f"infoflow_value_{param}", "")
-
-    def param_role(self, param: str) -> SessionKey[InfoFlowConsts.ParamRole]:
-        return SessionKey(f"infoflow_role_{param}", "fixed")
-
-
-InfoFlowSessionKeys = _InfoFlowSessionKeys()
-
-
 # endregion
 
 
@@ -170,11 +130,5 @@ class ModelFilterOption(StrEnum):
     ANY = "any"
     INCORRECT = "incorrect"
 
-
-class _HeatmapSessionKeys(SessionKeysBase["_HeatmapSessionKeys"]):
-    pass
-
-
-HeatmapSessionKeys = _HeatmapSessionKeys()
 
 # endregion

@@ -15,13 +15,12 @@ from typing import cast
 import pandas as pd
 import streamlit as st
 
-from src.names import EXPERIMENT_NAMES
 from src.final_plots.app.app_consts import InfoFlowConsts
 from src.final_plots.app.components.multi_plots import DataSourceDisplay, ParameterConfiguration, PlotCreation
 from src.final_plots.app.components.plot_customization import plotCustomization
 from src.final_plots.app.data_store import load_experiment_fulfilled_reqs_df
 from src.final_plots.app.texts import INFO_FLOW_TEXTS
-from src.names import ResultBankParamNames
+from src.names import EXPERIMENT_NAMES, ResultBankParamNames
 from src.utils.streamlit_utils import StreamlitPage
 
 st.set_page_config(page_title=INFO_FLOW_TEXTS.title, page_icon=INFO_FLOW_TEXTS.icon, layout="wide")

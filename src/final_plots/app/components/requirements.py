@@ -9,12 +9,17 @@ import streamlit as st
 from rich.console import Console
 from st_aggrid import AgGrid, DataReturnMode, GridOptionsBuilder, GridUpdateMode
 
-from src.final_plots.app.app_consts import GLOBAL_APP_CONSTS, AppSessionKeys, DataReqCols, DataReqConsts
-from src.names import HeatmapCols
+from src.data_defs import DataReqs
+from src.final_plots.app.app_consts import (
+    GLOBAL_APP_CONSTS,
+    AppSessionKeys,
+    DataReqConsts,
+    SummarizedDataFulfilledReqsCols,
+)
 from src.final_plots.app.components.inputs import select_gpu_type, select_variation, select_window_size
 from src.final_plots.app.data_store import get_models_remaining_prompts
 from src.final_plots.app.texts import HEATMAP_TEXTS
-from src.final_plots.app.utils import get_data_req_from_df_row
+from src.names import HeatmapCols
 from src.types import MODEL_ARCH_AND_SIZE, TPromptOriginalIndex
 from src.utils.streamlit.aagrid import set_aagrid_apply_default_filters
 from src.utils.streamlit_utils import StreamlitComponent
@@ -27,6 +32,7 @@ class RequirementsDisplay(StreamlitComponent):
         self.df = df
         self.height = height
         self.key = key
+        self.data_return_mode: DataReturnMode = DataReturnMode.FILTERED
 
     def render(self) -> pd.DataFrame | None:
         data_reqs_df = self.df[DataReqConsts.DATA_REQS_FILTER_COLUMNS]
@@ -44,7 +50,7 @@ class RequirementsDisplay(StreamlitComponent):
         grid_options = grid_builder.build()
         set_aagrid_apply_default_filters(
             grid_builder,
-            {DataReqCols.AvailableOptions: ["0"]},
+            {SummarizedDataFulfilledReqsCols.AvailableOptions: ["0"]},
         )
         # Display the table
         grid_response = AgGrid(
@@ -55,25 +61,25 @@ class RequirementsDisplay(StreamlitComponent):
             floatingFilter=True,
             key=self.key,
             update_mode=GridUpdateMode.SELECTION_CHANGED,
-            data_return_mode=DataReturnMode.FILTERED,
+            data_return_mode=self.data_return_mode,
             allow_unsafe_jscode=True,
         )
         if grid_response["selected_data"] is None or len(grid_response["selected_data"]) == 0:
             st.warning("No requirements selected")
             return None
         filtered_reqs = self.df.loc[pd.to_numeric(grid_response["selected_data"].index)]
-        st.write(filtered_reqs.drop(columns=[DataReqCols.Options]))
+        st.write(filtered_reqs.drop(columns=[SummarizedDataFulfilledReqsCols.Options]))
         st.write(f"Selected {len(filtered_reqs)} requirements")
         return filtered_reqs
 
 
 class RequirementExecution(StreamlitComponent):
-    def __init__(self, data_reqs_to_run: pd.DataFrame):
+    def __init__(self, data_reqs_to_run: DataReqs):
         self.data_reqs_to_run = data_reqs_to_run
 
     def render(self):
         # Add SLURM configuration in sidebar
-        selected_count = len(self.data_reqs_to_run)
+        selected_count = len(self.data_reqs_to_run.to_rows())
 
         with st.sidebar:
             with st.expander(f"Run {selected_count} Filtered Requirements"):
@@ -93,7 +99,7 @@ class RequirementExecution(StreamlitComponent):
                         select_gpu_type()
 
                 # Run button
-                if len(self.data_reqs_to_run) > 0 and st.button(f"🚀 Run {selected_count} Selected Requirements"):
+                if selected_count > 0 and st.button(f"🚀 Run {selected_count} Selected Requirements"):
                     st.info(f"Preparing to run {selected_count} requirements...")
 
                     success_count = 0
@@ -104,8 +110,7 @@ class RequirementExecution(StreamlitComponent):
 
                     # Get all rows from filtered_df that match selected requirements
 
-                    for i, (idx, row) in enumerate(self.data_reqs_to_run.iterrows()):
-                        req = get_data_req_from_df_row(row)
+                    for i, req in enumerate(self.data_reqs_to_run.to_rows()):
                         try:
                             # Get config and set running parameters
                             config = req.get_config(variation=AppSessionKeys.variation.value)

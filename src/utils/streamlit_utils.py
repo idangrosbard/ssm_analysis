@@ -4,7 +4,20 @@ from abc import ABC, abstractmethod
 from collections import defaultdict
 from contextlib import contextmanager
 from io import StringIO
-from typing import Any, Callable, Generic, Optional, ParamSpec, TypeVar, Union, cast, get_args, get_origin
+from typing import (
+    Any,
+    Callable,
+    ClassVar,
+    Generic,
+    Optional,
+    ParamSpec,
+    Type,
+    TypeVar,
+    Union,
+    cast,
+    get_args,
+    get_origin,
+)
 
 import streamlit as st
 import streamlit_antd_components as sac
@@ -42,8 +55,9 @@ class SessionKey(Generic[TSessionKey]):
     @property
     def value(self) -> TSessionKey:
         """Get the current value. Raises KeyError if not initialized and no default."""
-        if not self.exists() and self.default_value is None:
-            raise KeyError(f"Session key '{self.key}' not initialized and has no default value")
+        # TODO: I don't remember why I added this check, remove it?
+        # if not self.exists() and self.default_value is None:
+        #     raise KeyError(f"Session key '{self.key}' not initialized and has no default value")
         return cast(TSessionKey, st.session_state[self.key] if self.exists() else self.default_value)
 
     @value.setter
@@ -143,6 +157,20 @@ class SessionKeyDescriptor(Generic[TSessionKey]):
                 session_key.init(self.default_value)
             setattr(obj, f"_{self.key}_instance", session_key)
         return getattr(obj, f"_{self.key}_instance")
+
+
+_T_SESSION_KEYS_BASE = TypeVar("_T_SESSION_KEYS_BASE", bound="SessionKeysBase[Any]")
+
+
+class SessionKeysBase(Generic[_T_SESSION_KEYS_BASE]):
+    """Base class for session key containers that ensures singleton pattern."""
+
+    _instance: ClassVar[dict[Type[Any], Any]] = {}
+
+    def __new__(cls) -> _T_SESSION_KEYS_BASE:
+        if cls not in cls._instance:
+            cls._instance[cls] = super().__new__(cls)
+        return cast(_T_SESSION_KEYS_BASE, cls._instance[cls])
 
 
 # endregion

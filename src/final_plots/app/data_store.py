@@ -7,12 +7,11 @@ from matplotlib.figure import Figure
 from pygwalker.api.streamlit import StreamlitRenderer
 from streamlit import cache_resource
 
-from src.names import EXPERIMENT_NAMES
+from src.data_defs import DataReqs, ExperimentDisplayResults, ResultBank, SummarizedDataFulfilledReqs
 from src.experiments.heatmap import HeatmapConfig
 from src.experiments.info_flow import InfoFlowConfig
 from src.final_plots.app.app_consts import (
     GLOBAL_APP_CONSTS,
-    DataReqCols,
 )
 from src.final_plots.app.utils import (
     format_path_for_display,
@@ -28,10 +27,9 @@ from src.final_plots.data_reqs import (
     get_model_evaluations,
 )
 from src.final_plots.results_bank import (
-    ResultRecord,
     get_experiment_results_bank,
 )
-from src.names import ResultBankParamNames
+from src.names import EXPERIMENT_NAMES, ResultBankParamNames
 
 # from src.plots.info_flow_confidence import PlotMetadata, create_confidence_plot
 from src.plots.info_flow_confidence import PlotMetadata, create_confidence_plot
@@ -69,26 +67,19 @@ def merge_model_evaluations_streamlit_rendered(variation: TVariationName) -> Str
 
 
 @CacheWithDependencies()
-def load_results_bank() -> list[ResultRecord]:
+def load_results_bank() -> ResultBank:
     return get_experiment_results_bank()
 
 
 # Results Bank hooks
 @CacheWithDependencies()
-def load_experiment_results() -> pd.DataFrame:
+def load_experiment_results() -> ExperimentDisplayResults:
     """Load and process results with caching"""
-    results = load_results_bank()
-    results_data = []
-    for result in results:
-        result_dict = {param: getattr(result, param, None) for param in ResultBankParamNames}
-        result_dict[ResultBankParamNames.path] = format_path_for_display(result_dict[ResultBankParamNames.path])
-        results_data.append(result_dict)
-
-    return pd.DataFrame(results_data)
+    return load_results_bank().to_experiment_results()
 
 
 @CacheWithDependencies()
-def load_data_reqs() -> IDataFulfilled:
+def load_data_reqs() -> DataReqs:
     return get_data_reqs()
 
 
@@ -101,31 +92,14 @@ def load_latest_fulfilled_reqs() -> IDataFulfilled:
 
 # Data Requirements hooks
 @CacheWithDependencies()
-def load_fulfilled_reqs_df() -> pd.DataFrame:
+def load_fulfilled_reqs_df() -> SummarizedDataFulfilledReqs:
     """Load the data requirements options and overrides to dispaly the fulfilled requirements"""
     results_bank = load_results_bank()
     data_reqs = load_data_reqs()
     options = get_data_fullfment_options(data_reqs, results_bank)
     data_fulfilled_overides = _load_data_fulfilled()
 
-    data = []
-    for req, opts in options.items():
-        override = data_fulfilled_overides.get(req)
-        assert override is None or override in opts
-        row = {
-            **{
-                param: getattr(req, param, None)
-                for param in ResultBankParamNames
-                if param not in [ResultBankParamNames.path, ResultBankParamNames.variation]
-            },
-            DataReqCols.AvailableOptions: len(opts),
-            DataReqCols.Options: opts,
-            DataReqCols.CurrentOverride: override,
-            DataReqCols.Key: str(req),
-        }
-        data.append(row)
-
-    return pd.DataFrame(data)
+    return SummarizedDataFulfilledReqs(options, data_fulfilled_overides)
 
 
 @CacheWithDependencies()
@@ -138,7 +112,7 @@ def load_experiment_fulfilled_reqs_df(experiment_name: EXPERIMENT_NAMES) -> pd.D
     Returns:
         DataFrame with experiment data
     """
-    df = load_fulfilled_reqs_df()
+    df = load_fulfilled_reqs_df().to_df()
     return df[df[ResultBankParamNames.experiment_name] == experiment_name]
 
 

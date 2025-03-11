@@ -12,6 +12,7 @@
 
 import streamlit as st
 
+from src.data_defs import DataReqs
 from src.final_plots.app.components.requirements import RequirementExecution, RequirementsDisplay
 from src.final_plots.app.data_store import load_fulfilled_reqs_df, load_latest_fulfilled_reqs
 from src.final_plots.app.texts import DATA_REQUIREMENTS_TEXTS
@@ -34,7 +35,7 @@ class DataRequirementsPage(StreamlitPage):
 
         # Display requirements
         data_reqs_to_run = RequirementsDisplay(
-            df,
+            df.to_df(),
             height=1000,
             # hide_columns=[ParamNames.is_all_correct],
         ).render()
@@ -48,7 +49,7 @@ class DataRequirementsPage(StreamlitPage):
 
         if data_reqs_to_run is not None:
             # Handle requirement execution
-            RequirementExecution(data_reqs_to_run).render()
+            RequirementExecution(DataReqs.from_df(data_reqs_to_run)).render()
 
 
 if __name__ == "__main__":
