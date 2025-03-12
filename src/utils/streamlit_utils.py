@@ -32,10 +32,11 @@ TSessionKey = TypeVar("TSessionKey")
 class SessionKey(Generic[TSessionKey]):
     """A strongly typed wrapper around streamlit session state values."""
 
-    def __init__(self, key: str, default_value: TSessionKey | None = None):
-        self.key = key
+    def __init__(self, key: str, default_value: TSessionKey | None = None, allow_none: Optional[bool] = None):
+        self._key = key
         self.default_value = default_value
         self._ever_changed = False
+        self._allow_none = default_value is None if allow_none is None else allow_none
 
     def exists(self) -> bool:
         return self.key in st.session_state
@@ -44,26 +45,86 @@ class SessionKey(Generic[TSessionKey]):
         if self.exists():
             del st.session_state[self.key]
 
-    def update(self, value: TSessionKey):
+    def _update(self, value: TSessionKey | None):
         self._ever_changed = True
-        st.session_state[self.key] = value
+        if self._allow_none or value is not None:
+            st.session_state[self.key] = value
+        else:
+            self.delete()
 
     def init(self, value: TSessionKey):
         if not self.exists():
             st.session_state[self.key] = value
 
     @property
+    def key(self) -> str:
+        return self._key
+
+    @property
+    def _key_need_external_update(self) -> "SessionKey[bool]":
+        sk = SessionKey(f"{self.key}_need_external_update")
+        sk.init(False)
+        return sk
+
+    @property
+    def _key_next_external_update_value(self) -> "SessionKey[TSessionKey | None]":
+        sk = SessionKey(f"{self.key}_next_external_update_value")
+        sk.init(None)
+        return sk
+
+    @property
+    def _key_for_prev_value(self) -> "SessionKey[TSessionKey | None]":
+        sk = SessionKey(f"{self.key}_prev_value")
+        sk.init(None)
+        return sk
+
+    @property
+    def is_changed(self) -> bool:
+        """
+        You need to check this value *before* the call for the component.
+        """
+        return self._key_for_prev_value.value != self.value
+
+    @property
+    def prev_value(self) -> TSessionKey | None:
+        return self._key_for_prev_value.value
+
+    @property
+    def key_for_component(self) -> str:
+        """
+        This is a workaround to allow external updates to the value.
+        And allow is_changed to work.
+        Use this as the key for components that need this functionality.
+        """
+        if self._key_need_external_update.value:
+            self._update(self._key_next_external_update_value.value)
+            self._key_need_external_update.value = False
+            self._key_next_external_update_value.value = None
+
+        self._key_for_prev_value.value = self.value
+        return self.key
+
+    def post_external_update(self, value: TSessionKey | None, with_rerun: bool = True):
+        """
+        This is a workaround to allow external updates to the value after the component has been rendered.
+        Use this method only for post render updates, else use update.
+        """
+        self._key_next_external_update_value.value = value
+        self._key_need_external_update.value = True
+        if with_rerun:
+            st.rerun()
+
+    @property
     def value(self) -> TSessionKey:
-        """Get the current value. Raises KeyError if not initialized and no default."""
-        # TODO: I don't remember why I added this check, remove it?
-        # if not self.exists() and self.default_value is None:
-        #     raise KeyError(f"Session key '{self.key}' not initialized and has no default value")
+        """Get the current value. Raises KeyError if not _initialize and no default."""
+        if not self.exists() and not self._allow_none:
+            raise KeyError(f"Session key '{self.key}' not initialized and has no default value")
         return cast(TSessionKey, st.session_state[self.key] if self.exists() else self.default_value)
 
     @value.setter
     def value(self, new_value: TSessionKey):
         """Set the current value."""
-        self.update(new_value)
+        self._update(new_value)
 
     def __str__(self) -> str:
         """Return the current value as string, useful for streamlit widgets."""
@@ -83,7 +144,13 @@ class SessionKey(Generic[TSessionKey]):
         return self.equal_if_exists(lambda val: val is not None)
 
     def update_button(self, value: TSessionKey, label: str):
-        st.button(label=label, key=label, on_click=lambda: self.update(value))
+        st.button(label=label, key=label, on_click=lambda: self._update(value))
+
+    def reset_value(self):
+        self._update(self.default_value)
+
+    def post_external_reset_value(self, with_rerun: bool = True):
+        self.post_external_update(self.default_value, with_rerun=with_rerun)
 
     def create_input_widget(
         self,
@@ -137,9 +204,10 @@ class SessionKey(Generic[TSessionKey]):
 class SessionKeyDescriptor(Generic[TSessionKey]):
     """A descriptor that creates SessionKey instances with automatic prefixing."""
 
-    def __init__(self, default_value: TSessionKey | None = None):
+    def __init__(self, default_value: TSessionKey | None = None, allow_none: Optional[bool] = None):
         self.default_value = default_value
         self.key: str | None = None
+        self.allow_none = allow_none
 
     def __set_name__(self, owner: Any, name: str):
         # Add prefix based on class name
@@ -152,9 +220,9 @@ class SessionKeyDescriptor(Generic[TSessionKey]):
         # Create or get SessionKey instance
         if not hasattr(obj, f"_{self.key}_instance"):
             assert self.key is not None, "SessionKeyDescriptor not properly initialized with __set_name__"
-            session_key = SessionKey(self.key, self.default_value)
-            if self.default_value is not None:
-                session_key.init(self.default_value)
+            session_key = SessionKey(self.key, self.default_value, self.allow_none)
+            if self.allow_none or self.default_value is not None:
+                session_key.init(cast(TSessionKey, self.default_value))
             setattr(obj, f"_{self.key}_instance", session_key)
         return getattr(obj, f"_{self.key}_instance")
 

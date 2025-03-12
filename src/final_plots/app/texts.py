@@ -76,6 +76,49 @@ class DATA_REQUIREMENTS_TEXTS:
     overrides_saved = "Overrides saved successfully!"
 
 
+class FINAL_PLOTS_TEXTS:
+    icon = "📊"
+    title = "Final Plots"
+
+    # Headers
+    plot_management = "Plot Management"
+    plot_generation = "Plot Generation"
+    configuration = "### Configuration"
+
+    # Buttons
+    add_plot = "Add New Plot"
+    edit_plot = "Edit Plot"
+    delete_plot = "Delete Plot"
+    generate_plot = "Generate Plot"
+    save_plot = "Save Plot"
+    run_missing_reqs = "Run Missing Requirements"
+    save_all = "Save All"
+    reset_to_default = "Reset to Default"
+    cancel = "Cancel"
+
+    # Titles
+    total_plots_title = "Total Plots"
+    lines_per_plot_title = "Lines per Plot"
+
+    # Messages
+    no_plots = "No plot plans available. Add a new plot plan to get started."
+    plot_saved = lambda path: f"Plot saved to {path}"
+    missing_reqs = lambda count: f"Missing data for {count} requirements. Please run the missing requirements first."
+    generating_plot = lambda title: f"Generating plot: {title}"
+    plot_generated = "Plot generated successfully!"
+    plot_generation_failed = "Failed to generate plot. Please check the error details above."
+    initializing_plot_plans = "Initializing plot plans with default configurations..."
+    default_plot_plans_created = "Default plot plans created successfully!"
+    no_plan_selected = "No plot plan selected. Please select a plot plan from the sidebar or create a new one."
+    confirm_reset = "Click again to confirm reset to default plot plans."
+    plot_plans_saved = "Plot plans saved successfully."
+    plot_summary = "### Plot Summary"
+    total_plots = lambda count: f"**Total plots:** {count}"
+    grid_structure = lambda parts: " × ".join(parts)
+    lines_per_plot = lambda count: f"**Lines per plot:** {count}"
+    plot_plan_not_found = lambda id: f"Plot plan with ID {id} not found."
+
+
 class COMMON_TEXTS:
     error_details = "Show Error Details"
     preparing_to_run = "Preparing to run"

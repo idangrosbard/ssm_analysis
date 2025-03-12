@@ -1,5 +1,6 @@
+import contextlib
 from enum import StrEnum
-from typing import Any, Type, TypeVar, cast
+from typing import Any, ContextManager, Type, TypeVar, cast
 
 
 def class_values(cls: Type) -> list[str]:
@@ -32,3 +33,14 @@ def first_dict_value(d: dict[Any, _T]) -> _T:
 
 def first_dict_key(d: dict[Any, _T]) -> Any:
     return next(iter(d.keys()))
+
+
+def conditional_context_manager(use_ctx: bool, ctx: ContextManager[None]) -> ContextManager[None]:
+    """
+    Returns the given context manager if use_ctx is True, otherwise returns a dummy context.
+
+    :param use_ctx: Boolean flag to determine whether to use the actual context manager.
+    :param ctx: The actual context manager to use if use_ctx is True.
+    :return: The appropriate context manager (either ctx or nullcontext).
+    """
+    return ctx if use_ctx else contextlib.nullcontext()

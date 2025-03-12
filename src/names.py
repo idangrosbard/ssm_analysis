@@ -1,4 +1,7 @@
 from enum import StrEnum
+from typing import cast
+
+from src.types import FinalPlotsPlanOrientation
 
 
 class EXPERIMENT_NAMES(StrEnum):
@@ -58,7 +61,56 @@ class ResultBankParamNames(StrEnum):
     path = "path"
 
 
+class ExperimentHyperParams(StrEnum):
+    model_arch = ResultBankParamNames.model_arch
+    model_size = ResultBankParamNames.model_size
+    model_arch_and_size = "model_arch_and_size"
+    window_size = ResultBankParamNames.window_size
+    source = ResultBankParamNames.source
+    feature_category = ResultBankParamNames.feature_category
+    target = ResultBankParamNames.target
+    prompt_idx = ResultBankParamNames.prompt_idx
+
+
 class HeatmapCols:
     PROMPT_COUNT = "Prompt Count"
     SELECTED_PROMPT = "Selected Prompt"
     MODEL_CORRECT = "Model Correct"
+
+
+class PlotType(StrEnum):
+    ARCHITECTURE_KNOCKOUT = "architecture_knockout"
+    MODEL_SIZE_KNOCKOUT = "model_size_knockout"
+    WINDOW_SIZE_KNOCKOUT = "window_size_knockout"
+    FEATURE_KNOCKOUT = "feature_knockout"
+    SHARED_KNOCKOUT = "shared_knockout"
+    HEATMAP = "heatmap"
+
+
+def map_final_plots_plan_orientation_to_options(orientation: FinalPlotsPlanOrientation) -> "PlotPlanOptionCols":
+    return cast("PlotPlanOptionCols", f"{orientation}_options")
+
+
+class PlotPlanCols(StrEnum):
+    TITLE = "title"
+    description = "description"
+    plot_type = "plot_type"
+    is_appendix = "is_appendix"
+    order = "order"
+    experiment_name = "experiment_name"
+    rows = FinalPlotsPlanOrientation.ROWS
+    cols = FinalPlotsPlanOrientation.COLS
+    grids = FinalPlotsPlanOrientation.GRIDS
+    lines = FinalPlotsPlanOrientation.LINES
+    output_path = "output_path"
+    rows_options = map_final_plots_plan_orientation_to_options(FinalPlotsPlanOrientation.ROWS)
+    cols_options = map_final_plots_plan_orientation_to_options(FinalPlotsPlanOrientation.COLS)
+    grids_options = map_final_plots_plan_orientation_to_options(FinalPlotsPlanOrientation.GRIDS)
+    lines_options = map_final_plots_plan_orientation_to_options(FinalPlotsPlanOrientation.LINES)
+
+
+class PlotPlanOptionCols(StrEnum):
+    rows_options = PlotPlanCols.rows_options
+    cols_options = PlotPlanCols.cols_options
+    grids_options = PlotPlanCols.grids_options
+    lines_options = PlotPlanCols.lines_options

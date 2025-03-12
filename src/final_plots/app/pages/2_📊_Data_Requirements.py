@@ -12,11 +12,12 @@
 
 import streamlit as st
 
-from src.data_defs import DataReqs
 from src.final_plots.app.components.requirements import RequirementExecution, RequirementsDisplay
 from src.final_plots.app.data_store import load_fulfilled_reqs_df, load_latest_fulfilled_reqs
 from src.final_plots.app.texts import DATA_REQUIREMENTS_TEXTS
 from src.final_plots.data_reqs import _save_data_fulfilled
+from src.names import ResultBankParamNames
+from src.utils.streamlit.aagrid import SelectionMode
 from src.utils.streamlit_utils import StreamlitPage
 
 st.set_page_config(page_title=DATA_REQUIREMENTS_TEXTS.title, page_icon=DATA_REQUIREMENTS_TEXTS.icon, layout="wide")
@@ -35,9 +36,10 @@ class DataRequirementsPage(StreamlitPage):
 
         # Display requirements
         data_reqs_to_run = RequirementsDisplay(
-            df.to_df(),
+            df,
             height=1000,
-            # hide_columns=[ParamNames.is_all_correct],
+            selection_mode=SelectionMode.MULTIPLE,
+            hide_columns=[ResultBankParamNames.is_all_correct],
         ).render()
 
         # Save button for overrides
@@ -48,8 +50,9 @@ class DataRequirementsPage(StreamlitPage):
                 st.success("Requirements updated successfully!")
 
         if data_reqs_to_run is not None:
-            # Handle requirement execution
-            RequirementExecution(DataReqs.from_df(data_reqs_to_run)).render()
+            with st.sidebar:
+                # Handle requirement execution
+                RequirementExecution(data_reqs_to_run).render()
 
 
 if __name__ == "__main__":

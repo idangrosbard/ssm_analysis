@@ -201,3 +201,10 @@ class MODEL_ARCH_AND_SIZE(NamedTuple):
 
 
 # endregion
+
+
+class FinalPlotsPlanOrientation(StrEnum):
+    ROWS = "rows"
+    COLS = "cols"
+    GRIDS = "grids"
+    LINES = "lines"

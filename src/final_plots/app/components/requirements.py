@@ -7,9 +7,9 @@ import rich.errors
 import rich.traceback
 import streamlit as st
 from rich.console import Console
-from st_aggrid import AgGrid, DataReturnMode, GridOptionsBuilder, GridUpdateMode
+from st_aggrid import AgGrid, DataReturnMode, GridUpdateMode
 
-from src.data_defs import DataReqs
+from src.data_defs import DataReqs, SummarizedDataFulfilledReqs
 from src.final_plots.app.app_consts import (
     GLOBAL_APP_CONSTS,
     AppSessionKeys,
@@ -21,32 +21,35 @@ from src.final_plots.app.data_store import get_models_remaining_prompts
 from src.final_plots.app.texts import HEATMAP_TEXTS
 from src.names import HeatmapCols
 from src.types import MODEL_ARCH_AND_SIZE, TPromptOriginalIndex
-from src.utils.streamlit.aagrid import set_aagrid_apply_default_filters
+from src.utils.streamlit.aagrid import SelectionMode, base_grid_builder, set_aagrid_apply_default_filters
 from src.utils.streamlit_utils import StreamlitComponent
+from src.utils.types_utils import select_indexes_from_list
 
 console = Console()
 
 
 class RequirementsDisplay(StreamlitComponent):
-    def __init__(self, df: pd.DataFrame, height: int | None = None, key: str = "data_requirements"):
-        self.df = df
+    def __init__(
+        self,
+        summarized_data_fulfilled_reqs: SummarizedDataFulfilledReqs,
+        selection_mode: SelectionMode,
+        height: int | None = None,
+        key: str = "data_requirements",
+        hide_columns: list[str] = [],
+    ):
+        self.summarized_data_fulfilled_reqs = summarized_data_fulfilled_reqs
         self.height = height
         self.key = key
-        self.data_return_mode: DataReturnMode = DataReturnMode.FILTERED
+        self.selection_mode = selection_mode
+        self.hide_columns = hide_columns
 
-    def render(self) -> pd.DataFrame | None:
-        data_reqs_df = self.df[DataReqConsts.DATA_REQS_FILTER_COLUMNS]
+    def render(self) -> DataReqs | None:
+        original_df = self.summarized_data_fulfilled_reqs.to_df()
+        data_reqs_df = original_df[DataReqConsts.DATA_REQS_FILTER_COLUMNS]
 
-        grid_builder = GridOptionsBuilder.from_dataframe(data_reqs_df)
-        grid_builder.configure_pagination(enabled=True)
-        grid_builder.configure_selection(selection_mode="multiple", use_checkbox=True, header_checkbox=True)
-        grid_builder.configure_default_column(
-            filter=True,
-            floatingFilter=True,
-        )
+        df, grid_builder = base_grid_builder(data_reqs_df, self.selection_mode, hide_columns=[])
         for col in DataReqConsts.DATA_REQS_FILTER_COLUMNS:
             grid_builder.configure_column(col, type=["textColumn"])
-        grid_builder.configure_side_bar()
         grid_options = grid_builder.build()
         set_aagrid_apply_default_filters(
             grid_builder,
@@ -54,23 +57,31 @@ class RequirementsDisplay(StreamlitComponent):
         )
         # Display the table
         grid_response = AgGrid(
-            data_reqs_df,
+            df,
             gridOptions=grid_options,
             height=cast(int, self.height),  # allow None
             fit_columns_on_grid_load=True,
             floatingFilter=True,
             key=self.key,
             update_mode=GridUpdateMode.SELECTION_CHANGED,
-            data_return_mode=self.data_return_mode,
+            data_return_mode=DataReturnMode.FILTERED,
             allow_unsafe_jscode=True,
         )
+        if self.selection_mode == SelectionMode.DISABLED:
+            return None
+
         if grid_response["selected_data"] is None or len(grid_response["selected_data"]) == 0:
             st.warning("No requirements selected")
             return None
-        filtered_reqs = self.df.loc[pd.to_numeric(grid_response["selected_data"].index)]
-        st.write(filtered_reqs.drop(columns=[SummarizedDataFulfilledReqsCols.Options]))
-        st.write(f"Selected {len(filtered_reqs)} requirements")
-        return filtered_reqs
+        st.write(f"Selected {len(grid_response['selected_data'])} requirements")
+        return DataReqs(
+            set(
+                select_indexes_from_list(
+                    self.summarized_data_fulfilled_reqs.to_data_reqs().to_rows(),
+                    [int(i) for i in grid_response["selected_data"].index],
+                )
+            )
+        )
 
 
 class RequirementExecution(StreamlitComponent):
@@ -81,70 +92,69 @@ class RequirementExecution(StreamlitComponent):
         # Add SLURM configuration in sidebar
         selected_count = len(self.data_reqs_to_run.to_rows())
 
-        with st.sidebar:
-            with st.expander(f"Run {selected_count} Filtered Requirements"):
-                with_slurm = True
-                if selected_count == 1:
-                    with_slurm = st.checkbox("Run with SLURM", value=False)
-                # Show count of selected requirements
+        with st.expander(f"Run {selected_count} Filtered Requirements"):
+            with_slurm = True
+            if selected_count == 1:
+                with_slurm = st.checkbox("Run with SLURM", value=False)
+            # Show count of selected requirements
 
-                # SLURM configuration
-                col1, col2 = st.columns(2)
+            # SLURM configuration
+            col1, col2 = st.columns(2)
 
-                with col1:
-                    select_variation()
+            with col1:
+                select_variation()
 
-                with col2:
-                    if with_slurm:
-                        select_gpu_type()
+            with col2:
+                if with_slurm:
+                    select_gpu_type()
 
-                # Run button
-                if selected_count > 0 and st.button(f"🚀 Run {selected_count} Selected Requirements"):
-                    st.info(f"Preparing to run {selected_count} requirements...")
+            # Run button
+            if selected_count > 0 and st.button(f"🚀 Run {selected_count} Selected Requirements"):
+                st.info(f"Preparing to run {selected_count} requirements...")
 
-                    success_count = 0
-                    failed_count = 0
+                success_count = 0
+                failed_count = 0
 
-                    progress_bar = st.progress(0)
-                    status_text = st.empty()
+                progress_bar = st.progress(0)
+                status_text = st.empty()
 
-                    # Get all rows from filtered_df that match selected requirements
+                # Get all rows from filtered_df that match selected requirements
 
-                    for i, req in enumerate(self.data_reqs_to_run.to_rows()):
-                        try:
-                            # Get config and set running parameters
-                            config = req.get_config(variation=AppSessionKeys.variation.value)
-                            if with_slurm:
-                                config.set_running_params(
-                                    with_slurm=True,
-                                    slurm_gpu_type=AppSessionKeys.get_selected_gpu(req.model_arch_and_size),
-                                )
-
-                            # Run the configuration
-                            config.run()
-                            success_count += 1
-
-                        except Exception as e:
-                            st.error(f"Failed to run requirement: {str(json.dumps(req._asdict(), indent=4))}")
-                            st.exception(e)
-                            failed_count += 1
-                            console.print(
-                                rich.traceback.Traceback.from_exception(
-                                    exc_type=type(e), exc_value=e, traceback=e.__traceback__
-                                )
+                for i, req in enumerate(self.data_reqs_to_run.to_rows()):
+                    try:
+                        # Get config and set running parameters
+                        config = req.get_config(variation=AppSessionKeys.variation.value)
+                        if with_slurm:
+                            config.set_running_params(
+                                with_slurm=True,
+                                slurm_gpu_type=AppSessionKeys.get_selected_gpu(req.model_arch_and_size),
                             )
 
-                        # Update progress
-                        progress = (i + 1) / selected_count
-                        progress_bar.progress(progress)
-                        status_text.text(
-                            f"Processed: {i + 1}/{selected_count} | Success: {success_count} | Failed: {failed_count}"
+                        # Run the configuration
+                        config.run()
+                        success_count += 1
+
+                    except Exception as e:
+                        st.error(f"Failed to run requirement: {str(json.dumps(req._asdict(), indent=4))}")
+                        st.exception(e)
+                        failed_count += 1
+                        console.print(
+                            rich.traceback.Traceback.from_exception(
+                                exc_type=type(e), exc_value=e, traceback=e.__traceback__
+                            )
                         )
 
-                    if success_count > 0:
-                        st.success(f"Successfully submitted {success_count} requirements to run")
-                    if failed_count > 0:
-                        st.warning(f"Failed to submit {failed_count} requirements")
+                    # Update progress
+                    progress = (i + 1) / selected_count
+                    progress_bar.progress(progress)
+                    status_text.text(
+                        f"Processed: {i + 1}/{selected_count} | Success: {success_count} | Failed: {failed_count}"
+                    )
+
+                if success_count > 0:
+                    st.success(f"Successfully submitted {success_count} requirements to run")
+                if failed_count > 0:
+                    st.warning(f"Failed to submit {failed_count} requirements")
 
 
 class HeatmapGenerationComponent(StreamlitComponent):
