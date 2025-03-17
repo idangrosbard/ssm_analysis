@@ -24,7 +24,6 @@ def select_variation():
     st.text_input(
         AppGlobalText.variation,
         key=AppSessionKeys.variation.key,
-        value=AppSessionKeys.variation.value,
     )
 
 

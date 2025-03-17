@@ -103,7 +103,6 @@ class HeatmapPlotGenerationComponent(StreamlitComponent):
         grid: list[list[Path | None]] = [[None for _ in range(N)] for _ in range(M)]  # 3x3 grid of None values
         size_cats = [MODEL_SIZE_CAT.SMALL, MODEL_SIZE_CAT.MEDIUM, MODEL_SIZE_CAT.LARGE, MODEL_SIZE_CAT.HUGE]
 
-        st.write(self.prompt_idx)
         i = 0
         for model_arch_and_size in GLOBAL_APP_CONSTS.MODELS_COMBINATIONS:
             model_arch, model_size = model_arch_and_size

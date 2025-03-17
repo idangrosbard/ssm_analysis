@@ -23,6 +23,7 @@ class HomePage(StreamlitPage):
         """)
 
         st.sidebar.success("Select a page above to explore different analyses.")
+        st.session_state
 
         # Global variables
         st.session_state
@@ -32,8 +33,6 @@ class HomePage(StreamlitPage):
         select_gpu_type()
         AppSessionKeys.variation.create_input_widget("Variation")
         select_window_size()
-
-        st.session_state
 
 
 if __name__ == "__main__":

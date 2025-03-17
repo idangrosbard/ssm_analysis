@@ -118,7 +118,10 @@ class SessionKey(Generic[TSessionKey]):
     def value(self) -> TSessionKey:
         """Get the current value. Raises KeyError if not _initialize and no default."""
         if not self.exists() and not self._allow_none:
+            if st.button("Reset Value"):
+                self.reset_value()
             raise KeyError(f"Session key '{self.key}' not initialized and has no default value")
+
         return cast(TSessionKey, st.session_state[self.key] if self.exists() else self.default_value)
 
     @value.setter

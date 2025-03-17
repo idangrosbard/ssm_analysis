@@ -813,7 +813,13 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
         return cache_dir / f"{cell_id}.png"
 
     def _plot_cell(
-        self, data_reqs: DataReqs, grid_name: Any, row_name: Any, col_name: Any, recreate: bool = False
+        self,
+        data_reqs: DataReqs,
+        grid_name: Any,
+        row_name: Any,
+        col_name: Any,
+        recreate: bool = False,
+        with_plotly: bool = False,
     ) -> None:
         """Plot a single cell with caching."""
         cache_path = self._get_cell_cache_path(grid_name, row_name, col_name)
@@ -847,8 +853,12 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
         if fig is not None:
             # Save the plot
             fig.write_image(str(cache_path), scale=4)
+
             # Display the plot
-            st.plotly_chart(fig, use_container_width=True)
+            if with_plotly:
+                st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.image(str(cache_path))
 
     def _generate_cell_architecture_knockout(self, fulfilled_reqs) -> Optional[go.Figure]:
         """Generate architecture knockout plot for a single cell."""
@@ -989,6 +999,7 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
                             st.write(col_name)
 
                 for i, row_name in enumerate(rows):
+                    row_display_name = row_name
                     # Create columns for this row, including the label column
                     cols = grid_row_col[grid_name][row_name].keys()
                     cols_cols = st.columns(([0.2] if is_col_labels else []) + [1] * len(cols))
@@ -999,12 +1010,13 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
                             rows_options = self.plot_plan.rows
                             assert rows_options is not None
                             rows_param_definition = get_hyper_param_definition(rows_options)
-                            st.write(f"**{rows_param_definition.get_display_name(row_name)}**")
+                            row_display_name = rows_param_definition.get_display_name(row_name)
+                            st.write(f"**{row_display_name}**")
 
                     # Add plots in the remaining columns
                     for col_name, col_col in zip(cols, cols_cols[1:]):
                         data_reqs = grid_row_col[grid_name][row_name][col_name]
                         with col_col:
-                            self._plot_cell(data_reqs, grid_name, row_name, col_name, recreate_plots)
+                            self._plot_cell(data_reqs, grid_name, row_display_name, col_name, recreate_plots)
 
         return None
