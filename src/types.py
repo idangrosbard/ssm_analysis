@@ -204,7 +204,7 @@ class MODEL_ARCH_AND_SIZE(NamedTuple):
 
 
 class FinalPlotsPlanOrientation(StrEnum):
-    ROWS = "rows"
-    COLS = "cols"
-    GRIDS = "grids"
-    LINES = "lines"
+    grids = "grids"
+    rows = "rows"
+    cols = "cols"
+    lines = "lines"

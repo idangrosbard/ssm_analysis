@@ -47,9 +47,8 @@ class COLS:
         DIFFS = "diffs"
 
 
-class ResultBankParamNames(StrEnum):
+class DataReqCols(StrEnum):
     experiment_name = "experiment_name"
-    variation = "variation"
     model_arch = "model_arch"
     model_size = "model_size"
     window_size = "window_size"
@@ -58,18 +57,31 @@ class ResultBankParamNames(StrEnum):
     feature_category = "feature_category"
     target = "target"
     prompt_idx = "prompt_idx"
+
+
+class ResultBankParamNames(StrEnum):
+    experiment_name = DataReqCols.experiment_name
+    model_arch = DataReqCols.model_arch
+    model_size = DataReqCols.model_size
+    window_size = DataReqCols.window_size
+    is_all_correct = DataReqCols.is_all_correct
+    source = DataReqCols.source
+    feature_category = DataReqCols.feature_category
+    target = DataReqCols.target
+    prompt_idx = DataReqCols.prompt_idx
+    variation = "variation"
     path = "path"
 
 
 class ExperimentHyperParams(StrEnum):
-    model_arch = ResultBankParamNames.model_arch
-    model_size = ResultBankParamNames.model_size
+    model_arch = DataReqCols.model_arch
+    model_size = DataReqCols.model_size
     model_arch_and_size = "model_arch_and_size"
-    window_size = ResultBankParamNames.window_size
-    source = ResultBankParamNames.source
-    feature_category = ResultBankParamNames.feature_category
-    target = ResultBankParamNames.target
-    prompt_idx = ResultBankParamNames.prompt_idx
+    window_size = DataReqCols.window_size
+    source = DataReqCols.source
+    feature_category = DataReqCols.feature_category
+    target = DataReqCols.target
+    prompt_idx = DataReqCols.prompt_idx
 
 
 class HeatmapCols:
@@ -98,15 +110,15 @@ class PlotPlanCols(StrEnum):
     is_appendix = "is_appendix"
     order = "order"
     experiment_name = "experiment_name"
-    rows = FinalPlotsPlanOrientation.ROWS
-    cols = FinalPlotsPlanOrientation.COLS
-    grids = FinalPlotsPlanOrientation.GRIDS
-    lines = FinalPlotsPlanOrientation.LINES
+    rows = FinalPlotsPlanOrientation.rows
+    cols = FinalPlotsPlanOrientation.cols
+    grids = FinalPlotsPlanOrientation.grids
+    lines = FinalPlotsPlanOrientation.lines
     output_path = "output_path"
-    rows_options = map_final_plots_plan_orientation_to_options(FinalPlotsPlanOrientation.ROWS)
-    cols_options = map_final_plots_plan_orientation_to_options(FinalPlotsPlanOrientation.COLS)
-    grids_options = map_final_plots_plan_orientation_to_options(FinalPlotsPlanOrientation.GRIDS)
-    lines_options = map_final_plots_plan_orientation_to_options(FinalPlotsPlanOrientation.LINES)
+    rows_options = map_final_plots_plan_orientation_to_options(FinalPlotsPlanOrientation.rows)
+    cols_options = map_final_plots_plan_orientation_to_options(FinalPlotsPlanOrientation.cols)
+    grids_options = map_final_plots_plan_orientation_to_options(FinalPlotsPlanOrientation.grids)
+    lines_options = map_final_plots_plan_orientation_to_options(FinalPlotsPlanOrientation.lines)
 
 
 class PlotPlanOptionCols(StrEnum):

@@ -9,8 +9,9 @@
 # Outline Compatibility Issues:
 # - New file, outline will be implemented
 
+from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Any, Literal, Optional, Tuple, assert_never
 
 import numpy as np
 import pandas as pd
@@ -18,11 +19,11 @@ import plotly.graph_objects as go
 import streamlit as st
 from plotly.subplots import make_subplots
 
-from src.data_defs import ResultBank
+from src.data_defs import DataReqs, ResultBank
 from src.experiments.info_flow import InfoFlowConfig
 from src.final_plots.app.app_consts import SummarizedDataFulfilledReqsCols
 from src.final_plots.app.texts import FINAL_PLOTS_TEXTS
-from src.final_plots.plot_plan import PlotPlan, PlotType
+from src.final_plots.plot_plan import PlotPlan, PlotType, get_hyper_param_definition
 from src.types import MODEL_ARCH_AND_SIZE, TInfoFlowOutput
 from src.utils.streamlit_utils import StreamlitComponent
 
@@ -113,88 +114,147 @@ def load_data(input_path: Path, idx: bool = False) -> pd.DataFrame:
     return df
 
 
+@dataclass
+class PlotDimensions:
+    height_per_row: int = 400
+    width_per_col: int = 400
+    margin_top: int = 100
+    margin_bottom: int = 100
+
+
+@dataclass
+class PlotFontSettings:
+    size: int = 36
+
+
+@dataclass
+class PlotColors:
+    paper_bgcolor: str = "#FFFFFF"
+    plot_bgcolor: str = "#FFFFFF"
+    grid_color: str = "#D3D3D3"
+    zero_line_color: str = "#D3D3D3"
+    axis_line_color: str = "#000000"
+
+
+@dataclass
+class PlotLineSettings:
+    line_width: int = 2
+    grid_width: int = 1
+    zero_line_width: int = 2
+    fill_opacity: float = 0.2
+
+
+@dataclass
+class PlotLegendSettings:
+    orientation: Literal["h", "v"] = "h"
+    y_anchor: Literal["top", "bottom", "middle"] = "bottom"
+    y: float = 1.02
+    x_anchor: Literal["left", "right", "center"] = "right"
+    x: float = 1
+
+
+@dataclass
+class PlotParams:
+    dimensions: PlotDimensions = field(default_factory=PlotDimensions)
+    font: PlotFontSettings = field(default_factory=PlotFontSettings)
+    colors: PlotColors = field(default_factory=PlotColors)
+    line: PlotLineSettings = field(default_factory=PlotLineSettings)
+    legend: PlotLegendSettings = field(default_factory=PlotLegendSettings)
+
+
 class PlotStyle:
     """Class to manage plot styling parameters."""
 
     def __init__(self):
-        # Figure dimensions
-        self.height_per_row = 400
-        self.width_per_col = 400
-        self.margin_top = 100
-        self.margin_bottom = 100
-
-        # Font settings
-        self.font_size = 36
-
-        # Colors
-        self.paper_bgcolor = "#FFFFFF"  # white
-        self.plot_bgcolor = "#FFFFFF"  # white
-        self.grid_color = "#D3D3D3"  # lightgray
-        self.zero_line_color = "#D3D3D3"  # lightgray
-        self.axis_line_color = "#000000"  # black
-
-        # Line settings
-        self.line_width = 2
-        self.grid_width = 1
-        self.zero_line_width = 2
-        self.fill_opacity = 0.2
-
-        # Legend settings
-        self.legend_orientation = "h"
-        self.legend_y_anchor = "bottom"
-        self.legend_y = 1.02
-        self.legend_x_anchor = "right"
-        self.legend_x = 1
+        self.params = PlotParams()
 
     def show_style_form(self):
-        """Display a form to control plot styling parameters."""
-        st.subheader("Plot Style Settings")
+        """Display a form to control plot styling parameters in the sidebar."""
+        with st.sidebar:
+            st.subheader("Plot Style Settings")
 
-        with st.expander("Figure Dimensions"):
-            self.height_per_row = st.number_input("Height per row", min_value=100, value=self.height_per_row)
-            self.width_per_col = st.number_input("Width per column", min_value=100, value=self.width_per_col)
-            self.margin_top = st.number_input("Top margin", min_value=0, value=self.margin_top)
-            self.margin_bottom = st.number_input("Bottom margin", min_value=0, value=self.margin_bottom)
+            with st.form("plot_style_settings"):
+                with st.expander("Figure Dimensions", expanded=False):
+                    self.params.dimensions.height_per_row = st.number_input(
+                        "Height per row", min_value=100, value=self.params.dimensions.height_per_row
+                    )
+                    self.params.dimensions.width_per_col = st.number_input(
+                        "Width per column", min_value=100, value=self.params.dimensions.width_per_col
+                    )
+                    self.params.dimensions.margin_top = st.number_input(
+                        "Top margin", min_value=0, value=self.params.dimensions.margin_top
+                    )
+                    self.params.dimensions.margin_bottom = st.number_input(
+                        "Bottom margin", min_value=0, value=self.params.dimensions.margin_bottom
+                    )
 
-        with st.expander("Font Settings"):
-            self.font_size = st.number_input("Font size", min_value=8, value=self.font_size)
+                with st.expander("Font Settings", expanded=False):
+                    self.params.font.size = st.number_input("Font size", min_value=8, value=self.params.font.size)
 
-        with st.expander("Colors"):
-            self.paper_bgcolor = st.color_picker("Paper background color", self.paper_bgcolor)
-            self.plot_bgcolor = st.color_picker("Plot background color", self.plot_bgcolor)
-            self.grid_color = st.color_picker("Grid color", self.grid_color)
-            self.zero_line_color = st.color_picker("Zero line color", self.zero_line_color)
-            self.axis_line_color = st.color_picker("Axis line color", self.axis_line_color)
+                with st.expander("Colors", expanded=False):
+                    self.params.colors.paper_bgcolor = st.color_picker(
+                        "Paper background color", self.params.colors.paper_bgcolor
+                    )
+                    self.params.colors.plot_bgcolor = st.color_picker(
+                        "Plot background color", self.params.colors.plot_bgcolor
+                    )
+                    self.params.colors.grid_color = st.color_picker("Grid color", self.params.colors.grid_color)
+                    self.params.colors.zero_line_color = st.color_picker(
+                        "Zero line color", self.params.colors.zero_line_color
+                    )
+                    self.params.colors.axis_line_color = st.color_picker(
+                        "Axis line color", self.params.colors.axis_line_color
+                    )
 
-        with st.expander("Line Settings"):
-            self.line_width = st.number_input("Line width", min_value=1, value=self.line_width)
-            self.grid_width = st.number_input("Grid width", min_value=1, value=self.grid_width)
-            self.zero_line_width = st.number_input("Zero line width", min_value=1, value=self.zero_line_width)
-            self.fill_opacity = st.slider("Fill opacity", min_value=0.0, max_value=1.0, value=self.fill_opacity)
+                with st.expander("Lines Settings", expanded=False):
+                    self.params.line.line_width = st.number_input(
+                        "Line width", min_value=1, value=self.params.line.line_width
+                    )
+                    self.params.line.grid_width = st.number_input(
+                        "Grid width", min_value=1, value=self.params.line.grid_width
+                    )
+                    self.params.line.zero_line_width = st.number_input(
+                        "Zero line width", min_value=1, value=self.params.line.zero_line_width
+                    )
+                    self.params.line.fill_opacity = st.slider(
+                        "Fill opacity", min_value=0.0, max_value=1.0, value=self.params.line.fill_opacity
+                    )
 
-        with st.expander("Legend Settings"):
-            self.legend_orientation = st.selectbox("Legend orientation", ["h", "v"], index=0)
-            self.legend_y = st.number_input("Legend Y position", value=self.legend_y)
-            self.legend_x = st.number_input("Legend X position", value=self.legend_x)
-            self.legend_y_anchor = st.selectbox("Legend Y anchor", ["top", "bottom", "middle"], index=1)
-            self.legend_x_anchor = st.selectbox("Legend X anchor", ["left", "right", "center"], index=1)
+                with st.expander("Legend Settings", expanded=False):
+                    self.params.legend.orientation = st.selectbox(
+                        "Legend orientation", ["h", "v"], index=0 if self.params.legend.orientation == "h" else 1
+                    )
+                    self.params.legend.y = st.number_input("Legend Y position", value=self.params.legend.y)
+                    self.params.legend.x = st.number_input("Legend X position", value=self.params.legend.x)
+                    self.params.legend.y_anchor = st.selectbox(
+                        "Legend Y anchor",
+                        ["top", "bottom", "middle"],
+                        index=["top", "bottom", "middle"].index(self.params.legend.y_anchor),
+                    )
+                    self.params.legend.x_anchor = st.selectbox(
+                        "Legend X anchor",
+                        ["left", "right", "center"],
+                        index=["left", "right", "center"].index(self.params.legend.x_anchor),
+                    )
+
+                return st.form_submit_button("Apply Style")
 
     def apply_to_figure(self, fig: go.Figure, n_cols: int, n_rows: int = 1) -> go.Figure:
         """Apply the current style settings to a figure."""
         fig.update_layout(
-            height=self.height_per_row * n_rows,
-            width=self.width_per_col * n_cols,
-            # paper_bgcolor=self.paper_bgcolor,
-            # plot_bgcolor=self.plot_bgcolor,
-            margin=dict(t=self.margin_top, b=self.margin_bottom),
-            font=dict(size=self.font_size),
+            height=self.params.dimensions.height_per_row * n_rows,
+            width=self.params.dimensions.width_per_col * n_cols,
+            paper_bgcolor=self.params.colors.paper_bgcolor,
+            plot_bgcolor=self.params.colors.plot_bgcolor,
+            margin=dict(t=self.params.dimensions.margin_top, b=self.params.dimensions.margin_bottom),
+            font=dict(size=self.params.font.size),
             legend=dict(
-                orientation=self.legend_orientation,
-                yanchor=self.legend_y_anchor,
-                y=self.legend_y,
-                xanchor=self.legend_x_anchor,
-                x=self.legend_x,
-                font=dict(size=self.font_size),
+                orientation=self.params.legend.orientation,
+                yanchor=self.params.legend.y_anchor,
+                y=self.params.legend.y,
+                xanchor=self.params.legend.x_anchor,
+                x=self.params.legend.x,
+                font=dict(size=self.params.font.size),
             ),
         )
 
@@ -205,34 +265,30 @@ class PlotStyle:
                 fig.update_xaxes(
                     title_text="Relative depth (%)" if j == n_rows else None,
                     showline=True,
-                    linewidth=self.line_width,
-                    linecolor=self.axis_line_color,
+                    linewidth=self.params.line.line_width,
+                    linecolor=self.params.colors.axis_line_color,
                     showgrid=True,
-                    gridwidth=self.grid_width,
-                    gridcolor=self.grid_color,
+                    gridwidth=self.params.line.grid_width,
+                    gridcolor=self.params.colors.grid_color,
                     zeroline=True,
-                    zerolinewidth=self.zero_line_width,
-                    zerolinecolor=self.zero_line_color,
-                    tickfont=dict(size=self.font_size),
-                    col=i,
-                    row=j,
+                    zerolinewidth=self.params.line.zero_line_width,
+                    zerolinecolor=self.params.colors.zero_line_color,
+                    tickfont=dict(size=self.params.font.size),
                 )
 
                 # Y axis
                 fig.update_yaxes(
                     title_text="Probability diff" if i == 1 else None,
                     showline=True,
-                    linewidth=self.line_width,
-                    linecolor=self.axis_line_color,
+                    linewidth=self.params.line.line_width,
+                    linecolor=self.params.colors.axis_line_color,
                     showgrid=True,
-                    gridwidth=self.grid_width,
-                    gridcolor=self.grid_color,
+                    gridwidth=self.params.line.grid_width,
+                    gridcolor=self.params.colors.grid_color,
                     zeroline=True,
-                    zerolinewidth=self.zero_line_width,
-                    zerolinecolor=self.zero_line_color,
-                    tickfont=dict(size=self.font_size),
-                    col=i,
-                    row=j,
+                    zerolinewidth=self.params.line.zero_line_width,
+                    zerolinecolor=self.params.colors.zero_line_color,
+                    tickfont=dict(size=self.params.font.size),
                 )
 
         return fig
@@ -271,26 +327,22 @@ def plot_trend(
         go.Scatter(
             x=100 * filtered["Depth"],
             y=filtered["Probability diff_mean"],
-            line=dict(color=f"rgb{rgb}", dash=line_dash, width=style.line_width),
+            line=dict(color=f"rgb{rgb}", dash=line_dash, width=style.params.line.line_width),
             mode="lines",
             name=title,
             showlegend=((col == 1) & (row == 1)),
         ),
-        col=col,
-        row=row,
     )
     fig.add_trace(
         go.Scatter(
             x=(100 * filtered["Depth"]).tolist() + (100 * filtered["Depth"][::-1]).tolist(),  # x, then x reversed
             y=upper.tolist() + lower[::-1].tolist(),  # upper, then lower reversed
             fill="toself",
-            fillcolor=f"rgba{rgb + (style.fill_opacity,)}",
+            fillcolor=f"rgba{rgb + (style.params.line.fill_opacity,)}",
             line=dict(color="rgba(255,255,255,0)"),
             hoverinfo="skip",
             showlegend=False,
         ),
-        col=col,
-        row=row,
     )
     return fig
 
@@ -732,12 +784,153 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
         st.warning("Heatmap plot generation is not yet implemented.")
         return None
 
+    def _plot(self) -> Optional[go.Figure]:
+        match self.plot_plan.plot_type:
+            case PlotType.ARCHITECTURE_KNOCKOUT:
+                fig = self._generate_architecture_knockout_plot()
+            case PlotType.MODEL_SIZE_KNOCKOUT:
+                fig = self._generate_model_size_knockout_plot()
+            case PlotType.WINDOW_SIZE_KNOCKOUT:
+                fig = self._generate_window_size_knockout_plot()
+            case PlotType.FEATURE_KNOCKOUT:
+                fig = self._generate_feature_knockout_plot()
+            case PlotType.SHARED_KNOCKOUT:
+                fig = self._generate_shared_knockout_plot()
+            case PlotType.HEATMAP:
+                fig = self._generate_heatmap_plot()
+            case _:
+                assert_never(self.plot_plan.plot_type)
+
+        return fig
+
+    def _get_cell_cache_path(self, grid_name: Any, row_name: Any, col_name: Any) -> Path:
+        """Generate a unique cache path for a cell's plot."""
+        cache_dir = Path("cache/plots")
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        # Create a unique identifier for the cell
+        cell_id = f"{self.plot_plan.title}_{grid_name}_{row_name}_{col_name}".replace(" ", "_")
+        return cache_dir / f"{cell_id}.png"
+
+    def _plot_cell(
+        self, data_reqs: DataReqs, grid_name: Any, row_name: Any, col_name: Any, recreate: bool = False
+    ) -> None:
+        """Plot a single cell with caching."""
+        cache_path = self._get_cell_cache_path(grid_name, row_name, col_name)
+
+        if not recreate and cache_path.exists():
+            # Load and display cached plot
+            st.image(str(cache_path))
+            return
+
+        # Get fulfilled requirements
+        fulfilled_reqs = data_reqs.to_fulfilled_reqs(self.result_bank)
+
+        # Create the plot based on plot type
+        fig = None
+        match self.plot_plan.plot_type:
+            case PlotType.ARCHITECTURE_KNOCKOUT:
+                fig = self._generate_cell_architecture_knockout(fulfilled_reqs)
+            case PlotType.MODEL_SIZE_KNOCKOUT:
+                fig = self._generate_cell_model_size_knockout(fulfilled_reqs)
+            case PlotType.WINDOW_SIZE_KNOCKOUT:
+                fig = self._generate_cell_window_size_knockout(fulfilled_reqs)
+            case PlotType.FEATURE_KNOCKOUT:
+                fig = self._generate_cell_feature_knockout(fulfilled_reqs)
+            case PlotType.SHARED_KNOCKOUT:
+                fig = self._generate_cell_shared_knockout(fulfilled_reqs)
+            case PlotType.HEATMAP:
+                st.warning("Heatmap plot generation is not yet implemented.")
+            case _:
+                assert_never(self.plot_plan.plot_type)
+
+        if fig is not None:
+            # Save the plot
+            fig.write_image(str(cache_path), scale=4)
+            # Display the plot
+            st.plotly_chart(fig, use_container_width=True)
+
+    def _generate_cell_architecture_knockout(self, fulfilled_reqs) -> Optional[go.Figure]:
+        """Generate architecture knockout plot for a single cell."""
+        # Create the base figure
+        fig = go.Figure()
+
+        # Load data for each model
+        dfs = []
+        for req in fulfilled_reqs.to_rows():
+            df = load_info_flow_data(InfoFlowConfig.load_output(fulfilled_reqs._raw[req][0]))
+            if df is not None:
+                model_name = self._get_model_display_name(req.model_arch_and_size)
+                df["Model"] = model_name
+                dfs.append(df)
+
+        if not dfs:
+            return None
+
+        # Combine data
+        combined_df = pd.concat(dfs)
+
+        # Calculate statistics
+        means = (
+            combined_df.groupby(["Depth", "Model"])
+            .mean()
+            .reset_index()
+            .rename(columns={"Probability diff": "Probability diff_mean"})
+        )
+        ci95 = (
+            combined_df.groupby(["Depth", "Model"])
+            .apply(lambda x: 1.96 * x["Probability diff"].std() / np.sqrt(len(x)))
+            .reset_index(name="Probability diff_ci95")
+        )
+        joined = means.merge(ci95, on=["Depth", "Model"])
+
+        # Plot each model
+        for model in joined["Model"].unique():
+            if model in COLORS:
+                color = COLORS[model]
+            else:
+                color = (np.random.randint(0, 255), np.random.randint(0, 255), np.random.randint(0, 255))
+
+            fig = plot_trend(fig, joined, model, color)
+
+        # Format the figure
+        fig = format_fig(fig, 1)
+        return fig
+
+    def _generate_cell_model_size_knockout(self, fulfilled_reqs) -> Optional[go.Figure]:
+        """Generate model size knockout plot for a single cell."""
+        # Similar implementation to architecture knockout but grouped by model size
+        # For now, return None to indicate not implemented
+        return None
+
+    def _generate_cell_window_size_knockout(self, fulfilled_reqs) -> Optional[go.Figure]:
+        """Generate window size knockout plot for a single cell."""
+        # Similar implementation to architecture knockout but grouped by window size
+        # For now, return None to indicate not implemented
+        return None
+
+    def _generate_cell_feature_knockout(self, fulfilled_reqs) -> Optional[go.Figure]:
+        """Generate feature knockout plot for a single cell."""
+        # Similar implementation to architecture knockout but grouped by feature
+        # For now, return None to indicate not implemented
+        return None
+
+    def _generate_cell_shared_knockout(self, fulfilled_reqs) -> Optional[go.Figure]:
+        """Generate shared knockout plot for a single cell."""
+        # Similar implementation to architecture knockout but grouped by source
+        # For now, return None to indicate not implemented
+        return None
+
     def render(self) -> Optional[str]:
         """Generate and display a plot based on the plot plan."""
         st.subheader(f"{FINAL_PLOTS_TEXTS.generating_plot(self.plot_plan.title)}")
 
-        # Show style form
-        self.style.show_style_form()
+        # Show style form in sidebar
+        with st.sidebar:
+            st.markdown("### Plot Settings")
+            form_submitted = self.style.show_style_form()
+            if form_submitted:
+                st.success("Style settings applied!")
 
         # Check if we have all the required data
         data_reqs = self.plot_plan.get_data_requirements(self.result_bank)
@@ -755,38 +948,63 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
             return None
 
         # Generate the plot based on the plot type
-        fig = None
-        if self.plot_plan.plot_type == PlotType.ARCHITECTURE_KNOCKOUT:
-            fig = self._generate_architecture_knockout_plot()
-        elif self.plot_plan.plot_type == PlotType.MODEL_SIZE_KNOCKOUT:
-            fig = self._generate_model_size_knockout_plot()
-        elif self.plot_plan.plot_type == PlotType.WINDOW_SIZE_KNOCKOUT:
-            fig = self._generate_window_size_knockout_plot()
-        elif self.plot_plan.plot_type == PlotType.FEATURE_KNOCKOUT:
-            fig = self._generate_feature_knockout_plot()
-        elif self.plot_plan.plot_type == PlotType.SHARED_KNOCKOUT:
-            fig = self._generate_shared_knockout_plot()
-        elif self.plot_plan.plot_type == PlotType.HEATMAP:
-            fig = self._generate_heatmap_plot()
+        data_reqs_per_cell = self.plot_plan.get_data_requirements_per_cell(self.result_bank)
+        grid_row_col: dict[Optional[str], dict[Optional[str], dict[Optional[str], DataReqs]]] = {}
+        for cell, data_reqs in data_reqs_per_cell.items():
+            grid_row_col.setdefault(cell.grids, {}).setdefault(cell.rows, {}).setdefault(cell.cols, data_reqs)
 
-        if fig is None:
-            st.error("Failed to generate plot.")
-            return None
+        # Add checkbox for plot recreation
+        recreate_plots = st.checkbox("Recreate all plots", value=False)
 
-        # Display the plot
-        st.plotly_chart(fig, use_container_width=True)
+        grids = list(grid_row_col.keys())
+        # Create tabs for different plot views
+        if grids[0] is None:
+            tabs = [st.empty()]
+        else:
+            grid_options = self.plot_plan.grids
+            assert grid_options is not None
+            grid_param_definition = get_hyper_param_definition(grid_options)
+            tabs = st.tabs([grid_param_definition.get_display_name(option) for option in grids])
 
-        # Save the plot if an output path is specified
-        if self.plot_plan.output_path:
-            output_path = Path(self.plot_plan.output_path)
-            output_path.parent.mkdir(parents=True, exist_ok=True)
+        for grid_name, tab in zip(grids, tabs):
+            # Grid layout settings
+            with tab:
+                rows = list(grid_row_col[grid_name].keys())
+                # Create a grid of plots
+                cols = list(grid_row_col[grid_name][rows[0]].keys())
 
-            try:
-                fig.write_image(str(output_path), scale=4)
-                st.success(f"Plot saved to {output_path}")
-                return str(output_path)
-            except Exception as e:
-                st.error(f"Error saving plot: {e}")
-                return None
+                is_row_labels = rows[0] is not None
+                is_col_labels = cols[0] is not None
+
+                if is_col_labels:
+                    cols_options = self.plot_plan.cols
+                    assert cols_options is not None
+                    cols_param_definition = get_hyper_param_definition(cols_options)
+                    col_names = [cols_param_definition.get_display_name(option) for option in cols]
+                    # Add an empty column for row labels
+                    col_cols = st.columns(([0.2] if is_row_labels else []) + [1] * len(col_names))
+                    # Skip the first column (row labels) when writing column headers
+                    for col_name, col_col in zip(col_names, col_cols[1:]):
+                        with col_col:
+                            st.write(col_name)
+
+                for i, row_name in enumerate(rows):
+                    # Create columns for this row, including the label column
+                    cols = grid_row_col[grid_name][row_name].keys()
+                    cols_cols = st.columns(([0.2] if is_col_labels else []) + [1] * len(cols))
+
+                    # Add row label in the first column if applicable
+                    if rows[0] is not None:
+                        with cols_cols[0]:
+                            rows_options = self.plot_plan.rows
+                            assert rows_options is not None
+                            rows_param_definition = get_hyper_param_definition(rows_options)
+                            st.write(f"**{rows_param_definition.get_display_name(row_name)}**")
+
+                    # Add plots in the remaining columns
+                    for col_name, col_col in zip(cols, cols_cols[1:]):
+                        data_reqs = grid_row_col[grid_name][row_name][col_name]
+                        with col_col:
+                            self._plot_cell(data_reqs, grid_name, row_name, col_name, recreate_plots)
 
         return None

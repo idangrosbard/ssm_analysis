@@ -1,8 +1,9 @@
 from abc import ABC, abstractmethod
+from collections import defaultdict
 from dataclasses import asdict, dataclass, field
 from itertools import product
 from pathlib import Path
-from typing import Any, Dict, Generic, List, Optional, Sequence, TypeVar, assert_never, cast
+from typing import Any, Dict, Generic, List, NamedTuple, Optional, Sequence, TypeVar, assert_never, cast
 
 from src.consts import GRAPHS_ORDER
 from src.data_defs import DataReqs, ResultBank
@@ -10,6 +11,7 @@ from src.final_plots.data_reqs import DataReq
 from src.final_plots.results_bank import HeatmapRecord, InfoFlowRecord
 from src.names import (
     EXPERIMENT_NAMES,
+    DataReqCols,
     ExperimentHyperParams,
     PlotPlanCols,
     PlotPlanOptionCols,
@@ -32,7 +34,7 @@ from src.utils.types_utils import str_enum_values
 _T = TypeVar("_T")
 
 
-class VariationOption(ABC, Generic[_T]):
+class HyperParamDefinition(ABC, Generic[_T]):
     @abstractmethod
     def get_result_bank_options(self, result_bank: ResultBank) -> Sequence[_T]:
         pass
@@ -49,13 +51,13 @@ class VariationOption(ABC, Generic[_T]):
         pass
 
     def default_fix_value(self) -> _T:
-        raise NotImplementedError("Default fix value not implemented")
+        raise NotImplementedError(f"Default fix value not implemented for {self.__class__.__name__}")
 
 
-# region Variation Options
+# region Hyper Param Definitions
 
 
-class ModelArchAndSizeVariationOption(VariationOption[MODEL_ARCH_AND_SIZE]):
+class ModelArchAndSizeHPD(HyperParamDefinition[MODEL_ARCH_AND_SIZE]):
     def get_result_bank_options(self, result_bank: ResultBank) -> list[MODEL_ARCH_AND_SIZE]:
         return list([MODEL_ARCH_AND_SIZE(result.model_arch, result.model_size) for result in result_bank.to_rows()])
 
@@ -66,7 +68,7 @@ class ModelArchAndSizeVariationOption(VariationOption[MODEL_ARCH_AND_SIZE]):
         return option.model_name
 
 
-class ModelArchVariationOption(VariationOption[MODEL_ARCH]):
+class ModelArchHPD(HyperParamDefinition[MODEL_ARCH]):
     def get_result_bank_options(self, result_bank: ResultBank):
         return list(set([result.model_arch for result in result_bank.to_rows()]))
 
@@ -77,7 +79,7 @@ class ModelArchVariationOption(VariationOption[MODEL_ARCH]):
         return option
 
 
-class ModelSizeVariationOption(VariationOption[TModelSize]):
+class ModelSizeHPD(HyperParamDefinition[TModelSize]):
     def get_result_bank_options(self, result_bank: ResultBank):
         return list(set([result.model_size for result in result_bank.to_rows()]))
 
@@ -88,7 +90,7 @@ class ModelSizeVariationOption(VariationOption[TModelSize]):
         return option
 
 
-class SourceVariationOption(VariationOption[TokenType]):
+class SourceHPD(HyperParamDefinition[TokenType]):
     def get_result_bank_options(self, result_bank):
         sources = set()
         for result in result_bank.to_rows():
@@ -103,7 +105,7 @@ class SourceVariationOption(VariationOption[TokenType]):
         return option
 
 
-class TargetVariationOption(VariationOption[TokenType]):
+class TargetHPD(HyperParamDefinition[TokenType]):
     def get_result_bank_options(self, result_bank):
         targets = set()
         for result in result_bank.to_rows():
@@ -121,7 +123,7 @@ class TargetVariationOption(VariationOption[TokenType]):
         return TokenType.last
 
 
-class FeatureCategoryVariationOption(VariationOption[FeatureCategory]):
+class FeatureCategoryHPD(HyperParamDefinition[Optional[FeatureCategory]]):
     def get_result_bank_options(self, result_bank):
         features = set()
         for result in result_bank.to_rows():
@@ -132,11 +134,14 @@ class FeatureCategoryVariationOption(VariationOption[FeatureCategory]):
     def get_static_options(self):
         return str_enum_values(FeatureCategory)
 
-    def get_display_name(self, option: FeatureCategory) -> str:
-        return option
+    def get_display_name(self, option: Optional[FeatureCategory]) -> str:
+        return str(option)
+
+    def default_fix_value(self) -> Optional[FeatureCategory]:
+        return None
 
 
-class WindowSizeVariationOption(VariationOption[TWindowSize]):
+class WindowSizeHPD(HyperParamDefinition[TWindowSize]):
     def get_result_bank_options(self, result_bank):
         return list(set([result.window_size for result in result_bank.to_rows()]))
 
@@ -150,7 +155,7 @@ class WindowSizeVariationOption(VariationOption[TWindowSize]):
         return TWindowSize(9)
 
 
-class PromptIdxVariationOption(VariationOption[TPromptOriginalIndex]):
+class PromptIdxHPD(HyperParamDefinition[TPromptOriginalIndex]):
     def get_result_bank_options(self, result_bank: ResultBank) -> Sequence[TPromptOriginalIndex]:
         prompts: set[TPromptOriginalIndex] = set()
         for result in result_bank.to_rows():
@@ -171,45 +176,75 @@ class PromptIdxVariationOption(VariationOption[TPromptOriginalIndex]):
 # endregion
 
 
-def get_variation_option(option: ExperimentHyperParams) -> VariationOption:
+def get_hyper_param_definition(option: ExperimentHyperParams) -> HyperParamDefinition:
     match option:
         case ExperimentHyperParams.model_arch_and_size:
-            return ModelArchAndSizeVariationOption()
+            return ModelArchAndSizeHPD()
         case ExperimentHyperParams.model_arch:
-            return ModelArchVariationOption()
+            return ModelArchHPD()
         case ExperimentHyperParams.model_size:
-            return ModelSizeVariationOption()
+            return ModelSizeHPD()
         case ExperimentHyperParams.source:
-            return SourceVariationOption()
+            return SourceHPD()
         case ExperimentHyperParams.target:
-            return TargetVariationOption()
+            return TargetHPD()
         case ExperimentHyperParams.feature_category:
-            return FeatureCategoryVariationOption()
+            return FeatureCategoryHPD()
         case ExperimentHyperParams.window_size:
-            return WindowSizeVariationOption()
+            return WindowSizeHPD()
         case ExperimentHyperParams.prompt_idx:
-            return PromptIdxVariationOption()
+            return PromptIdxHPD()
         case _:
             raise ValueError(f"Unsupported variation option: {option}")
 
 
-def get_experiment_params(experiment_name: EXPERIMENT_NAMES) -> list[FinalPlotsPlanOrientation]:
+def get_experiment_orientations(experiment_name: EXPERIMENT_NAMES) -> list[FinalPlotsPlanOrientation]:
     """Get the relevant parameters for a specific experiment type."""
     if experiment_name == EXPERIMENT_NAMES.INFO_FLOW:
         return [
-            FinalPlotsPlanOrientation.ROWS,
-            FinalPlotsPlanOrientation.COLS,
-            FinalPlotsPlanOrientation.GRIDS,
-            FinalPlotsPlanOrientation.LINES,
+            FinalPlotsPlanOrientation.rows,
+            FinalPlotsPlanOrientation.cols,
+            FinalPlotsPlanOrientation.grids,
+            FinalPlotsPlanOrientation.lines,
         ]
     elif experiment_name == EXPERIMENT_NAMES.HEATMAP:
         return [
-            FinalPlotsPlanOrientation.ROWS,
-            FinalPlotsPlanOrientation.COLS,
-            FinalPlotsPlanOrientation.GRIDS,
+            FinalPlotsPlanOrientation.rows,
+            FinalPlotsPlanOrientation.cols,
+            FinalPlotsPlanOrientation.grids,
         ]
     else:
         return list(FinalPlotsPlanOrientation)
+
+
+def get_experiment_hyper_param_hyper_param(experiment_name: EXPERIMENT_NAMES) -> list[ExperimentHyperParams]:
+    """Get the relevant parameters for a specific experiment type."""
+    general = [
+        ExperimentHyperParams.model_arch_and_size,
+        ExperimentHyperParams.window_size,
+        ExperimentHyperParams.model_arch,
+        ExperimentHyperParams.model_size,
+    ]
+    match experiment_name:
+        case EXPERIMENT_NAMES.INFO_FLOW:
+            general += [
+                ExperimentHyperParams.source,
+                ExperimentHyperParams.target,
+                ExperimentHyperParams.feature_category,
+            ]
+        case EXPERIMENT_NAMES.HEATMAP:
+            general += [ExperimentHyperParams.prompt_idx]
+        case EXPERIMENT_NAMES.EVALUATE_MODEL | EXPERIMENT_NAMES.FULL_PIPELINE:
+            raise NotImplementedError(f"Not implemented for {experiment_name}")
+        case _:
+            assert_never(experiment_name)
+    return general
+
+
+class Cell(NamedTuple):
+    grids: Any
+    rows: Any
+    cols: Any
 
 
 @dataclass
@@ -321,13 +356,13 @@ class PlotPlan:
     def get_options_for_param(self, param: FinalPlotsPlanOrientation) -> List[Any]:
         """Get the selected options for a parameter."""
         match param:
-            case FinalPlotsPlanOrientation.ROWS:
+            case FinalPlotsPlanOrientation.rows:
                 return self.rows_options
-            case FinalPlotsPlanOrientation.COLS:
+            case FinalPlotsPlanOrientation.cols:
                 return self.cols_options
-            case FinalPlotsPlanOrientation.GRIDS:
+            case FinalPlotsPlanOrientation.grids:
                 return self.grids_options
-            case FinalPlotsPlanOrientation.LINES:
+            case FinalPlotsPlanOrientation.lines:
                 return self.lines_options
             case _:
                 assert_never(param)
@@ -335,156 +370,116 @@ class PlotPlan:
     def set_options_for_param(self, param: FinalPlotsPlanOrientation, options: List[Any]) -> None:
         """Set the selected options for a parameter."""
         match param:
-            case FinalPlotsPlanOrientation.ROWS:
+            case FinalPlotsPlanOrientation.rows:
                 self.rows_options = options
-            case FinalPlotsPlanOrientation.COLS:
+            case FinalPlotsPlanOrientation.cols:
                 self.cols_options = options
-            case FinalPlotsPlanOrientation.GRIDS:
+            case FinalPlotsPlanOrientation.grids:
                 self.grids_options = options
-            case FinalPlotsPlanOrientation.LINES:
+            case FinalPlotsPlanOrientation.lines:
                 self.lines_options = options
             case _:
                 assert_never(param)
 
-    def get_summary(self) -> Dict[FinalPlotsPlanOrientation, int]:
+    def get_summary(self) -> Dict[FinalPlotsPlanOrientation, list[str]]:
         """Get a summary of the plot structure."""
-        summary = {
-            FinalPlotsPlanOrientation.ROWS: len(self.rows_options) if self.rows and self.rows_options else 1,
-            FinalPlotsPlanOrientation.COLS: len(self.cols_options) if self.cols and self.cols_options else 1,
-            FinalPlotsPlanOrientation.GRIDS: len(self.grids_options) if self.grids and self.grids_options else 1,
-            FinalPlotsPlanOrientation.LINES: len(self.lines_options) if self.lines and self.lines_options else 1,
+
+        return {
+            orientation: [
+                get_hyper_param_definition(param).get_display_name(option)
+                for option in self.get_options_for_param(orientation)
+                if (param := self._get_param_type(orientation)) is not None
+            ]
+            for orientation in str_enum_values(FinalPlotsPlanOrientation)
         }
-        return summary
 
-    def get_data_requirements(self, result_bank: ResultBank) -> DataReqs:
+    def get_data_requirements_per_cell(self, result_bank: ResultBank) -> dict[Cell, DataReqs]:
         """Generate data requirements for this plot plan based on the result bank."""
-        data_reqs = []
+        data_reqs_per_cell: dict[Cell, list[DataReq]] = defaultdict(list)
+        experiment_orientations = get_experiment_orientations(self.experiment_name)
+        experiment_hyper_param_defs = get_experiment_hyper_param_hyper_param(self.experiment_name)
 
-        # Get all orientation options
-        orientation_options: Dict[FinalPlotsPlanOrientation, list[Any]] = {}
-        for orientation in str_enum_values(FinalPlotsPlanOrientation):
+        def get_options_for_orientation(orientation: FinalPlotsPlanOrientation) -> list[Any]:
             param = self._get_param_type(orientation)
             if not param:
-                orientation_options[orientation] = [None]
-                continue
+                return [None]
 
             options = self.get_options_for_param(orientation)
             if not options:
-                variation_option = get_variation_option(param)
+                variation_option = get_hyper_param_definition(param)
                 options = list(variation_option.get_options(result_bank))
-            orientation_options[orientation] = options
+            return options
+
+        orientation_options: dict[FinalPlotsPlanOrientation, list[Any]] = {
+            orientation: get_options_for_orientation(orientation) for orientation in experiment_orientations
+        }
 
         # Generate all combinations
-        combinations = product(
-            orientation_options[FinalPlotsPlanOrientation.ROWS],
-            orientation_options[FinalPlotsPlanOrientation.COLS],
-            orientation_options[FinalPlotsPlanOrientation.GRIDS],
-            orientation_options[FinalPlotsPlanOrientation.LINES],
-        )
+
+        combinations = product(*[orientation_options[orientation] for orientation in experiment_orientations])
 
         # Process each combination
-        for row_opt, col_opt, grid_opt, line_opt in combinations:
-            if self.experiment_name == EXPERIMENT_NAMES.INFO_FLOW:
-                params: Dict[ExperimentHyperParams, Optional[Any]] = {
-                    ExperimentHyperParams.source: None,
-                    ExperimentHyperParams.target: None,
-                    ExperimentHyperParams.feature_category: None,
-                    ExperimentHyperParams.model_arch_and_size: None,
-                    ExperimentHyperParams.window_size: None,
-                }
+        for combination in combinations:
+            orientation_combination = {
+                orientation: combination[i] for i, orientation in enumerate(experiment_orientations)
+            }
 
-                # Map options to parameters
-                option_map = {
-                    (FinalPlotsPlanOrientation.ROWS, row_opt): self.rows,
-                    (FinalPlotsPlanOrientation.COLS, col_opt): self.cols,
-                    (FinalPlotsPlanOrientation.GRIDS, grid_opt): self.grids,
-                    (FinalPlotsPlanOrientation.LINES, line_opt): self.lines,
-                }
+            params: dict["ExperimentHyperParams", Any] = {
+                param: value
+                for orientation, value in orientation_combination.items()
+                if value is not None and (param := self._get_param_type(orientation)) is not None
+            }
 
-                for (orientation, opt), param_type in option_map.items():
-                    if param_type and opt is not None:
-                        params[param_type] = opt
+            # Handle the special case of model_arch_and_size
+            if params.get(ExperimentHyperParams.model_arch_and_size) is not None:
+                model_arch_and_size = cast(MODEL_ARCH_AND_SIZE, params[ExperimentHyperParams.model_arch_and_size])
+                params[ExperimentHyperParams.model_arch] = model_arch_and_size.arch
+                params[ExperimentHyperParams.model_size] = model_arch_and_size.size
+            else:
+                assert params.get(ExperimentHyperParams.model_arch) is not None
+                assert params.get(ExperimentHyperParams.model_size) is not None
+                model_arch_and_size = MODEL_ARCH_AND_SIZE(
+                    params[ExperimentHyperParams.model_arch], params[ExperimentHyperParams.model_size]
+                )
+                if model_arch_and_size not in GRAPHS_ORDER:
+                    continue
+                params[ExperimentHyperParams.model_arch_and_size] = model_arch_and_size
 
-                # Apply default values for missing required parameters
-                if params[ExperimentHyperParams.source] is None:
-                    params[ExperimentHyperParams.source] = get_variation_option(
-                        ExperimentHyperParams.source
-                    ).default_fix_value()
-                if params[ExperimentHyperParams.target] is None:
-                    params[ExperimentHyperParams.target] = get_variation_option(
-                        ExperimentHyperParams.target
-                    ).default_fix_value()
-                if params[ExperimentHyperParams.window_size] is None:
-                    params[ExperimentHyperParams.window_size] = get_variation_option(
-                        ExperimentHyperParams.window_size
-                    ).default_fix_value()
+            data_req_params: dict[DataReqCols, Any] = {
+                DataReqCols.experiment_name: self.experiment_name,
+                DataReqCols.is_all_correct: False,
+            }
 
-                # Only add if we have a model_arch_and_size
-                if params[ExperimentHyperParams.model_arch_and_size] is not None:
-                    model_arch_and_size = cast(MODEL_ARCH_AND_SIZE, params[ExperimentHyperParams.model_arch_and_size])
-                    data_reqs.append(
-                        DataReq(
-                            experiment_name=EXPERIMENT_NAMES.INFO_FLOW,
-                            model_arch=model_arch_and_size.arch,
-                            model_size=model_arch_and_size.size,
-                            window_size=cast(TWindowSize, params[ExperimentHyperParams.window_size]),
-                            is_all_correct=False,
-                            source=cast(TokenType, params[ExperimentHyperParams.source]),
-                            feature_category=cast(
-                                Optional[FeatureCategory], params[ExperimentHyperParams.feature_category]
-                            ),
-                            target=cast(TokenType, params[ExperimentHyperParams.target]),
-                            prompt_idx=None,
+            for col in str_enum_values(DataReqCols):
+                if col in data_req_params:
+                    continue
+                if col in params:
+                    data_req_params[col] = params[ExperimentHyperParams[col]]
+                elif col in experiment_hyper_param_defs:
+                    data_req_params[col] = get_hyper_param_definition(ExperimentHyperParams[col]).default_fix_value()
+                else:
+                    data_req_params[col] = None
+
+            data_reqs_per_cell[
+                Cell(
+                    **{
+                        FinalPlotsPlanOrientation[orientation]: orientation_combination.get(
+                            FinalPlotsPlanOrientation[orientation]
                         )
-                    )
+                        for orientation in Cell._fields
+                    }
+                )
+            ].append(DataReq(**data_req_params))
 
-            elif self.experiment_name == EXPERIMENT_NAMES.HEATMAP:
-                params: Dict[ExperimentHyperParams, Optional[Any]] = {
-                    ExperimentHyperParams.model_arch_and_size: None,
-                    ExperimentHyperParams.window_size: None,
-                    ExperimentHyperParams.prompt_idx: None,
-                }
+        return {cell: DataReqs(set(data_reqs)) for cell, data_reqs in data_reqs_per_cell.items()}
 
-                # Map options to parameters
-                option_map = {
-                    (FinalPlotsPlanOrientation.ROWS, row_opt): self.rows,
-                    (FinalPlotsPlanOrientation.COLS, col_opt): self.cols,
-                    (FinalPlotsPlanOrientation.GRIDS, grid_opt): self.grids,
-                }
-
-                for (orientation, opt), param_type in option_map.items():
-                    if param_type and opt is not None:
-                        params[param_type] = opt
-
-                # Apply default values for missing required parameters
-                if params[ExperimentHyperParams.window_size] is None:
-                    params[ExperimentHyperParams.window_size] = get_variation_option(
-                        ExperimentHyperParams.window_size
-                    ).default_fix_value()
-                if params[ExperimentHyperParams.prompt_idx] is None:
-                    params[ExperimentHyperParams.prompt_idx] = TPromptOriginalIndex(0)
-
-                # Only add if we have both model_arch_and_size and prompt_idx
-                if (
-                    params[ExperimentHyperParams.model_arch_and_size] is not None
-                    and params[ExperimentHyperParams.prompt_idx] is not None
-                ):
-                    model_arch_and_size = cast(MODEL_ARCH_AND_SIZE, params[ExperimentHyperParams.model_arch_and_size])
-                    data_reqs.append(
-                        DataReq(
-                            experiment_name=EXPERIMENT_NAMES.HEATMAP,
-                            model_arch=model_arch_and_size.arch,
-                            model_size=model_arch_and_size.size,
-                            window_size=cast(TWindowSize, params[ExperimentHyperParams.window_size]),
-                            is_all_correct=False,
-                            source=None,
-                            feature_category=None,
-                            target=None,
-                            prompt_idx=cast(TPromptOriginalIndex, params[ExperimentHyperParams.prompt_idx]),
-                        )
-                    )
-
-        return DataReqs(set(data_reqs))
+    def get_data_requirements(self, result_bank: ResultBank) -> DataReqs:
+        data_reqs_per_cell = self.get_data_requirements_per_cell(result_bank)
+        data_reqs: set[DataReq] = set()
+        for data_reqs_per_cell in data_reqs_per_cell.values():
+            for data_req in data_reqs_per_cell.to_rows():
+                data_reqs.add(data_req)
+        return DataReqs(data_reqs)
 
 
 # Path for storing plot plans

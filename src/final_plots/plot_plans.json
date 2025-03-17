@@ -39,6 +39,44 @@
     ]
   },
   {
+    "title": "test",
+    "description": "test",
+    "plot_type": "ARCHITECTURE_KNOCKOUT",
+    "is_appendix": false,
+    "order": 1,
+    "experiment_name": "INFO_FLOW",
+    "rows": "model_arch_and_size",
+    "cols": "source",
+    "grids": "window_size",
+    "lines": null,
+    "output_path": "final_plots/test.png",
+    "rows_options": [
+      {
+        "model_arch": "mamba2",
+        "model_size": "2.7B"
+      },
+      {
+        "model_arch": "mamba1",
+        "model_size": "7B-falcon"
+      },
+      {
+        "model_arch": "mamba1",
+        "model_size": "2.8B"
+      }
+    ],
+    "cols_options": [
+      "subject",
+      "relation",
+      "last",
+      "first"
+    ],
+    "grids_options": [
+      9,
+      15
+    ],
+    "lines_options": []
+  },
+  {
     "title": "Model Size Knockout Plot",
     "description": "Comparison of different model sizes within the same architecture family when removing information flow\nto the last token from various source tokens.",
     "plot_type": "MODEL_SIZE_KNOCKOUT",

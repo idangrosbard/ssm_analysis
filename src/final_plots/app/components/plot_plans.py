@@ -20,8 +20,8 @@ from src.final_plots.app.texts import FINAL_PLOTS_TEXTS
 from src.final_plots.plot_plan import (
     PlotPlan,
     PlotType,
-    get_experiment_params,
-    get_variation_option,
+    get_experiment_orientations,
+    get_hyper_param_definition,
 )
 from src.names import EXPERIMENT_NAMES, ExperimentHyperParams, PlotPlanCols, PlotPlanOptionCols, ResultBankParamNames
 from src.types import FinalPlotsPlanOrientation
@@ -113,7 +113,7 @@ class PlotPlanDetails(StreamlitComponent[None]):
         with col1:
             st.dataframe(
                 {
-                    col: getattr(plan, col)
+                    col: str(getattr(plan, col))
                     for col in str_enum_values(PlotPlanCols)
                     if col not in str_enum_values(FinalPlotsPlanOrientation) + str_enum_values(PlotPlanOptionCols)
                 },
@@ -133,12 +133,12 @@ class PlotPlanDetails(StreamlitComponent[None]):
 
         configuration_data: List[SummaryRow] = []
         for orientation in str_enum_values(FinalPlotsPlanOrientation):
-            if orientation == FinalPlotsPlanOrientation.LINES and plan.experiment_name != EXPERIMENT_NAMES.INFO_FLOW:
+            if orientation == FinalPlotsPlanOrientation.lines and plan.experiment_name != EXPERIMENT_NAMES.INFO_FLOW:
                 continue
             param = plan._get_param_type(orientation)
             if param:
                 options = plan._get_param_options_col(orientation)
-                variation_option = get_variation_option(param)
+                variation_option = get_hyper_param_definition(param)
                 if not options:
                     # get all options from result bank
                     options = variation_option.get_result_bank_options(self.result_bank)
@@ -159,27 +159,25 @@ class PlotPlanDetails(StreamlitComponent[None]):
         grid_total = 1
         grid_structure_text_parts = []
         for orientation in [
-            FinalPlotsPlanOrientation.ROWS,
-            FinalPlotsPlanOrientation.COLS,
-            FinalPlotsPlanOrientation.GRIDS,
+            FinalPlotsPlanOrientation.rows,
+            FinalPlotsPlanOrientation.cols,
+            FinalPlotsPlanOrientation.grids,
         ]:
-            grid_structure_text_parts.append(f"{summary[orientation]} {orientation.value}")
-            grid_total *= summary[orientation]
-        total_plots = (
-            summary[FinalPlotsPlanOrientation.ROWS]
-            * summary[FinalPlotsPlanOrientation.COLS]
-            * summary[FinalPlotsPlanOrientation.GRIDS]
-        )
+            size = max(len(summary[orientation]), 1)
+            grid_structure_text_parts.append(f"{size} {orientation.value}")
+            grid_total *= size
 
         with col2:
             st.dataframe(
                 {
                     FINAL_PLOTS_TEXTS.total_plots_title: (
-                        f"{total_plots} = ({FINAL_PLOTS_TEXTS.grid_structure(grid_structure_text_parts)})"
+                        f"{grid_total} = ({FINAL_PLOTS_TEXTS.grid_structure(grid_structure_text_parts)})"
                     ),
                     **(
                         {
-                            FINAL_PLOTS_TEXTS.lines_per_plot_title: summary[FinalPlotsPlanOrientation.LINES],
+                            FINAL_PLOTS_TEXTS.lines_per_plot_title: str(
+                                max(len(summary[FinalPlotsPlanOrientation.lines]), 1)
+                            ),
                         }
                         if plan.experiment_name == EXPERIMENT_NAMES.INFO_FLOW
                         else {}
@@ -203,7 +201,7 @@ class PlotPlanEditor(StreamlitComponent[Optional[PlotPlan]]):
         if not param_type:
             return []
 
-        return list(get_variation_option(param_type).get_options(self.result_bank))
+        return list(get_hyper_param_definition(param_type).get_options(self.result_bank))
 
     def _get_display_names_for_options(
         self, options: List[Any], param_type: Optional[ExperimentHyperParams]
@@ -212,7 +210,7 @@ class PlotPlanEditor(StreamlitComponent[Optional[PlotPlan]]):
         if not param_type or not options:
             return []
 
-        variation_option = get_variation_option(param_type)
+        variation_option = get_hyper_param_definition(param_type)
         return [variation_option.get_display_name(option) for option in options]
 
     def _display_option_selector(
@@ -227,7 +225,7 @@ class PlotPlanEditor(StreamlitComponent[Optional[PlotPlan]]):
             return [], False
 
         # Check if this parameter is relevant for the experiment type
-        relevant_params = get_experiment_params(experiment_name)
+        relevant_params = get_experiment_orientations(experiment_name)
         if param_type not in relevant_params:
             return [], False
 
@@ -335,7 +333,7 @@ class PlotPlanEditor(StreamlitComponent[Optional[PlotPlan]]):
 
             # Get experiment-specific parameters
             experiment_name = EXPERIMENT_NAMES[experiment_input]
-            relevant_params = get_experiment_params(experiment_name)
+            relevant_params = get_experiment_orientations(experiment_name)
 
             # Parameter selection
             param_values = {}
@@ -344,7 +342,7 @@ class PlotPlanEditor(StreamlitComponent[Optional[PlotPlan]]):
 
                 # Select parameter type
                 param_value = None
-                if param_type == FinalPlotsPlanOrientation.ROWS:
+                if param_type == FinalPlotsPlanOrientation.rows:
                     rows_input = st.selectbox(
                         "Rows",
                         options=["None"] + hyperparams,
@@ -357,7 +355,7 @@ class PlotPlanEditor(StreamlitComponent[Optional[PlotPlan]]):
                     param_value = None if rows_input == "None" else ExperimentHyperParams[rows_input]
                     param_values["rows"] = param_value
 
-                elif param_type == FinalPlotsPlanOrientation.COLS:
+                elif param_type == FinalPlotsPlanOrientation.cols:
                     cols_input = st.selectbox(
                         "Columns",
                         options=["None"] + hyperparams,
@@ -370,7 +368,7 @@ class PlotPlanEditor(StreamlitComponent[Optional[PlotPlan]]):
                     param_value = None if cols_input == "None" else ExperimentHyperParams[cols_input]
                     param_values["cols"] = param_value
 
-                elif param_type == FinalPlotsPlanOrientation.GRIDS:
+                elif param_type == FinalPlotsPlanOrientation.grids:
                     grids_input = st.selectbox(
                         "Grids",
                         options=["None"] + hyperparams,
@@ -383,7 +381,7 @@ class PlotPlanEditor(StreamlitComponent[Optional[PlotPlan]]):
                     param_value = None if grids_input == "None" else ExperimentHyperParams[grids_input]
                     param_values["grids"] = param_value
 
-                elif param_type == FinalPlotsPlanOrientation.LINES and experiment_name == EXPERIMENT_NAMES.INFO_FLOW:
+                elif param_type == FinalPlotsPlanOrientation.lines and experiment_name == EXPERIMENT_NAMES.INFO_FLOW:
                     lines_input = st.selectbox(
                         "Lines",
                         options=["None"] + hyperparams,
@@ -405,10 +403,10 @@ class PlotPlanEditor(StreamlitComponent[Optional[PlotPlan]]):
             st.subheader("Parameter Options")
 
             options_selected = {
-                FinalPlotsPlanOrientation.ROWS: [],
-                FinalPlotsPlanOrientation.COLS: [],
-                FinalPlotsPlanOrientation.GRIDS: [],
-                FinalPlotsPlanOrientation.LINES: [],
+                FinalPlotsPlanOrientation.rows: [],
+                FinalPlotsPlanOrientation.cols: [],
+                FinalPlotsPlanOrientation.grids: [],
+                FinalPlotsPlanOrientation.lines: [],
             }
 
             # Display option selectors for each parameter
@@ -433,10 +431,10 @@ class PlotPlanEditor(StreamlitComponent[Optional[PlotPlan]]):
             # Display summary
             if any(options_selected.values()):
                 st.subheader("Plot Summary")
-                rows_count = len(options_selected[FinalPlotsPlanOrientation.ROWS]) or 1
-                cols_count = len(options_selected[FinalPlotsPlanOrientation.COLS]) or 1
-                grids_count = len(options_selected[FinalPlotsPlanOrientation.GRIDS]) or 1
-                lines_count = len(options_selected[FinalPlotsPlanOrientation.LINES]) or 1
+                rows_count = len(options_selected[FinalPlotsPlanOrientation.rows]) or 1
+                cols_count = len(options_selected[FinalPlotsPlanOrientation.cols]) or 1
+                grids_count = len(options_selected[FinalPlotsPlanOrientation.grids]) or 1
+                lines_count = len(options_selected[FinalPlotsPlanOrientation.lines]) or 1
 
                 total_plots = rows_count * cols_count * grids_count
 
