@@ -846,6 +846,7 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
             case PlotType.SHARED_KNOCKOUT:
                 fig = self._generate_cell_shared_knockout(fulfilled_reqs)
             case PlotType.HEATMAP:
+                fulfilled_reqs = fulfilled_reqs.choose_latest_fulfilled(self.result_bank)
                 st.warning("Heatmap plot generation is not yet implemented.")
             case _:
                 assert_never(self.plot_plan.plot_type)

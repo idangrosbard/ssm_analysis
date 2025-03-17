@@ -3,6 +3,7 @@ from enum import Enum, StrEnum
 from typing import TYPE_CHECKING, Literal, NamedTuple, NewType, Sequence, TypeAlias, TypedDict, Union, assert_never
 
 import pandas as pd
+import torch
 from jaxtyping import Float
 from torch import Tensor
 
@@ -141,6 +142,7 @@ TPromptData = NewType("TPromptData", pd.DataFrame)
 TNum2Mask = NewType("TNum2Mask", dict[TLayerIndex, list[tuple[TTokenIndex, TTokenIndex]]])
 TPromptOriginalIndex = NewType("TPromptOriginalIndex", int)
 TRowPosition = NewType("TRowPosition", int)
+TDevice = Union[torch.device, str]
 
 
 class TokenType(StrEnum):
@@ -150,6 +152,7 @@ class TokenType(StrEnum):
     relation = "relation"
     context = "context"
     all = "all"
+    relation_minus_last = "relation_minus_last"
 
 
 TSSMState = Float[Tensor, "batch hidden_size ssm_dim"]

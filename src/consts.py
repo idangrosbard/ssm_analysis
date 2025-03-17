@@ -1,5 +1,6 @@
 import os
 from dataclasses import dataclass
+from enum import StrEnum
 from pathlib import Path
 from typing import assert_never
 
@@ -17,6 +18,17 @@ from src.types import (
     TModelSize,
     TokenType,
 )
+
+
+class C_ACTIVE_USERS(StrEnum):
+    nirendy = "nirendy"
+    idangrosbard = "idangrosbard"
+    other = "other"
+
+
+ACTIVE_USER = C_ACTIVE_USERS.other
+if env_user := os.environ.get("USER"):
+    ACTIVE_USER = C_ACTIVE_USERS(env_user)
 
 
 @dataclass
@@ -127,6 +139,7 @@ MODEL_SIZES_PER_ARCH_TO_MODEL_ID: dict[MODEL_ARCH, dict[TModelSize, TModelID]] =
     },
 }
 
+
 GRAPHS_ORDER: dict[MODEL_ARCH_AND_SIZE, MODEL_SIZE_CAT] = {
     # MODEL_ARCH_AND_SIZE(MODEL_ARCH.GPT2, "124M"): MODEL_SIZE_CAT.SMALL,
     MODEL_ARCH_AND_SIZE(MODEL_ARCH.MAMBA1, TModelSize("130M")): MODEL_SIZE_CAT.SMALL,
@@ -172,7 +185,13 @@ def model_and_size_to_slurm_gpu_type(
         case MODEL_SIZE_CAT.SMALL | MODEL_SIZE_CAT.MEDIUM:
             return SLURM_GPU_TYPE.TITAN_XP_STUDENTRUN
         case MODEL_SIZE_CAT.LARGE | MODEL_SIZE_CAT.HUGE:
-            return SLURM_GPU_TYPE.L40S
+            match ACTIVE_USER:
+                case C_ACTIVE_USERS.nirendy:
+                    return SLURM_GPU_TYPE.A100
+                case C_ACTIVE_USERS.idangrosbard:
+                    return SLURM_GPU_TYPE.H100
+                case _:
+                    raise NotImplementedError(f"No SLURM GPU type for user {ACTIVE_USER}")
         case _:
             assert_never(model_cat_size)
 

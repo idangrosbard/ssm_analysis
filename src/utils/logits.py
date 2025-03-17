@@ -7,6 +7,7 @@ import torch
 
 from src.names import COLS
 from src.types import (
+    TDevice,
     TNum2Mask,
     TokenType,
     TPromptData,
@@ -107,14 +108,52 @@ class Prompt:
     def base_prob(self) -> float:
         return cast(float, self.prompt_row[COLS.EVALUATE_MODEL.TARGET_PROBS])
 
-    def true_id(self, tokenizer, device) -> torch.Tensor:
-        return tokenizer(self.true_word, return_tensors="pt", padding=True).input_ids.to(device="cpu")
+    @property
+    def relation(self) -> str:
+        return cast(str, self.prompt_row[COLS.COUNTER_FACT.RELATION])
+
+    def true_id(self, tokenizer, device: TDevice) -> torch.Tensor:
+        return tokenizer(self.true_word, return_tensors="pt", padding=True).input_ids.to(device=device)
 
     def input_ids(self, tokenizer, device) -> torch.Tensor:
         return tokenizer(self.prompt, return_tensors="pt", padding=True).input_ids.to(device=device)
 
     def get_column(self, column: COLS.COUNTER_FACT) -> Any:
         return self.prompt_row[column]
+
+    def last_index(self, tokenizer, device: TDevice) -> int:
+        input_ids = self.input_ids(tokenizer, device)
+        return input_ids.shape[1] - 1
+
+    def is_relation_last_token(self, tokenizer, device: TDevice = "cpu") -> bool:
+        input_ids = self.input_ids(tokenizer, device)
+
+        last_idx = input_ids.shape[1] - 1
+
+        return last_idx in self.get_knockout_idx(tokenizer, TokenType.relation, device)
+
+    def get_knockout_idx(self, tokenizer, knockout: TokenType, device: TDevice) -> list[int]:
+        input_ids = self.input_ids(tokenizer, device)
+        last_idx = input_ids.shape[1] - 1
+        tok_start, tok_end = find_token_range(tokenizer, input_ids[0], self.subject)
+        subject_tokens = list(range(tok_start, tok_end))
+
+        if knockout == TokenType.first:
+            return [0]
+        elif knockout == TokenType.last:
+            return [last_idx]
+        elif knockout == TokenType.subject:
+            return subject_tokens
+        elif knockout == TokenType.relation:
+            return [i for i in range(last_idx + 1) if i not in subject_tokens]
+        elif knockout == TokenType.context:
+            return [i for i in range(subject_tokens[0])]
+        elif knockout == TokenType.all:
+            return list(range(last_idx + 1))
+        elif knockout == TokenType.relation_minus_last:
+            return [i for i in range(last_idx) if i not in subject_tokens]
+        else:
+            assert_never(knockout)
 
 
 def get_num_to_masks(
@@ -129,30 +168,13 @@ def get_num_to_masks(
     num_to_masks = TNum2Mask(defaultdict(list))
     first_token = False
 
-    last_idx = input_ids.shape[1] - 1
     tok_start, tok_end = find_token_range(tokenizer, input_ids[0], prompt.subject)
     subject_tokens = list(range(tok_start, tok_end))
     if 0 in subject_tokens:
         first_token = True
 
-    def get_knockout_idx(knockout: TokenType):
-        if knockout == TokenType.first:
-            return [0]
-        elif knockout == TokenType.last:
-            return [last_idx]
-        elif knockout == TokenType.subject:
-            return subject_tokens
-        elif knockout == TokenType.relation:
-            return [i for i in range(last_idx + 1) if i not in subject_tokens]
-        elif knockout == TokenType.context:
-            return [i for i in range(subject_tokens[0])]
-        elif knockout == TokenType.all:
-            return list(range(last_idx + 1))
-        else:
-            assert_never(knockout_source)
-
-    src_idx = get_knockout_idx(knockout_source)
-    target_idx = get_knockout_idx(knockout_target)
+    src_idx = prompt.get_knockout_idx(tokenizer, knockout_source, device)
+    target_idx = prompt.get_knockout_idx(tokenizer, knockout_target, device)
 
     for layer in window:
         for src in src_idx:

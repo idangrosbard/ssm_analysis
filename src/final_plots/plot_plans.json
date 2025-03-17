@@ -186,15 +186,30 @@
     "is_appendix": false,
     "order": 4,
     "experiment_name": "INFO_FLOW",
-    "rows": null,
+    "rows": "source",
     "cols": "model_arch_and_size",
     "grids": null,
     "lines": "feature_category",
     "output_path": "final_plots/feature_knockout.png",
-    "rows_options": [],
-    "cols_options": [],
+    "rows_options": [
+      "relation_minus_last"
+    ],
+    "cols_options": [
+      {
+        "model_arch": "mamba1",
+        "model_size": "2.8B"
+      },
+      {
+        "model_arch": "mamba2",
+        "model_size": "2.7B"
+      }
+    ],
     "grids_options": [],
-    "lines_options": []
+    "lines_options": [
+      "SLOW_DECAY",
+      "FAST_DECAY",
+      "NONE"
+    ]
   },
   {
     "title": "Shared Knockout Plot",

@@ -61,6 +61,9 @@ class FulfilledReqs(DataObject):
             {req: [] if path is None else [path] for req, path in choose_latest_data_fulfilled(self).items()}
         )
 
+    def get_config(self):
+        return {req: req.get_config() for req in self.to_rows()}
+
     def to_rows(self) -> list["DataReq"]:
         return list(self._raw.keys())
 

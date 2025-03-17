@@ -15,6 +15,7 @@
 import random
 from typing import Any, Dict, List, cast
 
+import pandas as pd
 import streamlit as st
 from st_aggrid import AgGridReturn
 
@@ -34,6 +35,8 @@ from src.types import (
     TLayerIndex,
     TPromptOriginalIndex,
 )
+from src.utils.logits import Prompt
+from src.utils.setup_models import get_tokenizer
 from src.utils.streamlit_utils import StreamlitPage
 from src.utils.types_utils import (
     first_dict_value,
@@ -87,8 +90,15 @@ def find_common_indices(
 
 
 class SubsetInfoFlowResults:
-    def __init__(self, info_flow_results_list: list[TInfoFlowOutput]):
+    def __init__(
+        self,
+        info_flow_results_list: list[TInfoFlowOutput],
+        first_model_evaluations: pd.DataFrame,
+        metadata_list: list[Dict[str, Any]],
+    ):
         self.info_flow_results_list = info_flow_results_list
+        self.first_model_evaluations = first_model_evaluations
+        self.metadata_list = metadata_list
 
     def render(
         self,
@@ -97,6 +107,7 @@ class SubsetInfoFlowResults:
             return [], (0, 0)
 
         sample_results = st.checkbox(INFO_FLOW_ANALYSIS_TEXTS.sample_results, value=True)
+        filter_relation_last_token = st.checkbox("Filter relation last token", value=False)
 
         # Find common indices across all info flow results
         common_indices = find_common_indices([info_flow for info_flow in self.info_flow_results_list])
@@ -106,6 +117,26 @@ class SubsetInfoFlowResults:
         if len(common_indices) == 0:
             st.warning(INFO_FLOW_ANALYSIS_TEXTS.no_common_indices)
             st.stop()
+
+        # Filter by relation last token if needed
+        if filter_relation_last_token:
+            # Get model arch and size from first result
+            first_metadata = self.metadata_list[0]
+            tokenizer = get_tokenizer(
+                model_arch=first_metadata[ResultBankParamNames.model_arch],
+                model_size=first_metadata[ResultBankParamNames.model_size],
+            )
+            prompts = [Prompt(self.first_model_evaluations.loc[idx]) for idx in common_indices]
+            filtered_indices = []
+            # Only keep indices where all models agree it's a relation last token
+            for idx, prompt in zip(common_indices, prompts):
+                if not prompt.is_relation_last_token(tokenizer):
+                    filtered_indices.append(idx)
+            common_indices = filtered_indices
+
+            if len(common_indices) == 0:
+                st.warning("No prompts found with relation last token")
+                st.stop()
 
         if sample_results:
             # Get the maximum number of layers across all info flow results
@@ -201,9 +232,8 @@ class InfoFlowAnalysisPage(StreamlitPage):
             )
 
             # Get model evaluations if not already loaded
-            model_evaluations_list.append(
-                load_model_evaluations(result_dict[ResultBankParamNames.variation], model_arch_and_size)
-            )
+            model_evaluations = load_model_evaluations(result_dict[ResultBankParamNames.variation], model_arch_and_size)
+            model_evaluations_list.append(model_evaluations)
 
             # Load info flow results
             info_flow_results = InfoFlowConfig.load_output(reverse_format_path_for_display(path))
@@ -212,7 +242,9 @@ class InfoFlowAnalysisPage(StreamlitPage):
             metadata_list.append(result_dict)
 
         with st.sidebar:
-            chosen_prompt_ids, layers_range = SubsetInfoFlowResults(chosen_info_flow_results_list).render()
+            chosen_prompt_ids, layers_range = SubsetInfoFlowResults(
+                chosen_info_flow_results_list, model_evaluations_list[0], metadata_list
+            ).render()
 
         if chosen_prompt_ids:
             # Combine model evaluations for all selected info flows
