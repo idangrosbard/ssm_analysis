@@ -24,7 +24,7 @@ from src.final_plots.plot_plan import (
     get_hyper_param_definition,
 )
 from src.names import EXPERIMENT_NAMES, ExperimentHyperParams, PlotPlanCols, PlotPlanOptionCols, ResultBankParamNames
-from src.types import FinalPlotsPlanOrientation
+from src.types import FinalPlotsPlanOrientation, TPlotID
 from src.utils.streamlit.aagrid import SelectionMode
 from src.utils.streamlit_utils import SessionKey, StreamlitComponent
 from src.utils.types_utils import str_enum_values
@@ -32,23 +32,26 @@ from src.utils.types_utils import str_enum_values
 # Session keys for plot plans
 
 
-class PlotPlanSelector(StreamlitComponent[Optional[str]]):
+class PlotPlanSelector(StreamlitComponent[None]):
     """Component for selecting a plot plan from the list of available plans."""
 
     def __init__(
         self,
         plot_plans: PlotPlans,
-        selected_plot_id_sk: SessionKey[str],
-        new_label: Optional[str] = None,
+        selected_plot_id_sk: SessionKey[TPlotID],
+        new_label: TPlotID,
     ):
         self.plot_plans = plot_plans
         self.selected_plot_id_sk = selected_plot_id_sk
-        self.new_label = new_label
+        self.new_plot_id = new_label
 
-    def render(self) -> Optional[str]:
+    def render(self):
         if self.plot_plans.is_empty():
             st.info("No plot plans available. Add a new plot plan to get started.")
-            return None
+            return
+
+        if not self.plot_plans.is_plan_exists(self.selected_plot_id_sk.value):
+            self.selected_plot_id_sk.value = self.new_plot_id
 
         # Group plans by appendix/main
         main_plans = [p for p in self.plot_plans.to_rows() if not p.is_appendix]
@@ -57,15 +60,15 @@ class PlotPlanSelector(StreamlitComponent[Optional[str]]):
         # Create menu items
         menu_items: List[Union[str, dict, sac.MenuItem]] = []
 
-        if self.new_label:
-            menu_items.append(sac.MenuItem(self.new_label, icon="plus-circle"))
+        if self.new_plot_id:
+            menu_items.append(sac.MenuItem(self.new_plot_id, icon="plus-circle"))
 
         if main_plans:
             menu_items.append(sac.MenuItem("Main Plots", icon="graph-up", disabled=True))
             for plan in main_plans:
                 menu_items.append(
                     sac.MenuItem(
-                        plan.title,
+                        plan.plot_id,
                         icon="file-earmark-bar-graph",
                         description=plan.plot_type.name,
                         tag=plan.experiment_name.name,
@@ -77,7 +80,7 @@ class PlotPlanSelector(StreamlitComponent[Optional[str]]):
             for plan in appendix_plans:
                 menu_items.append(
                     sac.MenuItem(
-                        plan.title,
+                        plan.plot_id,
                         icon="file-earmark-bar-graph",
                         description=plan.plot_type.name,
                         tag=plan.experiment_name.name,
@@ -86,6 +89,7 @@ class PlotPlanSelector(StreamlitComponent[Optional[str]]):
 
         sac.menu(
             items=menu_items,
+            format_func=lambda x: self.plot_plans.get_plan(x).title if self.plot_plans.is_plan_exists(x) else x,
             key=self.selected_plot_id_sk.key_for_component,
             return_index=False,
         )
@@ -94,7 +98,7 @@ class PlotPlanSelector(StreamlitComponent[Optional[str]]):
 class PlotPlanDetails(StreamlitComponent[None]):
     """Component for displaying the details of a selected plot plan."""
 
-    def __init__(self, plot_plans: PlotPlans, selected_plan_id: Optional[str], result_bank: ResultBank):
+    def __init__(self, plot_plans: PlotPlans, selected_plan_id: Optional[TPlotID], result_bank: ResultBank):
         self.plot_plans = plot_plans
         self.selected_plan_id = selected_plan_id
         self.result_bank = result_bank
@@ -105,9 +109,6 @@ class PlotPlanDetails(StreamlitComponent[None]):
             return
 
         plan = self.plot_plans.get_plan(self.selected_plan_id)
-        if not plan:
-            st.error(FINAL_PLOTS_TEXTS.plot_plan_not_found(self.selected_plan_id))
-            return
 
         col1, col2 = st.columns([3, 5])
         with col1:
@@ -190,7 +191,7 @@ class PlotPlanDetails(StreamlitComponent[None]):
 class PlotPlanEditor(StreamlitComponent[Optional[PlotPlan]]):
     """Component for editing or creating a plot plan."""
 
-    def __init__(self, plot_plans: PlotPlans, result_bank: ResultBank, plan_id: Optional[str] = None):
+    def __init__(self, plot_plans: PlotPlans, result_bank: ResultBank, plan_id: Optional[TPlotID] = None):
         self.plot_plans = plot_plans
         self.plan_id = plan_id
         self.is_new = plan_id is None
@@ -266,14 +267,15 @@ class PlotPlanEditor(StreamlitComponent[Optional[PlotPlan]]):
         existing_plan = None
         if self.plan_id:
             existing_plan = self.plot_plans.get_plan(self.plan_id)
-            if not existing_plan:
-                st.error(f"Plot plan with ID {self.plan_id} not found.")
-                return None
 
         # Form for editing/creating a plot plan
         with st.form("plot_plan_editor"):
             st.subheader("Plot Plan Editor" if self.is_new else "Edit Plot Plan")
-
+            plot_id = st.text_input(
+                "Plot ID",
+                value="",
+                help="Path where the plot will be saved",
+            )
             col1, col2 = st.columns([9, 1])
             with col1:
                 # Basic information
@@ -394,12 +396,6 @@ class PlotPlanEditor(StreamlitComponent[Optional[PlotPlan]]):
                     param_value = None if lines_input == "None" else ExperimentHyperParams[lines_input]
                     param_values["lines"] = param_value
 
-            # Output path
-            output_path_input = st.text_input(
-                "Output Path",
-                value="" if self.is_new else (existing_plan.output_path or "") if existing_plan else "",
-                help="Path where the plot will be saved",
-            )
             st.subheader("Parameter Options")
 
             options_selected = {
@@ -455,6 +451,7 @@ class PlotPlanEditor(StreamlitComponent[Optional[PlotPlan]]):
 
             # Create the plot plan
             plot_plan = PlotPlan(
+                plot_id=TPlotID(plot_id),
                 title=title_input,
                 description=description_input,
                 plot_type=plot_type,
@@ -465,7 +462,6 @@ class PlotPlanEditor(StreamlitComponent[Optional[PlotPlan]]):
                 cols=param_values.get("cols"),
                 grids=param_values.get("grids"),
                 lines=param_values.get("lines") if experiment_name == EXPERIMENT_NAMES.INFO_FLOW else None,
-                output_path=output_path_input if output_path_input else None,
             )
 
             # Set options for each parameter

@@ -23,17 +23,17 @@ from src.final_plots.app.components.plot_plans import (
 from src.final_plots.app.components.requirements import RequirementExecution
 from src.final_plots.app.data_store import load_results_bank
 from src.final_plots.app.texts import FINAL_PLOTS_TEXTS
-from src.final_plots.default_plan import get_default_plot_plans
-from src.final_plots.plot_plan import PLOT_PLANS_PATH
+from src.final_plots.plot_plan import PlotPlan
+from src.types import TPlotID
 from src.utils.streamlit_utils import SessionKeyDescriptor, SessionKeysBase, StreamlitComponent, StreamlitPage
 
 st.set_page_config(page_title=FINAL_PLOTS_TEXTS.title, page_icon=FINAL_PLOTS_TEXTS.icon, layout="wide")
 
-NEW_LABEL = "New"
+NEW_LABEL = TPlotID("New")
 
 
 class _FinalPlotsSessionKeys(SessionKeysBase["_FinalPlotsSessionKeys"]):
-    SELECTED_PLOT_PLAN_ID = SessionKeyDescriptor[str](NEW_LABEL)
+    SELECTED_PLOT_PLAN_ID = SessionKeyDescriptor[TPlotID](TPlotID(NEW_LABEL))
     EDIT_MODE_KEY = SessionKeyDescriptor[bool](False)
     CONFIRM_RESET = SessionKeyDescriptor[bool](False)
 
@@ -46,7 +46,7 @@ FinalPlotsSessionKeys = _FinalPlotsSessionKeys()
 
 def save_plot_plans(plot_plans: PlotPlans) -> None:
     """Save plot plans to file."""
-    plot_plans.save(PLOT_PLANS_PATH)
+    plot_plans.save()
     FinalPlotsSessionKeys.EDIT_MODE_KEY.post_external_update(False)
     st.success(FINAL_PLOTS_TEXTS.plot_plans_saved)
 
@@ -89,38 +89,14 @@ class ManagePlotPlans(StreamlitComponent[None]):
                 FinalPlotsSessionKeys.SELECTED_PLOT_PLAN_ID.default_value = NEW_LABEL
                 st.rerun()
 
-        # Save/reset buttons
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button(FINAL_PLOTS_TEXTS.save_all, use_container_width=True):
-                save_plot_plans(self.plot_plans)
-
-        with col2:
-            if st.button("Reset to Default", use_container_width=True):
-                if FinalPlotsSessionKeys.CONFIRM_RESET.value:
-                    plot_plans = get_default_plot_plans()
-                    save_plot_plans(plot_plans)
-                    FinalPlotsSessionKeys.SELECTED_PLOT_PLAN_ID.reset_value()
-                    FinalPlotsSessionKeys.EDIT_MODE_KEY.post_external_reset_value()
-                    FinalPlotsSessionKeys.CONFIRM_RESET.reset_value()
-                    st.rerun()
-                else:
-                    st.session_state["confirm_reset"] = True
-                    st.warning(FINAL_PLOTS_TEXTS.confirm_reset)
-
 
 class FinalPlotsPage(StreamlitPage):
     def render(self):
         # Check if plot plans file exists, if not, create it with default plans
-        if not PLOT_PLANS_PATH.exists():
-            st.info(FINAL_PLOTS_TEXTS.initializing_plot_plans)
-            get_default_plot_plans().save(PLOT_PLANS_PATH)
-            st.success(FINAL_PLOTS_TEXTS.default_plot_plans_created)
-
         with st.sidebar:
             load_results_bank.render()
 
-        plot_plans: PlotPlans = PlotPlans.load(PLOT_PLANS_PATH)
+        plot_plans: PlotPlans = PlotPlans.load()
         result_bank = load_results_bank()
 
         with st.sidebar:
@@ -130,7 +106,7 @@ class FinalPlotsPage(StreamlitPage):
         # Main area
         if FinalPlotsSessionKeys.EDIT_MODE_KEY.value or FinalPlotsSessionKeys.is_new_plot_plan():
             # Edit mode
-            plot_plan = PlotPlanEditor(
+            plot_plan: PlotPlan | None = PlotPlanEditor(
                 plot_plans,
                 result_bank,
                 None if FinalPlotsSessionKeys.is_new_plot_plan() else FinalPlotsSessionKeys.SELECTED_PLOT_PLAN_ID.value,
@@ -153,21 +129,21 @@ class FinalPlotsPage(StreamlitPage):
         elif FinalPlotsSessionKeys.SELECTED_PLOT_PLAN_ID.value:
             # Display mode
             selected_plan = plot_plans.get_plan(FinalPlotsSessionKeys.SELECTED_PLOT_PLAN_ID.value)
-            if selected_plan:
-                # Display plan details
-                PlotPlanDetails(plot_plans, FinalPlotsSessionKeys.SELECTED_PLOT_PLAN_ID.value, result_bank).render()
+            assert selected_plan is not None
+            # Display plan details
+            PlotPlanDetails(plot_plans, FinalPlotsSessionKeys.SELECTED_PLOT_PLAN_ID.value, result_bank).render()
 
-                # Display data requirements
-                missing_reqs = PlotPlanRequirements(selected_plan, result_bank).render()
-                if missing_reqs:
-                    # Handle requirement execution
-                    RequirementExecution(missing_reqs).render()
+            # Display data requirements
+            missing_reqs = PlotPlanRequirements(selected_plan, result_bank).render()
+            if missing_reqs:
+                # Handle requirement execution
+                RequirementExecution(missing_reqs).render()
 
-                # Plot generation button
-                st.subheader(FINAL_PLOTS_TEXTS.generate_plot)
-                plot_path = PlotGenerator(selected_plan, result_bank).render()
-                if plot_path:
-                    st.success(FINAL_PLOTS_TEXTS.plot_saved(plot_path))
+            # Plot generation button
+            st.subheader(FINAL_PLOTS_TEXTS.generate_plot)
+            plot_path = PlotGenerator(selected_plan, result_bank).render()
+            if plot_path:
+                st.success(FINAL_PLOTS_TEXTS.plot_saved(plot_path))
 
         else:
             # No plan selected

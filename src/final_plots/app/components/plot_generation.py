@@ -21,7 +21,7 @@ import streamlit as st
 from plotly.subplots import make_subplots
 
 from src.consts import MODEL_SIZES_PER_ARCH_TO_MODEL_ID
-from src.data_defs import DataReqs, FulfilledReqs, ResultBank
+from src.data_defs import DataReqs, FulfilledReqs, PlotPlans, ResultBank
 from src.experiments.heatmap import HeatmapConfig
 from src.experiments.info_flow import InfoFlowConfig
 from src.final_plots.app.app_consts import SummarizedDataFulfilledReqsCols
@@ -788,11 +788,11 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
 
     def _get_cell_cache_path(self, grid_name: Any, row_name: Any, col_name: Any) -> Path:
         """Generate a unique cache path for a cell's plot."""
-        cache_dir = Path("cache/plots")
+        cache_dir = PlotPlans.get_cache_dir(self.plot_plan.plot_id)
         cache_dir.mkdir(parents=True, exist_ok=True)
 
         # Create a unique identifier for the cell
-        cell_id = f"{self.plot_plan.title}_{grid_name}_{row_name}_{col_name}".replace(" ", "_")
+        cell_id = f"{grid_name}_{row_name}_{col_name}".replace(" ", "_")
         return cache_dir / f"{cell_id}.png"
 
     def _plot_cell(

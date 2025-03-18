@@ -2,7 +2,6 @@ from abc import ABC, abstractmethod
 from collections import defaultdict
 from dataclasses import asdict, dataclass, field
 from itertools import product
-from pathlib import Path
 from typing import Any, Dict, Generic, List, NamedTuple, Optional, Sequence, TypeVar, assert_never, cast
 
 from src.consts import GRAPHS_ORDER
@@ -26,6 +25,7 @@ from src.types import (
     FinalPlotsPlanOrientation,
     TModelSize,
     TokenType,
+    TPlotID,
     TPromptOriginalIndex,
     TWindowSize,
 )
@@ -249,6 +249,7 @@ class Cell(NamedTuple):
 
 @dataclass
 class PlotPlan:
+    plot_id: TPlotID
     title: str
     description: str
     plot_type: PlotType
@@ -259,7 +260,6 @@ class PlotPlan:
     cols: Optional[ExperimentHyperParams] = None
     grids: Optional[ExperimentHyperParams] = None
     lines: Optional[ExperimentHyperParams] = None
-    output_path: Optional[str] = None
 
     # Selected options for each parameter
     rows_options: list[Any] = field(default_factory=list)
@@ -480,7 +480,3 @@ class PlotPlan:
             for data_req in data_reqs_per_cell.to_rows():
                 data_reqs.add(data_req)
         return DataReqs(data_reqs)
-
-
-# Path for storing plot plans
-PLOT_PLANS_PATH = Path(__file__).parent / "plot_plans.json"

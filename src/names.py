@@ -104,6 +104,7 @@ def map_final_plots_plan_orientation_to_options(orientation: FinalPlotsPlanOrien
 
 
 class PlotPlanCols(StrEnum):
+    plot_id = "plot_id"
     TITLE = "title"
     description = "description"
     plot_type = "plot_type"
@@ -114,7 +115,6 @@ class PlotPlanCols(StrEnum):
     cols = FinalPlotsPlanOrientation.cols
     grids = FinalPlotsPlanOrientation.grids
     lines = FinalPlotsPlanOrientation.lines
-    output_path = "output_path"
     rows_options = map_final_plots_plan_orientation_to_options(FinalPlotsPlanOrientation.rows)
     cols_options = map_final_plots_plan_orientation_to_options(FinalPlotsPlanOrientation.cols)
     grids_options = map_final_plots_plan_orientation_to_options(FinalPlotsPlanOrientation.grids)

@@ -85,6 +85,10 @@ class PathsConfig:
     def SLURM_DIR(self) -> Path:
         return self.PROJECT_DIR / "slurm"
 
+    @property
+    def FINAL_PLOTS_DIR(self) -> Path:
+        return self.PROJECT_DIR / "final_plots"
+
 
 # Global instance
 PATHS = PathsConfig()
@@ -187,7 +191,7 @@ def model_and_size_to_slurm_gpu_type(
         case MODEL_SIZE_CAT.LARGE | MODEL_SIZE_CAT.HUGE:
             match ACTIVE_USER:
                 case C_ACTIVE_USERS.nirendy:
-                    return SLURM_GPU_TYPE.A100
+                    return SLURM_GPU_TYPE.L40S
                 case C_ACTIVE_USERS.idangrosbard:
                     return SLURM_GPU_TYPE.H100
                 case _:

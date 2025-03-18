@@ -132,6 +132,7 @@ TLayerIndex: TypeAlias = int
 TTokenIndex: TypeAlias = int
 TBatchSize = NewType("TBatchSize", int)
 TModelID = NewType("TModelID", str)
+TPlotID = NewType("TPlotID", str)
 TDatasetID = NewType("TDatasetID", str)
 TVariationName = NewType("TVariationName", str)
 TModelSize = NewType("TModelSize", str)

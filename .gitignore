@@ -191,3 +191,4 @@ data/raw/
 *.code-workspace
 profile.pyspy
 .history/
+final_plots/*/cache/
