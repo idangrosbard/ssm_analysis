@@ -47,7 +47,7 @@ class RequirementsDisplay(StreamlitComponent):
         original_df = self.summarized_data_fulfilled_reqs.to_df()
         data_reqs_df = original_df[DataReqConsts.DATA_REQS_FILTER_COLUMNS]
 
-        df, grid_builder = base_grid_builder(data_reqs_df, self.selection_mode, hide_columns=[])
+        df, grid_builder = base_grid_builder(data_reqs_df, self.selection_mode, hide_columns=self.hide_columns)
         for col in DataReqConsts.DATA_REQS_FILTER_COLUMNS:
             grid_builder.configure_column(col, type=["textColumn"])
         grid_options = grid_builder.build()

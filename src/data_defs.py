@@ -48,10 +48,12 @@ class DataReqs(DataObject):
 
 
 class FulfilledReqs(DataObject):
-    def __init__(self, fulfilled_reqs: dict["DataReq", list[Path]]):
+    def __init__(self, fulfilled_reqs: dict["DataReq", list["ResultRecord"]]):
         self._raw = fulfilled_reqs
 
-    def summarize(self, overrides: Optional[dict["DataReq", Optional[Path]]]) -> "SummarizedDataFulfilledReqs":
+    def summarize(
+        self, overrides: Optional[dict["DataReq", Optional["ResultRecord"]]]
+    ) -> "SummarizedDataFulfilledReqs":
         return SummarizedDataFulfilledReqs(self, overrides)
 
     def choose_latest_fulfilled(self, result_bank: "ResultBank") -> "FulfilledReqs":
@@ -62,10 +64,10 @@ class FulfilledReqs(DataObject):
         )
 
     def get_config(self):
-        return {req: req.get_config() for req in self.to_rows()}
+        return {req: req.get_config(result_records[0].variation) for req, result_records in self.to_rows()}
 
-    def to_rows(self) -> list["DataReq"]:
-        return list(self._raw.keys())
+    def to_rows(self) -> list[tuple["DataReq", list["ResultRecord"]]]:
+        return list(self._raw.items())
 
 
 class ExperimentDisplayResults(DataObject):
@@ -95,7 +97,7 @@ class ResultBank(DataObject):
 
 
 class SummarizedDataFulfilledReqs(DataObject):
-    def __init__(self, fulfilled_reqs: FulfilledReqs, overrides: Optional[dict["DataReq", Optional[Path]]]):
+    def __init__(self, fulfilled_reqs: FulfilledReqs, overrides: Optional[dict["DataReq", Optional["ResultRecord"]]]):
         self._raw = []
         for req, opts in fulfilled_reqs._raw.items():
             override = overrides.get(req, None) if overrides else None
@@ -108,7 +110,7 @@ class SummarizedDataFulfilledReqs(DataObject):
                 },
                 SummarizedDataFulfilledReqsCols.AvailableOptions: len(opts),
                 SummarizedDataFulfilledReqsCols.Options: opts,
-                SummarizedDataFulfilledReqsCols.CurrentOverride: override,
+                SummarizedDataFulfilledReqsCols.CurrentOverride: override.path if override else None,
                 SummarizedDataFulfilledReqsCols.Key: str(req),
             }
             self._raw.append(row)

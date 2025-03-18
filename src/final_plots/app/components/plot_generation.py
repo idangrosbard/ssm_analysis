@@ -11,20 +11,28 @@
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Literal, Optional, Tuple, assert_never
+from typing import Any, Literal, Optional, Tuple, assert_never, cast
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 from plotly.subplots import make_subplots
 
-from src.data_defs import DataReqs, ResultBank
+from src.consts import MODEL_SIZES_PER_ARCH_TO_MODEL_ID
+from src.data_defs import DataReqs, FulfilledReqs, ResultBank
+from src.experiments.heatmap import HeatmapConfig
 from src.experiments.info_flow import InfoFlowConfig
 from src.final_plots.app.app_consts import SummarizedDataFulfilledReqsCols
 from src.final_plots.app.texts import FINAL_PLOTS_TEXTS
+from src.final_plots.data_reqs import get_model_evaluations
 from src.final_plots.plot_plan import PlotPlan, PlotType, get_hyper_param_definition
-from src.types import MODEL_ARCH_AND_SIZE, TInfoFlowOutput
+from src.plots.heatmaps import simple_diff_fixed
+from src.plots.info_flow_confidence import create_confidence_plot
+from src.types import MODEL_ARCH_AND_SIZE, TInfoFlowOutput, TPromptData
+from src.utils.logits import decode_tokens, get_prompt_row_index
+from src.utils.setup_models import get_tokenizer
 from src.utils.streamlit_utils import StreamlitComponent
 
 
@@ -371,7 +379,7 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
 
         # Group data by source
         source_groups = {}
-        for req in fulfilled_reqs.to_rows():
+        for req, _ in fulfilled_reqs.to_rows():
             if req.source not in source_groups:
                 source_groups[req.source] = []
             source_groups[req.source].append(req)
@@ -394,7 +402,7 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
             # Load data for each model
             dfs = []
             for req in reqs:
-                df = load_info_flow_data(InfoFlowConfig.load_output(fulfilled_reqs._raw[req][0]))
+                df = load_info_flow_data(InfoFlowConfig.load_output(fulfilled_reqs._raw[req][0].path))
                 if df is not None:
                     model_name = self._get_model_display_name(req.model_arch_and_size)
                     df["Model"] = model_name
@@ -447,7 +455,7 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
 
         # Group data by source
         source_groups = {}
-        for req in fulfilled_reqs.to_rows():
+        for req, _ in fulfilled_reqs.to_rows():
             if req.source not in source_groups:
                 source_groups[req.source] = []
             source_groups[req.source].append(req)
@@ -478,7 +486,7 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
             for arch, arch_reqs in arch_groups.items():
                 dfs = []
                 for req in arch_reqs:
-                    df = load_info_flow_data(InfoFlowConfig.load_output(fulfilled_reqs._raw[req][0]))
+                    df = load_info_flow_data(InfoFlowConfig.load_output(fulfilled_reqs._raw[req][0].path))
                     if df is not None:
                         model_name = f"{arch}-{req.model_size}"
                         df["Model"] = model_name
@@ -531,7 +539,7 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
 
         # Group data by source
         source_groups = {}
-        for req in fulfilled_reqs.to_rows():
+        for req, _ in fulfilled_reqs.to_rows():
             if req.source not in source_groups:
                 source_groups[req.source] = []
             source_groups[req.source].append(req)
@@ -562,7 +570,7 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
             dfs = []
             for ws, ws_reqs in ws_groups.items():
                 for req in ws_reqs:
-                    df = load_info_flow_data(InfoFlowConfig.load_output(fulfilled_reqs._raw[req][0]))
+                    df = load_info_flow_data(InfoFlowConfig.load_output(fulfilled_reqs._raw[req][0].path))
                     if df is not None:
                         df["ws"] = ws
                         dfs.append(df)
@@ -612,7 +620,7 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
 
         # Group data by model
         model_groups = {}
-        for req in fulfilled_reqs.to_rows():
+        for req, _ in fulfilled_reqs.to_rows():
             model_key = self._get_model_display_name(req.model_arch_and_size)
             if model_key not in model_groups:
                 model_groups[model_key] = []
@@ -645,7 +653,7 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
             dfs = []
             for feature, feature_reqs in feature_groups.items():
                 for req in feature_reqs:
-                    df = load_info_flow_data(InfoFlowConfig.load_output(fulfilled_reqs._raw[req][0]))
+                    df = load_info_flow_data(InfoFlowConfig.load_output(fulfilled_reqs._raw[req][0].path))
                     if df is not None:
                         feature_name = (
                             "All"
@@ -702,7 +710,7 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
 
         # Group data by model
         model_groups = {}
-        for req in fulfilled_reqs.to_rows():
+        for req, _ in fulfilled_reqs.to_rows():
             model_key = self._get_model_display_name(req.model_arch_and_size)
             if model_key not in model_groups:
                 model_groups[model_key] = []
@@ -734,7 +742,7 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
             dfs = []
             for source, source_reqs in source_groups.items():
                 for req in source_reqs:
-                    df = load_info_flow_data(InfoFlowConfig.load_output(fulfilled_reqs._raw[req][0]))
+                    df = load_info_flow_data(InfoFlowConfig.load_output(fulfilled_reqs._raw[req][0].path))
                     if df is not None:
                         df["Source"] = source
                         dfs.append(df)
@@ -775,31 +783,6 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
 
         # Format the figure
         fig = format_fig(fig, len(model_groups))
-
-        return fig
-
-    def _generate_heatmap_plot(self) -> Optional[go.Figure]:
-        """Generate a heatmap plot."""
-        # Heatmap plots are more complex and would require additional implementation
-        st.warning("Heatmap plot generation is not yet implemented.")
-        return None
-
-    def _plot(self) -> Optional[go.Figure]:
-        match self.plot_plan.plot_type:
-            case PlotType.ARCHITECTURE_KNOCKOUT:
-                fig = self._generate_architecture_knockout_plot()
-            case PlotType.MODEL_SIZE_KNOCKOUT:
-                fig = self._generate_model_size_knockout_plot()
-            case PlotType.WINDOW_SIZE_KNOCKOUT:
-                fig = self._generate_window_size_knockout_plot()
-            case PlotType.FEATURE_KNOCKOUT:
-                fig = self._generate_feature_knockout_plot()
-            case PlotType.SHARED_KNOCKOUT:
-                fig = self._generate_shared_knockout_plot()
-            case PlotType.HEATMAP:
-                fig = self._generate_heatmap_plot()
-            case _:
-                assert_never(self.plot_plan.plot_type)
 
         return fig
 
@@ -847,13 +830,47 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
                 fig = self._generate_cell_shared_knockout(fulfilled_reqs)
             case PlotType.HEATMAP:
                 fulfilled_reqs = fulfilled_reqs.choose_latest_fulfilled(self.result_bank)
-                st.warning("Heatmap plot generation is not yet implemented.")
+                configs = list(fulfilled_reqs.get_config().values())
+                assert len(configs) == 1
+                config = configs[-1]
+                assert isinstance(config, HeatmapConfig)
+                prompt_idx = config.prompt_original_indices
+                assert len(prompt_idx) == 1
+                prompt_id = prompt_idx[0]
+                model_arch_and_size = MODEL_ARCH_AND_SIZE(config.model_arch, config.model_size)
+                data = cast(
+                    TPromptData, get_model_evaluations(config.variation, [model_arch_and_size])[model_arch_and_size]
+                )
+                tokenizer = get_tokenizer(config.model_arch, config.model_size)
+                model_id = MODEL_SIZES_PER_ARCH_TO_MODEL_ID[config.model_arch][config.model_size]
+                prob_mat = config.get_outputs()[prompt_id]
+                prompt = get_prompt_row_index(data, prompt_id)
+                input_ids = prompt.input_ids(tokenizer, "cpu")
+                toks = cast(list[str], decode_tokens(tokenizer, input_ids[0]))
+                last_tok = toks[-1]
+                toks[-1] = toks[-1] + "*"
+
+                fig, _ = simple_diff_fixed(
+                    prob_mat=prob_mat,
+                    model_id=model_id,
+                    window_size=config.window_size,
+                    last_tok=last_tok,
+                    base_prob=prompt.base_prob,
+                    true_word=prompt.true_word,
+                    toks=toks,
+                    fixed_diff=0.3,
+                )
+
             case _:
                 assert_never(self.plot_plan.plot_type)
 
         if fig is not None:
-            # Save the plot
-            fig.write_image(str(cache_path), scale=4)
+            if isinstance(fig, go.Figure):
+                fig.write_image(str(cache_path), scale=4)
+            else:
+                # Save the plot
+                plt.savefig(str(cache_path), bbox_inches="tight")
+                plt.close(fig)
 
             # Display the plot
             if with_plotly:
@@ -861,51 +878,43 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
             else:
                 st.image(str(cache_path))
 
-    def _generate_cell_architecture_knockout(self, fulfilled_reqs) -> Optional[go.Figure]:
+    def _generate_cell_architecture_knockout(self, fulfilled_reqs: FulfilledReqs):
         """Generate architecture knockout plot for a single cell."""
         # Create the base figure
-        fig = go.Figure()
-
-        # Load data for each model
-        dfs = []
-        for req in fulfilled_reqs.to_rows():
-            df = load_info_flow_data(InfoFlowConfig.load_output(fulfilled_reqs._raw[req][0]))
-            if df is not None:
-                model_name = self._get_model_display_name(req.model_arch_and_size)
-                df["Model"] = model_name
-                dfs.append(df)
-
-        if not dfs:
-            return None
-
-        # Combine data
-        combined_df = pd.concat(dfs)
-
-        # Calculate statistics
-        means = (
-            combined_df.groupby(["Depth", "Model"])
-            .mean()
-            .reset_index()
-            .rename(columns={"Probability diff": "Probability diff_mean"})
+        configs = list(fulfilled_reqs.get_config().values())
+        data = {}
+        for config in configs:
+            assert isinstance(config, InfoFlowConfig)
+            for item, output in config.get_outputs().items():
+                output_keys = list(output.keys())
+                assert len(output_keys) == 1
+                output_key = output_keys[0]
+                windowed_data = output[output_key]
+                key = f"{config.model_arch}-{config.model_size}-{config.window_size}-{item}-{output_key}"
+                data[key] = windowed_data
+        with_fixed_limits = False
+        fig = create_confidence_plot(
+            targets_window_outputs=data,
+            confidence_level=0.95,
+            title="",
+            plots_meta_data={
+                "acc": {
+                    "title": "Accuracy",
+                    "ylabel": "% accuracy",
+                    "ylabel_loc": "center",
+                    "axhline_value": 100.0,
+                    "ylim": (60.0, 105.0) if with_fixed_limits else None,
+                },
+                "diff": {
+                    "title": "Normalized change in prediction probability",
+                    "ylabel": "% probability change",
+                    "ylabel_loc": "top",
+                    "axhline_value": 0.0,
+                    "ylim": (-50.0, 50.0) if with_fixed_limits else None,
+                },
+            },
         )
-        ci95 = (
-            combined_df.groupby(["Depth", "Model"])
-            .apply(lambda x: 1.96 * x["Probability diff"].std() / np.sqrt(len(x)))
-            .reset_index(name="Probability diff_ci95")
-        )
-        joined = means.merge(ci95, on=["Depth", "Model"])
 
-        # Plot each model
-        for model in joined["Model"].unique():
-            if model in COLORS:
-                color = COLORS[model]
-            else:
-                color = (np.random.randint(0, 255), np.random.randint(0, 255), np.random.randint(0, 255))
-
-            fig = plot_trend(fig, joined, model, color)
-
-        # Format the figure
-        fig = format_fig(fig, 1)
         return fig
 
     def _generate_cell_model_size_knockout(self, fulfilled_reqs) -> Optional[go.Figure]:

@@ -84,9 +84,10 @@ class DataReqConsts:
         ResultBankParamNames.model_arch,
         ResultBankParamNames.model_size,
         ResultBankParamNames.window_size,
-        ResultBankParamNames.is_all_correct,
+        # ResultBankParamNames.is_all_correct,
         ResultBankParamNames.source,
         ResultBankParamNames.target,
+        ResultBankParamNames.feature_category,
         ResultBankParamNames.prompt_idx,
     ]
 

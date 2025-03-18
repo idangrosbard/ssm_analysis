@@ -81,7 +81,7 @@ class DataReq(NamedTuple):
         return config
 
 
-IDataFulfilled = dict[DataReq, Optional[Path]]
+IDataFulfilled = dict[DataReq, Optional[ResultRecord]]
 
 DATA_FULFILLED_PATH = Path(__file__).parent / "data_fulfilled.csv"
 PROMPT_SELECTION_PATH = Path(__file__).parent / "prompt_selections.json"
@@ -118,7 +118,7 @@ def get_data_fullfment_options(data_reqs: DataReqs, result_bank: ResultBank) -> 
     for result in result_bank.to_rows():
         data_req = result_record_to_data_req(result)
         if data_req in data_reqs_options._raw:
-            data_reqs_options._raw[data_req].append(result.path)
+            data_reqs_options._raw[data_req].append(result)
     return data_reqs_options
 
 
@@ -129,7 +129,10 @@ def merge_data_reqs(first: IDataFulfilled, second: IDataFulfilled, keys_by_first
 def choose_latest_data_fulfilled(
     data_reqs_options: FulfilledReqs,
 ) -> IDataFulfilled:
-    return {data_req: max(options) if options else None for data_req, options in data_reqs_options._raw.items()}
+    return {
+        data_req: max(options, key=lambda x: x.path) if options else None
+        for data_req, options in data_reqs_options._raw.items()
+    }
 
 
 def _save_data_fulfilled(data_fulfilled: IDataFulfilled, path: Path = DATA_FULFILLED_PATH) -> None:
@@ -142,9 +145,9 @@ def _save_data_fulfilled(data_fulfilled: IDataFulfilled, path: Path = DATA_FULFI
             [
                 {
                     **data_req._asdict(),
-                    "path": None if path is None else path.relative_to(PATHS.PROJECT_DIR),
+                    "path": None if result_record is None else result_record.path.relative_to(PATHS.PROJECT_DIR),
                 }
-                for data_req, path in data_fulfilled.items()
+                for data_req, result_record in data_fulfilled.items()
             ]
         ).to_csv(path, index=False)
     )
