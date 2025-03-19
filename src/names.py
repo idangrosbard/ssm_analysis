@@ -2,6 +2,26 @@ from enum import StrEnum
 from typing import cast
 
 from src.types import FinalPlotsPlanOrientation
+from src.utils.types_utils import class_values
+
+
+class BASE_CONFIG_HP_COLS(StrEnum):
+    experiment_name = "experiment_name"
+    model_arch = "model_arch"
+    model_size = "model_size"
+    window_size = "window_size"
+    is_all_correct = "is_all_correct"
+    variation = "variation"
+
+
+class INFO_FLOW_HP_COLS(StrEnum):
+    source = "source"
+    feature_category = "feature_category"
+    target = "target"
+
+
+class HEATMAP_HP_COLS(StrEnum):
+    prompt_idx = "prompt_idx"
 
 
 class EXPERIMENT_NAMES(StrEnum):
@@ -9,6 +29,31 @@ class EXPERIMENT_NAMES(StrEnum):
     INFO_FLOW = "info_flow"
     HEATMAP = "heatmap"
     FULL_PIPELINE = "full_pipeline"
+
+    @staticmethod
+    def get_hp_cols(col: "EXPERIMENT_NAMES") -> list[str]:
+        base_cols = list(BASE_CONFIG_HP_COLS)
+        match col:
+            case EXPERIMENT_NAMES.INFO_FLOW:
+                return base_cols + class_values(INFO_FLOW_HP_COLS)
+            case EXPERIMENT_NAMES.HEATMAP:
+                return base_cols + class_values(HEATMAP_HP_COLS)
+            case _:
+                raise ValueError(f"Experiment name {col} is not implemented")
+
+    @classmethod
+    def get_experiment_name_by_str(cls, name: str) -> "EXPERIMENT_NAMES":
+        match name:
+            case "evaluate":
+                return cls.EVALUATE_MODEL
+            case "info_flow":
+                return cls.INFO_FLOW
+            case "heatmap":
+                return cls.HEATMAP
+            case "full_pipeline":
+                return cls.FULL_PIPELINE
+            case _:
+                raise ValueError(f"Experiment name {name} is not implemented")
 
 
 class COLS:
@@ -48,15 +93,20 @@ class COLS:
 
 
 class DataReqCols(StrEnum):
-    experiment_name = "experiment_name"
-    model_arch = "model_arch"
-    model_size = "model_size"
-    window_size = "window_size"
-    is_all_correct = "is_all_correct"
-    source = "source"
-    feature_category = "feature_category"
-    target = "target"
-    prompt_idx = "prompt_idx"
+    experiment_name = BASE_CONFIG_HP_COLS.experiment_name
+    model_arch = BASE_CONFIG_HP_COLS.model_arch
+    model_size = BASE_CONFIG_HP_COLS.model_size
+    window_size = BASE_CONFIG_HP_COLS.window_size
+    is_all_correct = BASE_CONFIG_HP_COLS.is_all_correct
+    source = INFO_FLOW_HP_COLS.source
+    feature_category = INFO_FLOW_HP_COLS.feature_category
+    target = INFO_FLOW_HP_COLS.target
+    prompt_idx = HEATMAP_HP_COLS.prompt_idx
+
+    @classmethod
+    def get_cols_by_experiment_name(cls, experiment_name: EXPERIMENT_NAMES) -> list[str]:
+        this_cols = set(class_values(cls))
+        return [col for col in experiment_name.get_hp_cols(experiment_name) if col in this_cols]
 
 
 class ResultBankParamNames(StrEnum):
@@ -69,7 +119,7 @@ class ResultBankParamNames(StrEnum):
     feature_category = DataReqCols.feature_category
     target = DataReqCols.target
     prompt_idx = DataReqCols.prompt_idx
-    variation = "variation"
+    variation = BASE_CONFIG_HP_COLS.variation
     path = "path"
 
 

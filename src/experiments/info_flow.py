@@ -44,7 +44,7 @@ SAVE_INTERVAL = 600  # 10 minutes
 
 
 def skip_task(model_arch: MODEL_ARCH, source: TInfoFlowSource) -> bool:
-    return not (is_mamba_arch(model_arch) or not isinstance(source, tuple))
+    return not (is_mamba_arch(model_arch) or source[1] == FeatureCategory.ALL)
 
 
 @dataclass
@@ -56,21 +56,21 @@ class InfoFlowConfig(BaseConfig):
     knockout_map: dict[TokenType, list[TInfoFlowSource]] = create_mutable_field(
         lambda: {
             TokenType.last: [
-                TokenType.last,
+                (TokenType.last, FeatureCategory.ALL),
                 (TokenType.subject, FeatureCategory.SLOW_DECAY),
                 (TokenType.subject, FeatureCategory.FAST_DECAY),
-                TokenType.first,
-                TokenType.subject,
-                TokenType.relation,
+                (TokenType.first, FeatureCategory.ALL),
+                (TokenType.subject, FeatureCategory.ALL),
+                (TokenType.relation, FeatureCategory.ALL),
             ],
             TokenType.subject: [
-                TokenType.context,
-                TokenType.subject,
+                (TokenType.context, FeatureCategory.ALL),
+                (TokenType.subject, FeatureCategory.ALL),
             ],
             TokenType.relation: [
-                TokenType.context,
-                TokenType.subject,
-                TokenType.relation,
+                (TokenType.context, FeatureCategory.ALL),
+                (TokenType.subject, FeatureCategory.ALL),
+                (TokenType.relation, FeatureCategory.ALL),
             ],
         }
     )
@@ -133,10 +133,9 @@ class InfoFlowConfig(BaseConfig):
     def output_block_target_source_path(
         self, target: TokenType, source: TInfoFlowSource, is_intermediate: bool = False
     ) -> Path:
-        if isinstance(source, tuple):
-            feature_category_str = f"source={source[0]}_feature_category={source[1]}"
-        else:
-            feature_category_str = f"source={source}"
+        feature_category_str = f"source={source[0]}"
+        if source[1] != FeatureCategory.ALL:
+            feature_category_str += f"_feature_category={source[1]}"
         return self.output_block_target_path(target, is_intermediate) / f"{feature_category_str}.csv"
 
     @staticmethod
@@ -239,19 +238,11 @@ def forward_eval(
     tokenizer: TTokenizer,
     device,
 ):
-    source, feature_category = (
-        (knockout_source[0], FeatureCategory.ALL if knockout_source[1] is None else knockout_source[1])
-        if isinstance(knockout_source, tuple)
-        else (
-            knockout_source,
-            FeatureCategory.ALL,
-        )
-    )
+    source, feature_category = knockout_source
     num_to_masks, first_token = get_num_to_masks(prompt, tokenizer, window, source, knockout_target, device)
 
     next_token_probs = model_interface.generate_logits(
         input_ids=prompt.input_ids(tokenizer, device),
-        attention=True,
         num_to_masks=num_to_masks,
         feature_category=feature_category,
     )

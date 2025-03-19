@@ -16,6 +16,7 @@ from src.names import COLS
 from src.types import (
     FILTERATIONS,
     MODEL_ARCH,
+    FeatureCategory,
     TBatchSize,
     TModelSize,
     TokenType,
@@ -114,7 +115,7 @@ def test_info_flow_intermediate_recovery(tmp_path: Path):
 
         full_pipeline_config.knockout_map = {
             TokenType.last: [
-                TokenType.last,
+                (TokenType.last, FeatureCategory.ALL),
             ],
         }
 
@@ -151,11 +152,15 @@ def test_info_flow_intermediate_recovery(tmp_path: Path):
             pass
 
         # Verify intermediate files were created and contain valid data
-        intermediate_path = info_flow_config.get_intermediate_output_path(TokenType.last, TokenType.last)
+        intermediate_path = info_flow_config.get_intermediate_output_path(
+            TokenType.last, (TokenType.last, FeatureCategory.ALL)
+        )
         assert intermediate_path.exists(), "Intermediate file should exist"
 
         # Load and verify intermediate results
-        data, window_idx = info_flow_config.load_intermediate_results(TokenType.last, TokenType.last)
+        data, window_idx = info_flow_config.load_intermediate_results(
+            TokenType.last, (TokenType.last, FeatureCategory.ALL)
+        )
         assert data is not None, "Should have valid intermediate data"
         assert window_idx >= 0, "Should have valid window index"
 
@@ -168,16 +173,18 @@ def test_info_flow_intermediate_recovery(tmp_path: Path):
         info_flow_config.compute()
 
         # Verify final output exists and intermediate files are cleaned up
-        final_output_path = info_flow_config.output_block_target_source_path(TokenType.last, TokenType.last)
+        final_output_path = info_flow_config.output_block_target_source_path(
+            TokenType.last, (TokenType.last, FeatureCategory.ALL)
+        )
         assert final_output_path.exists(), "Final output file should exist"
         assert not intermediate_path.exists(), "Intermediate file should be cleaned up"
-        created_data = info_flow_config.get_outputs()[TokenType.last][TokenType.last]
+        created_data = info_flow_config.get_outputs()[TokenType.last][(TokenType.last, FeatureCategory.ALL)]
 
     _test_base_path = Path(__file__).parent / "baselines" / "full_pipeline"
     with pytest.MonkeyPatch().context() as mp:
         mp.setattr("src.consts.PATHS.PROJECT_DIR", _test_base_path)
         info_flow_config.variation = TVariationName("test_baseline")
-        baseline_data = info_flow_config.get_outputs()[TokenType.last][TokenType.last]
+        baseline_data = info_flow_config.get_outputs()[TokenType.last][(TokenType.last, FeatureCategory.ALL)]
         assert created_data == baseline_data, "Data should be the same"
 
 

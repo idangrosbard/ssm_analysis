@@ -30,7 +30,7 @@ from src.experiment_infra.base_config import (
 from src.experiment_infra.model_interface import get_model_interface
 from src.names import EXPERIMENT_NAMES
 from src.plots.heatmaps import simple_diff_fixed
-from src.types import MODEL_ARCH_AND_SIZE, TPromptOriginalIndex, TRowPosition, TWindow, TWindowSize
+from src.types import MODEL_ARCH_AND_SIZE, FeatureCategory, TPromptOriginalIndex, TRowPosition, TWindow, TWindowSize
 from src.utils.logits import Prompt, decode_tokens, get_prompt_row, get_prompt_row_index
 from src.utils.setup_models import get_tokenizer
 
@@ -151,8 +151,8 @@ def run(args: HeatmapConfig):
 
             next_token_probs = model_interface.generate_logits(
                 input_ids=input_ids,
-                attention=True,
                 num_to_masks=num_to_masks,
+                feature_category=FeatureCategory.ALL,
             )
             probs[idx] = next_token_probs[0, true_id[:, 0]]
             torch.cuda.empty_cache()

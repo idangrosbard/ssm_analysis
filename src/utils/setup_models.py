@@ -1,11 +1,10 @@
 import os
 from typing import Optional, assert_never
 
-import torch
 from huggingface_hub import login
 
 from src.consts import MODEL_SIZES_PER_ARCH_TO_MODEL_ID, is_falcon
-from src.types import MODEL_ARCH, TModel, TModelID, TModelSize, TTokenizer
+from src.types import MODEL_ARCH, TDevice, TModel, TModelID, TModelSize, TTokenizer
 
 
 def _get_tokenizer_id(model_id: str) -> str:
@@ -31,7 +30,7 @@ def get_tokenizer(model_arch: MODEL_ARCH, model_size: TModelSize) -> TTokenizer:
 
 
 def get_tokenizer_and_model(
-    model_arch: MODEL_ARCH, model_size: TModelSize, device: Optional[torch.device] = None
+    model_arch: MODEL_ARCH, model_size: TModelSize, device: Optional[TDevice] = None
 ) -> tuple[TTokenizer, TModel]:
     if os.getenv("HUGGINGFACE_TOKEN") is not None:
         login(token=os.getenv("HUGGINGFACE_TOKEN"))

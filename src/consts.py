@@ -11,9 +11,7 @@ from src.types import (
     MODEL_ARCH_AND_SIZE,
     MODEL_SIZE_CAT,
     SLURM_GPU_TYPE,
-    FeatureCategory,
     TDatasetID,
-    TInfoFlowSource,
     TModelID,
     TModelSize,
     TokenType,
@@ -215,26 +213,22 @@ COUNTER_FACT_2_KNOWN1000_COL_CONV = {
 }
 
 
-TOKEN_TYPE_COLORS: dict[TInfoFlowSource, str] = {
+TOKEN_TYPE_COLORS: dict[TokenType, str] = {
     TokenType.last: "#D2691E",  # orange
     TokenType.first: "#0000FF",  # blue
     TokenType.subject: "#008000",  # green
     TokenType.relation: "#800080",  # purple
     TokenType.context: "#FF0000",  # red
     TokenType.all: "#000000",  # black
-    (TokenType.subject, FeatureCategory.FAST_DECAY): "#000000",  # black
-    (TokenType.subject, FeatureCategory.SLOW_DECAY): "#000000",  # black
 }
 
-TOKEN_TYPE_LINE_STYLES: dict[TInfoFlowSource, str] = {
+TOKEN_TYPE_LINE_STYLES: dict[TokenType, str] = {
     TokenType.last: "-.",
     TokenType.first: ":",
     TokenType.subject: "-",
     TokenType.relation: "--",
     TokenType.context: "--",
     TokenType.all: "-",
-    (TokenType.subject, FeatureCategory.FAST_DECAY): "--",
-    (TokenType.subject, FeatureCategory.SLOW_DECAY): ":",
 }
 CONVERT_TO_PLOTLY_LINE_STYLE = {
     "-": "solid",
@@ -244,18 +238,6 @@ CONVERT_TO_PLOTLY_LINE_STYLE = {
     "-.-": "dashdot",
     "-.-.": "longdash",
 }
-
-
-def get_item_from_token_from_info_flow_source_dict(
-    token_type: TInfoFlowSource,
-    d: dict[TInfoFlowSource, str],
-    default: str,
-) -> str:
-    if isinstance(token_type, tuple):
-        if token_type[1] is not None:
-            return d.get((TokenType(token_type[0]), FeatureCategory(token_type[1])), default)
-        return d.get(TokenType(token_type[0]), default)
-    return d.get(token_type, default)
 
 
 def format_params_for_title(params: dict) -> str:

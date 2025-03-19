@@ -19,3 +19,17 @@ def remove_dirs_with_only_dirs(path: Path):
             path.rmdir()
         except OSError:
             pass  # Directory not empty due to permissions or race conditions
+
+
+def fast_relative_to(path: Path, base_path: Path, allow_slow: bool = False) -> Path:
+    """
+    Get the relative path of a file or directory to a base path.
+    """
+    if allow_slow:
+        return path.relative_to(base_path)
+    else:
+        base_parts = base_path.parts
+        base_len = len(base_parts)
+        path_parts = path.parts
+        assert path_parts[:base_len] == base_parts
+        return Path(*path_parts[base_len:])

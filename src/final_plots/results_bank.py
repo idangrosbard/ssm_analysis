@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import StrEnum
 from pathlib import Path
-from typing import Optional, Sequence, Type, Union
+from typing import Optional, Sequence, Type, assert_never
 
 from src.consts import MODEL_SIZES_PER_ARCH_TO_MODEL_ID, PATHS, reverse_model_id
 from src.data_defs import ResultBank
@@ -30,15 +30,16 @@ class IntermediateParamNames:
 
 
 class RESULTS_BASE_PATH(StrEnum):
-    Prev = "prev"
-    New = "new"
+    v1 = "v1"
+    CURRENT = "new"
 
     @property
     def path(self) -> Path:
-        if self == RESULTS_BASE_PATH.Prev:
-            return PATHS.PROJECT_DIR / "output.old"
-        else:
-            return PATHS.OUTPUT_DIR
+        match self:
+            case RESULTS_BASE_PATH.CURRENT:
+                return PATHS.OUTPUT_DIR
+            case _:
+                return PATHS.OUTPUT_DIR.parent / f"{PATHS.OUTPUT_DIR.name}.{self}"
 
     @classmethod
     def from_path(cls, path: Path) -> "RESULTS_BASE_PATH":
@@ -49,36 +50,39 @@ class RESULTS_BASE_PATH(StrEnum):
 
     def pattern_output_path(self, middle_experiment_keys: list[OutputKey]) -> OutputPath:
         dataset_output_key = OutputKey(key_name="dataset_and_filteration", key_display_name="ds=")
-        if self == RESULTS_BASE_PATH.Prev:
-            return OutputPath(
-                self.path,
-                [
-                    OutputKey(key_name=IntermediateParamNames._model_id_source, key_display_name=""),
-                    OutputKey(key_name=IntermediateParamNames._model_id_name, key_display_name=""),
-                    OutputKey(key_name=IntermediateParamNames._experiment_name_and_variation, key_display_name=""),
-                    dataset_output_key,
-                    *middle_experiment_keys,
-                ],
-            )
-        else:
-            return OutputPath(
-                self.path,
-                [
-                    BASE_OUTPUT_KEYS.EXPERIMENT_NAME,
-                    BASE_OUTPUT_KEYS.VARIATION,
-                    BASE_OUTPUT_KEYS.MODEL_ARCH,
-                    BASE_OUTPUT_KEYS.MODEL_SIZE,
-                    dataset_output_key,
-                    *middle_experiment_keys,
-                    OutputKey(key_name="_", key_display_name="outputs"),
-                ],
-            )
+        match self:
+            case RESULTS_BASE_PATH.v1:
+                return OutputPath(
+                    self.path,
+                    [
+                        OutputKey(key_name=IntermediateParamNames._model_id_source, key_display_name=""),
+                        OutputKey(key_name=IntermediateParamNames._model_id_name, key_display_name=""),
+                        OutputKey(key_name=IntermediateParamNames._experiment_name_and_variation, key_display_name=""),
+                        dataset_output_key,
+                        *middle_experiment_keys,
+                    ],
+                )
+            case RESULTS_BASE_PATH.CURRENT:
+                return OutputPath(
+                    self.path,
+                    [
+                        BASE_OUTPUT_KEYS.EXPERIMENT_NAME,
+                        BASE_OUTPUT_KEYS.VARIATION,
+                        BASE_OUTPUT_KEYS.MODEL_ARCH,
+                        BASE_OUTPUT_KEYS.MODEL_SIZE,
+                        dataset_output_key,
+                        *middle_experiment_keys,
+                        OutputKey(key_name="_", key_display_name="outputs"),
+                    ],
+                )
+            case _:
+                assert_never(self)
 
     def process_values(self, values: dict[str, str]) -> Optional[dict[str, str]]:
         experiment_name: str = values.pop(ResultBankParamNames.experiment_name)
         values.pop("_", None)
 
-        if self == RESULTS_BASE_PATH.Prev:
+        if self == RESULTS_BASE_PATH.v1:
             model_id_source = values.pop(IntermediateParamNames._model_id_source)
             model_id_name = values.pop(IntermediateParamNames._model_id_name)
             model_arch, model_size = reverse_model_id(TModelID(f"{model_id_source}/{model_id_name}"))
@@ -94,10 +98,13 @@ class RESULTS_BASE_PATH(StrEnum):
 
     @property
     def heatmap_suffix(self) -> str:
-        if self == RESULTS_BASE_PATH.Prev:
-            return ".npy"
-        else:
-            return ".csv"
+        match self:
+            case RESULTS_BASE_PATH.v1:
+                return ".npy"
+            case RESULTS_BASE_PATH.CURRENT:
+                return ".csv"
+            case _:
+                assert_never(self)
 
     @property
     def info_flow_suffix(self) -> str:
@@ -139,7 +146,7 @@ class ResultRecord(ABC):
 
     @property
     def is_all_correct(self) -> bool:
-        if self.results_base_path == RESULTS_BASE_PATH.Prev:
+        if self.results_base_path == RESULTS_BASE_PATH.v1:
             return True
         filteration = self.dataset_and_filteration[len(self.dataset) :]
         if filteration:
@@ -148,7 +155,7 @@ class ResultRecord(ABC):
         return False
 
     @classmethod
-    def from_path(cls, path: Path) -> Union["HeatmapRecord", None]:
+    def from_path(cls, path: Path) -> Optional["ResultRecord"]:
         result_output_path = cls.get_results_output_path(path)
         try:
             values = result_output_path.extract_values_from_path(path)
@@ -168,11 +175,21 @@ class ResultRecord(ABC):
         if not isinstance(other, ResultRecord):
             raise ValueError(f"Cannot compare {type(self)} with {type(other)}")
         if self.results_base_path != other.results_base_path:
-            return self.results_base_path == RESULTS_BASE_PATH.Prev
+            return self.results_base_path == RESULTS_BASE_PATH.v1
         elif self.variation != other.variation:
             return self.variation < other.variation
         else:
             raise ValueError(f"Cannot compare {self} with {other}")
+
+    @classmethod
+    def init_from_processed_values(
+        cls, path: Path, results_base_path: RESULTS_BASE_PATH, values: dict[str, str]
+    ) -> Optional["ResultRecord"]:
+        return cls(
+            path=path,
+            results_base_path=results_base_path,
+            **values,  # type: ignore
+        )
 
 
 @dataclass
@@ -206,22 +223,22 @@ class HeatmapRecord(ResultRecord):
 @dataclass
 class InfoFlowRecord(ResultRecord):
     experiment_name = EXPERIMENT_NAMES.INFO_FLOW
-    _target: str = ""
-    _source_and_feature_category: Optional[str] = None
-    _block_target: Optional[str] = None
+    _block_target: Optional[str] = None  # v1
+    _target: Optional[str] = None  # v2
+    _source_and_feature_category: Optional[str] = None  # v2
 
     @property
     def target(self) -> TokenType:
-        if self.results_base_path == RESULTS_BASE_PATH.Prev:
+        if self.results_base_path == RESULTS_BASE_PATH.v1:
             assert self._block_target is not None
-            assert self._target == ""
             return TokenType(self._block_target.split("_target_")[1])
         else:
+            assert self._target is not None
             return TokenType(self._target)
 
     @property
     def source(self) -> TokenType:
-        if self.results_base_path == RESULTS_BASE_PATH.Prev:
+        if self.results_base_path == RESULTS_BASE_PATH.v1:
             assert self._block_target is not None
             return TokenType(self._block_target.split("_target_")[0])
         else:
@@ -233,16 +250,20 @@ class InfoFlowRecord(ResultRecord):
                 return TokenType(self._source_and_feature_category)
 
     @property
-    def feature_category(self) -> Optional[FeatureCategory]:
-        if self.results_base_path == RESULTS_BASE_PATH.Prev:
-            return None
+    def _feature_category_str(self) -> str:
+        if self.results_base_path == RESULTS_BASE_PATH.v1:
+            return FeatureCategory.ALL
         else:
             assert self._source_and_feature_category is not None
             sep = "_feature_category="
             if sep in self._source_and_feature_category:
-                return FeatureCategory(self._source_and_feature_category.split(sep)[1])
+                return self._source_and_feature_category.split(sep)[1]
             else:
-                return None
+                return FeatureCategory.ALL
+
+    @property
+    def feature_category(self) -> FeatureCategory:
+        return FeatureCategory(self._feature_category_str)
 
     @classmethod
     def get_results_output_path(cls, path: Path) -> OutputPath:
@@ -252,7 +273,7 @@ class InfoFlowRecord(ResultRecord):
                 BASE_OUTPUT_KEYS.WINDOW_SIZE,
             ]
         )
-        if results_base_path == RESULTS_BASE_PATH.Prev:
+        if results_base_path == RESULTS_BASE_PATH.v1:
             output_path = output_path.add(
                 [
                     OutputKey(key_name=IntermediateParamNames._block_target, key_display_name="block_"),
@@ -273,30 +294,42 @@ class InfoFlowRecord(ResultRecord):
 
         return output_path
 
+    @classmethod
+    def init_from_processed_values(
+        cls, path: Path, results_base_path: RESULTS_BASE_PATH, values: dict[str, str]
+    ) -> Optional["ResultRecord"]:
+        result_record = super().init_from_processed_values(path, results_base_path, values)
+        assert isinstance(result_record, InfoFlowRecord)
+        if results_base_path == RESULTS_BASE_PATH.CURRENT:
+            if result_record._feature_category_str == "NONE":
+                return None
+        return result_record
+
 
 def get_experiment_results_bank(
     results_base_paths: Sequence[RESULTS_BASE_PATH] = (
         # RESULTS_BASE_PATH.Prev,
-        RESULTS_BASE_PATH.New,
+        RESULTS_BASE_PATH.CURRENT,
     ),
-    experiments: Sequence[Type[ResultRecord]] = (HeatmapRecord, InfoFlowRecord),
+    experiment_records: Sequence[Type[ResultRecord]] = (HeatmapRecord, InfoFlowRecord),
 ) -> ResultBank:
     results: list[ResultRecord] = []
     for results_base_path in results_base_paths:
-        for experiment in experiments:
-            output_path = experiment.get_results_output_path(results_base_path.path)
+        for experiment_record in experiment_records:
+            output_path = experiment_record.get_results_output_path(results_base_path.path).enforce_value(
+                ResultBankParamNames.experiment_name, experiment_record.experiment_name
+            )
             in_pattern, _ = output_path.process_path()
             for path, values in in_pattern:
-                values[ResultBankParamNames.experiment_name] = experiment.experiment_name
+                values[ResultBankParamNames.experiment_name] = experiment_record.experiment_name
                 processed_values = results_base_path.process_values(values=values)
                 if not processed_values:
                     continue
-
-                results.append(
-                    experiment(
-                        path=path,
-                        results_base_path=results_base_path,
-                        **processed_values,  # type: ignore
-                    )
+                result_record = experiment_record.init_from_processed_values(
+                    path=path,
+                    results_base_path=results_base_path,
+                    values=processed_values,
                 )
+                if result_record is not None:
+                    results.append(result_record)
     return ResultBank(results)

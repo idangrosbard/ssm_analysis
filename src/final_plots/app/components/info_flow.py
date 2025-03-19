@@ -11,7 +11,6 @@ from src.consts import (
     TOKEN_TYPE_COLORS,
     TOKEN_TYPE_LINE_STYLES,
     format_params_for_title,
-    get_item_from_token_from_info_flow_source_dict,
 )
 from src.final_plots.app.texts import INFO_FLOW_ANALYSIS_TEXTS
 from src.names import COLS, ResultBankParamNames
@@ -118,13 +117,11 @@ class InfoFlowAnalysisComponent(StreamlitComponent):
 
             # Assign a custom color
             colors.append(
-                get_item_from_token_from_info_flow_source_dict(
-                    token_type,
-                    TOKEN_TYPE_COLORS,
-                    px.colors.qualitative.Plotly[i % len(px.colors.qualitative.Plotly)],
+                TOKEN_TYPE_COLORS.get(
+                    token_type[0], px.colors.qualitative.Plotly[i % len(px.colors.qualitative.Plotly)]
                 )
             )
-            line_styles.append(get_item_from_token_from_info_flow_source_dict(token_type, TOKEN_TYPE_LINE_STYLES, "-"))
+            line_styles.append(TOKEN_TYPE_LINE_STYLES.get(token_type[0], "-"))
 
         # Find the maximum layer range across all info flows
 

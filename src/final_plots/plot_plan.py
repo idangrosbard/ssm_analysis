@@ -123,7 +123,7 @@ class TargetHPD(HyperParamDefinition[TokenType]):
         return TokenType.last
 
 
-class FeatureCategoryHPD(HyperParamDefinition[Optional[FeatureCategory]]):
+class FeatureCategoryHPD(HyperParamDefinition[FeatureCategory]):
     def get_result_bank_options(self, result_bank):
         features = set()
         for result in result_bank.to_rows():
@@ -134,11 +134,11 @@ class FeatureCategoryHPD(HyperParamDefinition[Optional[FeatureCategory]]):
     def get_static_options(self):
         return str_enum_values(FeatureCategory)
 
-    def get_display_name(self, option: Optional[FeatureCategory]) -> str:
+    def get_display_name(self, option: FeatureCategory) -> str:
         return str(option)
 
-    def default_fix_value(self) -> Optional[FeatureCategory]:
-        return None
+    def default_fix_value(self) -> FeatureCategory:
+        return FeatureCategory.ALL
 
 
 class WindowSizeHPD(HyperParamDefinition[TWindowSize]):
@@ -469,7 +469,7 @@ class PlotPlan:
                         for orientation in Cell._fields
                     }
                 )
-            ].append(DataReq(**data_req_params))
+            ].append(DataReq.create_and_validate(**data_req_params))
 
         return {cell: DataReqs(set(data_reqs)) for cell, data_reqs in data_reqs_per_cell.items()}
 

@@ -23,7 +23,7 @@ from src.consts import GRAPHS_ORDER
 from src.experiments.info_flow import InfoFlowConfig
 from src.final_plots.app.components.info_flow import InfoFlowAnalysisComponent
 from src.final_plots.app.components.result_bank import SelectionMode, ShowResultsBank
-from src.final_plots.app.data_store import load_model_evaluations
+from src.final_plots.app.data_store import load_model_evaluations, load_results_bank
 from src.final_plots.app.texts import INFO_FLOW_ANALYSIS_TEXTS
 from src.final_plots.app.utils import reverse_format_path_for_display
 from src.names import COLS, EXPERIMENT_NAMES, ResultBankParamNames
@@ -179,7 +179,9 @@ class SubsetInfoFlowResults:
 
 class InfoFlowAnalysisPage(StreamlitPage):
     def render(self):
+        results_bank = load_results_bank()
         result_bank: AgGridReturn = ShowResultsBank(
+            results_bank,
             filter_experiment_name=EXPERIMENT_NAMES.INFO_FLOW,
             filter_is_all_correct=False,
             selection_mode=SelectionMode.MULTIPLE,  # Changed to MULTIPLE

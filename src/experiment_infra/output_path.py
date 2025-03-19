@@ -1,5 +1,7 @@
 from pathlib import Path
-from typing import Any, Callable, Generic, List, Optional, Tuple, TypeVar, Union, cast
+from typing import Any, Callable, Generic, List, Optional, Tuple, TypeVar, Union, assert_never, cast
+
+from src.utils.file_system import fast_relative_to
 
 _ATTRIBUTE_TYPE = TypeVar("_ATTRIBUTE_TYPE")
 
@@ -89,7 +91,7 @@ def combine_output_keys(
     return sep.join(res)
 
 
-IPathComponent = Union[Path, str, OutputKey, list[OutputKey]]
+IPathComponent = Union[str, OutputKey, list[OutputKey]]
 
 
 def dict_to_obj(d: dict[str, str]) -> object:
@@ -123,6 +125,15 @@ class OutputPath:
     def add(self, component: list[IPathComponent]) -> "OutputPath":
         return OutputPath(self.base_path, self.path_components + component)
 
+    def enforce_value(self, key_name: str, value: str) -> "OutputPath":
+        new_components: list[IPathComponent] = []
+        for component in self.path_components:
+            if isinstance(component, OutputKey) and component.key_name == key_name:
+                new_components.append(value)
+            else:
+                new_components.append(component)
+        return OutputPath(self.base_path, new_components)
+
     def get_key_names(self) -> list[str]:
         """Extract all key names from path components."""
         key_names = []
@@ -133,20 +144,9 @@ class OutputPath:
                 key_names.extend(k.key_name for k in component)
         return key_names
 
-    def validate_path_exists(self, path: Path) -> bool:
-        """Check if a path exists and is under the base path."""
-        try:
-            path.relative_to(self.base_path)
-            return path.exists()
-        except ValueError:
-            return False
-
     def extract_values_from_path(self, path: Path, allow_extra_parts: bool = True) -> dict[str, str]:
         """Extract values from a path according to the path structure."""
-        if not self.validate_path_exists(path):
-            raise ValueError(f"Path {path} does not exist or is not under {self.base_path}")
-
-        relative_path = path.relative_to(self.base_path)
+        relative_path = fast_relative_to(path, self.base_path, allow_slow=False)
         path_parts = list(relative_path.parts)
 
         values = {}
@@ -171,6 +171,12 @@ class OutputPath:
                 for key, value in zip(component, value_parts):
                     values[key.key_name] = key.extract_value_from_str(value)
                 current_part_idx += 1
+            elif isinstance(component, str):
+                if path_parts[current_part_idx] != component:
+                    raise ValueError(f"Path {path}, expected {component}, got {path_parts[current_part_idx]}")
+                current_part_idx += 1
+            else:
+                assert_never(component)
 
         if not allow_extra_parts and current_part_idx < len(path_parts):
             raise ValueError(
@@ -194,12 +200,6 @@ class OutputPath:
         def rec_process_path(
             current_path: Path, depth: int
         ) -> Tuple[List[Tuple[Path, dict[str, str]]], List[Tuple[Path, str]]]:
-            if not current_path.exists():
-                return [], [(current_path, "Path not found")]
-
-            # if not current_path.is_dir():
-            #     return [], [(current_path, "Not a directory, and not all components resolved")]
-
             sub_path = OutputPath(self.base_path, self.path_components[:depth])
 
             try:

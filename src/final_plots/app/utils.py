@@ -9,10 +9,10 @@ from streamlit.elements.arrow import DataframeState
 from src.consts import PATHS
 from src.experiments.heatmap import HeatmapConfig
 from src.final_plots.app.app_consts import HeatmapConsts
-from src.names import HeatmapCols
 from src.final_plots.data_reqs import DataReq
-from src.names import ResultBankParamNames
+from src.names import HeatmapCols, ResultBankParamNames
 from src.types import MODEL_ARCH, TModelSize, TPromptOriginalIndex, TVariationName, TWindowSize
+from src.utils.file_system import fast_relative_to
 
 T = TypeVar("T")
 
@@ -137,8 +137,12 @@ def apply_filters(df: pd.DataFrame, filters: dict[str, list]) -> pd.DataFrame:
 
 
 def get_data_req_from_df_row(row: pd.Series) -> DataReq:
-    return DataReq(
-        **{param: row[param] for param in ResultBankParamNames if param not in [ResultBankParamNames.path, ResultBankParamNames.variation]},
+    return DataReq.create_and_validate(
+        **{
+            param: row[param]
+            for param in ResultBankParamNames
+            if param not in [ResultBankParamNames.path, ResultBankParamNames.variation]
+        },
     )
 
 
@@ -147,7 +151,7 @@ def get_config_from_df_row(row: pd.Series):
     return data_req.get_config(row[ResultBankParamNames.variation])
 
 
-def format_path_for_display(path: Path | str | None) -> str:
+def format_path_for_display(path: Path | str | None, allow_slow: bool = False) -> str:
     """Format a path for display in the UI.
 
     Args:
@@ -161,7 +165,7 @@ def format_path_for_display(path: Path | str | None) -> str:
 
     if isinstance(path, Path):
         try:
-            return str(path.relative_to(PATHS.PROJECT_DIR))
+            return str(fast_relative_to(path, PATHS.PROJECT_DIR, allow_slow=allow_slow))
         except ValueError:
             return str(path)
 

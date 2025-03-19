@@ -208,7 +208,7 @@
     "lines_options": [
       "SLOW_DECAY",
       "FAST_DECAY",
-      "NONE"
+      "ALL"
     ]
   },
   {
@@ -292,7 +292,7 @@
     "lines_options": [
       "FAST_DECAY",
       "SLOW_DECAY",
-      "NONE"
+      "ALL"
     ]
   },
   {

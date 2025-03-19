@@ -175,11 +175,8 @@ cython_debug/
 data/raw/
 /data/preprocessed/
 /slurm/
-/output/
-/output.temp/
-/output.old/
+/output*/
 /results/
-/output_2/
 .envrc
 .zen/
 .vscode/

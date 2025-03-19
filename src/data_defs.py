@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING, Optional
 import pandas as pd
 
 from src.consts import PATHS
-from src.final_plots.app.app_consts import SummarizedDataFulfilledReqsCols
 from src.names import ResultBankParamNames
 from src.types import TPlotID
 from src.utils.data_object import DataObject
@@ -31,7 +30,7 @@ class DataReqs(DataObject):
         return cls(
             set(
                 {
-                    DataReq(
+                    DataReq.create_and_validate(
                         **{
                             col: row[col]
                             for col in str_enum_values(ResultBankParamNames)
@@ -100,6 +99,8 @@ class ResultBank(DataObject):
 
 class SummarizedDataFulfilledReqs(DataObject):
     def __init__(self, fulfilled_reqs: FulfilledReqs, overrides: Optional[dict["DataReq", Optional["ResultRecord"]]]):
+        from src.final_plots.app.app_consts import SummarizedDataFulfilledReqsCols
+
         self._raw = []
         for req, opts in fulfilled_reqs._raw.items():
             override = overrides.get(req, None) if overrides else None
@@ -125,7 +126,7 @@ class SummarizedDataFulfilledReqs(DataObject):
 
         return DataReqs(
             set(
-                DataReq(
+                DataReq.create_and_validate(
                     **{
                         param: row[param]
                         for param in ResultBankParamNames

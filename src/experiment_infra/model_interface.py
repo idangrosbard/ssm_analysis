@@ -13,6 +13,7 @@ from src.types import (
     MODEL_ARCH_AND_SIZE,
     FeatureCategory,
     KnockoutMode,
+    TDevice,
     TGP2Model,
     TLayerIndex,
     TMamba1Model,
@@ -30,7 +31,7 @@ class ModelInterface(ABC):
         self,
         model_arch: MODEL_ARCH,
         model_size: TModelSize,
-        device: Optional[torch.device] = None,
+        device: Optional[TDevice] = None,
         tokenizer: Optional[TTokenizer] = None,
     ):
         """Initialize the model with given size and device."""
@@ -48,9 +49,8 @@ class ModelInterface(ABC):
     def generate_logits(
         self,
         input_ids: torch.Tensor,
-        attention: bool = False,
-        num_to_masks: Optional[Dict[int, List[Tuple[int, int]]]] = None,
-        feature_category: FeatureCategory = FeatureCategory.ALL,
+        num_to_masks: Optional[Dict[int, List[Tuple[int, int]]]],
+        feature_category: FeatureCategory,
     ) -> torch.Tensor:
         """
         Generate logits for the input sequence with optional attention masking.
@@ -77,7 +77,7 @@ class Mamba1Interface(ModelInterface):
     def __init__(
         self,
         model_size: TModelSize,
-        device: Optional[torch.device] = None,
+        device: Optional[TDevice] = None,
         tokenizer: Optional[TTokenizer] = None,
         is_falcon: bool = False,
     ):
@@ -126,8 +126,8 @@ class Mamba1Interface(ModelInterface):
                 self.feature_masks[layer] = torch.zeros(layer.A_log.shape[0]).to(layer.A_log.device)
             return self.feature_masks[layer]
 
-        if feature_category == FeatureCategory.NONE:
-            return torch.ones(layer.A_log.shape[0])
+        # if feature_category == FeatureCategory.NONE:
+        #     return torch.ones(layer.A_log.shape[0])
 
         decay_matrices = torch.exp(-torch.exp(layer.A_log))
         n_ssms = decay_matrices.shape[0]
@@ -143,7 +143,6 @@ class Mamba1Interface(ModelInterface):
     def generate_logits(
         self,
         input_ids: Tensor,
-        attention: bool = False,
         num_to_masks: Optional[Dict[int, List[Tuple[int, int]]]] = None,
         feature_category: FeatureCategory = FeatureCategory.ALL,
     ) -> torch.Tensor:
@@ -179,7 +178,6 @@ class Mamba2Interface(ModelInterface):
         model_size: TModelSize,
         device: Optional[torch.device] = None,
         tokenizer: Optional[TTokenizer] = None,
-        feature_category: Optional[FeatureCategory] = None,
     ):
         super().__init__(MODEL_ARCH.MAMBA2, model_size, device, tokenizer)
         self.feature_masks = {}
@@ -192,8 +190,8 @@ class Mamba2Interface(ModelInterface):
                 self.feature_masks[layer] = torch.zeros(layer.A_log.shape[0]).to(layer.A_log.device)
             return self.feature_masks[layer]
 
-        if feature_category == FeatureCategory.NONE:
-            return torch.ones(layer.A_log.shape[0])
+        # if feature_category == FeatureCategory.NONE:
+        #     return torch.ones(layer.A_log.shape[0])
 
         decay_matrices = torch.exp(-torch.exp(layer.A_log)).unsqueeze(-1)
         n_ssms = decay_matrices.shape[0]
@@ -209,7 +207,6 @@ class Mamba2Interface(ModelInterface):
     def generate_logits(
         self,
         input_ids: Tensor,
-        attention: bool = False,
         num_to_masks: Optional[Dict[int, List[Tuple[int, int]]]] = None,
         feature_category: FeatureCategory = FeatureCategory.ALL,
     ) -> torch.Tensor:
@@ -229,8 +226,8 @@ class Mamba2Interface(ModelInterface):
                 temperature=1.0,
                 top_k=0,
                 top_p=1,
-                attention=attention,
                 num_to_masks=num_to_masks,
+                attention=((num_to_masks is not None) or (feature_category != FeatureCategory.ALL)),
                 feature_mask=feature_masks,
             )
 
@@ -276,10 +273,10 @@ class GPT2Interface(ModelInterface):
     def generate_logits(
         self,
         input_ids: Tensor,
-        attention: bool = False,
         num_to_masks: Optional[Dict[int, List[Tuple[int, int]]]] = None,
         feature_category: FeatureCategory = FeatureCategory.ALL,
     ) -> torch.Tensor:
+        assert feature_category == FeatureCategory.ALL, "GPT2 does not support feature category"
         assert input_ids.shape[0] == 1
         num_to_masks = num_to_masks or {}
         max_len = input_ids.shape[1]

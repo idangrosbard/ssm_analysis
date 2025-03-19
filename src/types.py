@@ -176,9 +176,9 @@ class KnockoutMode(StrEnum):
 
 class FeatureCategory(StrEnum):
     ALL = "ALL"
-    NONE = "NONE"
     FAST_DECAY = "FAST_DECAY"
     SLOW_DECAY = "SLOW_DECAY"
+    # NONE = "NONE"
 
 
 class TInfoFlowWindowValue(TypedDict):
@@ -188,7 +188,7 @@ class TInfoFlowWindowValue(TypedDict):
     original_idx: list[TPromptOriginalIndex]
 
 
-TInfoFlowSource = Union[TokenType, tuple[TokenType, FeatureCategory | None]]
+TInfoFlowSource = tuple[TokenType, FeatureCategory]
 TInfoFlowOutputJSONOutput = dict[str, TInfoFlowWindowValue]
 TInfoFlowOutput = dict[TLayerIndex, TInfoFlowWindowValue]
 TInfoFlowTargetOutputs = dict[TInfoFlowSource, TInfoFlowOutput]

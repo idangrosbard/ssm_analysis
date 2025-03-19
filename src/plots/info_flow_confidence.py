@@ -18,6 +18,7 @@ from src.consts import (
 )
 from src.names import COLS
 from src.types import (
+    FeatureCategory,
     TInfoFlowOutput,
     TInfoFlowSource,
     TInfoFlowTargetOutputs,
@@ -235,11 +236,15 @@ def plot_with_confidence(
     """Plot a single metric with confidence intervals."""
     layers = np.arange(len(metrics[metric_type]["mean"]))
 
+    block_label = f"{block[0]}"
+    if block[1] != FeatureCategory.ALL:
+        block_label += f" feature={block[1]}"
+
     # Plot mean line
     ax.plot(
         layers,
         metrics[metric_type]["mean"] * (100 if metric_type == "acc" else 1),
-        label=f"{block[0]} feature={block[1]}" if isinstance(block, tuple) else block,
+        label=block_label,
         color=color,
         linestyle=linestyle,
     )
@@ -297,8 +302,8 @@ def create_confidence_plot(
                 metrics=metrics,
                 metric_type=metric_type,
                 block=block,
-                color=TOKEN_TYPE_COLORS.get(block, "#000000"),
-                linestyle=TOKEN_TYPE_LINE_STYLES.get(block, "-"),
+                color=TOKEN_TYPE_COLORS.get(block[0], "#000000"),
+                linestyle=TOKEN_TYPE_LINE_STYLES.get(block[0], "-"),
                 ax=ax,
             )
 
@@ -430,7 +435,7 @@ def combine_confidence_plots(
 
             # Copy legend
             if ax_orig.get_legend() is not None:
-                handles, labels = ax_orig.get_legend_handles_labels()
+                handles, _ = ax_orig.get_legend_handles_labels()
                 ax_new.legend(
                     loc="upper center",
                     bbox_to_anchor=(0.5, 1.2),

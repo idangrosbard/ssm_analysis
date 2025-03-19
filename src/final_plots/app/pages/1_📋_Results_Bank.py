@@ -13,6 +13,7 @@
 import streamlit as st
 
 from src.final_plots.app.components.result_bank import ShowResultsBank
+from src.final_plots.app.data_store import load_results_bank
 from src.final_plots.app.texts import RESULTS_BANK_TEXTS
 from src.utils.streamlit_utils import StreamlitPage
 
@@ -22,7 +23,9 @@ st.title(f"{RESULTS_BANK_TEXTS.title} {RESULTS_BANK_TEXTS.icon}")
 
 class ResultsBankPage(StreamlitPage):
     def render(self):
-        ShowResultsBank().render()
+        results_bank = load_results_bank()
+        load_results_bank.render()
+        ShowResultsBank(results_bank).render()
 
 
 if __name__ == "__main__":

@@ -20,7 +20,7 @@ from src.experiments.evaluate_model import EvaluateModelConfig
 from src.experiments.heatmap import HeatmapConfig
 from src.experiments.info_flow import InfoFlowConfig
 from src.final_plots.results_bank import HeatmapRecord, InfoFlowRecord, ResultRecord
-from src.names import COLS, EXPERIMENT_NAMES
+from src.names import COLS, EXPERIMENT_NAMES, DataReqCols
 from src.types import (
     MODEL_ARCH_AND_SIZE,
     FeatureCategory,
@@ -43,6 +43,16 @@ class DataReq(NamedTuple):
     target: Optional[TokenType]
     prompt_idx: Optional[TPromptOriginalIndex]
 
+    def validate(self):
+        experiment_name = EXPERIMENT_NAMES.get_experiment_name_by_str(self.experiment_name)
+        for col in DataReqCols.get_cols_by_experiment_name(experiment_name):
+            assert getattr(self, col) is not None, f"{experiment_name} requires '{col}'"
+        return self
+
+    @classmethod
+    def create_and_validate(cls, **kwargs):
+        return cls(**kwargs).validate()
+
     @property
     def model_arch_and_size(self) -> MODEL_ARCH_AND_SIZE:
         return MODEL_ARCH_AND_SIZE(self.model_arch, self.model_size)
@@ -52,10 +62,9 @@ class DataReq(NamedTuple):
 
         if self.experiment_name == EXPERIMENT_NAMES.INFO_FLOW:
             assert self.source is not None
+            assert self.feature_category is not None
             assert self.target is not None
-            token_source: TInfoFlowSource = (
-                self.source if self.feature_category is None else (self.source, self.feature_category)
-            )
+            token_source: TInfoFlowSource = (self.source, self.feature_category)
             config = InfoFlowConfig(
                 model_arch=self.model_arch,
                 model_size=self.model_size,
@@ -110,7 +119,7 @@ def result_record_to_data_req(result_record: ResultRecord) -> DataReq:
         feature_category=feature_category,
         target=target,
         prompt_idx=prompt_idx,
-    )
+    ).validate()
 
 
 def get_data_fullfment_options(data_reqs: DataReqs, result_bank: ResultBank) -> FulfilledReqs:
@@ -160,7 +169,7 @@ def _load_data_fulfilled(path: Path = DATA_FULFILLED_PATH) -> IDataFulfilled:
     res = {}
     for row in pd.read_csv(path).to_dict(orient="records"):
         path = row.pop("path")
-        res[DataReq(**cast(dict[str, Any], row))] = path
+        res[DataReq.create_and_validate(**cast(dict[str, Any], row))] = path
 
     return res
 
@@ -210,7 +219,7 @@ def get_data_reqs() -> DataReqs:
                     feature_category=None,
                     target=TokenType.last,
                     prompt_idx=None,
-                )
+                ).validate()
             ] = None
 
     # endregion
@@ -251,7 +260,7 @@ def get_data_reqs() -> DataReqs:
                         feature_category=feature_category,
                         target=TokenType.last,
                         prompt_idx=None,
-                    )
+                    ).validate()
                 ] = None
 
     # endregion
@@ -288,7 +297,7 @@ def get_data_reqs() -> DataReqs:
                         feature_category=feature_category,
                         target=TokenType.last,
                         prompt_idx=None,
-                    )
+                    ).validate()
                 ] = None
 
     # endregion
@@ -324,7 +333,7 @@ def get_data_reqs() -> DataReqs:
                     feature_category=None,
                     target=TokenType.subject,
                     prompt_idx=None,
-                )
+                ).validate()
             ] = None
 
     # endregion
@@ -367,7 +376,7 @@ def get_data_reqs() -> DataReqs:
                         feature_category=feature_category,
                         target=TokenType.last,
                         prompt_idx=None,
-                    )
+                    ).validate()
                 ] = None
 
     # endregion
@@ -392,7 +401,7 @@ def get_data_reqs() -> DataReqs:
                             feature_category=feature_category,
                             target=TokenType.last,
                             prompt_idx=None,
-                        )
+                        ).validate()
                     ] = None
 
     # region 6. Figure 6 Heatmaps.
@@ -441,7 +450,7 @@ def get_data_reqs() -> DataReqs:
                             feature_category=None,
                             target=TokenType.last,
                             prompt_idx=None,
-                        )
+                        ).validate()
                     ] = None
 
     # endregion
@@ -480,7 +489,7 @@ def get_data_reqs() -> DataReqs:
                         feature_category=None,
                         target=TokenType.last,
                         prompt_idx=None,
-                    )
+                    ).validate()
                 ] = None
 
     # endregion

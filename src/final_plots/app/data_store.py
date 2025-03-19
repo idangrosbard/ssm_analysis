@@ -7,7 +7,7 @@ from matplotlib.figure import Figure
 from pygwalker.api.streamlit import StreamlitRenderer
 from streamlit import cache_resource
 
-from src.data_defs import DataReqs, ExperimentDisplayResults, ResultBank, SummarizedDataFulfilledReqs
+from src.data_defs import DataReqs, ResultBank, SummarizedDataFulfilledReqs
 from src.experiments.heatmap import HeatmapConfig
 from src.experiments.info_flow import InfoFlowConfig
 from src.final_plots.app.app_consts import (
@@ -69,13 +69,6 @@ def merge_model_evaluations_streamlit_rendered(variation: TVariationName) -> Str
 @CacheWithDependencies()
 def load_results_bank() -> ResultBank:
     return get_experiment_results_bank()
-
-
-# Results Bank hooks
-@CacheWithDependencies()
-def load_experiment_results() -> ExperimentDisplayResults:
-    """Load and process results with caching"""
-    return load_results_bank().to_experiment_results()
 
 
 @CacheWithDependencies()
