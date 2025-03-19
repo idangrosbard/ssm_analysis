@@ -7,7 +7,7 @@ import streamlit_antd_components as sac
 from streamlit.elements.arrow import DataframeState
 
 from src.consts import PATHS
-from src.experiments.heatmap import HeatmapConfig
+from src.experiments.runners.heatmap import HeatmapConfig
 from src.final_plots.app.app_consts import HeatmapConsts
 from src.final_plots.data_reqs import DataReq
 from src.names import HeatmapCols, ResultBankParamNames

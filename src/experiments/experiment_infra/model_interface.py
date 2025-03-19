@@ -6,8 +6,8 @@ import torch.nn.functional as F
 from torch import Tensor
 
 from src.consts import is_falcon
-from src.knockout.attention_knockout import gpt2_knockout_utils
-from src.knockout.attention_knockout.ssm_interfere import SSMInterfereHook
+from src.experiments.models_knockout.gpt.gpt2 import gpt2_knockout_utils
+from src.experiments.models_knockout.mamba.mamba1.ssm_interfere import SSMInterfereHook
 from src.types import (
     MODEL_ARCH,
     MODEL_ARCH_AND_SIZE,

@@ -497,7 +497,7 @@ def process_info_flow_files(
     Returns:
         The matplotlib figure containing the plots
     """
-    from src.experiments.info_flow import InfoFlowConfig
+    from src.experiments.runners.info_flow import InfoFlowConfig
 
     targets_window_outputs = {
         target: InfoFlowConfig.load_output(file_path) for target, (_, file_path) in from_blocks.items()

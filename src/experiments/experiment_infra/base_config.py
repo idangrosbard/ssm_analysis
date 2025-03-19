@@ -10,12 +10,7 @@ import pyrallis
 from submitit.slurm.slurm import SlurmJob
 
 from src.consts import MODEL_SIZES_PER_ARCH_TO_MODEL_ID, PATHS
-from src.datasets.download_dataset import load_splitted_counter_fact
-from src.experiment_infra.output_path import (
-    _ATTRIBUTE_TYPE,
-    OutputKey,
-    combine_output_keys,
-)
+from src.data.datasets.download_dataset import load_splitted_counter_fact
 from src.names import COLS, EXPERIMENT_NAMES
 from src.types import (
     DATASETS,
@@ -30,6 +25,11 @@ from src.types import (
     TWindowSize,
 )
 from src.utils.experiment_helper import create_run_id
+from src.utils.output_path import (
+    _ATTRIBUTE_TYPE,
+    OutputKey,
+    combine_output_keys,
+)
 from src.utils.slurm import submit_job
 
 _TBaseConfig = TypeVar("_TBaseConfig", bound="BaseConfig")
@@ -216,7 +216,7 @@ class BaseConfig(ABC, Generic[_TConfigOutputs]):
         return sub_config_cls(**init_kwargs)
 
     def get_prompt_data(self) -> TPromptData:
-        from src.experiments.evaluate_model import EvaluateModelConfig
+        from src.experiments.runners.evaluate_model import EvaluateModelConfig
 
         df = self.init_sub_config_from_full_pipeline_config(
             EvaluateModelConfig,

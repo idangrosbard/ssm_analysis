@@ -2,9 +2,11 @@ from typing import Iterable, Optional
 
 from torch import FloatTensor, Tensor, nn
 
-from src.knockout.attention_knockout.mamba_mixer_knockout import slow_forward_for_ssm_materializing_knockout
-from src.knockout.attention_knockout.mamba_mixer_knockout_falcon import (
+from src.experiments.models_knockout.mamba.mamba1.mamba1_falcon.mamba_mixer_knockout_falcon import (
     slow_forward_for_ssm_materializing_knockout_falcon,
+)
+from src.experiments.models_knockout.mamba.mamba1.mamba1_original.mamba_mixer_knockout import (
+    slow_forward_for_ssm_materializing_knockout,
 )
 from src.types import KnockoutMode
 

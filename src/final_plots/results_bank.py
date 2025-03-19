@@ -6,8 +6,7 @@ from typing import Optional, Sequence, Type, assert_never
 
 from src.consts import MODEL_SIZES_PER_ARCH_TO_MODEL_ID, PATHS, reverse_model_id
 from src.data_defs import ResultBank
-from src.experiment_infra.base_config import BASE_OUTPUT_KEYS, DATASETS, MODEL_ARCH
-from src.experiment_infra.output_path import OutputKey, OutputPath
+from src.experiments.experiment_infra.base_config import BASE_OUTPUT_KEYS, DATASETS, MODEL_ARCH
 from src.names import EXPERIMENT_NAMES, ResultBankParamNames
 from src.types import (
     FeatureCategory,
@@ -18,6 +17,7 @@ from src.types import (
     TVariationName,
     TWindowSize,
 )
+from src.utils.output_path import OutputKey, OutputPath
 
 
 class IntermediateParamNames:

@@ -18,8 +18,8 @@ import torch
 from tqdm import tqdm
 
 from src.consts import COUNTER_FACT_2_KNOWN1000_COL_CONV
-from src.experiment_infra.base_config import BaseConfig, create_mutable_field
-from src.experiment_infra.model_interface import get_model_interface
+from src.experiments.experiment_infra.base_config import BaseConfig, create_mutable_field
+from src.experiments.experiment_infra.model_interface import get_model_interface
 from src.names import COLS, EXPERIMENT_NAMES
 from src.types import DATASETS, MODEL_ARCH, MODEL_ARCH_AND_SIZE, DatasetArgs, TTokenizer
 from src.utils.logits import get_last_token_logits, logits_to_probs

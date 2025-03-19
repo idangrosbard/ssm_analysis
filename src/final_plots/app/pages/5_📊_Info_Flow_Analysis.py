@@ -20,7 +20,7 @@ import streamlit as st
 from st_aggrid import AgGridReturn
 
 from src.consts import GRAPHS_ORDER
-from src.experiments.info_flow import InfoFlowConfig
+from src.experiments.runners.info_flow import InfoFlowConfig
 from src.final_plots.app.components.info_flow import InfoFlowAnalysisComponent
 from src.final_plots.app.components.result_bank import SelectionMode, ShowResultsBank
 from src.final_plots.app.data_store import load_model_evaluations, load_results_bank

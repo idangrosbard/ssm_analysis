@@ -3,7 +3,7 @@ from typing import NamedTuple
 import pandas as pd
 import streamlit as st
 
-from src.experiments.heatmap import HEATMAP_PLOT_FUNCS
+from src.experiments.runners.heatmap import HEATMAP_PLOT_FUNCS
 from src.final_plots.app.app_consts import AppSessionKeys
 from src.final_plots.app.texts import AppGlobalText
 from src.final_plots.app.utils import format_path_for_display

@@ -13,7 +13,7 @@ A minimal, single-file implementation of the Mamba-2 model in PyTorch.
 
 import json
 from dataclasses import dataclass
-from typing import Iterable, NamedTuple, Optional, TypeAlias, cast, Dict
+from typing import Dict, Iterable, NamedTuple, Optional, TypeAlias, cast
 
 import torch
 import torch.nn.functional as F
@@ -151,7 +151,7 @@ class Mamba2LMHeadModel(nn.Module):
                 layer_num=i,
                 attention=attention,
                 num_to_masks=num_to_masks,
-                feature_mask=curr_feature_mask
+                feature_mask=curr_feature_mask,
             )
             x = y + x
 
@@ -485,7 +485,9 @@ def ssd(
     # attention_matrix[:, :, 11, :, 3] = 0
     for idx1, idx2 in list_of_masks:
         if feature_mask is None:
-            feature_mask = torch.zeros((attention_matrix.shape[0], attention_matrix.shape[1], attention_matrix.shape[3]))
+            feature_mask = torch.zeros(
+                (attention_matrix.shape[0], attention_matrix.shape[1], attention_matrix.shape[3])
+            )
         attention_matrix[:, :, idx1, :, idx2] = attention_matrix[:, :, idx1, :, idx2] * feature_mask
 
     out_by_atten = torch.einsum("bclhs, bcshp-> bclhp", attention_matrix, x)

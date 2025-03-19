@@ -22,12 +22,12 @@ import torch
 from tqdm import tqdm
 
 from src.consts import MODEL_SIZES_PER_ARCH_TO_MODEL_ID
-from src.experiment_infra.base_config import (
+from src.experiments.experiment_infra.base_config import (
     BASE_OUTPUT_KEYS,
     BaseConfig,
     create_mutable_field,
 )
-from src.experiment_infra.model_interface import get_model_interface
+from src.experiments.experiment_infra.model_interface import get_model_interface
 from src.names import EXPERIMENT_NAMES
 from src.plots.heatmaps import simple_diff_fixed
 from src.types import MODEL_ARCH_AND_SIZE, FeatureCategory, TPromptOriginalIndex, TRowPosition, TWindow, TWindowSize
@@ -109,7 +109,7 @@ def plot(args: HeatmapConfig, plot_name: HEATMAP_PLOT_FUNCS):
         last_tok = toks[-1]
         toks[-1] = toks[-1] + "*"
 
-        fig, ax = simple_diff_fixed(
+        fig, _ = simple_diff_fixed(
             prob_mat=prob_mat,
             model_id=model_id,
             window_size=args.window_size,

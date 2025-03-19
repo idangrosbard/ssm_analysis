@@ -4,7 +4,7 @@ import torch
 from torch import nn
 from transformers.cache_utils import MambaCache
 
-from src.knockout.attention_knockout.knockout_scan import knockout_matrix, knockout_scan
+from src.experiments.models_knockout.mamba.mamba1.knockout_scan import knockout_matrix, knockout_scan
 from src.types import KnockoutMode
 
 
@@ -20,7 +20,8 @@ def slow_forward_for_ssm_materializing_knockout(
         with_materialized_attention_matrix: Optional[bool] = False
 ):
     """
-    The implementation of MambaMixer's forward pass, updated to return the calculated SSM parameters (A, B, C) for analysis.
+    The implementation of MambaMixer's forward pass, 
+    updated to return the calculated SSM parameters (A, B, C) for analysis.
     """
     batch_size, seq_len, _ = input_states.shape
     dtype = input_states.dtype
@@ -64,7 +65,7 @@ def slow_forward_for_ssm_materializing_knockout(
         #     (batch_size, module.intermediate_size, module.ssm_state_size),
         #     device=hidden_states.device, dtype=dtype
         # )
-        final_state = torch.zeros(
+        final_state = torch.zeros(  # noqa: F841
             (batch_size, module.intermediate_size, module.ssm_state_size),
             device=hidden_states.device, dtype=dtype
         )
@@ -96,9 +97,11 @@ def slow_forward_for_ssm_materializing_knockout(
 
     if with_materialized_attention_matrix:
         u = hidden_states[:, :, :, None].float()
-        scan_output = knockout_matrix(seq_len, discrete_A, discrete_B, u, C, knockout_indices, affected_outputs, dtype) # type: ignore
+        scan_output = knockout_matrix(seq_len, discrete_A, discrete_B, u, C, knockout_indices, affected_outputs, dtype)  # type: ignore
     else:
-        scan_outputs = knockout_scan(seq_len, ssm_state, discrete_A, deltaB_u, C, knockout_indices, affected_outputs, knockout_mode, dtype, knockout_feature_mask) # type: ignore
+        scan_outputs = knockout_scan(
+            seq_len, ssm_state, discrete_A, deltaB_u, C, 
+            knockout_indices, affected_outputs, knockout_mode, dtype, knockout_feature_mask)  # type: ignore
         scan_output = torch.stack(scan_outputs, dim=-1)  # [batch, seq_len, intermediade_size]
     scan_output = scan_output + (hidden_states * module.D[None, :, None])
     scan_output = (scan_output * module.act(gate))

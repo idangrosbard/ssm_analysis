@@ -1,6 +1,6 @@
-from src.experiments.evaluate_model import EvaluateModelConfig
-from src.experiments.heatmap import HeatmapConfig
-from src.experiments.info_flow import InfoFlowConfig
+from src.experiments.runners.evaluate_model import EvaluateModelConfig
+from src.experiments.runners.heatmap import HeatmapConfig
+from src.experiments.runners.info_flow import InfoFlowConfig
 
 
 def test_experiments_configs():

@@ -6,7 +6,7 @@ from transformers.cache_utils import MambaCache
 
 from src.types import KnockoutMode
 
-from .knockout_scan import knockout_matrix, knockout_scan
+from ..knockout_scan import knockout_matrix, knockout_scan
 
 
 def rms_forward(hidden_states, variance_epsilon=1e-6):
@@ -121,7 +121,7 @@ def slow_forward_for_ssm_materializing_knockout_falcon(
             affected_outputs,  # type: ignore
             knockout_mode,  # type: ignore
             dtype,
-            knockout_feature_mask
+            knockout_feature_mask,
         )
         scan_output = torch.stack(scan_outputs, dim=-1)  # [batch, seq_len, intermediade_size]
     scan_output = scan_output + (hidden_states * self.D[None, :, None])

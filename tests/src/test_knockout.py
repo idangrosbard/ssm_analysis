@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 import torch
 
-from src.knockout.attention_knockout.knockout_scan import knockout_matrix, knockout_scan
+from src.experiments.models_knockout.mamba.mamba1.knockout_scan import knockout_matrix, knockout_scan
 from src.types import TSSM_A, TSSM_B, TSSM_C, KnockoutMode, TSSM_Bu, TSSMInput, TSSMState
 from src.utils.type_checking import tensor_type_check
 

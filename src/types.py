@@ -16,7 +16,7 @@ if TYPE_CHECKING:
         PreTrainedTokenizerFast,
     )
 
-    import src.models.minimal_mamba2 as minimal_mamba2
+    import src.experiments.models_knockout.mamba.mamba2.minimal_mamba2 as minimal_mamba2
 
     TTokenizer: TypeAlias = Union[PreTrainedTokenizer, PreTrainedTokenizerFast]
     TMamba1Model: TypeAlias = MambaForCausalLM

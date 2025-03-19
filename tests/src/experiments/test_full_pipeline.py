@@ -6,12 +6,12 @@ from pathlib import Path
 
 import pandas as pd
 import pytest
-
 from datasets import DatasetDict
+
 from src.consts import PathsConfig
-from src.datasets.download_dataset import load_splitted_counter_fact
-from src.experiments.full_pipeline import FullPipelineConfig, main_local
-from src.experiments.info_flow import forward_eval
+from src.data.datasets.download_dataset import load_splitted_counter_fact
+from src.experiments.runners.full_pipeline import FullPipelineConfig, main_local
+from src.experiments.runners.info_flow import forward_eval
 from src.names import COLS
 from src.types import (
     FILTERATIONS,

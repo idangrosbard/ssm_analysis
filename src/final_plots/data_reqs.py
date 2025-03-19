@@ -16,9 +16,9 @@ from src.consts import (
     is_mamba_arch,
 )
 from src.data_defs import DataReqs, FulfilledReqs, ResultBank
-from src.experiments.evaluate_model import EvaluateModelConfig
-from src.experiments.heatmap import HeatmapConfig
-from src.experiments.info_flow import InfoFlowConfig
+from src.experiments.runners.evaluate_model import EvaluateModelConfig
+from src.experiments.runners.heatmap import HeatmapConfig
+from src.experiments.runners.info_flow import InfoFlowConfig
 from src.final_plots.results_bank import HeatmapRecord, InfoFlowRecord, ResultRecord
 from src.names import COLS, EXPERIMENT_NAMES, DataReqCols
 from src.types import (

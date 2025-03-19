@@ -22,8 +22,8 @@ from plotly.subplots import make_subplots
 
 from src.consts import MODEL_SIZES_PER_ARCH_TO_MODEL_ID
 from src.data_defs import DataReqs, FulfilledReqs, PlotPlans, ResultBank
-from src.experiments.heatmap import HeatmapConfig
-from src.experiments.info_flow import InfoFlowConfig
+from src.experiments.runners.heatmap import HeatmapConfig
+from src.experiments.runners.info_flow import InfoFlowConfig
 from src.final_plots.app.app_consts import SummarizedDataFulfilledReqsCols
 from src.final_plots.app.texts import FINAL_PLOTS_TEXTS
 from src.final_plots.data_reqs import get_model_evaluations

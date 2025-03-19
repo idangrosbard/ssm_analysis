@@ -20,7 +20,7 @@ def knockout_scan(
     knockout_mode: KnockoutMode,
     dtype: torch.dtype,
     knockout_feature_mask: Optional[torch.FloatTensor | torch.Tensor] = None,
-) -> List[Float[Tensor, "batch hidden_size"]]:
+) -> List[Float[Tensor, "batch hidden_size"]]:  # noqa: F722
     knockout_state: TSSMState = zeros_like(ssm_state)
     scan_outputs = []
     for i in range(seq_len):
@@ -87,7 +87,7 @@ def compute_attn_matrix_fn(
     L: int,
     x_shape: tuple,
     dtype: torch.dtype = torch.float16,
-) -> Float[Tensor, "batch hidden_size seq_len seq_len"]:
+) -> Float[Tensor, "batch hidden_size seq_len seq_len"]:  # noqa: F722
     # dA = torch.exp(torch.einsum("bdl,dn->bldn", dt, A))
     # dB = torch.einsum("bdl,bnl->bldn", dt, B.squeeze(1))
     AttnMatrixOverCLS = (
@@ -115,7 +115,7 @@ def knockout_matrix(
     knocked_out_inputs: Iterable[int],
     affected_outputs: Iterable[int],
     dtype,
-) -> Float[Tensor, "batch hidden_size seq_len"]:
+) -> Float[Tensor, "batch hidden_size seq_len"]:  # noqa: F722
     attn = compute_attn_matrix_fn(discrete_A, discrete_B, C, seq_len, u.shape, dtype)
     for i in affected_outputs:
         for j in knocked_out_inputs:

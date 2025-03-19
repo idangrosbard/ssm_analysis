@@ -8,8 +8,8 @@ import streamlit_antd_components as sac
 from matplotlib import pyplot as plt
 
 from src.consts import GRAPHS_ORDER
-from src.experiments.heatmap import HeatmapConfig
-from src.experiments.info_flow import InfoFlowConfig
+from src.experiments.runners.heatmap import HeatmapConfig
+from src.experiments.runners.info_flow import InfoFlowConfig
 from src.final_plots.app.app_consts import GLOBAL_APP_CONSTS, AppSessionKeys, InfoFlowConsts
 from src.final_plots.app.components.inputs import choose_heatmap_parms
 from src.final_plots.app.texts import COMMON_TEXTS, INFO_FLOW_TEXTS

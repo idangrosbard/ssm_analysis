@@ -8,8 +8,8 @@ from pygwalker.api.streamlit import StreamlitRenderer
 from streamlit import cache_resource
 
 from src.data_defs import DataReqs, ResultBank, SummarizedDataFulfilledReqs
-from src.experiments.heatmap import HeatmapConfig
-from src.experiments.info_flow import InfoFlowConfig
+from src.experiments.runners.heatmap import HeatmapConfig
+from src.experiments.runners.info_flow import InfoFlowConfig
 from src.final_plots.app.app_consts import (
     GLOBAL_APP_CONSTS,
 )

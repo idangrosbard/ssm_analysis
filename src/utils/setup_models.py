@@ -45,7 +45,7 @@ def get_tokenizer_and_model(
 
     match model_arch:
         case MODEL_ARCH.MAMBA2:
-            import src.models.minimal_mamba2 as minimal_mamba2
+            import src.experiments.models_knockout.mamba.mamba2.minimal_mamba2 as minimal_mamba2
 
             model = minimal_mamba2.Mamba2LMHeadModel.from_pretrained(model_id, **minimal_kwargs)  # type: ignore
         case MODEL_ARCH.MAMBA1:
