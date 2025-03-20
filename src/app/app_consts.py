@@ -1,18 +1,19 @@
-from typing import Literal
-from typing import Union
+from enum import Enum, auto
+from typing import Literal, Union, assert_never
 
-from src.core.consts import GRAPHS_ORDER
-from src.core.consts import model_and_size_to_slurm_gpu_type
-from src.core.names import COLS
-from src.core.names import ResultBankParamNames
-from src.core.names import SummarizedDataFulfilledReqsCols
-from src.core.types import MODEL_ARCH_AND_SIZE
-from src.core.types import TVariationName
-from src.core.types import TWindowSize
+from src.app.texts import (
+    DATA_REQUIREMENTS_TEXTS,
+    FINAL_PLOTS_TEXTS,
+    HEATMAP_TEXTS,
+    HOME_TEXTS,
+    INFO_FLOW_ANALYSIS_TEXTS,
+    RESULTS_BANK_TEXTS,
+)
+from src.core.consts import GRAPHS_ORDER, model_and_size_to_slurm_gpu_type
+from src.core.names import COLS, ResultBankParamNames, SummarizedDataFulfilledReqsCols
+from src.core.types import MODEL_ARCH_AND_SIZE, TVariationName, TWindowSize
 from src.utils.infra.slurm import SLURM_GPU_TYPE
-from src.utils.streamlit.helpers.session_keys import SessionKeyDescriptor
-from src.utils.streamlit.helpers.session_keys import SessionKeysBase
-
+from src.utils.streamlit.helpers.session_keys import SessionKeyDescriptor, SessionKeysBase
 
 # region Global App constants
 
@@ -89,4 +90,40 @@ class DataReqConsts:
 class HeatmapConsts:
     MINIMUM_COMBINATIONS_FOR_FILTERING = 30
 
+
 # endregion
+
+
+class PAGE_ORDER(Enum):
+    HOME = auto()
+    RESULTS_BANK = auto()
+    DATA_REQUIREMENTS = auto()
+    HEATMAP = auto()
+    INFO_FLOW_ANALYSIS = auto()
+    FINAL_PLOTS = auto()
+
+    @property
+    def page_details(self) -> tuple[str, str]:
+        match self:
+            case PAGE_ORDER.HOME:
+                return (HOME_TEXTS.title, HOME_TEXTS.icon)
+            case PAGE_ORDER.HEATMAP:
+                return (HEATMAP_TEXTS.title, HEATMAP_TEXTS.icon)
+            case PAGE_ORDER.RESULTS_BANK:
+                return (RESULTS_BANK_TEXTS.title, RESULTS_BANK_TEXTS.icon)
+            case PAGE_ORDER.DATA_REQUIREMENTS:
+                return (DATA_REQUIREMENTS_TEXTS.title, DATA_REQUIREMENTS_TEXTS.icon)
+            case PAGE_ORDER.FINAL_PLOTS:
+                return (FINAL_PLOTS_TEXTS.title, FINAL_PLOTS_TEXTS.icon)
+            case PAGE_ORDER.INFO_FLOW_ANALYSIS:
+                return (INFO_FLOW_ANALYSIS_TEXTS.title, INFO_FLOW_ANALYSIS_TEXTS.icon)
+            case _:
+                assert_never(self)
+
+    @property
+    def icon(self) -> str:
+        return self.page_details[1]
+
+    @property
+    def title(self) -> str:
+        return self.page_details[0]

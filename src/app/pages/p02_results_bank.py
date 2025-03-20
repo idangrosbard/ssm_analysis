@@ -17,9 +17,6 @@ from src.app.data_store import load_results_bank
 from src.app.texts import RESULTS_BANK_TEXTS
 from src.utils.streamlit.helpers.component import StreamlitPage
 
-st.set_page_config(page_title=RESULTS_BANK_TEXTS.title, page_icon=RESULTS_BANK_TEXTS.icon, layout="wide")
-st.title(f"{RESULTS_BANK_TEXTS.title} {RESULTS_BANK_TEXTS.icon}")
-
 
 class ResultsBankPage(StreamlitPage):
     def render(self):
@@ -29,4 +26,7 @@ class ResultsBankPage(StreamlitPage):
 
 
 if __name__ == "__main__":
+    st.set_page_config(page_title=RESULTS_BANK_TEXTS.title, page_icon=RESULTS_BANK_TEXTS.icon, layout="wide")
+    st.title(f"{RESULTS_BANK_TEXTS.title} {RESULTS_BANK_TEXTS.icon}")
+
     ResultsBankPage().render()

@@ -12,16 +12,13 @@
 
 import streamlit as st
 
+from src.analysis.experiment_results.data_requirements import _save_data_fulfilled
 from src.app.components.data_requirements import RequirementExecution, RequirementsDisplay
 from src.app.data_store import load_fulfilled_reqs_df, load_latest_fulfilled_reqs
 from src.app.texts import DATA_REQUIREMENTS_TEXTS
-from src.analysis.experiment_results.data_requirements import _save_data_fulfilled
 from src.core.names import ResultBankParamNames
 from src.utils.streamlit.components.aagrid import SelectionMode
 from src.utils.streamlit.helpers.component import StreamlitPage
-
-st.set_page_config(page_title=DATA_REQUIREMENTS_TEXTS.title, page_icon=DATA_REQUIREMENTS_TEXTS.icon, layout="wide")
-st.title(f"{DATA_REQUIREMENTS_TEXTS.title} {DATA_REQUIREMENTS_TEXTS.icon}")
 
 
 class DataRequirementsPage(StreamlitPage):
@@ -56,4 +53,7 @@ class DataRequirementsPage(StreamlitPage):
 
 
 if __name__ == "__main__":
+    st.set_page_config(page_title=DATA_REQUIREMENTS_TEXTS.title, page_icon=DATA_REQUIREMENTS_TEXTS.icon, layout="wide")
+    st.title(f"{DATA_REQUIREMENTS_TEXTS.title} {DATA_REQUIREMENTS_TEXTS.icon}")
+
     DataRequirementsPage().render()

@@ -19,13 +19,12 @@ import pandas as pd
 import streamlit as st
 from st_aggrid import AgGridReturn
 
-from src.core.consts import GRAPHS_ORDER
-from src.experiments.runners.info_flow import InfoFlowConfig
+from src.app.app_utils import reverse_format_path_for_display
 from src.app.components.info_flow import InfoFlowAnalysisComponent
 from src.app.components.result_bank import SelectionMode, ShowResultsBank
 from src.app.data_store import load_model_evaluations, load_results_bank
 from src.app.texts import INFO_FLOW_ANALYSIS_TEXTS
-from src.app.app_utils import reverse_format_path_for_display
+from src.core.consts import GRAPHS_ORDER
 from src.core.names import COLS, EXPERIMENT_NAMES, ResultBankParamNames
 from src.core.types import (
     MODEL_ARCH_AND_SIZE,
@@ -37,19 +36,13 @@ from src.core.types import (
 )
 from src.data_ingestion.helpers.logits_utils import Prompt
 from src.experiments.infrastructure.setup_models import get_tokenizer
+from src.experiments.runners.info_flow import InfoFlowConfig
 from src.utils.streamlit.helpers.component import StreamlitPage
 from src.utils.types_utils import (
     first_dict_value,
     get_list_indexes_of_set_values,
     select_indexes_from_list,
 )
-
-st.set_page_config(
-    page_title=INFO_FLOW_ANALYSIS_TEXTS.title,
-    page_icon=INFO_FLOW_ANALYSIS_TEXTS.icon,
-    layout="wide",
-)
-st.title(f"{INFO_FLOW_ANALYSIS_TEXTS.title} {INFO_FLOW_ANALYSIS_TEXTS.icon}")
 
 
 def select_indexes_from_window_values(
@@ -267,4 +260,11 @@ class InfoFlowAnalysisPage(StreamlitPage):
 
 
 if __name__ == "__main__":
+    st.set_page_config(
+        page_title=INFO_FLOW_ANALYSIS_TEXTS.title,
+        page_icon=INFO_FLOW_ANALYSIS_TEXTS.icon,
+        layout="wide",
+    )
+    st.title(f"{INFO_FLOW_ANALYSIS_TEXTS.title} {INFO_FLOW_ANALYSIS_TEXTS.icon}")
+
     InfoFlowAnalysisPage().render()

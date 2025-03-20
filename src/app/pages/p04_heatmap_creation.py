@@ -18,21 +18,18 @@ from src.app.app_consts import (
     GLOBAL_APP_CONSTS,
     AppSessionKeys,
 )
+from src.app.components.data_requirements import HeatmapGenerationComponent
 from src.app.components.inputs import (
     select_models_and_sizes,
 )
 from src.app.components.multi_plots import HeatmapPlotGenerationComponent
 from src.app.components.prompt_filter import ModelCombinations, PromptSelectionComponent
-from src.app.components.data_requirements import HeatmapGenerationComponent
 from src.app.data_store import (
     load_model_combinations_prompts,
     load_model_evaluations_dict,
 )
 from src.app.texts import COMMON_TEXTS, HEATMAP_TEXTS
 from src.utils.streamlit.helpers.component import StreamlitPage
-
-st.set_page_config(layout="wide", page_icon=HEATMAP_TEXTS.icon, page_title=HEATMAP_TEXTS.title)
-st.header(HEATMAP_TEXTS.MODEL_COMBINATIONS_HEADER)
 
 
 class HeatmapCreationPage(StreamlitPage):
@@ -80,4 +77,7 @@ class HeatmapCreationPage(StreamlitPage):
 
 
 if __name__ == "__main__":
+    st.set_page_config(layout="wide", page_icon=HEATMAP_TEXTS.icon, page_title=HEATMAP_TEXTS.title)
+    st.header(HEATMAP_TEXTS.MODEL_COMBINATIONS_HEADER)
+
     HeatmapCreationPage().render()

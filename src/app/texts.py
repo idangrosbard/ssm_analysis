@@ -3,6 +3,11 @@ def show_filter_results_text(filtered_count: int, all_count: int) -> str:
     return f"{filtered_count} / {all_count} ({filtered_count / all_count * 100}%)"
 
 
+class HOME_TEXTS:
+    icon = "🔧"
+    title = "Global Config"
+
+
 class HEATMAP_TEXTS:
     icon = "🔥"
     title = "Heatmap Creation"

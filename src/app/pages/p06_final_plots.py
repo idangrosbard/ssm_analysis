@@ -12,7 +12,8 @@
 
 import streamlit as st
 
-from src.data_ingestion.data_defs import PlotPlans
+from src.analysis.experiment_results.plot_plan import PlotPlan
+from src.app.components.data_requirements import RequirementExecution
 from src.app.components.plot_generation import PlotGenerator
 from src.app.components.plot_plans import (
     PlotPlanDetails,
@@ -20,17 +21,12 @@ from src.app.components.plot_plans import (
     PlotPlanRequirements,
     PlotPlanSelector,
 )
-from src.app.components.data_requirements import RequirementExecution
 from src.app.data_store import load_results_bank
 from src.app.texts import FINAL_PLOTS_TEXTS
-from src.analysis.experiment_results.plot_plan import PlotPlan
 from src.core.types import TPlotID
-from src.utils.streamlit.helpers.component import StreamlitPage
-from src.utils.streamlit.helpers.component import StreamlitComponent
-from src.utils.streamlit.helpers.session_keys import SessionKeysBase
-from src.utils.streamlit.helpers.session_keys import SessionKeyDescriptor
-
-st.set_page_config(page_title=FINAL_PLOTS_TEXTS.title, page_icon=FINAL_PLOTS_TEXTS.icon, layout="wide")
+from src.data_ingestion.data_defs import PlotPlans
+from src.utils.streamlit.helpers.component import StreamlitComponent, StreamlitPage
+from src.utils.streamlit.helpers.session_keys import SessionKeyDescriptor, SessionKeysBase
 
 NEW_LABEL = TPlotID("New")
 
@@ -154,4 +150,7 @@ class FinalPlotsPage(StreamlitPage):
 
 
 if __name__ == "__main__":
+    st.set_page_config(page_title=FINAL_PLOTS_TEXTS.title, page_icon=FINAL_PLOTS_TEXTS.icon, layout="wide")
+    st.title(f"{FINAL_PLOTS_TEXTS.title} {FINAL_PLOTS_TEXTS.icon}")
+
     FinalPlotsPage().render()
