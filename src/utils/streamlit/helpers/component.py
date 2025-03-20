@@ -1,9 +1,7 @@
-from abc import ABC
-from abc import abstractmethod
-from typing import Generic
-from typing import TypeVar
+from abc import ABC, abstractmethod
+from typing import Generic, TypeVar
 
-from src.utils import streamlit as st
+import streamlit as st
 
 OutputType = TypeVar("OutputType")
 

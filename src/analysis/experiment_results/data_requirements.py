@@ -6,6 +6,7 @@ from typing import Any, NamedTuple, Optional, Union, cast
 
 import pandas as pd
 
+from src.analysis.experiment_results.results_bank import HeatmapRecord, InfoFlowRecord, ResultRecord
 from src.core.consts import (
     GRAPHS_ORDER,
     MODEL_ARCH,
@@ -15,11 +16,6 @@ from src.core.consts import (
     is_falcon,
     is_mamba_arch,
 )
-from src.data_ingestion.data_defs import DataReqs, FulfilledReqs, ResultBank
-from src.experiments.runners.evaluate_model import EvaluateModelConfig
-from src.experiments.runners.heatmap import HeatmapConfig
-from src.experiments.runners.info_flow import InfoFlowConfig
-from src.analysis.experiment_results.results_bank import HeatmapRecord, InfoFlowRecord, ResultRecord
 from src.core.names import COLS, EXPERIMENT_NAMES, DataReqCols
 from src.core.types import (
     MODEL_ARCH_AND_SIZE,
@@ -30,6 +26,10 @@ from src.core.types import (
     TVariationName,
     TWindowSize,
 )
+from src.data_ingestion.data_defs import DataReqs, FulfilledReqs, ResultBank
+from src.experiments.runners.evaluate_model import EvaluateModelConfig
+from src.experiments.runners.heatmap import HeatmapConfig
+from src.experiments.runners.info_flow import InfoFlowConfig
 
 
 class DataReq(NamedTuple):
@@ -196,7 +196,7 @@ def get_data_reqs() -> DataReqs:
     model archs = ALL
     window sizes = [STANDARD_WINDOW_SIZE_FOR_INFO_FLOW]
     is_all_correct = [False]
-    feature_category = [None]
+    feature_category = [FeatureCategory.ALL]
     target = [last]
     source = [last, first, subject, relation]
     """
@@ -216,7 +216,7 @@ def get_data_reqs() -> DataReqs:
                     window_size=STANDARD_WINDOW_SIZE_FOR_INFO_FLOW,
                     is_all_correct=False,
                     source=source,
-                    feature_category=None,
+                    feature_category=FeatureCategory.ALL,
                     target=TokenType.last,
                     prompt_idx=None,
                 ).validate()
@@ -242,10 +242,10 @@ def get_data_reqs() -> DataReqs:
     for model_arch_and_size in GRAPHS_ORDER:
         if is_mamba_arch(model_arch_and_size.arch):
             for source, feature_category in [
-                (TokenType.last, None),
-                (TokenType.first, None),
-                (TokenType.subject, None),
-                (TokenType.relation, None),
+                (TokenType.last, FeatureCategory.ALL),
+                (TokenType.first, FeatureCategory.ALL),
+                (TokenType.subject, FeatureCategory.ALL),
+                (TokenType.relation, FeatureCategory.ALL),
                 (TokenType.subject, FeatureCategory.SLOW_DECAY),
                 (TokenType.subject, FeatureCategory.FAST_DECAY),
             ]:
@@ -279,10 +279,10 @@ def get_data_reqs() -> DataReqs:
     for model_arch_and_size in GRAPHS_ORDER:
         if is_falcon(model_arch_and_size.size):
             for source, feature_category in [
-                (TokenType.last, None),
-                (TokenType.first, None),
-                (TokenType.subject, None),
-                (TokenType.relation, None),
+                (TokenType.last, FeatureCategory.ALL),
+                (TokenType.first, FeatureCategory.ALL),
+                (TokenType.subject, FeatureCategory.ALL),
+                (TokenType.relation, FeatureCategory.ALL),
                 (TokenType.subject, FeatureCategory.SLOW_DECAY),
                 (TokenType.subject, FeatureCategory.FAST_DECAY),
             ]:
@@ -330,7 +330,7 @@ def get_data_reqs() -> DataReqs:
                     window_size=STANDARD_WINDOW_SIZE_FOR_INFO_FLOW,
                     is_all_correct=False,
                     source=source,
-                    feature_category=None,
+                    feature_category=FeatureCategory.ALL,
                     target=TokenType.subject,
                     prompt_idx=None,
                 ).validate()
@@ -358,12 +358,12 @@ def get_data_reqs() -> DataReqs:
     for model_arch_and_size in GRAPHS_ORDER:
         if is_mamba_arch(model_arch_and_size.arch):
             for source, feature_category in [
-                (TokenType.last, None),
+                (TokenType.last, FeatureCategory.ALL),
                 (TokenType.subject, FeatureCategory.SLOW_DECAY),
                 (TokenType.subject, FeatureCategory.FAST_DECAY),
-                (TokenType.first, None),
-                (TokenType.subject, None),
-                (TokenType.relation, None),
+                (TokenType.first, FeatureCategory.ALL),
+                (TokenType.subject, FeatureCategory.ALL),
+                (TokenType.relation, FeatureCategory.ALL),
             ]:
                 data_reqs[
                     DataReq(
@@ -447,7 +447,7 @@ def get_data_reqs() -> DataReqs:
                             window_size=window_size,
                             is_all_correct=False,
                             source=source,
-                            feature_category=None,
+                            feature_category=FeatureCategory.ALL,
                             target=TokenType.last,
                             prompt_idx=None,
                         ).validate()
@@ -486,7 +486,7 @@ def get_data_reqs() -> DataReqs:
                         window_size=STANDARD_WINDOW_SIZE_FOR_INFO_FLOW,
                         is_all_correct=False,
                         source=source,
-                        feature_category=None,
+                        feature_category=FeatureCategory.ALL,
                         target=TokenType.last,
                         prompt_idx=None,
                     ).validate()

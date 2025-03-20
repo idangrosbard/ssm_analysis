@@ -33,7 +33,7 @@ if env_user := os.environ.get("USER"):
 class PathsConfig:
     """Configuration for project paths that can be easily mocked."""
 
-    PROJECT_DIR: Path = Path(__file__).parent.parent.resolve()
+    PROJECT_DIR: Path = Path(__file__).parent.parent.parent.resolve()
 
     @property
     def DATA_DIR(self) -> Path:

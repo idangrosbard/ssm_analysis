@@ -1,7 +1,8 @@
 from collections import defaultdict
 from typing import Optional
 
-from src.utils import streamlit as st
+import streamlit as st
+
 from src.utils.streamlit.helpers.cache import CachedFunction
 
 

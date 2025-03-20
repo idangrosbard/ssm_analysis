@@ -7,15 +7,6 @@ from matplotlib.figure import Figure
 from pygwalker.api.streamlit import StreamlitRenderer
 from streamlit import cache_resource
 
-from src.data_ingestion.data_defs import DataReqs, ResultBank, SummarizedDataFulfilledReqs
-from src.experiments.runners.heatmap import HeatmapConfig
-from src.experiments.runners.info_flow import InfoFlowConfig
-from src.app.app_consts import (
-    GLOBAL_APP_CONSTS,
-)
-from src.app.app_utils import (
-    format_path_for_display,
-)
 from src.analysis.experiment_results.data_requirements import (
     IDataFulfilled,
     ModelCombination,
@@ -29,11 +20,18 @@ from src.analysis.experiment_results.data_requirements import (
 from src.analysis.experiment_results.results_bank import (
     get_experiment_results_bank,
 )
-from src.core.names import EXPERIMENT_NAMES, ResultBankParamNames
-
-# from src.plots.info_flow_confidence import PlotMetadata, create_confidence_plot
 from src.analysis.plots.info_flow_confidence import PlotMetadata, create_confidence_plot
+from src.app.app_consts import (
+    GLOBAL_APP_CONSTS,
+)
+from src.app.app_utils import (
+    format_path_for_display,
+)
+from src.core.names import EXPERIMENT_NAMES, ResultBankParamNames
 from src.core.types import MODEL_ARCH_AND_SIZE, TPromptOriginalIndex, TVariationName, TWindowSize
+from src.data_ingestion.data_defs import DataReqs, ResultBank, SummarizedDataFulfilledReqs
+from src.experiments.runners.heatmap import HeatmapConfig
+from src.experiments.runners.info_flow import InfoFlowConfig
 from src.utils.streamlit.helpers.cache import CacheWithDependencies
 
 

@@ -1,17 +1,12 @@
 import contextvars
 import datetime as dt
-from typing import Callable
-from typing import Generic
-from typing import Optional
-from typing import ParamSpec
-from typing import Union
+from typing import Callable, Generic, Optional, ParamSpec, Union
 
 import humanize
+import streamlit as st
 import streamlit_antd_components as sac
 
-from src.utils import streamlit as st
 from src.utils.streamlit.helpers.component import OutputType
-from src.utils.streamlit.helpers.global_store import _get_global_store
 
 P = ParamSpec("P")
 
@@ -20,6 +15,8 @@ class CachedFunction(Generic[P, OutputType]):
     """A strongly typed wrapper for a cached function with recursive clearing and UI rendering."""
 
     def global_store(self):
+        from src.utils.streamlit.helpers.global_store import _get_global_store
+
         return _get_global_store()
 
     def __init__(self, func: Callable[P, OutputType], cached_func: Callable[P, OutputType]):
