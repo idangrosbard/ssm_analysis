@@ -14,7 +14,7 @@ from src.app.app_consts import (
     AppSessionKeys,
     DataReqConsts,
 )
-from src.app.components.inputs import select_gpu_type, select_variation, select_window_size
+from src.app.components.inputs import select_gpu_type, select_window_size
 from src.app.data_store import get_models_remaining_prompts
 from src.app.texts import HEATMAP_TEXTS
 from src.core.names import HeatmapCols, SummarizedDataFulfilledReqsCols
@@ -101,7 +101,7 @@ class RequirementExecution(StreamlitComponent):
             col1, col2 = st.columns(2)
 
             with col1:
-                select_variation()
+                AppSessionKeys.variation.create_input_widget()
 
             with col2:
                 if with_slurm:
@@ -168,7 +168,7 @@ class HeatmapGenerationComponent(StreamlitComponent):
         with col1:
             select_window_size()
         with col2:
-            select_variation()
+            AppSessionKeys.variation.create_input_widget()
         with col3:
             select_gpu_type()
 

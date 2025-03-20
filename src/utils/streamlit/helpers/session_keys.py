@@ -9,11 +9,18 @@ TSessionKey = TypeVar("TSessionKey")
 class SessionKey(Generic[TSessionKey]):
     """A strongly typed wrapper around streamlit session state values."""
 
-    def __init__(self, key: str, default_value: TSessionKey | None = None, allow_none: Optional[bool] = None):
+    def __init__(
+        self,
+        key: str,
+        default_value: TSessionKey | None = None,
+        allow_none: Optional[bool] = None,
+        original_name: str | None = None,
+    ):
         self._key = key
         self.default_value = default_value
         self._ever_changed = False
         self._allow_none = default_value is None if allow_none is None else allow_none
+        self._original_name = original_name if original_name is not None else key
 
     def exists(self) -> bool:
         return self.key in st.session_state
@@ -52,7 +59,8 @@ class SessionKey(Generic[TSessionKey]):
     @property
     def _key_for_prev_value(self) -> "SessionKey[TSessionKey | None]":
         sk = SessionKey(f"{self.key}_prev_value")
-        sk.init(None)
+        if self._allow_none:
+            sk.init(None)
         return sk
 
     @property
@@ -60,7 +68,12 @@ class SessionKey(Generic[TSessionKey]):
         """
         You need to check this value *before* the call for the component.
         """
+        if self.is_erroneous:
+            return self._key_for_prev_value.exists()
         return self._key_for_prev_value.value != self.value
+
+    def restore_prev_value(self):
+        self._update(self._key_for_prev_value.value)
 
     @property
     def prev_value(self) -> TSessionKey | None:
@@ -92,9 +105,16 @@ class SessionKey(Generic[TSessionKey]):
             st.rerun()
 
     @property
+    def is_erroneous(self) -> bool:
+        """
+        Consider the key erroneous if it doesn't exist and is not allowed to be none.
+        """
+        return not self.exists() and not self._allow_none
+
+    @property
     def value(self) -> TSessionKey:
-        """Get the current value. Raises KeyError if not _initialize and no default."""
-        if not self.exists() and not self._allow_none:
+        """Get the current value. Raises KeyError if erroneous."""
+        if self.is_erroneous:
             if st.button("Reset Value"):
                 self.reset_value()
             raise KeyError(f"Session key '{self.key}' not initialized and has no default value")
@@ -134,7 +154,7 @@ class SessionKey(Generic[TSessionKey]):
 
     def create_input_widget(
         self,
-        label: str,
+        label: str | None = None,
         streamlit_container: Any = st,
         group_optional_fields: GroupOptionalFieldsStrategy = GroupOptionalFieldsStrategy.NO,
         lowercase_labels: bool = False,
@@ -150,6 +170,8 @@ class SessionKey(Generic[TSessionKey]):
             ignore_empty_values: Whether to ignore empty values (default: False)
         """
         # Create a minimal Pydantic model for this single value
+        if label is None:
+            label = self._original_name
         from pydantic import BaseModel, Field, create_model
 
         # Get the actual type of the value by inspecting the generic parameters
@@ -181,30 +203,64 @@ class SessionKey(Generic[TSessionKey]):
             self.value = result["value"]
 
 
+is_global_refresh_marker_sk = SessionKey[True]("_global_refresh_marker")
+
+
+def mark_finished_global_refresh():
+    """
+    WORKAROUND:
+    Mark the current page as being refreshed.
+    Need to be called after a successful run in order to allow the dependent features to work correctly.
+    Therefore only nice to have features should be dependent on this value
+    """
+    is_global_refresh_marker_sk.value = True
+
+
+def is_in_global_refresh() -> bool:
+    """Check if the current page is being refreshed."""
+    return not is_global_refresh_marker_sk.exists()
+
+
 class SessionKeyDescriptor(Generic[TSessionKey]):
     """A descriptor that creates SessionKey instances with automatic prefixing."""
 
     def __init__(self, default_value: TSessionKey | None = None, allow_none: Optional[bool] = None):
         self.default_value = default_value
         self.key: str | None = None
+        self._original_name: str | None = None
         self.allow_none = allow_none
 
     def __set_name__(self, owner: Any, name: str):
         # Add prefix based on class name
         prefix = owner.__name__.lower().strip("_")
         self.key = f"{prefix}_{name}"
+        self._original_name = name
+
+    @property
+    def instance_key(self) -> str:
+        return f"_{self.key}_instance"
 
     def __get__(self, obj: Any, objtype: Any = None) -> SessionKey[TSessionKey]:
         if obj is None:
             raise ValueError("SessionKeyDescriptor must be used as a class attribute")
+
         # Create or get SessionKey instance
-        if not hasattr(obj, f"_{self.key}_instance"):
+        if not hasattr(obj, self.instance_key):
             assert self.key is not None, "SessionKeyDescriptor not properly initialized with __set_name__"
-            session_key = SessionKey(self.key, self.default_value, self.allow_none)
+            session_key = SessionKey(self.key, self.default_value, self.allow_none, self._original_name)
             if self.allow_none or self.default_value is not None:
                 session_key.init(cast(TSessionKey, self.default_value))
-            setattr(obj, f"_{self.key}_instance", session_key)
-        return getattr(obj, f"_{self.key}_instance")
+            setattr(obj, self.instance_key, session_key)
+        else:
+            session_key = cast(SessionKey[TSessionKey], getattr(obj, self.instance_key))
+            if session_key.is_erroneous:
+                if session_key.is_changed:
+                    session_key.restore_prev_value()
+                elif is_in_global_refresh():
+                    # if global refresh is in progress, meaning that we need to reset the values,
+                    # else, it will raise an error later
+                    session_key.reset_value()
+        return session_key
 
 
 _T_SESSION_KEYS_BASE = TypeVar("_T_SESSION_KEYS_BASE", bound="SessionKeysBase[Any]")

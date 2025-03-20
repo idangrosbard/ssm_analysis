@@ -18,19 +18,12 @@ def select_gpu_type():
     )
 
 
-def select_variation():
-    st.text_input(
-        AppGlobalText.variation,
-        key=AppSessionKeys.variation.key,
-    )
-
-
 def select_window_size():
     options = [1, 3, 5, 7, 9, 12, 15]
     st.selectbox(
         AppGlobalText.window_size,
         options=options,
-        key=AppSessionKeys.window_size.key,
+        key=AppSessionKeys.window_size.key_for_component,
         index=options.index(AppSessionKeys.window_size.value),
     )
 

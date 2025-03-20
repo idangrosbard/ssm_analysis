@@ -12,6 +12,7 @@ from src.app.pages import (
     p06_final_plots,
 )
 from src.utils.streamlit.helpers.component import StreamlitPage
+from src.utils.streamlit.helpers.session_keys import mark_finished_global_refresh
 
 st.set_page_config(layout="wide")
 
@@ -43,5 +44,6 @@ pg = st.navigation(
     },
 )
 
-
 pg.run()
+
+mark_finished_global_refresh()

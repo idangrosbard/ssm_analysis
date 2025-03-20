@@ -54,7 +54,7 @@ class StreamlitUtilsGlobalStore:
 
     def get_instance(self, func_name: str) -> Optional[CachedFunction]:
         """Get instance by function name, falling back to module search if needed."""
-        return self._instances[func_name]
+        return self._instances.get(func_name)
 
     def rebuild_instances(self):
         import inspect
