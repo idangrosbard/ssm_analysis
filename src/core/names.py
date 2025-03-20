@@ -182,3 +182,10 @@ class PlotPlanOptionCols(StrEnum):
     cols_options = PlotPlanCols.cols_options
     grids_options = PlotPlanCols.grids_options
     lines_options = PlotPlanCols.lines_options
+
+
+class SummarizedDataFulfilledReqsCols:
+    AvailableOptions = "Available Options"
+    Options = "Options"
+    CurrentOverride = "Current Override"
+    Key = "Key"

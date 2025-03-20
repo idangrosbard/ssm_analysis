@@ -14,8 +14,8 @@ from src.app.app_consts import (
     GLOBAL_APP_CONSTS,
     AppSessionKeys,
     DataReqConsts,
-    SummarizedDataFulfilledReqsCols,
 )
+from src.core.names import SummarizedDataFulfilledReqsCols
 from src.app.components.inputs import select_gpu_type, select_variation, select_window_size
 from src.app.data_store import get_models_remaining_prompts
 from src.app.texts import HEATMAP_TEXTS

@@ -1,37 +1,31 @@
-from pathlib import Path
-from typing import Literal
-
-import matplotlib.pyplot as plt
 import pandas as pd
-from matplotlib.figure import Figure
 from pygwalker.api.streamlit import StreamlitRenderer
 from streamlit import cache_resource
 
-from src.analysis.experiment_results.data_requirements import (
-    IDataFulfilled,
-    ModelCombination,
-    _load_data_fulfilled,
-    choose_latest_data_fulfilled,
-    get_data_fullfment_options,
-    get_data_reqs,
-    get_model_combinations_prompts,
-    get_model_evaluations,
-)
+from src.analysis.experiment_results.data_requirements import IDataFulfilled
+from src.analysis.experiment_results.data_requirements import ModelCombination
+from src.analysis.experiment_results.data_requirements import _load_data_fulfilled
+from src.analysis.experiment_results.data_requirements import choose_latest_data_fulfilled
+from src.analysis.experiment_results.data_requirements import get_data_fullfment_options
+from src.analysis.experiment_results.data_requirements import get_data_reqs
+from src.analysis.experiment_results.data_requirements import get_model_combinations_prompts
+from src.analysis.experiment_results.data_requirements import get_model_evaluations
 from src.analysis.experiment_results.results_bank import (
     get_experiment_results_bank,
 )
-from src.analysis.plots.info_flow_confidence import PlotMetadata, create_confidence_plot
 from src.app.app_consts import (
     GLOBAL_APP_CONSTS,
 )
-from src.app.app_utils import (
-    format_path_for_display,
-)
-from src.core.names import EXPERIMENT_NAMES, ResultBankParamNames
-from src.core.types import MODEL_ARCH_AND_SIZE, TPromptOriginalIndex, TVariationName, TWindowSize
-from src.data_ingestion.data_defs import DataReqs, ResultBank, SummarizedDataFulfilledReqs
+from src.core.names import EXPERIMENT_NAMES
+from src.core.names import ResultBankParamNames
+from src.core.types import MODEL_ARCH_AND_SIZE
+from src.core.types import TPromptOriginalIndex
+from src.core.types import TVariationName
+from src.core.types import TWindowSize
+from src.data_ingestion.data_defs import DataReqs
+from src.data_ingestion.data_defs import ResultBank
+from src.data_ingestion.data_defs import SummarizedDataFulfilledReqs
 from src.experiments.runners.heatmap import HeatmapConfig
-from src.experiments.runners.info_flow import InfoFlowConfig
 from src.utils.streamlit.helpers.cache import CacheWithDependencies
 
 
@@ -93,19 +87,6 @@ def load_fulfilled_reqs_df() -> SummarizedDataFulfilledReqs:
     return SummarizedDataFulfilledReqs(options, data_fulfilled_overides)
 
 
-@CacheWithDependencies()
-def load_experiment_fulfilled_reqs_df(experiment_name: EXPERIMENT_NAMES) -> pd.DataFrame:
-    """Load data for a specific experiment.
-
-    Args:
-        experiment_name: Name of the experiment to load data for
-
-    Returns:
-        DataFrame with experiment data
-    """
-    df = load_fulfilled_reqs_df().to_df()
-    return df[df[ResultBankParamNames.experiment_name] == experiment_name]
-
 
 @CacheWithDependencies()
 def get_merged_evaluations(prompt_idx: TPromptOriginalIndex, variation: TVariationName) -> pd.DataFrame:
@@ -144,155 +125,11 @@ def get_merged_evaluations(prompt_idx: TPromptOriginalIndex, variation: TVariati
 
 
 @CacheWithDependencies()
-def get_models_is_heatmap_available(
-    prompt_idx: TPromptOriginalIndex, variation: TVariationName, window_size: TWindowSize
-) -> dict[MODEL_ARCH_AND_SIZE, Path]:
-    """Check if a model has a heatmap for a given prompt index."""
-    return {
-        model_combination: HeatmapConfig(
-            model_arch=model_combination.arch,
-            model_size=model_combination.size,
-            window_size=window_size,
-            variation=variation,
-            prompt_indices_rows=[],
-            prompt_original_indices=[prompt_idx],
-        ).output_heatmap_path(prompt_idx)
-        for model_combination in GLOBAL_APP_CONSTS.MODELS_COMBINATIONS
-    }
-
-
-def create_info_flow_plots(
-    df: pd.DataFrame,
-    grid_param: str,
-    row_param: str,
-    col_param: str,
-    line_param: str,
-    plot_width: int,
-    plot_height: int,
-    confidence_level: float,
-    custom_colors: dict[str, str],
-    custom_styles: dict[str, str],
-) -> tuple[dict[str, Figure], list[str]]:
-    """Create info flow plots for the given data.
-
-    Args:
-        df: The DataFrame containing the data
-        grid_param: The parameter used for grid
-        row_param: The parameter used for rows
-        col_param: The parameter used for columns
-        line_param: The parameter used for lines
-        plot_width: Width of each plot
-        plot_height: Height of each plot
-        confidence_level: Confidence level for error bars
-        custom_colors: Custom colors for each line
-        custom_styles: Custom line styles for each line
-
-    Returns:
-        A tuple of:
-            - Dictionary mapping plot keys to figures
-            - List of error messages for failed plots
-    """
-    grid_values = sorted(df[grid_param].unique())
-    plots = {}
-    failed_plots = []
-
-    for grid_val in grid_values:
-        try:
-            grid_df = df[df[grid_param] == grid_val]
-
-            # Get unique values for rows and columns
-            row_values = sorted(grid_df[row_param].unique())
-            col_values = sorted(grid_df[col_param].unique())
-
-            # Create figure with subplots
-            fig, _ = plt.subplots(
-                len(row_values), len(col_values), figsize=(plot_width / 100, plot_height / 100), squeeze=False
-            )
-
-            # Create plots for each combination
-            for i, row_val in enumerate(row_values):
-                for j, col_val in enumerate(col_values):
-                    subplot_df = grid_df[(grid_df[row_param] == row_val) & (grid_df[col_param] == col_val)]
-
-                    if subplot_df.empty:
-                        continue
-
-                    # Group by line parameter and create plot
-                    targets_window_outputs = {}
-                    paths = []
-                    load_errors = []
-
-                    for _, row in subplot_df.iterrows():
-                        line_val = row[line_param]
-                        if pd.isna(line_val):
-                            continue
-
-                        try:
-                            window_outputs = InfoFlowConfig.load_output(row["data_path"])
-                            targets_window_outputs[line_val] = window_outputs
-                            paths.append(format_path_for_display(row["data_path"]))
-                        except Exception as e:
-                            load_errors.append(f"Error loading data for {line_val}: {e}")
-                            continue
-
-                    if not targets_window_outputs:
-                        if load_errors:
-                            failed_plots.append(
-                                f"Failed to load any data for {grid_param}={grid_val}, "
-                                f"{row_param}={row_val}, {col_param}={col_val}:\n"
-                                + "\n".join(f"  - {err}" for err in load_errors)
-                            )
-                        continue
-
-                    plots_meta_data: dict[Literal["acc", "diff"], PlotMetadata] = {
-                        "acc": {
-                            "title": "Accuracy",
-                            "ylabel": "% accuracy",
-                            "ylabel_loc": "center",
-                            "axhline_value": 100.0,
-                            "ylim": (60.0, 105.0),
-                        },
-                        "diff": {
-                            "title": "Normalized change in prediction probability",
-                            "ylabel": "% probability change",
-                            "ylabel_loc": "top",
-                            "axhline_value": 0.0,
-                            "ylim": (-50.0, 50.0),
-                        },
-                    }
-
-                    try:
-                        fig = create_confidence_plot(
-                            targets_window_outputs=targets_window_outputs,
-                            confidence_level=confidence_level,
-                            title=f"{grid_param}={grid_val}\n{row_param}={row_val}, {col_param}={col_val}",
-                            plots_meta_data=plots_meta_data,
-                            # colors=custom_colors,
-                            # line_styles=custom_styles,
-                        )
-
-                        plots[f"{grid_val}_{row_val}_{col_val}"] = fig
-
-                    except Exception:
-                        failed_plots.append(
-                            "Failed to create plot for one of the paths: "
-                            # f"{paths}\n{row['data_path']}:\nError: {str(e)}"
-                        )
-                        continue
-
-        except Exception as e:
-            failed_plots.append(f"Failed to process grid {grid_param}={grid_val}: {str(e)}")
-            continue
-
-    return plots, failed_plots
-
-
-@CacheWithDependencies()
 def get_models_remaining_prompts(
-    model_combinations: list[MODEL_ARCH_AND_SIZE],
-    window_size: TWindowSize,
-    variation: TVariationName,
-    prompt_original_indices: list[TPromptOriginalIndex],
+        model_combinations: list[MODEL_ARCH_AND_SIZE],
+        window_size: TWindowSize,
+        variation: TVariationName,
+        prompt_original_indices: list[TPromptOriginalIndex],
 ) -> dict[MODEL_ARCH_AND_SIZE, HeatmapConfig]:
     """Get the remaining prompts for each model."""
     res = {}
@@ -313,7 +150,7 @@ def get_models_remaining_prompts(
 
 @CacheWithDependencies()
 def load_model_combinations_prompts(
-    variation: TVariationName, model_arch_and_sizes: list[MODEL_ARCH_AND_SIZE]
+        variation: TVariationName, model_arch_and_sizes: list[MODEL_ARCH_AND_SIZE]
 ) -> list[ModelCombination]:
     """Get all possible model combinations and their corresponding prompts."""
     return get_model_combinations_prompts(variation, model_arch_and_sizes)

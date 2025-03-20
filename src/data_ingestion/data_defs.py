@@ -99,7 +99,7 @@ class ResultBank(DataObject):
 
 class SummarizedDataFulfilledReqs(DataObject):
     def __init__(self, fulfilled_reqs: FulfilledReqs, overrides: Optional[dict["DataReq", Optional["ResultRecord"]]]):
-        from src.app.app_consts import SummarizedDataFulfilledReqsCols
+        from src.core.names import SummarizedDataFulfilledReqsCols
 
         self._raw = []
         for req, opts in fulfilled_reqs._raw.items():

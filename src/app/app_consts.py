@@ -1,17 +1,20 @@
-from enum import StrEnum
-from typing import Literal, Union
+from typing import Literal
+from typing import Union
 
-from src.core.consts import GRAPHS_ORDER, model_and_size_to_slurm_gpu_type
-from src.core.names import COLS, ResultBankParamNames
-from src.core.types import MODEL_ARCH_AND_SIZE, TVariationName, TWindowSize
+from src.core.consts import GRAPHS_ORDER
+from src.core.consts import model_and_size_to_slurm_gpu_type
+from src.core.names import COLS
+from src.core.names import ResultBankParamNames
+from src.core.names import SummarizedDataFulfilledReqsCols
+from src.core.types import MODEL_ARCH_AND_SIZE
+from src.core.types import TVariationName
+from src.core.types import TWindowSize
 from src.utils.infra.slurm import SLURM_GPU_TYPE
-from src.utils.streamlit.helpers.session_keys import SessionKeysBase
 from src.utils.streamlit.helpers.session_keys import SessionKeyDescriptor
+from src.utils.streamlit.helpers.session_keys import SessionKeysBase
 
 
 # region Global App constants
-class AppCols:
-    pass
 
 
 class GLOBAL_APP_CONSTS:
@@ -41,12 +44,6 @@ class GLOBAL_APP_CONSTS:
         COLS.EVALUATE_MODEL.MODEL_TOP_OUTPUTS,
     ]
 
-    class PaginationConfig:
-        RESULTS_BANK = {"default_page_size": 20}
-        DATA_REQS = {"default_page_size": 20}
-        COMBINATIONS = {"default_page_size": 10}
-        PROMPTS = {"default_page_size": 10}
-
 
 class _AppSessionKeys(SessionKeysBase["_AppSessionKeys"]):
     # Each descriptor creates a SessionKey with the class name prefix
@@ -64,18 +61,7 @@ class _AppSessionKeys(SessionKeysBase["_AppSessionKeys"]):
 AppSessionKeys = _AppSessionKeys()
 
 
-# Pagination constants
-
-
-# endregion
-
-
 # region Data Requirements
-class SummarizedDataFulfilledReqsCols:
-    AvailableOptions = "Available Options"
-    Options = "Options"
-    CurrentOverride = "Current Override"
-    Key = "Key"
 
 
 class DataReqConsts:
@@ -93,30 +79,6 @@ class DataReqConsts:
         ResultBankParamNames.prompt_idx,
     ]
 
-    DATA_REQS_DEFAULT_FILTER_VALUES = {
-        SummarizedDataFulfilledReqsCols.AvailableOptions: [0],
-        ResultBankParamNames.is_all_correct: [False],
-    }
-
-
-# endregion
-
-
-# region Info Flow Plots
-class InfoFlowCols:
-    pass
-
-
-class InfoFlowConsts:
-    ParamRole = Literal["grid", "column", "row", "line", "fixed"]
-    PARAM_ROLES: list[ParamRole] = ["fixed", "grid", "column", "row", "line"]
-    DEFAULT_LINE_STYLES = ["-", "--", ":", "-."]
-    DEFAULT_PLOT_CONFIG = {
-        "confidence_level": 0.95,
-        "plot_height": 400,
-        "plot_width": 600,
-    }
-
 
 # endregion
 
@@ -126,12 +88,5 @@ class InfoFlowConsts:
 
 class HeatmapConsts:
     MINIMUM_COMBINATIONS_FOR_FILTERING = 30
-
-
-class ModelFilterOption(StrEnum):
-    CORRECT = "correct"
-    ANY = "any"
-    INCORRECT = "incorrect"
-
 
 # endregion

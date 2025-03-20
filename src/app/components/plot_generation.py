@@ -24,7 +24,7 @@ from src.core.consts import MODEL_SIZES_PER_ARCH_TO_MODEL_ID
 from src.data_ingestion.data_defs import DataReqs, FulfilledReqs, PlotPlans, ResultBank
 from src.experiments.runners.heatmap import HeatmapConfig
 from src.experiments.runners.info_flow import InfoFlowConfig
-from src.app.app_consts import SummarizedDataFulfilledReqsCols
+from src.core.names import SummarizedDataFulfilledReqsCols
 from src.app.texts import FINAL_PLOTS_TEXTS
 from src.analysis.experiment_results.data_requirements import get_model_evaluations
 from src.analysis.experiment_results.plot_plan import PlotPlan, PlotType, get_hyper_param_definition
@@ -106,20 +106,7 @@ COLORS = {
     "last": (214, 39, 40),
 }
 
-SOURCES = ["first", "relation", "subject", "last"]
 
-
-def load_data(input_path: Path, idx: bool = False) -> pd.DataFrame:
-    """Load data from a CSV file."""
-    if not input_path.exists():
-        raise FileNotFoundError(f"File not found: {input_path}")
-
-    df = pd.read_csv(input_path)
-
-    if idx:
-        df = df.set_index("Unnamed: 0")
-
-    return df
 
 
 @dataclass

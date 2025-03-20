@@ -1,154 +1,18 @@
 from pathlib import Path
-from typing import Any, Callable, Optional, TypedDict, TypeVar, cast
+from typing import Optional
+from typing import TypeVar
 
 import pandas as pd
 import streamlit as st
 import streamlit_antd_components as sac
 from streamlit.elements.arrow import DataframeState
 
-from src.core.consts import PATHS
-from src.experiments.runners.heatmap import HeatmapConfig
 from src.app.app_consts import HeatmapConsts
-from src.analysis.experiment_results.data_requirements import DataReq
-from src.core.names import HeatmapCols, ResultBankParamNames
-from src.core.types import MODEL_ARCH, TModelSize, TPromptOriginalIndex, TVariationName, TWindowSize
+from src.core.consts import PATHS
+from src.core.names import HeatmapCols
 from src.utils.file_system import fast_relative_to
 
 T = TypeVar("T")
-
-
-class PaginationConfig(TypedDict):
-    page_size: int
-    current_page: int
-
-
-def create_pagination_config(
-    total_items: int,
-    default_page_size: int = 10,
-    pages_options: tuple[int, ...] = (5, 10, 20, 50, 100),
-    on_change: Optional[Callable[[], None]] = None,
-) -> PaginationConfig:
-    """Create pagination configuration.
-
-    Args:
-        total_items: Total number of items to paginate
-        default_page_size: Default number of items per page
-        key_prefix: Prefix for session state keys to avoid conflicts
-
-    Returns:
-        PaginationConfig with page size and current page
-    """
-    # Create columns for pagination controls
-    cols = st.columns(
-        [10, 1],
-        vertical_alignment="bottom",
-    )
-    with cols[1]:
-        page_size = st.selectbox(
-            "Items per page",
-            options=pages_options,
-            index=pages_options.index(default_page_size),
-        )
-    with cols[0]:
-        current_page = sac.pagination(
-            total=total_items,
-            page_size=page_size,
-            align="center",
-            show_total=True,
-            jump=True,
-            variant="filled",
-            key=f"pagination_{total_items}_{page_size}",
-            on_change=cast(Callable[[], Any], on_change),
-        )
-
-    assert isinstance(current_page, int)
-    return {
-        "page_size": page_size,
-        "current_page": current_page,
-    }
-
-
-def apply_pagination(df: pd.DataFrame, pagination_config: PaginationConfig) -> pd.DataFrame:
-    """Apply pagination to a DataFrame.
-
-    Args:
-        df: DataFrame to paginate
-        pagination_config: Pagination configuration
-
-    Returns:
-        Paginated DataFrame
-    """
-
-    start_idx = (pagination_config["current_page"] - 1) * pagination_config["page_size"]
-    end_idx = start_idx + pagination_config["page_size"]
-    return df.iloc[start_idx:end_idx]
-
-
-def create_filters(
-    df: pd.DataFrame,
-    filter_columns: list[str],
-    exclude_columns: list[str] = [],
-    default_values: dict[str, list] = {},
-) -> dict[str, list]:
-    """Create sidebar filters for the given dataframe columns.
-
-    Args:
-        df: DataFrame to create filters for
-        filter_columns: List of columns to create filters for
-        exclude_columns: List of columns to exclude from filtering
-        default_values: Dictionary of default values for filters
-
-    Returns:
-        Dictionary of selected filter values for each column
-    """
-
-    with st.sidebar:
-        with st.expander("Filters"):
-            filters = {}
-
-            # Create filters for each column
-            for col in filter_columns:
-                if col in exclude_columns:
-                    continue
-                unique_values = sorted(df[col].dropna().unique())  # type: ignore
-                if len(unique_values) <= 1:
-                    continue
-
-                filters[col] = st.multiselect(f"Filter {col}", unique_values, default=default_values.get(col, []))
-
-            return filters
-
-
-def apply_filters(df: pd.DataFrame, filters: dict[str, list]) -> pd.DataFrame:
-    """Apply filters to the dataframe.
-
-    Args:
-        df: DataFrame to filter
-        filters: Dictionary of filter values for each column
-
-    Returns:
-        Filtered DataFrame
-    """
-    filtered_df = df.copy()
-    for col, selected_values in filters.items():
-        if selected_values:
-            filtered_df = filtered_df[filtered_df[col].isin(selected_values)]
-    return filtered_df
-
-
-def get_data_req_from_df_row(row: pd.Series) -> DataReq:
-    return DataReq.create_and_validate(
-        **{
-            param: row[param]
-            for param in ResultBankParamNames
-            if param not in [ResultBankParamNames.path, ResultBankParamNames.variation]
-        },
-    )
-
-
-def get_config_from_df_row(row: pd.Series):
-    data_req = get_data_req_from_df_row(row)
-    return data_req.get_config(row[ResultBankParamNames.variation])
 
 
 def format_path_for_display(path: Path | str | None, allow_slow: bool = False) -> str:
@@ -182,19 +46,6 @@ def reverse_format_path_for_display(path: Path) -> Path:
         Reversed formatted path
     """
     return PATHS.PROJECT_DIR / path
-
-
-def get_param_values(df: pd.DataFrame, param: str) -> list[Any]:
-    """Get unique values for a parameter from the dataframe.
-
-    Args:
-        df: DataFrame to get values from
-        param: Parameter to get values for
-
-    Returns:
-        List of unique values
-    """
-    return sorted(df[param].unique())
 
 
 def filter_combinations(df: pd.DataFrame, model_names: list[str]) -> pd.DataFrame:
@@ -265,31 +116,6 @@ def filter_combinations(df: pd.DataFrame, model_names: list[str]) -> pd.DataFram
             df = df[df[model_names].apply(lambda row: (row == "✅").sum(), axis=1) >= min_correct]
 
     return df
-
-
-def get_model_heatmap_config(
-    model_arch: MODEL_ARCH,
-    model_size: TModelSize,
-    window_size: TWindowSize,
-    variation: TVariationName,
-    prompt_original_indices: list[TPromptOriginalIndex],
-) -> HeatmapConfig:
-    """Get the data requirement for a specific model.
-
-    Args:
-        model_arch: Model architecture
-        model_size: Model size
-
-    Returns:
-        Data requirement for the model
-    """
-    return HeatmapConfig(
-        model_arch=model_arch,
-        model_size=model_size,
-        window_size=window_size,
-        variation=variation,
-        prompt_original_indices=prompt_original_indices,
-    )
 
 
 def get_steamlit_dataframe_selected_row(selected_row: Optional[DataframeState]) -> Optional[int]:
