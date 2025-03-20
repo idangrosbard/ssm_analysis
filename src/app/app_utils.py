@@ -1,10 +1,8 @@
 from pathlib import Path
-from typing import Optional
-from typing import TypeVar
+from typing import Optional, TypeVar
 
 import pandas as pd
 import streamlit as st
-import streamlit_antd_components as sac
 from streamlit.elements.arrow import DataframeState
 
 from src.app.app_consts import HeatmapConsts

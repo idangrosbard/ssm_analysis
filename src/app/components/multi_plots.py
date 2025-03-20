@@ -1,16 +1,12 @@
 from pathlib import Path
 
 import streamlit as st
-import streamlit_antd_components as sac
 
-from src.analysis.plots.image_combiner import ImageGridParams
-from src.analysis.plots.image_combiner import combine_image_grid
-from src.app.app_consts import AppSessionKeys
-from src.app.app_consts import GLOBAL_APP_CONSTS
+from src.analysis.plots.image_combiner import ImageGridParams, combine_image_grid
+from src.app.app_consts import GLOBAL_APP_CONSTS, AppSessionKeys
 from src.app.components.inputs import choose_heatmap_parms
 from src.core.consts import GRAPHS_ORDER
-from src.core.types import MODEL_SIZE_CAT
-from src.core.types import TPromptOriginalIndex
+from src.core.types import MODEL_SIZE_CAT, TPromptOriginalIndex
 from src.experiments.runners.heatmap import HeatmapConfig
 from src.utils.streamlit.components.extended_streamlit_pydantic import pydantic_input
 from src.utils.streamlit.helpers.component import StreamlitComponent

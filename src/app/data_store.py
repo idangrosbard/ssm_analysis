@@ -2,29 +2,24 @@ import pandas as pd
 from pygwalker.api.streamlit import StreamlitRenderer
 from streamlit import cache_resource
 
-from src.analysis.experiment_results.data_requirements import IDataFulfilled
-from src.analysis.experiment_results.data_requirements import ModelCombination
-from src.analysis.experiment_results.data_requirements import _load_data_fulfilled
-from src.analysis.experiment_results.data_requirements import choose_latest_data_fulfilled
-from src.analysis.experiment_results.data_requirements import get_data_fullfment_options
-from src.analysis.experiment_results.data_requirements import get_data_reqs
-from src.analysis.experiment_results.data_requirements import get_model_combinations_prompts
-from src.analysis.experiment_results.data_requirements import get_model_evaluations
+from src.analysis.experiment_results.data_requirements import (
+    IDataFulfilled,
+    ModelCombination,
+    _load_data_fulfilled,
+    choose_latest_data_fulfilled,
+    get_data_fullfment_options,
+    get_data_reqs,
+    get_model_combinations_prompts,
+    get_model_evaluations,
+)
 from src.analysis.experiment_results.results_bank import (
     get_experiment_results_bank,
 )
 from src.app.app_consts import (
     GLOBAL_APP_CONSTS,
 )
-from src.core.names import EXPERIMENT_NAMES
-from src.core.names import ResultBankParamNames
-from src.core.types import MODEL_ARCH_AND_SIZE
-from src.core.types import TPromptOriginalIndex
-from src.core.types import TVariationName
-from src.core.types import TWindowSize
-from src.data_ingestion.data_defs import DataReqs
-from src.data_ingestion.data_defs import ResultBank
-from src.data_ingestion.data_defs import SummarizedDataFulfilledReqs
+from src.core.types import MODEL_ARCH_AND_SIZE, TPromptOriginalIndex, TVariationName, TWindowSize
+from src.data_ingestion.data_defs import DataReqs, ResultBank, SummarizedDataFulfilledReqs
 from src.experiments.runners.heatmap import HeatmapConfig
 from src.utils.streamlit.helpers.cache import CacheWithDependencies
 
@@ -87,7 +82,6 @@ def load_fulfilled_reqs_df() -> SummarizedDataFulfilledReqs:
     return SummarizedDataFulfilledReqs(options, data_fulfilled_overides)
 
 
-
 @CacheWithDependencies()
 def get_merged_evaluations(prompt_idx: TPromptOriginalIndex, variation: TVariationName) -> pd.DataFrame:
     """Get merged evaluations for a specific prompt.
@@ -126,10 +120,10 @@ def get_merged_evaluations(prompt_idx: TPromptOriginalIndex, variation: TVariati
 
 @CacheWithDependencies()
 def get_models_remaining_prompts(
-        model_combinations: list[MODEL_ARCH_AND_SIZE],
-        window_size: TWindowSize,
-        variation: TVariationName,
-        prompt_original_indices: list[TPromptOriginalIndex],
+    model_combinations: list[MODEL_ARCH_AND_SIZE],
+    window_size: TWindowSize,
+    variation: TVariationName,
+    prompt_original_indices: list[TPromptOriginalIndex],
 ) -> dict[MODEL_ARCH_AND_SIZE, HeatmapConfig]:
     """Get the remaining prompts for each model."""
     res = {}
@@ -150,7 +144,7 @@ def get_models_remaining_prompts(
 
 @CacheWithDependencies()
 def load_model_combinations_prompts(
-        variation: TVariationName, model_arch_and_sizes: list[MODEL_ARCH_AND_SIZE]
+    variation: TVariationName, model_arch_and_sizes: list[MODEL_ARCH_AND_SIZE]
 ) -> list[ModelCombination]:
     """Get all possible model combinations and their corresponding prompts."""
     return get_model_combinations_prompts(variation, model_arch_and_sizes)

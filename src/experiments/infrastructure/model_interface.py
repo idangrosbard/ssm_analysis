@@ -6,8 +6,6 @@ import torch.nn.functional as F
 from torch import Tensor
 
 from src.core.consts import is_falcon
-from src.experiments.knockout.gpt.gpt2 import gpt2_knockout_utils
-from src.experiments.knockout.mamba.mamba1.helpers.ssm_interfere import SSMInterfereHook
 from src.core.types import (
     MODEL_ARCH,
     MODEL_ARCH_AND_SIZE,
@@ -22,6 +20,8 @@ from src.core.types import (
     TTokenizer,
 )
 from src.experiments.infrastructure.setup_models import get_tokenizer_and_model
+from src.experiments.knockout.gpt.gpt2 import gpt2_knockout_utils
+from src.experiments.knockout.mamba.mamba1.helpers.ssm_interfere import SSMInterfereHook
 
 
 class ModelInterface(ABC):

@@ -2,8 +2,8 @@ import numpy as np
 import pytest
 import torch
 
-from src.experiments.knockout.mamba.mamba1.helpers.knockout_scan import knockout_matrix, knockout_scan
 from src.core.types import TSSM_A, TSSM_B, TSSM_C, KnockoutMode, TSSM_Bu, TSSMInput, TSSMState
+from src.experiments.knockout.mamba.mamba1.helpers.knockout_scan import knockout_matrix, knockout_scan
 from src.utils.type_checking import tensor_type_check
 
 B_D = 1  # Batch dimension

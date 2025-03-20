@@ -1,14 +1,14 @@
 import pyrallis
 
-from src.experiments.full_pipeline import FullPipelineConfig
-from src.core.types import MODEL_ARCH
+from src.core.types import MODEL_ARCH, TModelSize, TWindowSize
+from src.experiments.runners.full_pipeline import FullPipelineConfig
 
 
 @pyrallis.wrap()
 def main(args: FullPipelineConfig):
     # args.with_slurm = True
     # gpu_type = "titan_xp-studentrun"
-    window_sizes = [9]
+    window_sizes = [TWindowSize(9)]
     # window_sizes = [1, 3, 5, 9, 12, 15]
     # experiment_name = "heatmap_debug_use_matrix"
     # args.variation = "v1_titan_xp"
@@ -31,7 +31,7 @@ def main(args: FullPipelineConfig):
         # (MODEL_ARCH.GPT2, "1.5B"),
     ]:
         args.model_arch = model_arch
-        args.model_size = model_size
+        args.model_size = TModelSize(model_size)
         # args.variation = "v3"
         # if model_arch == MODEL_ARCH.GPT2:
         #     args.variation = "v2"

@@ -9,10 +9,11 @@ from datasets import (
 from datasets import (
     load_dataset as huggingface_load_dataset,
 )
+
 from src.core.consts import COUNTER_FACT_2_KNOWN1000_COL_CONV, DATASETS_IDS, PATHS
-from src.data_ingestion.datasets.splitting import split_dataset
 from src.core.names import COLS
 from src.core.types import DATASETS, FILTERATIONS, SPLIT, DatasetArgs, TSplitChoise
+from src.data_ingestion.datasets.splitting import split_dataset
 
 
 def load_splitted_counter_fact(

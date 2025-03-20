@@ -13,6 +13,8 @@ consistent configuration across all steps.
 
 from dataclasses import dataclass
 
+from src.core.names import EXPERIMENT_NAMES
+from src.core.types import TInfoFlowSource, TokenType, TPromptOriginalIndex, TRowPosition, TWindowSize
 from src.experiments.infrastructure.base_config import (
     BASE_OUTPUT_KEYS,
     BaseConfig,
@@ -21,8 +23,6 @@ from src.experiments.infrastructure.base_config import (
 from src.experiments.runners.evaluate_model import EvaluateModelConfig
 from src.experiments.runners.heatmap import HEATMAP_PLOT_FUNCS, HeatmapConfig
 from src.experiments.runners.info_flow import InfoFlowConfig
-from src.core.names import EXPERIMENT_NAMES
-from src.core.types import TInfoFlowSource, TokenType, TPromptOriginalIndex, TRowPosition, TWindowSize
 
 
 @dataclass

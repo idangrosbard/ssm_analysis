@@ -9,18 +9,17 @@ import streamlit as st
 from rich.console import Console
 from st_aggrid import AgGrid, DataReturnMode, GridUpdateMode
 
-from src.data_ingestion.data_defs import DataReqs, SummarizedDataFulfilledReqs
 from src.app.app_consts import (
     GLOBAL_APP_CONSTS,
     AppSessionKeys,
     DataReqConsts,
 )
-from src.core.names import SummarizedDataFulfilledReqsCols
 from src.app.components.inputs import select_gpu_type, select_variation, select_window_size
 from src.app.data_store import get_models_remaining_prompts
 from src.app.texts import HEATMAP_TEXTS
-from src.core.names import HeatmapCols
+from src.core.names import HeatmapCols, SummarizedDataFulfilledReqsCols
 from src.core.types import MODEL_ARCH_AND_SIZE, TPromptOriginalIndex
+from src.data_ingestion.data_defs import DataReqs, SummarizedDataFulfilledReqs
 from src.utils.streamlit.components.aagrid import SelectionMode, base_grid_builder, set_aagrid_apply_default_filters
 from src.utils.streamlit.helpers.component import StreamlitComponent
 from src.utils.types_utils import select_indexes_from_list

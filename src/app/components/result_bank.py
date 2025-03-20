@@ -2,10 +2,10 @@ from typing import Optional
 
 from st_aggrid import AgGrid, AgGridReturn, DataReturnMode, GridUpdateMode
 
-from src.data_ingestion.data_defs import ResultBank
 from src.core.names import EXPERIMENT_NAMES, ResultBankParamNames
-from src.utils.streamlit.components.aagrid import SelectionMode, base_grid_builder, set_aagrid_apply_default_filters
+from src.data_ingestion.data_defs import ResultBank
 from src.data_ingestion.helpers.dataframe import validate_one_selected_row_dataframe
+from src.utils.streamlit.components.aagrid import SelectionMode, base_grid_builder, set_aagrid_apply_default_filters
 from src.utils.streamlit.helpers.component import StreamlitComponent
 
 

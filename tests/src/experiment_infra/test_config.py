@@ -2,8 +2,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import cast
 
-from src.experiments.infrastructure.base_config import BaseConfig
 from src.core.names import EXPERIMENT_NAMES
+from src.experiments.infrastructure.base_config import BaseConfig
 
 EXPERIMENT_NAME_BEFORE = "simple"
 EXPERIMENT_NAME_AFTER = "new_experiment_name"

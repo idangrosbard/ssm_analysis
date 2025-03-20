@@ -178,5 +178,3 @@ class MODEL_ARCH_AND_SIZE(NamedTuple):
 
 
 # endregion
-
-

@@ -9,9 +9,6 @@ import pytest
 from datasets import DatasetDict
 
 from src.core.consts import PathsConfig
-from src.data_ingestion.datasets.download_dataset import load_splitted_counter_fact
-from src.experiments.runners.full_pipeline import FullPipelineConfig, main_local
-from src.experiments.runners.info_flow import forward_eval
 from src.core.names import COLS
 from src.core.types import (
     FILTERATIONS,
@@ -24,6 +21,9 @@ from src.core.types import (
     TVariationName,
     TWindowSize,
 )
+from src.data_ingestion.datasets.download_dataset import load_splitted_counter_fact
+from src.experiments.runners.full_pipeline import FullPipelineConfig, main_local
+from src.experiments.runners.info_flow import forward_eval
 
 HEATMAP_SIZE = 5
 ORIGINAL_IDS = [

@@ -21,17 +21,24 @@ import pandas as pd
 import torch
 from tqdm import tqdm
 
+from src.analysis.plots.heatmaps import simple_diff_fixed
 from src.core.consts import MODEL_SIZES_PER_ARCH_TO_MODEL_ID
+from src.core.names import EXPERIMENT_NAMES
+from src.core.types import (
+    MODEL_ARCH_AND_SIZE,
+    FeatureCategory,
+    TPromptOriginalIndex,
+    TRowPosition,
+    TWindow,
+    TWindowSize,
+)
+from src.data_ingestion.helpers.logits_utils import Prompt, decode_tokens, get_prompt_row, get_prompt_row_index
 from src.experiments.infrastructure.base_config import (
     BASE_OUTPUT_KEYS,
     BaseConfig,
     create_mutable_field,
 )
 from src.experiments.infrastructure.model_interface import get_model_interface
-from src.core.names import EXPERIMENT_NAMES
-from src.analysis.plots.heatmaps import simple_diff_fixed
-from src.core.types import MODEL_ARCH_AND_SIZE, FeatureCategory, TPromptOriginalIndex, TRowPosition, TWindow, TWindowSize
-from src.data_ingestion.helpers.logits_utils import Prompt, decode_tokens, get_prompt_row, get_prompt_row_index
 from src.experiments.infrastructure.setup_models import get_tokenizer
 
 

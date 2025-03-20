@@ -10,7 +10,6 @@ import pyrallis
 from submitit.slurm.slurm import SlurmJob
 
 from src.core.consts import MODEL_SIZES_PER_ARCH_TO_MODEL_ID, PATHS
-from src.data_ingestion.datasets.download_dataset import load_splitted_counter_fact
 from src.core.names import COLS, EXPERIMENT_NAMES
 from src.core.types import (
     DATASETS,
@@ -23,14 +22,14 @@ from src.core.types import (
     TVariationName,
     TWindowSize,
 )
-from src.utils.infra.slurm import SLURM_GPU_TYPE
+from src.data_ingestion.datasets.download_dataset import load_splitted_counter_fact
 from src.utils.infra.experiment_helper import create_run_id
 from src.utils.infra.output_path import (
     _ATTRIBUTE_TYPE,
     OutputKey,
     combine_output_keys,
 )
-from src.utils.infra.slurm import submit_job
+from src.utils.infra.slurm import SLURM_GPU_TYPE, submit_job
 
 _TBaseConfig = TypeVar("_TBaseConfig", bound="BaseConfig")
 

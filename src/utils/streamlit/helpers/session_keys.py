@@ -1,18 +1,7 @@
-from typing import Any
-from typing import Callable
-from typing import ClassVar
-from typing import Generic
-from typing import Optional
-from typing import Type
-from typing import TypeVar
-from typing import cast
-from typing import get_args
-from typing import get_origin
-
-from streamlit_pydantic.ui_renderer import GroupOptionalFieldsStrategy
-from streamlit_pydantic.ui_renderer import InputUI
+from typing import Any, Callable, ClassVar, Generic, Optional, Type, TypeVar, cast, get_args, get_origin
 
 import streamlit as st
+from streamlit_pydantic.ui_renderer import GroupOptionalFieldsStrategy, InputUI
 
 TSessionKey = TypeVar("TSessionKey")
 
@@ -144,12 +133,12 @@ class SessionKey(Generic[TSessionKey]):
         self.post_external_update(self.default_value, with_rerun=with_rerun)
 
     def create_input_widget(
-            self,
-            label: str,
-            streamlit_container: Any = st,
-            group_optional_fields: GroupOptionalFieldsStrategy = GroupOptionalFieldsStrategy.NO,
-            lowercase_labels: bool = False,
-            ignore_empty_values: bool = False,
+        self,
+        label: str,
+        streamlit_container: Any = st,
+        group_optional_fields: GroupOptionalFieldsStrategy = GroupOptionalFieldsStrategy.NO,
+        lowercase_labels: bool = False,
+        ignore_empty_values: bool = False,
     ) -> None:
         """Create an input widget for this session key using streamlit_pydantic's UI renderer.
 

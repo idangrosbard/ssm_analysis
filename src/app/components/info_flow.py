@@ -7,16 +7,16 @@ import plotly.graph_objects as go
 import streamlit as st
 from pandas import DataFrame
 
+from src.analysis.plots.info_flow_confidence import (
+    create_plotly_confidence_chart,
+)
+from src.app.texts import INFO_FLOW_ANALYSIS_TEXTS
 from src.core.consts import (
     TOKEN_TYPE_COLORS,
     TOKEN_TYPE_LINE_STYLES,
     format_params_for_title,
 )
-from src.app.texts import INFO_FLOW_ANALYSIS_TEXTS
 from src.core.names import COLS, ResultBankParamNames
-from src.analysis.plots.info_flow_confidence import (
-    create_plotly_confidence_chart,
-)
 from src.core.types import TInfoFlowOutput
 from src.utils.streamlit.helpers.component import StreamlitComponent
 

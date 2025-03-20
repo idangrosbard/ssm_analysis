@@ -10,15 +10,9 @@ import numpy as np
 import torch
 from tqdm import tqdm
 
-from src.core.consts import is_mamba_arch
-from src.experiments.infrastructure.base_config import (
-    BASE_OUTPUT_KEYS,
-    BaseConfig,
-    create_mutable_field,
-)
-from src.experiments.infrastructure.model_interface import ModelInterface, get_model_interface
-from src.core.names import COLS, EXPERIMENT_NAMES
 from src.analysis.plots.info_flow_confidence import create_confidence_plot
+from src.core.consts import is_mamba_arch
+from src.core.names import COLS, EXPERIMENT_NAMES
 from src.core.types import (
     MODEL_ARCH,
     MODEL_ARCH_AND_SIZE,
@@ -38,6 +32,12 @@ from src.core.types import (
     TWindowStartIndex,
 )
 from src.data_ingestion.helpers.logits_utils import Prompt, get_num_to_masks, get_prompt_row_index
+from src.experiments.infrastructure.base_config import (
+    BASE_OUTPUT_KEYS,
+    BaseConfig,
+    create_mutable_field,
+)
+from src.experiments.infrastructure.model_interface import ModelInterface, get_model_interface
 
 # Time in seconds between intermediate saves
 SAVE_INTERVAL = 600  # 10 minutes

@@ -1,13 +1,11 @@
 from typing import NamedTuple
 
-import pandas as pd
 import streamlit as st
 
-from src.experiments.runners.heatmap import HEATMAP_PLOT_FUNCS
 from src.app.app_consts import AppSessionKeys
 from src.app.texts import AppGlobalText
-from src.app.app_utils import format_path_for_display
 from src.core.types import MODEL_ARCH_AND_SIZE
+from src.experiments.runners.heatmap import HEATMAP_PLOT_FUNCS
 from src.utils.infra.slurm import SLURM_GPU_TYPE
 
 
@@ -17,7 +15,6 @@ def select_gpu_type():
         AppGlobalText.gpu_type,
         options=options,
         key=AppSessionKeys._selected_gpu.key,
-        index=options.index(AppSessionKeys._selected_gpu.value),
     )
 
 

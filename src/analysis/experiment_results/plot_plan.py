@@ -4,14 +4,14 @@ from dataclasses import asdict, dataclass, field
 from itertools import product
 from typing import Any, Dict, Generic, List, NamedTuple, Optional, Sequence, TypeVar, assert_never, cast
 
-from src.core.consts import GRAPHS_ORDER
-from src.data_ingestion.data_defs import DataReqs, ResultBank
 from src.analysis.experiment_results.data_requirements import DataReq
 from src.analysis.experiment_results.results_bank import HeatmapRecord, InfoFlowRecord
+from src.core.consts import GRAPHS_ORDER
 from src.core.names import (
     EXPERIMENT_NAMES,
     DataReqCols,
     ExperimentHyperParams,
+    FinalPlotsPlanOrientation,
     PlotPlanCols,
     PlotPlanOptionCols,
     PlotType,
@@ -28,7 +28,7 @@ from src.core.types import (
     TPromptOriginalIndex,
     TWindowSize,
 )
-from src.core.names import FinalPlotsPlanOrientation
+from src.data_ingestion.data_defs import DataReqs, ResultBank
 from src.utils.types_utils import str_enum_values
 
 _T = TypeVar("_T")

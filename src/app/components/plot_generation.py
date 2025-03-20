@@ -20,19 +20,19 @@ import plotly.graph_objects as go
 import streamlit as st
 from plotly.subplots import make_subplots
 
-from src.core.consts import MODEL_SIZES_PER_ARCH_TO_MODEL_ID
-from src.data_ingestion.data_defs import DataReqs, FulfilledReqs, PlotPlans, ResultBank
-from src.experiments.runners.heatmap import HeatmapConfig
-from src.experiments.runners.info_flow import InfoFlowConfig
-from src.core.names import SummarizedDataFulfilledReqsCols
-from src.app.texts import FINAL_PLOTS_TEXTS
 from src.analysis.experiment_results.data_requirements import get_model_evaluations
 from src.analysis.experiment_results.plot_plan import PlotPlan, PlotType, get_hyper_param_definition
 from src.analysis.plots.heatmaps import simple_diff_fixed
 from src.analysis.plots.info_flow_confidence import create_confidence_plot
+from src.app.texts import FINAL_PLOTS_TEXTS
+from src.core.consts import MODEL_SIZES_PER_ARCH_TO_MODEL_ID
+from src.core.names import SummarizedDataFulfilledReqsCols
 from src.core.types import MODEL_ARCH_AND_SIZE, TInfoFlowOutput, TPromptData
+from src.data_ingestion.data_defs import DataReqs, FulfilledReqs, PlotPlans, ResultBank
 from src.data_ingestion.helpers.logits_utils import decode_tokens, get_prompt_row_index
 from src.experiments.infrastructure.setup_models import get_tokenizer
+from src.experiments.runners.heatmap import HeatmapConfig
+from src.experiments.runners.info_flow import InfoFlowConfig
 from src.utils.streamlit.helpers.component import StreamlitComponent
 
 
@@ -105,8 +105,6 @@ COLORS = {
     "subject": (44, 160, 44),
     "last": (214, 39, 40),
 }
-
-
 
 
 @dataclass

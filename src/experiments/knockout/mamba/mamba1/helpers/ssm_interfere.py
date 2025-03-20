@@ -2,13 +2,13 @@ from typing import Iterable, Optional
 
 from torch import FloatTensor, Tensor, nn
 
+from src.core.types import KnockoutMode
 from src.experiments.knockout.mamba.mamba1.falcon_variant import (
     slow_forward_for_ssm_materializing_knockout_falcon,
 )
 from src.experiments.knockout.mamba.mamba1.original_variant import (
     slow_forward_for_ssm_materializing_knockout,
 )
-from src.core.types import KnockoutMode
 
 
 class SSMInterfereHook:

@@ -14,18 +14,24 @@ from typing import Any, List, Optional, Tuple, TypedDict, Union
 import streamlit as st
 import streamlit_antd_components as sac
 
-from src.data_ingestion.data_defs import DataReqs, PlotPlans, ResultBank
-from src.app.components.data_requirements import RequirementExecution, RequirementsDisplay
-from src.app.texts import FINAL_PLOTS_TEXTS
 from src.analysis.experiment_results.plot_plan import (
     PlotPlan,
     PlotType,
     get_experiment_orientations,
     get_hyper_param_definition,
 )
-from src.core.names import EXPERIMENT_NAMES, ExperimentHyperParams, PlotPlanCols, PlotPlanOptionCols, ResultBankParamNames
+from src.app.components.data_requirements import RequirementExecution, RequirementsDisplay
+from src.app.texts import FINAL_PLOTS_TEXTS
+from src.core.names import (
+    EXPERIMENT_NAMES,
+    ExperimentHyperParams,
+    FinalPlotsPlanOrientation,
+    PlotPlanCols,
+    PlotPlanOptionCols,
+    ResultBankParamNames,
+)
 from src.core.types import TPlotID
-from src.core.names import FinalPlotsPlanOrientation
+from src.data_ingestion.data_defs import DataReqs, PlotPlans, ResultBank
 from src.utils.streamlit.components.aagrid import SelectionMode
 from src.utils.streamlit.helpers.component import StreamlitComponent
 from src.utils.streamlit.helpers.session_keys import SessionKey
