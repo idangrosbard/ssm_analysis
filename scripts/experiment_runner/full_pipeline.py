@@ -1,7 +1,7 @@
 import pyrallis
 
 from src.experiments.full_pipeline import FullPipelineConfig
-from src.types import MODEL_ARCH
+from src.core.types import MODEL_ARCH
 
 
 @pyrallis.wrap()

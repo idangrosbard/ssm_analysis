@@ -1,59 +1,100 @@
----
-description: Adherence to project structure
-globs: 
----
-Adhere to Project Structure, make sure to update it if somethign changes:
+# ssm_analysis
+
+this is a repository for the analysis of the SSM data
+
+Project Structure:
 
 - src/
-  - models/ # Model architectures and implementations
-    - model_interface.py # Unified generic interface for model interactions
-    - minimal_mamba2.py # Minimal implementation of Mamba2
-  - datasets/ # Data loading and preprocessing utilities
-    - download_dataset.py # Script for downloading datasets
-  - experiment_infra/ # Experiment infrastructure
-    - base_config.py # Base experiment configuration
-    - model_interface.py # Unified generic interface for model interactions
-  - experiments/ # Specific experiments definitions (New experiments should be added here)
-    - heatmap.py # Experiment showing how different layers affect the model's performance on a single prompt
-    - info_flow.py # Experiment showing how layers and semantic information affect the model's performance on a dataset-level
-    - data_construction.py # Experiment for data construction
-    - evaluate_model.py # Experiment for model evaluation
-  - knockout/ # Feature knockout implementation and analysis
-    - attention_knockout/ # Attention-based knockout methods
-      - knockout_scan.py # Scanning for knockout effects
-      - mamba_mixer_knockout_falcon.py # Falcon variant of Mamba Mixer Knockout
-      - mamba_mixer_knockout.py # Mamba Mixer Knockout implementation
-      - ssm_interfere.py # SSM interference analysis
-  - plots/ # Plotting utilities
-    - heatmaps.py # Heatmap plotting utilities
-    - info_flow_confidence.py # Info flow confidence plotting
-  - utils/ # General utility functions
-    - experiment_helper.py # Helper functions for experiments
-    - logits.py # Logit manipulation utilities
-    - seed.py # Random seed utilities
-    - setup_models.py # Model setup utilities
-    - slurm.py # Slurm job utilities
-    - tests_utils.py # Utilities for testing
-    - type_checking.py # Type checking utilities
-    - types_utils.py # Type-related utilities
-  - consts.py # Project-wide constants
-  - types.py # Type definitions and interfaces
+  - analysis/                                   # Analysis utilities and plotting functions
+    - plots/                                    # Plotting utilities for analysis
+      - image_combiner.py                       # Image combination utilities - combines images into a single image
+      - heatmaps.py                             # Plotting heatmaps
+      - info_flow_confidence.py                 # Plotting confidence intervals for info flow
+    - experiment_results/
+      - results_bank.py                         # Provides a interface for retrieving results from the results bank based on their hyperparameters
+      - data_requirements.py                    # Defines a way to specify data requirements of different hyperparameters, so that we can automatically compute the missing results
+      - plot_plan.py                            # Defines a way to specify a plot plan, that is a result oriented way to define the requirements that need to be met for a plot
+  - app/                                        # Application code and UI components
+    - home.py                                   # Main home page
+    - app_consts.py                             # Application constants
+    - data_store.py                             # Data store for app
+    - texts.py                                  # Application texts
+    - app_utils.py                              # Application utilities
+    - components/                               # Reusable UI components
+      - info_flow.py                            # Implements the UI element that renders and manages information flow visualizations from experiment data.
+      - inputs.py                               # Handles user input collection and validation for experiment configurations.
+      - multi_plots.py                          # Facilitates the display and management of multiple plot panels within the application interface.
+      - plot_customization.py                   # Provides options and controls to customize the appearance and settings of plots.
+      - plot_generation.py                      # Contains logic to dynamically generate plots based on user configurations and data inputs.
+      - plot_plans.py                           # Manages the assembly and organization of plot configurations derived from experimental hyperparameters.
+      - prompt_filter.py                        # Processes and filters user prompts to ensure only valid experiment inputs are used.
+      - requirements.py                         #
+      - result_bank.py                          # Interfaces with the results bank to retrieve and display experimental outcomes within the UI.
+    - pages/                                    # Application pages
+      - p01_results_bank.py                     # Displays a comprehensive view of the experiment results bank.
+      - p02_data_requirements.py                # Presents the data requirements needed to drive experiment visualizations.
+      - p03_info_flow_plots.py                  # Renders interactive plots that depict information flow across experiments.
+      - p04_heatmap_creation.py                 # Guides users through the process of creating heatmaps with configurable parameters.
+      - p05_info_flow_analysis.py               # Provides analysis tools and visualizations specifically for evaluating information flow metrics.
+      - p06_final_plots.py                      # Consolidates and presents the final set of plots for review and interpretation.
+  - core/                                       # Global constants and type definitions
+    - consts.py                                 # Centralizes global configurations, file path setups, environment settings, and model mapping utilities for the entire project.
+    - names.py                                  # Defines standardized naming conventions and enumerations for experiment parameters, data columns, and plot configurations.
+    - data_defs.py                              # Implements data container classes and conversion utilities for managing experiment results, data requirements, and plot plans.
+    - types.py                                  # Provides custom type definitions, aliases, and enumerations to enforce consistent data structures across the project.
+  - data_ingestion/
+    - config.py                                 # Global configurations, file paths, and environment settings
+    - names.py                                  # Standardized naming conventions and enumerations
+    - data_definitions.py                       # Data container classes and conversion utilities
+    - types.py                                  # Custom type definitions and aliases
+  - experiments/
+    - infrastructure/                           # Infrastructure for experiments
+      - base_config.py                          # Base experiment configuration
+      - model_interface.py                      # Generic model interface
+      - setup_models.py                         # Model setup utilities
+    - runners/                                  # Experiment runners
+      - heatmap.py
+      - info_flow.py
+      - evaluate_model.py
+    - knockout/                                 # Implementation of knockout for different models
+      - gpt/
+        - gpt2/
+          - gpt2_knockout_utils.py              # GPT-2 knockout utilities
+      - mamba/
+        - mamba1/
+          - helpers
+            - knockout_scan.py                  # Knockout scanning
+            - ssm_interfere.py                  # SSM interference analysis
+          - falcon_variant.py                   # Falcon variant implementation of Mamba Mixer Knockout
+          - original                            # Original variant implementation of Mamba Mixer Knockout
+        - mamba2/
+          - minimal_mamba2.py                   # Minimal implementation of Mamba2
+  - utils/                                      # General utility functions
+    - infra/                                    # Infrastructure helper utilities
+      - data_object.py                          # Data object utilities
+      - experiment_helper.py                    # Experiment helper functions
+      - output_path.py                          # Output path utilities
+      - seed.py                                 # Random seed utilities
+      - slurm.py                                # Slurm job utilities
+    - streamlit/                                # Streamlit specific utilities and components
+      - components/                             # Streamlit UI components
+        - aagrid.py                             # AAGrid component
+        - dataframe.py                          # Dataframe component
+        - extended_streamlit_pydantic.py        # Extended Pydantic integration
+      - helpers/                                # Helper utilities for Streamlit
+        - cache.py                              # Cache helper (new file)
+        - component.py                          # Component helper (new file)
+        - global_store.py                       # Global store helper (new file)
+        - redirect_output.py                    # Redirect output helper (new file)
+        - session_keys.py                       # Session keys helper (new file)
+        - file_utils.py                         # Functions for file system operations (e.g., remove_dirs_with_only_dirs, fast_relative_to)
+        - logits_utils.py                       # Utilities for handling logits, softmax conversion, top-k extraction, and decoding tokens
+        - test_utils.py                         # Testing helpers, such as running mypy checks on functions and parsing error messages
+        - type_checking.py                      # Wrapper for runtime tensor type checking
+        - typing_helpers.py                     # Helper functions for working with types, enums, and list index utilities
 
-- scripts/ # Experiment runners and analysis scripts
-  - counterfact/ # Counterfactual analysis scripts
-    - splitting.py # Script for splitting data
-  - experiment_runner/ # Scripts for running experiments
-    - heatmap.py # Runner for heatmap experiments
-    - info_flow.py # Runner for info flow experiments
-    - data_construction.py # Data construction script
-    - evaluate_model.py # Model evaluation script
-
-- notebooks/ # Analysis and visualization notebooks
-  - compare_flows.ipynb # Notebook for comparing flows
-  - compare_heatmaps.ipynb # Notebook for comparing heatmaps
-  - create_info_flows_with_confidence_margin.ipynb # Notebook for creating info flows with confidence margin
-  - info_flow_condence.ipynb # Notebook for info flow confidence analysis
-  - test-counterfact_correct.ipynb # Notebook for testing counterfactual corrections
+- scripts/ #
+- notebooks/
 
 # Non-code files
 

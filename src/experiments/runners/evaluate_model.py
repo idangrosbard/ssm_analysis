@@ -17,12 +17,12 @@ import pandas as pd
 import torch
 from tqdm import tqdm
 
-from src.consts import COUNTER_FACT_2_KNOWN1000_COL_CONV
-from src.experiments.experiment_infra.base_config import BaseConfig, create_mutable_field
-from src.experiments.experiment_infra.model_interface import get_model_interface
-from src.names import COLS, EXPERIMENT_NAMES
-from src.types import DATASETS, MODEL_ARCH, MODEL_ARCH_AND_SIZE, DatasetArgs, TTokenizer
-from src.utils.logits import get_last_token_logits, logits_to_probs
+from src.core.consts import COUNTER_FACT_2_KNOWN1000_COL_CONV
+from src.experiments.infrastructure.base_config import BaseConfig, create_mutable_field
+from src.experiments.infrastructure.model_interface import get_model_interface
+from src.core.names import COLS, EXPERIMENT_NAMES
+from src.core.types import DATASETS, MODEL_ARCH, MODEL_ARCH_AND_SIZE, DatasetArgs, TTokenizer
+from src.data_ingestion.helpers.logits_utils import get_last_token_logits, logits_to_probs
 
 
 @dataclass

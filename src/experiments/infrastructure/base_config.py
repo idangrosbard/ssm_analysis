@@ -1,0 +1,284 @@
+import json
+import subprocess
+from abc import ABC, abstractmethod
+from dataclasses import asdict, dataclass, fields
+from pathlib import Path
+from typing import Any, Callable, Generic, Optional, Type, TypeVar, cast, final
+
+import pandas as pd
+import pyrallis
+from submitit.slurm.slurm import SlurmJob
+
+from src.core.consts import MODEL_SIZES_PER_ARCH_TO_MODEL_ID, PATHS
+from src.data_ingestion.datasets.download_dataset import load_splitted_counter_fact
+from src.core.names import COLS, EXPERIMENT_NAMES
+from src.core.types import (
+    DATASETS,
+    MODEL_ARCH,
+    DatasetArgs,
+    TBatchSize,
+    TModelID,
+    TModelSize,
+    TPromptData,
+    TVariationName,
+    TWindowSize,
+)
+from src.utils.infra.slurm import SLURM_GPU_TYPE
+from src.utils.infra.experiment_helper import create_run_id
+from src.utils.infra.output_path import (
+    _ATTRIBUTE_TYPE,
+    OutputKey,
+    combine_output_keys,
+)
+from src.utils.infra.slurm import submit_job
+
+_TBaseConfig = TypeVar("_TBaseConfig", bound="BaseConfig")
+
+
+def create_mutable_field(
+    default_factory: Callable[[], _ATTRIBUTE_TYPE],
+) -> _ATTRIBUTE_TYPE:
+    # Pyralis need mutable fields to be defined with field but it's typing is not complete.
+    # This is a fix to make it work.
+
+    return cast(
+        _ATTRIBUTE_TYPE,
+        pyrallis.field(default_factory=default_factory, is_mutable=True),
+    )
+
+
+class BASE_OUTPUT_KEYS:
+    MODEL_ID = OutputKey[TModelID]("model_id", key_display_name="")
+    MODEL_ARCH = OutputKey[MODEL_ARCH]("model_arch", key_display_name="arch=")
+    MODEL_SIZE = OutputKey[TModelSize]("model_size", key_display_name="size=")
+    VARIATION = OutputKey[TVariationName]("variation", key_display_name="v=")
+    EXPERIMENT_NAME = OutputKey[EXPERIMENT_NAMES]("experiment_name", key_display_name="")
+    DATASET_NAME = OutputKey[DATASETS]("dataset_name", key_display_name="ds=")
+    WINDOW_SIZE = OutputKey[TWindowSize]("window_size", key_display_name="ws=")
+
+
+_TConfigOutputs = TypeVar("_TConfigOutputs", bound=Any)
+
+
+@dataclass
+class BaseConfig(ABC, Generic[_TConfigOutputs]):
+    """Base configuration class with common parameters across all scripts."""
+
+    experiment_name: EXPERIMENT_NAMES
+    variation: TVariationName = TVariationName("v3")
+
+    model_arch: MODEL_ARCH = MODEL_ARCH.MAMBA1
+    model_size: TModelSize = TModelSize("130M")
+    dataset_args: DatasetArgs = create_mutable_field(
+        lambda: DatasetArgs(
+            name=DATASETS.COUNTER_FACT,
+            splits="all",
+        ),
+    )
+    _batch_size: TBatchSize = TBatchSize(1)  # Adjust based on GPU memory
+    with_slurm: bool = False
+    # slurm_gpu_type: SLURM_GPU_TYPE = SLURM_GPU_TYPE.TITAN_XP_STUDENTRUN
+    slurm_gpu_type: SLURM_GPU_TYPE = SLURM_GPU_TYPE.L40S
+    slurm_gpus_per_node: int = 1
+    overwrite_existing_outputs: bool = False
+
+    @property
+    def dataset_name(self) -> DATASETS:
+        return self.dataset_args.name
+
+    @property
+    def batch_size(self) -> TBatchSize:
+        return TBatchSize(1) if (self.model_arch == MODEL_ARCH.MAMBA2) else self._batch_size
+
+    @property
+    def model_id(self) -> TModelID:
+        return MODEL_SIZES_PER_ARCH_TO_MODEL_ID[self.model_arch][self.model_size]
+
+    @property
+    @abstractmethod
+    def experiment_output_keys(self) -> list[OutputKey | list[OutputKey]]:
+        return [
+            BASE_OUTPUT_KEYS.EXPERIMENT_NAME,
+            BASE_OUTPUT_KEYS.VARIATION,
+            BASE_OUTPUT_KEYS.MODEL_ARCH,
+            BASE_OUTPUT_KEYS.MODEL_SIZE,
+            BASE_OUTPUT_KEYS.DATASET_NAME,
+        ]
+
+    @final
+    @property
+    def experiment_variation_base_path(self) -> Path:
+        return PATHS.OUTPUT_DIR / combine_output_keys(
+            self,
+            self.experiment_output_keys,
+            sep="/",
+        )
+
+    @property
+    def job_name(self) -> str:
+        return combine_output_keys(
+            self,
+            self.experiment_output_keys,
+            sep="_",
+        )
+
+    def set_running_params(
+        self,
+        with_slurm: bool,
+        slurm_gpu_type: SLURM_GPU_TYPE,
+        slurm_gpus_per_node: Optional[int] = None,
+    ):
+        self.with_slurm = with_slurm
+        self.slurm_gpu_type = slurm_gpu_type
+        if slurm_gpus_per_node is not None:
+            self.slurm_gpus_per_node = slurm_gpus_per_node
+
+    @property
+    def running_history_path(self) -> Path:
+        return self.experiment_variation_base_path / "running_history"
+
+    @property
+    def plots_path(self) -> Path:
+        return self.experiment_variation_base_path / "plots"
+
+    @property
+    def outputs_path(self) -> Path:
+        return self.experiment_variation_base_path / "outputs"
+
+    def running_history_json_path(self, run_id: str) -> Path:
+        return self.running_history_path / f"{run_id}.json"
+
+    def slurm_logs_path(self) -> Path:
+        return self.experiment_variation_base_path / "slurm_logs"
+
+    def create_experiment_run_path(self) -> None:
+        self.running_history_path.mkdir(parents=True, exist_ok=True)
+        self.plots_path.mkdir(parents=True, exist_ok=True)
+        self.outputs_path.mkdir(parents=True, exist_ok=True)
+
+        run_id = create_run_id(None)
+
+        params = asdict(self)
+        params["run_id"] = run_id
+        try:
+            params["git_commit_hash"] = subprocess.check_output(["git", "rev-parse", "HEAD"]).decode("utf-8").strip()
+        except Exception:
+            pass
+
+        json.dump(params, self.running_history_json_path(run_id).open("w"), indent=4)
+
+    def get_raw_data(self, align_to_known: bool = False) -> pd.DataFrame:
+        dataset = load_splitted_counter_fact(
+            "all",
+            align_to_known=align_to_known,
+        )
+        return pd.DataFrame(cast(dict, dataset))
+
+    def init_sub_config_from_full_pipeline_config(
+        self,
+        sub_config_cls: Type[_TBaseConfig],
+        **kwargs,
+    ) -> _TBaseConfig:
+        """Initialize a sub-config from this full pipeline config.
+
+        Args:
+            sub_config_cls: The class of the sub-config to initialize
+
+        Returns:
+            An instance of the sub-config with values copied from this config
+
+        Raises:
+            ValueError: If a required field in sub_config is missing from full_pipeline_config
+        """
+        # Get all fields from the sub-config class
+        sub_config_field_names = {f.name for f in fields(sub_config_cls) if not f.name.startswith("_")}
+
+        # Get all fields from this class
+        full_config_fields = {f.name: getattr(self, f.name) for f in fields(self) if not f.name.startswith("_")}
+
+        # Create kwargs for sub-config initialization
+        init_kwargs = {}
+        for field_name in sub_config_field_names:
+            if field_name == "experiment_name":
+                # Special case: use the sub-config's default experiment_name
+                continue
+            if field_name in kwargs:
+                init_kwargs[field_name] = kwargs[field_name]
+            elif field_name not in full_config_fields:
+                raise ValueError(
+                    f"Field '{field_name}' required by {sub_config_cls.__name__} "
+                    f"is missing in {self.__class__.__name__}"
+                )
+            else:
+                init_kwargs[field_name] = full_config_fields[field_name]
+
+        # Initialize the sub-config
+        return sub_config_cls(**init_kwargs)
+
+    def get_prompt_data(self) -> TPromptData:
+        from src.experiments.runners.evaluate_model import EvaluateModelConfig
+
+        df = self.init_sub_config_from_full_pipeline_config(
+            EvaluateModelConfig,
+            drop_subject=EvaluateModelConfig.drop_subject,
+            drop_subj_last_token=EvaluateModelConfig.drop_subj_last_token,
+            with_3_dots=EvaluateModelConfig.with_3_dots,
+            new_max_tokens=EvaluateModelConfig.new_max_tokens,
+            top_k_tokens=EvaluateModelConfig.top_k_tokens,
+        ).get_outputs()
+
+        return cast(
+            TPromptData,
+            df[df[COLS.EVALUATE_MODEL.MODEL_CORRECT]].set_index(COLS.ORIGINAL_IDX),
+        )
+
+    @abstractmethod
+    def get_outputs(self) -> _TConfigOutputs:
+        pass
+
+    @abstractmethod
+    def compute(self) -> None:
+        pass
+
+    def get_latest_slurm_job(self) -> Optional[SlurmJob]:
+        slurm_logs_path = self.slurm_logs_path()
+        if not slurm_logs_path.exists():
+            return None
+
+        job_paths = list(slurm_logs_path.glob("*"))
+        if not job_paths:
+            return None
+        job_path = max(job_paths, key=lambda x: int(x.stem))
+        submission_file_path = list(job_path.glob("*_submission.sh"))
+        if len(submission_file_path) != 1:
+            return None
+        return SlurmJob(submission_file_path[0], job_id=job_path.stem)
+
+    def is_running(self) -> bool:
+        latest_job = self.get_latest_slurm_job()
+        if latest_job is None:
+            return False
+        return latest_job.state == "RUNNING"
+
+    def run(self) -> None:
+        if not self.with_slurm:
+            self.compute()
+            return
+        else:
+            slurm_experiment_dir = PATHS.SLURM_DIR / self.job_name
+            job = submit_job(
+                self.compute,
+                log_folder=str(slurm_experiment_dir / "%j"),
+                job_name=self.job_name,
+                # timeout_min=1200,
+                gpu_type=self.slurm_gpu_type,
+                slurm_gpus_per_node=self.slurm_gpus_per_node,
+            )
+            self.slurm_logs_path().mkdir(parents=True, exist_ok=True)
+            slurm_experiment_dir /= f"{job.job_id}"
+            # create symlink to slurm logs
+            (self.slurm_logs_path() / f"{job.job_id}").symlink_to(slurm_experiment_dir)
+
+            (slurm_experiment_dir / "experiment_variation_base_path").symlink_to(self.experiment_variation_base_path)
+
+            print(f"{job}: {self.job_name}")

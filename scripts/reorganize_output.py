@@ -1,7 +1,7 @@
 import shutil
 from typing import Dict, Optional
 
-from src.consts import PATHS
+from src.core.consts import PATHS
 from src.experiment_infra.base_config import BASE_OUTPUT_KEYS
 from src.experiment_infra.output_path import OutputKey, OutputPath, dict_to_obj
 from src.utils.file_system import remove_dirs_with_only_dirs
