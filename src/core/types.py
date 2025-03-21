@@ -1,4 +1,3 @@
-from dataclasses import dataclass
 from enum import Enum, StrEnum
 from typing import TYPE_CHECKING, Literal, NamedTuple, NewType, Sequence, TypeAlias, TypedDict, Union, assert_never
 
@@ -83,24 +82,7 @@ class FILTERATIONS(StrEnum):
     all_correct = "all_correct"
     current_model_correct = "current_model_correct"
     all_any_correct = "all_any_correct"
-
-
-@dataclass
-class DatasetArgs:
-    name: DATASETS
-    splits: TSplitChoise = ALL_SPLITS_LITERAL
-
-    def __post_init__(self):
-        if self.splits != ALL_SPLITS_LITERAL and isinstance(self.splits, str):
-            self.splits = [SPLIT(self.splits)]
-
-    @property
-    def display_name(self) -> str:
-        split_name = ""
-        if self.splits != ALL_SPLITS_LITERAL:
-            split_name = f"_{self.splits}"
-
-        return self.name + split_name
+    ALL = "all"
 
 
 TLayerIndex: TypeAlias = int

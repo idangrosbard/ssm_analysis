@@ -25,14 +25,14 @@ from src.analysis.plots.heatmaps import simple_diff_fixed
 from src.core.consts import MODEL_SIZES_PER_ARCH_TO_MODEL_ID
 from src.core.names import EXPERIMENT_NAMES
 from src.core.types import (
+    FILTERATIONS,
     MODEL_ARCH_AND_SIZE,
     FeatureCategory,
     TPromptOriginalIndex,
-    TRowPosition,
     TWindow,
     TWindowSize,
 )
-from src.data_ingestion.helpers.logits_utils import Prompt, decode_tokens, get_prompt_row, get_prompt_row_index
+from src.data_ingestion.helpers.logits_utils import Prompt, decode_tokens, get_prompt_row_index
 from src.experiments.infrastructure.base_config import (
     BASE_OUTPUT_KEYS,
     BaseConfig,
@@ -59,7 +59,6 @@ class HeatmapConfig(BaseConfig):
 
     experiment_name: EXPERIMENT_NAMES = EXPERIMENT_NAMES.HEATMAP
     window_size: TWindowSize = TWindowSize(5)
-    prompt_indices_rows: list[TRowPosition] = create_mutable_field(lambda: [])
     prompt_original_indices: list[TPromptOriginalIndex] = create_mutable_field(lambda: [])
 
     @property
@@ -71,27 +70,15 @@ class HeatmapConfig(BaseConfig):
     def output_heatmap_path(self, prompt_idx: TPromptOriginalIndex):
         return self.outputs_path / f"idx={prompt_idx}.csv"
 
-    def get_prompt_original_idx_combined(self) -> list[TPromptOriginalIndex]:
-        data = self.get_prompt_data()
-
-        return list(
-            set(
-                [
-                    *[get_prompt_row(data, idx).original_idx for idx in self.prompt_indices_rows],
-                    *self.prompt_original_indices,
-                ]
-            )
-        )
-
     def get_remaining_prompt_original_indices(self):
         return [
             idx
-            for idx in self.get_prompt_original_idx_combined()
+            for idx in self.prompt_original_indices
             if not self.output_heatmap_path(idx).exists() or self.overwrite_existing_outputs
         ]
 
     def get_outputs(self) -> dict[TPromptOriginalIndex, IHeatmap]:
-        return {idx: pd.read_csv(self.output_heatmap_path(idx)) for idx in self.get_prompt_original_idx_combined()}
+        return {idx: pd.read_csv(self.output_heatmap_path(idx)) for idx in self.prompt_original_indices}
 
     def get_plot_output_path(self, prompt_idx: TPromptOriginalIndex, plot_name: HEATMAP_PLOT_FUNCS) -> Path:
         return self.plots_path / f"idx={prompt_idx}{plot_name}.png"
@@ -104,7 +91,7 @@ class HeatmapConfig(BaseConfig):
 
 
 def plot(args: HeatmapConfig, plot_name: HEATMAP_PLOT_FUNCS):
-    data = args.get_prompt_data()
+    data = args.get_prompt_data(FILTERATIONS.ALL)
     tokenizer = get_tokenizer(args.model_arch, args.model_size)
     model_id = MODEL_SIZES_PER_ARCH_TO_MODEL_ID[args.model_arch][args.model_size]
 
@@ -133,7 +120,7 @@ def plot(args: HeatmapConfig, plot_name: HEATMAP_PLOT_FUNCS):
 
 def run(args: HeatmapConfig):
     print(args)
-    data = args.get_prompt_data()
+    data = args.get_prompt_data(FILTERATIONS.ALL)
     remaining_idx = args.get_remaining_prompt_original_indices()
     if not remaining_idx:
         print("All heatmaps already exist")

@@ -4,7 +4,6 @@ import shutil
 import time
 from pathlib import Path
 
-import pandas as pd
 import pytest
 from datasets import DatasetDict
 
@@ -19,7 +18,7 @@ from src.core.types import (
     TBatchSize,
     TModelSize,
     TokenType,
-    TRowPosition,
+    TPromptOriginalIndex,
     TVariationName,
     TWindowSize,
 )
@@ -28,19 +27,23 @@ from src.experiments.runners.full_pipeline import FullPipelineConfig, main_local
 from src.experiments.runners.info_flow import forward_eval
 
 HEATMAP_SIZE = 5
-ORIGINAL_IDS = [
-    53,
-    59,
-    74,
-    90,
-    93,
-    10594,
-    6410,
-    140,
-    148,
-    159,
-    182,
-]
+ORIGINAL_IDS = {
+    SPLIT.TRAIN1: [
+        53,
+        59,
+        74,
+        90,
+        93,
+    ],
+    SPLIT.TRAIN2: [
+        10594,
+        6410,
+        140,
+        148,
+        159,
+        182,
+    ],
+}
 
 # HARDCODED CODE PATHS FOR TESTS
 PATHS_PROJECT_DIR_PATH = "src.core.consts.PATHS.PROJECT_DIR"
@@ -55,8 +58,8 @@ def get_config(variation_name: str, model_arch: MODEL_ARCH, model_size: str) -> 
         model_size=TModelSize(model_size),
         _batch_size=TBatchSize(1),
         window_size=TWindowSize(15),
-        prompt_indices_rows=[TRowPosition(i) for i in range(HEATMAP_SIZE)],
         with_plotting=True,
+        prompt_original_indices=[TPromptOriginalIndex(original_id) for original_id in ORIGINAL_IDS[SPLIT.TRAIN1]],
     )
 
 
@@ -70,22 +73,16 @@ def create_test_data(test_base_path: Path):
     test_paths.COUNTER_FACT_FILTERATIONS_DIR.mkdir(parents=True, exist_ok=True)
 
     # get sample of real data
-    dataset = load_splitted_counter_fact(
-        ALL_SPLITS_LITERAL,
-        align_to_known=False,
-        filteration=FILTERATIONS.all_correct,
-    ).filter(lambda x: x[COLS.ORIGINAL_IDX] in ORIGINAL_IDS)
+    dataset = {
+        split: load_splitted_counter_fact(
+            ALL_SPLITS_LITERAL,
+            align_to_known=False,
+        ).filter(lambda x: x[COLS.ORIGINAL_IDX] in original_ids)
+        for split, original_ids in ORIGINAL_IDS.items()
+    }
 
     # save dataset to disk
-    DatasetDict({SPLIT.TRAIN1: dataset}).save_to_disk(test_paths.COUNTER_FACT_DIR / "splitted")
-
-    # save filteration to disk
-    (
-        pd.DataFrame({COLS.ORIGINAL_IDX: dataset[COLS.ORIGINAL_IDX]}).to_csv(
-            test_paths.COUNTER_FACT_FILTERATIONS_DIR / f"{FILTERATIONS.all_correct}.csv",
-            index=False,
-        )
-    )
+    DatasetDict(dataset).save_to_disk(test_paths.COUNTER_FACT_DIR / "splitted")
 
 
 def create_test_experiment(test_base_path: Path):
@@ -136,7 +133,7 @@ def test_info_flow_intermediate_recovery(tmp_path: Path):
         original_forward_eval = forward_eval
 
         global fail_after
-        fail_after = len(info_flow_config.get_prompt_data()) * 3
+        fail_after = len(info_flow_config.get_prompt_data(FILTERATIONS.current_model_correct)) * 3
 
         # Run the experiment and interrupt it
         def mock_forward_eval(*args, **kwargs):

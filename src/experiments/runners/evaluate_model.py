@@ -19,9 +19,9 @@ from tqdm import tqdm
 
 from src.core.consts import COUNTER_FACT_2_KNOWN1000_COL_CONV
 from src.core.names import COLS, EXPERIMENT_NAMES
-from src.core.types import ALL_SPLITS_LITERAL, DATASETS, MODEL_ARCH, MODEL_ARCH_AND_SIZE, DatasetArgs, TTokenizer
+from src.core.types import MODEL_ARCH, MODEL_ARCH_AND_SIZE, TTokenizer
 from src.data_ingestion.helpers.logits_utils import get_last_token_logits, logits_to_probs
-from src.experiments.infrastructure.base_config import BaseConfig, create_mutable_field
+from src.experiments.infrastructure.base_config import BaseConfig
 from src.experiments.infrastructure.model_interface import get_model_interface
 
 
@@ -36,17 +36,13 @@ class EvaluateModelConfig(BaseConfig):
     new_max_tokens: int = 5
     top_k_tokens: int = 5
 
-    dataset_args: DatasetArgs = create_mutable_field(
-        lambda: DatasetArgs(name=DATASETS.COUNTER_FACT, splits=ALL_SPLITS_LITERAL),
-    )
-
     @property
     def experiment_output_keys(self):
         return super().experiment_output_keys[:-1]
 
     @property
     def output_result_path(self) -> Path:
-        return self.outputs_path / f"{self.dataset_args.name}.csv"
+        return self.outputs_path / f"{self.dataset_name}.csv"
 
     def get_outputs(self) -> pd.DataFrame:
         df = pd.read_csv(self.output_result_path, index_col=False)

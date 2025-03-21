@@ -14,8 +14,8 @@ from src.core.names import COLS, EXPERIMENT_NAMES
 from src.core.types import (
     ALL_SPLITS_LITERAL,
     DATASETS,
+    FILTERATIONS,
     MODEL_ARCH,
-    DatasetArgs,
     TBatchSize,
     TModelID,
     TModelSize,
@@ -69,22 +69,13 @@ class BaseConfig(ABC, Generic[_TConfigOutputs]):
 
     model_arch: MODEL_ARCH = MODEL_ARCH.MAMBA1
     model_size: TModelSize = TModelSize("130M")
-    dataset_args: DatasetArgs = create_mutable_field(
-        lambda: DatasetArgs(
-            name=DATASETS.COUNTER_FACT,
-            splits=ALL_SPLITS_LITERAL,
-        ),
-    )
+    dataset_name: DATASETS = DATASETS.COUNTER_FACT
     _batch_size: TBatchSize = TBatchSize(1)  # Adjust based on GPU memory
     with_slurm: bool = False
     # slurm_gpu_type: SLURM_GPU_TYPE = SLURM_GPU_TYPE.TITAN_XP_STUDENTRUN
     slurm_gpu_type: SLURM_GPU_TYPE = SLURM_GPU_TYPE.L40S
     slurm_gpus_per_node: int = 1
     overwrite_existing_outputs: bool = False
-
-    @property
-    def dataset_name(self) -> DATASETS:
-        return self.dataset_args.name
 
     @property
     def batch_size(self) -> TBatchSize:
@@ -215,7 +206,7 @@ class BaseConfig(ABC, Generic[_TConfigOutputs]):
         # Initialize the sub-config
         return sub_config_cls(**init_kwargs)
 
-    def get_prompt_data(self) -> TPromptData:
+    def get_prompt_data(self, filteration: FILTERATIONS) -> TPromptData:
         from src.experiments.runners.evaluate_model import EvaluateModelConfig
 
         df = self.init_sub_config_from_full_pipeline_config(
@@ -227,9 +218,17 @@ class BaseConfig(ABC, Generic[_TConfigOutputs]):
             top_k_tokens=EvaluateModelConfig.top_k_tokens,
         ).get_outputs()
 
+        match filteration:
+            case FILTERATIONS.current_model_correct:
+                df = df[df[COLS.EVALUATE_MODEL.MODEL_CORRECT]]
+            case FILTERATIONS.ALL:
+                pass
+            case _:
+                raise NotImplementedError(f"Filteration {filteration} not implemented")
+
         return cast(
             TPromptData,
-            df[df[COLS.EVALUATE_MODEL.MODEL_CORRECT]].set_index(COLS.ORIGINAL_IDX),
+            df.set_index(COLS.ORIGINAL_IDX),
         )
 
     @abstractmethod

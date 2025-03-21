@@ -1,5 +1,3 @@
-from typing import Optional
-
 from datasets import (
     Dataset,
     DatasetDict,
@@ -12,14 +10,13 @@ from datasets import (
 
 from src.core.consts import COUNTER_FACT_2_KNOWN1000_COL_CONV, DATASETS_IDS, PATHS
 from src.core.names import COLS
-from src.core.types import ALL_SPLITS_LITERAL, DATASETS, FILTERATIONS, SPLIT, DatasetArgs, TSplitChoise
+from src.core.types import ALL_SPLITS_LITERAL, DATASETS, SPLIT, TSplitChoise
 from src.data_ingestion.datasets.splitting import split_dataset
 
 
 def load_splitted_counter_fact(
     split: TSplitChoise = (SPLIT.TRAIN1,),
     add_split_name_column: bool = False,
-    filteration: Optional[FILTERATIONS] = None,
     align_to_known: bool = False,
 ) -> Dataset:
     splitted_path = PATHS.COUNTER_FACT_DIR / "splitted"
@@ -60,10 +57,3 @@ def load_splitted_counter_fact(
             dataset = dataset.rename_column(counter_fact_col, known1000_col)
         dataset = dataset.remove_columns([COLS.COUNTER_FACT.TARGET_FALSE, COLS.COUNTER_FACT.TARGET_FALSE_ID])
     return dataset
-
-
-def load_dataset(dataset_args: DatasetArgs) -> Dataset:
-    if dataset_args.name == DATASETS.COUNTER_FACT:
-        return load_splitted_counter_fact(dataset_args.splits)
-    else:
-        raise ValueError(f"Unknown dataset name: {dataset_args.name}")

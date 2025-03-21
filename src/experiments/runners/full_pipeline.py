@@ -14,7 +14,7 @@ consistent configuration across all steps.
 from dataclasses import dataclass
 
 from src.core.names import EXPERIMENT_NAMES
-from src.core.types import TInfoFlowSource, TokenType, TPromptOriginalIndex, TRowPosition, TWindowSize
+from src.core.types import TInfoFlowSource, TokenType, TPromptOriginalIndex, TWindowSize
 from src.experiments.infrastructure.base_config import (
     BASE_OUTPUT_KEYS,
     BaseConfig,
@@ -44,7 +44,6 @@ class FullPipelineConfig(BaseConfig):
 
     # HeatmapConfig
     window_size: TWindowSize = HeatmapConfig.window_size
-    prompt_indices_rows: list[TRowPosition] = create_mutable_field(lambda: HeatmapConfig().prompt_indices_rows)
     prompt_original_indices: list[TPromptOriginalIndex] = create_mutable_field(
         lambda: HeatmapConfig().prompt_original_indices
     )

@@ -38,7 +38,6 @@ class HeatmapPlotGenerationComponent(StreamlitComponent):
                 model_size=model_size,
                 window_size=AppSessionKeys.window_size.value,
                 variation=AppSessionKeys.variation.value,
-                prompt_indices_rows=[],
                 prompt_original_indices=[self.prompt_idx],
             )
 

@@ -14,6 +14,7 @@ from src.analysis.plots.info_flow_confidence import create_confidence_plot
 from src.core.consts import is_mamba_arch
 from src.core.names import COLS, EXPERIMENT_NAMES
 from src.core.types import (
+    FILTERATIONS,
     MODEL_ARCH,
     MODEL_ARCH_AND_SIZE,
     FeatureCategory,
@@ -278,7 +279,7 @@ def run(args: InfoFlowConfig):
         return
 
     args.create_experiment_run_path()
-    data = args.get_prompt_data()
+    data = args.get_prompt_data(FILTERATIONS.current_model_correct)
 
     model_interface = get_model_interface(MODEL_ARCH_AND_SIZE(args.model_arch, args.model_size))
     tokenizer = model_interface.tokenizer

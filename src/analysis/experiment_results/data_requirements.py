@@ -75,7 +75,6 @@ class DataReq(NamedTuple):
                 model_arch=self.model_arch,
                 model_size=self.model_size,
                 window_size=self.window_size,
-                prompt_indices_rows=[],
                 prompt_original_indices=[self.prompt_idx],
             )
         else:
