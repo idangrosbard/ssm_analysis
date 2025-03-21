@@ -12,7 +12,6 @@
 
 import streamlit as st
 
-from src.analysis.experiment_results.data_requirements import _save_data_fulfilled
 from src.app.components.data_requirements import RequirementExecution, RequirementsDisplay
 from src.app.data_store import load_fulfilled_reqs_df, load_latest_fulfilled_reqs
 from src.app.texts import DATA_REQUIREMENTS_TEXTS
@@ -42,9 +41,6 @@ class DataRequirementsPage(StreamlitPage):
         # Save button for overrides
         with st.sidebar.expander(DATA_REQUIREMENTS_TEXTS.reset_to_latest):
             load_latest_fulfilled_reqs.render()
-            if st.button(DATA_REQUIREMENTS_TEXTS.reset_to_latest):
-                _save_data_fulfilled(load_latest_fulfilled_reqs())
-                st.success("Requirements updated successfully!")
 
         if data_reqs_to_run is not None:
             with st.sidebar:

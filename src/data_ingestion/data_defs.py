@@ -1,6 +1,6 @@
 import json
 from pathlib import Path
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 import pandas as pd
 
@@ -52,10 +52,8 @@ class FulfilledReqs(DataObject):
     def __init__(self, fulfilled_reqs: dict["DataReq", list["ResultRecord"]]):
         self._raw = fulfilled_reqs
 
-    def summarize(
-        self, overrides: Optional[dict["DataReq", Optional["ResultRecord"]]]
-    ) -> "SummarizedDataFulfilledReqs":
-        return SummarizedDataFulfilledReqs(self, overrides)
+    def summarize(self) -> "SummarizedDataFulfilledReqs":
+        return SummarizedDataFulfilledReqs(self)
 
     def choose_latest_fulfilled(self, result_bank: "ResultBank") -> "FulfilledReqs":
         from src.analysis.experiment_results.data_requirements import choose_latest_data_fulfilled
@@ -98,13 +96,11 @@ class ResultBank(DataObject):
 
 
 class SummarizedDataFulfilledReqs(DataObject):
-    def __init__(self, fulfilled_reqs: FulfilledReqs, overrides: Optional[dict["DataReq", Optional["ResultRecord"]]]):
+    def __init__(self, fulfilled_reqs: FulfilledReqs):
         from src.core.names import SummarizedDataFulfilledReqsCols
 
         self._raw = []
         for req, opts in fulfilled_reqs._raw.items():
-            override = overrides.get(req, None) if overrides else None
-            assert override is None or override in opts
             row = {
                 **{
                     param: getattr(req, param, None)
@@ -113,7 +109,6 @@ class SummarizedDataFulfilledReqs(DataObject):
                 },
                 SummarizedDataFulfilledReqsCols.AvailableOptions: len(opts),
                 SummarizedDataFulfilledReqsCols.Options: opts,
-                SummarizedDataFulfilledReqsCols.CurrentOverride: override.path if override else None,
                 SummarizedDataFulfilledReqsCols.Key: str(req),
             }
             self._raw.append(row)

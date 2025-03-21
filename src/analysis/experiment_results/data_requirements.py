@@ -2,7 +2,7 @@ import json
 import random
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, NamedTuple, Optional, Union, cast
+from typing import Any, NamedTuple, Optional, Union
 
 import pandas as pd
 
@@ -11,7 +11,6 @@ from src.core.consts import (
     GRAPHS_ORDER,
     MODEL_ARCH,
     MODEL_SIZE_CAT,
-    PATHS,
     TokenType,
     is_falcon,
     is_mamba_arch,
@@ -92,7 +91,6 @@ class DataReq(NamedTuple):
 
 IDataFulfilled = dict[DataReq, Optional[ResultRecord]]
 
-DATA_FULFILLED_PATH = Path(__file__).parent / "data_fulfilled.csv"
 PROMPT_SELECTION_PATH = Path(__file__).parent / "prompt_selections.json"
 
 
@@ -142,36 +140,6 @@ def choose_latest_data_fulfilled(
         data_req: max(options, key=lambda x: x.path) if options else None
         for data_req, options in data_reqs_options._raw.items()
     }
-
-
-def _save_data_fulfilled(data_fulfilled: IDataFulfilled, path: Path = DATA_FULFILLED_PATH) -> None:
-    if not data_fulfilled:
-        if path.exists():
-            path.unlink()
-        return
-    (
-        pd.DataFrame.from_records(
-            [
-                {
-                    **data_req._asdict(),
-                    "path": None if result_record is None else result_record.path.relative_to(PATHS.PROJECT_DIR),
-                }
-                for data_req, result_record in data_fulfilled.items()
-            ]
-        ).to_csv(path, index=False)
-    )
-
-
-def _load_data_fulfilled(path: Path = DATA_FULFILLED_PATH) -> IDataFulfilled:
-    if not path.exists():
-        return {}
-
-    res = {}
-    for row in pd.read_csv(path).to_dict(orient="records"):
-        path = row.pop("path")
-        res[DataReq.create_and_validate(**cast(dict[str, Any], row))] = path
-
-    return res
 
 
 # region Add data reqs

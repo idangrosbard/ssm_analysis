@@ -939,7 +939,7 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
 
         # Check if we have all the required data
         data_reqs = self.plot_plan.get_data_requirements(self.result_bank)
-        summarized_fulfilled_reqs = data_reqs.to_fulfilled_reqs(self.result_bank).summarize(None)
+        summarized_fulfilled_reqs = data_reqs.to_fulfilled_reqs(self.result_bank).summarize()
         reqs = summarized_fulfilled_reqs.to_data_reqs().to_rows()
 
         missing_reqs = [

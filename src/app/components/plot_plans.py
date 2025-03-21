@@ -494,7 +494,7 @@ class PlotPlanRequirements(StreamlitComponent[Optional[DataReqs]]):
 
         # Get data requirements for the plot plan
         data_reqs = self.plot_plan.get_data_requirements(self.result_bank)
-        fulfilled_reqs = data_reqs.to_fulfilled_reqs(self.result_bank).summarize(None)
+        fulfilled_reqs = data_reqs.to_fulfilled_reqs(self.result_bank).summarize()
 
         if not data_reqs:
             st.info("No data requirements found for this plot plan.")

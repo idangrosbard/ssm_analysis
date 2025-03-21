@@ -5,7 +5,6 @@ from streamlit import cache_resource
 from src.analysis.experiment_results.data_requirements import (
     IDataFulfilled,
     ModelCombination,
-    _load_data_fulfilled,
     choose_latest_data_fulfilled,
     get_data_fullfment_options,
     get_data_reqs,
@@ -77,9 +76,8 @@ def load_fulfilled_reqs_df() -> SummarizedDataFulfilledReqs:
     results_bank = load_results_bank()
     data_reqs = load_data_reqs()
     options = get_data_fullfment_options(data_reqs, results_bank)
-    data_fulfilled_overides = _load_data_fulfilled()
 
-    return SummarizedDataFulfilledReqs(options, data_fulfilled_overides)
+    return SummarizedDataFulfilledReqs(options)
 
 
 @CacheWithDependencies()

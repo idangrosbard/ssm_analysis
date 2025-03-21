@@ -187,5 +187,4 @@ class PlotPlanOptionCols(StrEnum):
 class SummarizedDataFulfilledReqsCols:
     AvailableOptions = "Available Options"
     Options = "Options"
-    CurrentOverride = "Current Override"
     Key = "Key"
