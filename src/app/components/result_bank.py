@@ -14,7 +14,6 @@ class ShowResultsBank(StreamlitComponent):
         self,
         results_bank: ResultBank,
         filter_experiment_name: Optional[EXPERIMENT_NAMES] = None,
-        filter_is_all_correct: Optional[bool] = None,
         selection_mode: SelectionMode = SelectionMode.DISABLED,
         height: int = 1000,
         key: str = "results_bank",
@@ -24,7 +23,6 @@ class ShowResultsBank(StreamlitComponent):
         super().__init__()
         self.results_bank = results_bank
         self.filter_experiment_name = filter_experiment_name
-        self.filter_is_all_correct = filter_is_all_correct
         self.selection_mode = selection_mode
         self.height = height
         self.key = key
@@ -35,8 +33,6 @@ class ShowResultsBank(StreamlitComponent):
         df = self.results_bank.to_experiment_results().to_df()
         if self.filter_experiment_name is not None:
             df = df[df[ResultBankParamNames.experiment_name] == self.filter_experiment_name]
-        if self.filter_is_all_correct is not None:
-            df = df[df[ResultBankParamNames.is_all_correct] == self.filter_is_all_correct]
         return df
 
     def render(self) -> AgGridReturn:

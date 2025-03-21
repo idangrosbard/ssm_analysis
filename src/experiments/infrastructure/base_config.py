@@ -12,6 +12,7 @@ from submitit.slurm.slurm import SlurmJob
 from src.core.consts import MODEL_SIZES_PER_ARCH_TO_MODEL_ID, PATHS
 from src.core.names import COLS, EXPERIMENT_NAMES
 from src.core.types import (
+    ALL_SPLITS_LITERAL,
     DATASETS,
     MODEL_ARCH,
     DatasetArgs,
@@ -71,7 +72,7 @@ class BaseConfig(ABC, Generic[_TConfigOutputs]):
     dataset_args: DatasetArgs = create_mutable_field(
         lambda: DatasetArgs(
             name=DATASETS.COUNTER_FACT,
-            splits="all",
+            splits=ALL_SPLITS_LITERAL,
         ),
     )
     _batch_size: TBatchSize = TBatchSize(1)  # Adjust based on GPU memory
@@ -168,7 +169,7 @@ class BaseConfig(ABC, Generic[_TConfigOutputs]):
 
     def get_raw_data(self, align_to_known: bool = False) -> pd.DataFrame:
         dataset = load_splitted_counter_fact(
-            "all",
+            ALL_SPLITS_LITERAL,
             align_to_known=align_to_known,
         )
         return pd.DataFrame(cast(dict, dataset))

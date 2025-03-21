@@ -176,7 +176,6 @@ class InfoFlowAnalysisPage(StreamlitPage):
         result_bank: AgGridReturn = ShowResultsBank(
             results_bank,
             filter_experiment_name=EXPERIMENT_NAMES.INFO_FLOW,
-            filter_is_all_correct=False,
             selection_mode=SelectionMode.MULTIPLE,  # Changed to MULTIPLE
             height=300,
             filters={
@@ -191,7 +190,6 @@ class InfoFlowAnalysisPage(StreamlitPage):
             hide_columns=[
                 ResultBankParamNames.experiment_name,
                 ResultBankParamNames.prompt_idx,
-                ResultBankParamNames.is_all_correct,
             ],
             key="info_flow_results_bank",
         ).render()
@@ -215,7 +213,6 @@ class InfoFlowAnalysisPage(StreamlitPage):
             result_dict = cast(Dict[str, Any], dict(selected_result))
             path = result_dict.pop(ResultBankParamNames.path)
             for col in [
-                ResultBankParamNames.is_all_correct,
                 ResultBankParamNames.prompt_idx,
             ]:
                 result_dict.pop(col)

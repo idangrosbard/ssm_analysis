@@ -40,6 +40,8 @@ class SPLIT(StrEnum):
     TEST = "test"
 
 
+ALL_SPLITS_LITERAL = "all"
+
 TSplitChoise = Union[SPLIT, Sequence[SPLIT], Literal["all"]]
 
 
@@ -86,16 +88,16 @@ class FILTERATIONS(StrEnum):
 @dataclass
 class DatasetArgs:
     name: DATASETS
-    splits: TSplitChoise = "all"
+    splits: TSplitChoise = ALL_SPLITS_LITERAL
 
     def __post_init__(self):
-        if self.splits != "all" and isinstance(self.splits, str):
+        if self.splits != ALL_SPLITS_LITERAL and isinstance(self.splits, str):
             self.splits = [SPLIT(self.splits)]
 
     @property
     def display_name(self) -> str:
         split_name = ""
-        if self.splits != "all":
+        if self.splits != ALL_SPLITS_LITERAL:
             split_name = f"_{self.splits}"
 
         return self.name + split_name

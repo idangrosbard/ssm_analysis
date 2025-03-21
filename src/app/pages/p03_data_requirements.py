@@ -15,7 +15,6 @@ import streamlit as st
 from src.app.components.data_requirements import RequirementExecution, RequirementsDisplay
 from src.app.data_store import load_fulfilled_reqs_df, load_latest_fulfilled_reqs
 from src.app.texts import DATA_REQUIREMENTS_TEXTS
-from src.core.names import ResultBankParamNames
 from src.utils.streamlit.components.aagrid import SelectionMode
 from src.utils.streamlit.helpers.component import StreamlitPage
 
@@ -35,7 +34,7 @@ class DataRequirementsPage(StreamlitPage):
             df,
             height=1000,
             selection_mode=SelectionMode.MULTIPLE,
-            hide_columns=[ResultBankParamNames.is_all_correct],
+            hide_columns=[],
         ).render()
 
         # Save button for overrides

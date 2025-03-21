@@ -12,7 +12,7 @@ from datasets import (
 
 from src.core.consts import COUNTER_FACT_2_KNOWN1000_COL_CONV, DATASETS_IDS, PATHS
 from src.core.names import COLS
-from src.core.types import DATASETS, FILTERATIONS, SPLIT, DatasetArgs, TSplitChoise
+from src.core.types import ALL_SPLITS_LITERAL, DATASETS, FILTERATIONS, SPLIT, DatasetArgs, TSplitChoise
 from src.data_ingestion.datasets.splitting import split_dataset
 
 
@@ -38,7 +38,7 @@ def load_splitted_counter_fact(
 
     data: DatasetDict = load_from_disk(str(splitted_path))  # type: ignore
 
-    if split == "all":
+    if split == ALL_SPLITS_LITERAL:
         split = list(data.keys())
     if isinstance(split, str):
         split = [SPLIT(split)]

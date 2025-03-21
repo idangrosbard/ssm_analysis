@@ -144,16 +144,6 @@ class ResultRecord(ABC):
     def get_results_output_path(cls, path: Path) -> OutputPath:
         pass
 
-    @property
-    def is_all_correct(self) -> bool:
-        if self.results_base_path == RESULTS_BASE_PATH.v1:
-            return True
-        filteration = self.dataset_and_filteration[len(self.dataset) :]
-        if filteration:
-            assert filteration == "_all_correct"
-            return True
-        return False
-
     @classmethod
     def from_path(cls, path: Path) -> Optional["ResultRecord"]:
         result_output_path = cls.get_results_output_path(path)

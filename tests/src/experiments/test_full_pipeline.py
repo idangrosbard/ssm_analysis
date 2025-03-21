@@ -11,8 +11,10 @@ from datasets import DatasetDict
 from src.core.consts import PathsConfig
 from src.core.names import COLS
 from src.core.types import (
+    ALL_SPLITS_LITERAL,
     FILTERATIONS,
     MODEL_ARCH,
+    SPLIT,
     FeatureCategory,
     TBatchSize,
     TModelSize,
@@ -40,6 +42,11 @@ ORIGINAL_IDS = [
     182,
 ]
 
+# HARDCODED CODE PATHS FOR TESTS
+PATHS_PROJECT_DIR_PATH = "src.core.consts.PATHS.PROJECT_DIR"
+INFO_FLOW_FORWARD_EVAL_PATH = "src.experiments.runners.info_flow.forward_eval"
+INFO_FLOW_SAVE_INTERVAL_PATH = "src.experiments.runners.info_flow.SAVE_INTERVAL"
+
 
 def get_config(variation_name: str, model_arch: MODEL_ARCH, model_size: str) -> FullPipelineConfig:
     return FullPipelineConfig(
@@ -64,13 +71,13 @@ def create_test_data(test_base_path: Path):
 
     # get sample of real data
     dataset = load_splitted_counter_fact(
-        "all",
+        ALL_SPLITS_LITERAL,
         align_to_known=False,
         filteration=FILTERATIONS.all_correct,
     ).filter(lambda x: x[COLS.ORIGINAL_IDX] in ORIGINAL_IDS)
 
     # save dataset to disk
-    DatasetDict({"train1": dataset}).save_to_disk(test_paths.COUNTER_FACT_DIR / "splitted")
+    DatasetDict({SPLIT.TRAIN1: dataset}).save_to_disk(test_paths.COUNTER_FACT_DIR / "splitted")
 
     # save filteration to disk
     (
@@ -83,7 +90,7 @@ def create_test_data(test_base_path: Path):
 
 def create_test_experiment(test_base_path: Path):
     with pytest.MonkeyPatch().context() as mp:
-        mp.setattr("src.consts.PATHS.PROJECT_DIR", test_base_path)
+        mp.setattr(PATHS_PROJECT_DIR_PATH, test_base_path)
         for model_arch, model_size in [
             (MODEL_ARCH.MAMBA1, "130M"),
             (MODEL_ARCH.MAMBA2, "130M"),
@@ -104,7 +111,7 @@ def test_info_flow_intermediate_recovery(tmp_path: Path):
     create_test_data(tmp_path)
 
     with pytest.MonkeyPatch().context() as mp:
-        mp.setattr("src.consts.PATHS.PROJECT_DIR", tmp_path)
+        mp.setattr(PATHS_PROJECT_DIR_PATH, tmp_path)
 
         # Create a test config with minimal settings
         full_pipeline_config = get_config(
@@ -124,7 +131,7 @@ def test_info_flow_intermediate_recovery(tmp_path: Path):
         info_flow_config = full_pipeline_config.info_flow_config()
 
         # Mock the save interval to be very short for testing
-        mp.setattr("src.experiments.info_flow.SAVE_INTERVAL", 1)  # 1 second for testing
+        mp.setattr(INFO_FLOW_SAVE_INTERVAL_PATH, 1)  # 1 second for testing
 
         original_forward_eval = forward_eval
 
@@ -143,7 +150,7 @@ def test_info_flow_intermediate_recovery(tmp_path: Path):
 
         # Mock get prompt_data
 
-        mp.setattr("src.experiments.info_flow.forward_eval", mock_forward_eval)
+        mp.setattr(INFO_FLOW_FORWARD_EVAL_PATH, mock_forward_eval)
 
         try:
             # First run - should create intermediate results
@@ -169,7 +176,7 @@ def test_info_flow_intermediate_recovery(tmp_path: Path):
         assert all(isinstance(k, (str, int)) for k in data.keys()), "Keys should be strings or ints"
 
         # Run again - should recover from intermediate results
-        mp.setattr("src.experiments.info_flow.forward_eval", original_forward_eval)
+        mp.setattr(INFO_FLOW_FORWARD_EVAL_PATH, original_forward_eval)
         info_flow_config.compute()
 
         # Verify final output exists and intermediate files are cleaned up
@@ -182,7 +189,7 @@ def test_info_flow_intermediate_recovery(tmp_path: Path):
 
     _test_base_path = Path(__file__).parent / "baselines" / "full_pipeline"
     with pytest.MonkeyPatch().context() as mp:
-        mp.setattr("src.consts.PATHS.PROJECT_DIR", _test_base_path)
+        mp.setattr(PATHS_PROJECT_DIR_PATH, _test_base_path)
         info_flow_config.variation = TVariationName("test_baseline")
         baseline_data = info_flow_config.get_outputs()[TokenType.last][(TokenType.last, FeatureCategory.ALL)]
         assert created_data == baseline_data, "Data should be the same"

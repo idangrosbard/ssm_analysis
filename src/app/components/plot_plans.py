@@ -28,7 +28,6 @@ from src.core.names import (
     FinalPlotsPlanOrientation,
     PlotPlanCols,
     PlotPlanOptionCols,
-    ResultBankParamNames,
 )
 from src.core.types import TPlotID
 from src.data_ingestion.data_defs import DataReqs, PlotPlans, ResultBank
@@ -504,7 +503,7 @@ class PlotPlanRequirements(StreamlitComponent[Optional[DataReqs]]):
             fulfilled_reqs,
             height=400,
             selection_mode=SelectionMode.MULTIPLE,
-            hide_columns=[ResultBankParamNames.is_all_correct],
+            hide_columns=[],
             key=f"plot_plan_requirements_{self.plot_plan.title}",
         ).render()
 

@@ -36,7 +36,6 @@ class DataReq(NamedTuple):
     model_arch: MODEL_ARCH
     model_size: TModelSize
     window_size: TWindowSize
-    is_all_correct: bool
     source: Optional[TokenType]
     feature_category: Optional[FeatureCategory]
     target: Optional[TokenType]
@@ -57,8 +56,6 @@ class DataReq(NamedTuple):
         return MODEL_ARCH_AND_SIZE(self.model_arch, self.model_size)
 
     def get_config(self, variation: Optional[TVariationName] = None) -> Union[InfoFlowConfig, HeatmapConfig]:
-        assert not self.is_all_correct
-
         if self.experiment_name == EXPERIMENT_NAMES.INFO_FLOW:
             assert self.source is not None
             assert self.feature_category is not None
@@ -112,7 +109,6 @@ def result_record_to_data_req(result_record: ResultRecord) -> DataReq:
         model_arch=result_record.model_arch,
         model_size=result_record.model_size,
         window_size=result_record.window_size,
-        is_all_correct=result_record.is_all_correct,
         source=source,
         feature_category=feature_category,
         target=target,
@@ -163,7 +159,6 @@ def get_data_reqs() -> DataReqs:
     model sizes = ALL
     model archs = ALL
     window sizes = [STANDARD_WINDOW_SIZE_FOR_INFO_FLOW]
-    is_all_correct = [False]
     feature_category = [FeatureCategory.ALL]
     target = [last]
     source = [last, first, subject, relation]
@@ -182,7 +177,6 @@ def get_data_reqs() -> DataReqs:
                     model_arch=model_arch_and_size.arch,
                     model_size=model_arch_and_size.size,
                     window_size=STANDARD_WINDOW_SIZE_FOR_INFO_FLOW,
-                    is_all_correct=False,
                     source=source,
                     feature_category=FeatureCategory.ALL,
                     target=TokenType.last,
@@ -202,7 +196,6 @@ def get_data_reqs() -> DataReqs:
     model sizes = ALL
     model archs = [Mamba1, Mamba2,]
     window sizes = [STANDARD_WINDOW_SIZE_FOR_INFO_FLOW]
-    is_all_correct = [False]
     target = [last]
     source = [last, first, subject, relation, subject-SLOW_DECAY, subject-FAST_DECAY]
     """
@@ -223,7 +216,6 @@ def get_data_reqs() -> DataReqs:
                         model_arch=model_arch_and_size.arch,
                         model_size=model_arch_and_size.size,
                         window_size=STANDARD_WINDOW_SIZE_FOR_INFO_FLOW,
-                        is_all_correct=False,
                         source=source,
                         feature_category=feature_category,
                         target=TokenType.last,
@@ -239,7 +231,6 @@ def get_data_reqs() -> DataReqs:
     model sizes = [HUGE]
     model archs = [Falcon Mamba]
     window sizes = [STANDARD_WINDOW_SIZE_FOR_INFO_FLOW]
-    is_all_correct = [True]
     target = [last]
     source = [last, first, subject, relation, subject-SLOW_DECAY, subject-FAST_DECAY]
     """
@@ -260,7 +251,6 @@ def get_data_reqs() -> DataReqs:
                         model_arch=model_arch_and_size.arch,
                         model_size=model_arch_and_size.size,
                         window_size=STANDARD_WINDOW_SIZE_FOR_INFO_FLOW,
-                        is_all_correct=False,
                         source=source,
                         feature_category=feature_category,
                         target=TokenType.last,
@@ -281,7 +271,6 @@ def get_data_reqs() -> DataReqs:
     model archs = [Mamba1, Mamba2, GPT2]
     model sizes = [SMALL, MEDIUM, LARGE, HUGE]
     window sizes = [STANDARD_WINDOW_SIZE_FOR_INFO_FLOW]
-    is_all_correct = [False]
     target = [subject]
     source = [context, subject]
     """
@@ -296,7 +285,6 @@ def get_data_reqs() -> DataReqs:
                     model_arch=model_arch_and_size.arch,
                     model_size=model_arch_and_size.size,
                     window_size=STANDARD_WINDOW_SIZE_FOR_INFO_FLOW,
-                    is_all_correct=False,
                     source=source,
                     feature_category=FeatureCategory.ALL,
                     target=TokenType.subject,
@@ -318,7 +306,6 @@ def get_data_reqs() -> DataReqs:
             or only subset of features.model archs = [Mamba1, Mamba2]
     model sizes = ALL
     window sizes = [STANDARD_WINDOW_SIZE_FOR_INFO_FLOW]
-    is_all_correct = [False]
     target = [last]
     source = [context, subject, relation, subject-SLOW_DECAY, subject-FAST_DECAY]
     """
@@ -339,7 +326,6 @@ def get_data_reqs() -> DataReqs:
                         model_arch=model_arch_and_size.arch,
                         model_size=model_arch_and_size.size,
                         window_size=STANDARD_WINDOW_SIZE_FOR_INFO_FLOW,
-                        is_all_correct=False,
                         source=source,
                         feature_category=feature_category,
                         target=TokenType.last,
@@ -364,7 +350,6 @@ def get_data_reqs() -> DataReqs:
                             model_arch=model_arch_and_size.arch,
                             model_size=model_arch_and_size.size,
                             window_size=STANDARD_WINDOW_SIZE_FOR_INFO_FLOW,
-                            is_all_correct=False,
                             source=source,
                             feature_category=feature_category,
                             target=TokenType.last,
@@ -393,7 +378,6 @@ def get_data_reqs() -> DataReqs:
     model archs = [Mamba1, Mamba2]
     model sizes = ALL
     window sizes = [ALL]
-    is_all_correct = [True]
     target = [last]
     source = [last, first, subject, relation]
 
@@ -413,7 +397,6 @@ def get_data_reqs() -> DataReqs:
                             model_arch=model_arch_and_size.arch,
                             model_size=model_arch_and_size.size,
                             window_size=window_size,
-                            is_all_correct=False,
                             source=source,
                             feature_category=FeatureCategory.ALL,
                             target=TokenType.last,
@@ -433,7 +416,6 @@ def get_data_reqs() -> DataReqs:
     model archs = [Mamba1, Mamba2]
     model sizes = [SMALL, MEDIUM, LARGE, HUGE]
     window sizes = [STANDARD_WINDOW_SIZE_FOR_INFO_FLOW]
-    is_all_correct = [False]
     target = [last]
     source = [last, first, subject, relation]
     """
@@ -452,7 +434,6 @@ def get_data_reqs() -> DataReqs:
                         model_arch=model_arch_and_size.arch,
                         model_size=model_arch_and_size.size,
                         window_size=STANDARD_WINDOW_SIZE_FOR_INFO_FLOW,
-                        is_all_correct=False,
                         source=source,
                         feature_category=FeatureCategory.ALL,
                         target=TokenType.last,

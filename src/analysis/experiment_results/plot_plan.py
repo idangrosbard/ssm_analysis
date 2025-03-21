@@ -447,7 +447,6 @@ class PlotPlan:
 
             data_req_params: dict[DataReqCols, Any] = {
                 DataReqCols.experiment_name: self.experiment_name,
-                DataReqCols.is_all_correct: False,
             }
 
             for col in str_enum_values(DataReqCols):

@@ -9,7 +9,6 @@ class BASE_CONFIG_HP_COLS(StrEnum):
     model_arch = "model_arch"
     model_size = "model_size"
     window_size = "window_size"
-    is_all_correct = "is_all_correct"
     variation = "variation"
 
 
@@ -96,7 +95,6 @@ class DataReqCols(StrEnum):
     model_arch = BASE_CONFIG_HP_COLS.model_arch
     model_size = BASE_CONFIG_HP_COLS.model_size
     window_size = BASE_CONFIG_HP_COLS.window_size
-    is_all_correct = BASE_CONFIG_HP_COLS.is_all_correct
     source = INFO_FLOW_HP_COLS.source
     feature_category = INFO_FLOW_HP_COLS.feature_category
     target = INFO_FLOW_HP_COLS.target
@@ -113,7 +111,6 @@ class ResultBankParamNames(StrEnum):
     model_arch = DataReqCols.model_arch
     model_size = DataReqCols.model_size
     window_size = DataReqCols.window_size
-    is_all_correct = DataReqCols.is_all_correct
     source = DataReqCols.source
     feature_category = DataReqCols.feature_category
     target = DataReqCols.target
