@@ -1,17 +1,17 @@
 import json
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Type
 
 import pandas as pd
 
 from src.core.consts import PATHS
-from src.core.names import ResultBankParamNames
-from src.core.types import TPlotID
+from src.core.names import HeatmapCols, ModelCombinationCols, ResultBankParamNames
+from src.core.types import MODEL_ARCH_AND_SIZE, TPlotID
 from src.utils.infra.data_object import DataObject
 from src.utils.types_utils import str_enum_values
 
 if TYPE_CHECKING:
-    from src.analysis.experiment_results.data_requirements import DataReq
+    from src.analysis.experiment_results.data_requirements import DataReq, ModelCombination
     from src.analysis.experiment_results.plot_plan import PlotPlan
     from src.analysis.experiment_results.results_bank import ResultRecord
 
@@ -83,12 +83,6 @@ class ResultBank(DataObject):
 
     def to_rows(self) -> list["ResultRecord"]:
         return self._raw
-
-    def __getstate__(self):
-        return self._raw
-
-    def __setstate__(self, state):
-        self._raw = state
 
     def to_experiment_results(self) -> ExperimentDisplayResults:
         from src.app.app_utils import format_path_for_display
@@ -199,3 +193,42 @@ class PlotPlans(DataObject):
 
     def to_rows(self) -> list["PlotPlan"]:
         return list(self._raw.values())
+
+
+class ModelCombinationsPrompts(DataObject):
+    def __init__(self, model_combinations: list["ModelCombination"]):
+        self._raw = model_combinations
+
+    def cols_enum(self) -> Type[ModelCombinationCols]:
+        return ModelCombinationCols
+
+    def to_rows(self) -> list["ModelCombination"]:
+        return self._raw
+
+    def sort_by_prompt_count(self) -> "ModelCombinationsPrompts":
+        return ModelCombinationsPrompts(sorted(self._raw, key=lambda x: len(x.prompts), reverse=True))
+
+    def change_chosen_prompt_by_seed(self, seed: int) -> "ModelCombinationsPrompts":
+        return ModelCombinationsPrompts([combination.choose_prompt_by_seed(seed) for combination in self._raw])
+
+    def to_display_df(self, models_combinations: list[MODEL_ARCH_AND_SIZE]) -> pd.DataFrame:
+        table_data = []
+        for row in self.to_rows():
+            # Create row with model correctness
+            table_row = {}
+
+            # Add prompt count and selected prompt first
+            table_row[HeatmapCols.PROMPT_COUNT] = len(row.prompts)
+            table_row[HeatmapCols.SELECTED_PROMPT] = row.chosen_prompt
+
+            # Add model columns at the end
+            for model_name_and_size in models_combinations:
+                model_name = model_name_and_size.model_name
+                if model_name_and_size in row.correct_models:
+                    table_row[model_name] = "✅"
+                elif model_name_and_size in row.incorrect_models:
+                    table_row[model_name] = "❌"
+                else:
+                    table_row[model_name] = "-"
+            table_data.append(table_row)
+        return pd.DataFrame(table_data)

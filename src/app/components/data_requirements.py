@@ -15,11 +15,12 @@ from src.app.app_consts import (
     DataReqConsts,
 )
 from src.app.components.inputs import select_gpu_type, select_window_size
-from src.app.data_store import get_models_remaining_prompts
 from src.app.texts import HEATMAP_TEXTS
-from src.core.names import HeatmapCols, SummarizedDataFulfilledReqsCols
-from src.core.types import TPromptOriginalIndex
+from src.core.names import DATASETS, HeatmapCols, SlurmStatus, SummarizedDataFulfilledReqsCols
+from src.core.types import MODEL_ARCH_AND_SIZE, TPromptOriginalIndex, TVariationName, TWindowSize
 from src.data_ingestion.data_defs import DataReqs, SummarizedDataFulfilledReqs
+from src.experiments.infrastructure.base_config import CommonParams, SelectivePromptFilteration
+from src.experiments.runners.heatmap import HeatmapConfig, HeatmapParams
 from src.utils.streamlit.components.aagrid import SelectionMode, base_grid_builder, set_aagrid_apply_default_filters
 from src.utils.streamlit.helpers.component import StreamlitComponent
 from src.utils.types_utils import select_indexes_from_list
@@ -118,7 +119,7 @@ class RequirementExecution(StreamlitComponent):
                 status_text = st.empty()
 
                 # Get all rows from filtered_df that match selected requirements
-
+                last_error = None
                 for i, req in enumerate(self.data_reqs_to_run.to_rows()):
                     try:
                         # Get config and set running parameters
@@ -137,6 +138,7 @@ class RequirementExecution(StreamlitComponent):
                         st.error(f"Failed to run requirement: {str(json.dumps(req._asdict(), indent=4))}")
                         st.exception(e)
                         failed_count += 1
+                        last_error = e
                         console.print(
                             rich.traceback.Traceback.from_exception(
                                 exc_type=type(e), exc_value=e, traceback=e.__traceback__
@@ -153,7 +155,35 @@ class RequirementExecution(StreamlitComponent):
                 if success_count > 0:
                     st.success(f"Successfully submitted {success_count} requirements to run")
                 if failed_count > 0:
-                    st.warning(f"Failed to submit {failed_count} requirements")
+                    raise Exception(f"Failed to submit {failed_count} requirements") from last_error
+
+
+def get_models_remaining_prompts(
+    model_combinations: list[MODEL_ARCH_AND_SIZE],
+    window_size: TWindowSize,
+    variation: TVariationName,
+    prompt_original_indices: list[TPromptOriginalIndex],
+) -> dict[MODEL_ARCH_AND_SIZE, HeatmapConfig]:
+    """Get the remaining prompts for each model."""
+    res = {}
+    for model_arch, model_size in model_combinations:
+        config = HeatmapConfig(
+            variation=variation,
+            common_params=CommonParams(
+                model_arch=model_arch,
+                model_size=model_size,
+            ),
+            prompt_filteration=SelectivePromptFilteration(
+                dataset_name=DATASETS.COUNTER_FACT,
+                prompt_ids=prompt_original_indices,
+            ),
+            runner_params=HeatmapParams(
+                window_size=window_size,
+            ),
+        )
+        if config.get_remaining_prompt_original_indices():
+            res[MODEL_ARCH_AND_SIZE(model_arch, model_size)] = config
+    return res
 
 
 class HeatmapGenerationComponent(StreamlitComponent):
@@ -175,8 +205,6 @@ class HeatmapGenerationComponent(StreamlitComponent):
         test_existing_prompts = st.checkbox("Test existing prompts", value=False)
 
         if test_existing_prompts:
-            if st.button("reset remaining prompts"):
-                get_models_remaining_prompts.clear()  # type: ignore
             prompt_original_indices = [
                 TPromptOriginalIndex(int(x)) for x in self.filtered_df[HeatmapCols.SELECTED_PROMPT]
             ]
@@ -195,7 +223,7 @@ class HeatmapGenerationComponent(StreamlitComponent):
                     {
                         "Model": model_name,
                         "Prompt Count": len(heatmap_config.get_remaining_prompt_original_indices()),
-                        "Running": heatmap_config.is_running(),
+                        "Status": heatmap_config.get_slurm_status(),
                         "GPU": AppSessionKeys.get_selected_gpu(model_arch_and_size),
                     }
                 )
@@ -211,9 +239,13 @@ class HeatmapGenerationComponent(StreamlitComponent):
                 progress_bar = st.progress(0)
                 status_text = st.empty()
                 # Get all rows from filtered_df that match selected prompts
+                last_error = None
                 for i, heatmap_config in enumerate(models_remaining_prompts.values()):
                     try:
-                        if skip_running and heatmap_config.is_running():
+                        if skip_running and heatmap_config.get_slurm_status() in [
+                            SlurmStatus.RUNNING,
+                            SlurmStatus.PENDING,
+                        ]:
                             st.warning(
                                 HEATMAP_TEXTS.skipping_running(
                                     heatmap_config.common_params.model_arch, heatmap_config.common_params.model_size
@@ -234,6 +266,8 @@ class HeatmapGenerationComponent(StreamlitComponent):
                         success_count += 1
 
                     except Exception as e:
+                        st.exception(e)
+                        last_error = e
                         st.error(HEATMAP_TEXTS.submit_failed(heatmap_config.get_remaining_prompt_original_indices(), e))
                         failed_count += 1
 
@@ -246,4 +280,4 @@ class HeatmapGenerationComponent(StreamlitComponent):
                 if success_count > 0:
                     st.success(HEATMAP_TEXTS.success_status(success_count))
                 if failed_count > 0:
-                    st.warning(HEATMAP_TEXTS.error_status(failed_count))
+                    raise Exception(HEATMAP_TEXTS.error_status(failed_count)) from last_error

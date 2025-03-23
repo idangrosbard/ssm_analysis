@@ -20,7 +20,7 @@ from src.core.consts import (
     is_falcon,
     is_mamba_arch,
 )
-from src.core.names import COLS, DATASETS, EXPERIMENT_NAMES, DataReqCols
+from src.core.names import COLS, DATASETS, EXPERIMENT_NAMES, DataReqCols, ModelCombinationCols
 from src.core.types import (
     MODEL_ARCH_AND_SIZE,
     FeatureCategory,
@@ -541,10 +541,10 @@ class ModelCombination:
 
     def to_dict(self) -> dict[str, Any]:
         return {
-            "correct_models": list(self.correct_models),
-            "incorrect_models": list(self.incorrect_models),
-            "prompts": self.prompts,
-            "chosen_prompt": self.chosen_prompt,
+            ModelCombinationCols.correct_models: list(self.correct_models),
+            ModelCombinationCols.incorrect_models: list(self.incorrect_models),
+            ModelCombinationCols.prompts: self.prompts,
+            ModelCombinationCols.chosen_prompt: self.chosen_prompt,
         }
 
     @classmethod
@@ -554,6 +554,18 @@ class ModelCombination:
             incorrect_models={MODEL_ARCH_AND_SIZE(arch, size) for arch, size in data["incorrect_models"]},
             prompts=data["prompts"],
             chosen_prompt=data["chosen_prompt"],
+        )
+
+    def choose_prompt_by_seed(self, seed: int) -> "ModelCombination":
+        chosen_prompt = None
+        if self.prompts:
+            random.seed(seed)
+            chosen_prompt = random.choice(self.prompts)
+        return ModelCombination(
+            correct_models=self.correct_models,
+            incorrect_models=self.incorrect_models,
+            prompts=self.prompts,
+            chosen_prompt=chosen_prompt,
         )
 
 
@@ -567,7 +579,7 @@ def save_model_combinations_prompts(model_combinations: list[ModelCombination]) 
 def get_model_combinations_prompts(
     variation: Optional[TVariationName],
     model_arch_and_sizes: list[MODEL_ARCH_AND_SIZE],
-    seed: Optional[int] = 42,
+    seed: int,
 ) -> list[ModelCombination]:
     """Get all possible model combinations and their corresponding prompts.
     Each combination specifies which models should be correct and which should be incorrect.
@@ -646,7 +658,7 @@ def get_model_combinations_prompts(
         )
 
     save_model_combinations_prompts(combinations)
-    return get_model_combinations_prompts(variation, model_arch_and_sizes, None)
+    return get_model_combinations_prompts(variation, model_arch_and_sizes, seed)
 
 
 def derive_subset_model_combinations(

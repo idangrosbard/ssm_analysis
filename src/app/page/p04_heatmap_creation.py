@@ -23,7 +23,7 @@ from src.app.components.inputs import (
     select_models_and_sizes,
 )
 from src.app.components.multi_plots import HeatmapPlotGenerationComponent
-from src.app.components.prompt_filter import ModelCombinations, PromptSelectionComponent
+from src.app.components.prompt_filter import PromptSelectionComponent, ShowModelCombinations
 from src.app.data_store import (
     load_model_combinations_prompts,
     load_model_evaluations_dict,
@@ -35,7 +35,10 @@ from src.utils.streamlit.helpers.component import StreamlitPage
 class HeatmapCreationPage(StreamlitPage):
     def render(self):
         # region Data Loading
-        with st.sidebar:
+        clear_deps_expander = st.sidebar.expander("Clear Dependencies", expanded=False)
+        sidebar_expander = st.sidebar.expander("Configuration", expanded=True)
+        with sidebar_expander:
+            seed = st.number_input("Seed", value=GLOBAL_APP_CONSTS.DEFAULT_SEED, min_value=0, max_value=1000000, step=1)
             selected_models = select_models_and_sizes(GLOBAL_APP_CONSTS.MODELS_COMBINATIONS)
 
         with st.spinner(COMMON_TEXTS.LOADING("data"), show_time=True):
@@ -43,37 +46,46 @@ class HeatmapCreationPage(StreamlitPage):
             model_evaluations = load_model_evaluations_dict(AppSessionKeys.variation.value)
             representative_model_evaluations = next(iter(model_evaluations.values()))
             # Get combinations using selected models
-            combinations_df = load_model_combinations_prompts(AppSessionKeys.variation.value, selected_models)
-            combinations_df = sorted(combinations_df, key=lambda x: len(x.prompts), reverse=True)
+            model_combinations_prompts = load_model_combinations_prompts(
+                AppSessionKeys.variation.value, selected_models, seed
+            )
+
+        with clear_deps_expander:
+            load_model_evaluations_dict.render()
+            load_model_combinations_prompts.render()
         # endregion
 
-        filtered_df, selected_combination_row = ModelCombinations(
-            combinations_df, representative_model_evaluations
+        filtered_df, selected_combination_row = ShowModelCombinations(
+            model_combinations_prompts, representative_model_evaluations, sidebar_expander
         ).render()
 
         if selected_combination_row is None:
             st.write(HEATMAP_TEXTS.NO_SELECTED_COMBINATION)
-        else:
-            tab = sac.tabs(
-                [
-                    sac.TabsItem(label=HEATMAP_TEXTS.TAB_SELECT_COMBINATION),
-                    sac.TabsItem(label=HEATMAP_TEXTS.TAB_HEATMAP_PLOTS_GENERATION),
-                    sac.TabsItem(label=HEATMAP_TEXTS.run_selected_prompts_button(len(filtered_df))),
-                ]
-            )
-            combination_row = combinations_df[selected_combination_row]
 
+        tab = sac.tabs(
+            [
+                sac.TabsItem(label=HEATMAP_TEXTS.run_selected_prompts_button(len(filtered_df))),
+                sac.TabsItem(label=HEATMAP_TEXTS.TAB_SELECT_COMBINATION, disabled=selected_combination_row is None),
+                sac.TabsItem(
+                    label=HEATMAP_TEXTS.TAB_HEATMAP_PLOTS_GENERATION, disabled=selected_combination_row is None
+                ),
+            ]
+        )
+
+        if selected_combination_row is not None:
+            combination_row = model_combinations_prompts.to_rows()[selected_combination_row]
             if tab == HEATMAP_TEXTS.TAB_SELECT_COMBINATION:
-                PromptSelectionComponent(combination_row, representative_model_evaluations, combinations_df).render()
+                PromptSelectionComponent(
+                    combination_row, representative_model_evaluations, model_combinations_prompts
+                ).render()
             elif tab == HEATMAP_TEXTS.TAB_HEATMAP_PLOTS_GENERATION:
                 prompt_idx = combination_row.chosen_prompt
                 if prompt_idx is not None:
                     HeatmapPlotGenerationComponent(prompt_idx).render()
-            elif tab == HEATMAP_TEXTS.run_selected_prompts_button(len(filtered_df)):
-                # Add SLURM configuration in sidebar
-                HeatmapGenerationComponent(filtered_df).render()
-            else:
-                raise ValueError(f"Invalid tab: {tab}")
+
+        if tab == HEATMAP_TEXTS.run_selected_prompts_button(len(filtered_df)):
+            # Add SLURM configuration in sidebar
+            HeatmapGenerationComponent(filtered_df).render()
 
 
 if __name__ == "__main__":

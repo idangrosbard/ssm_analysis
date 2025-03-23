@@ -196,3 +196,19 @@ class SummarizedDataFulfilledReqsCols:
     AvailableOptions = "Available Options"
     Options = "Options"
     Key = "Key"
+
+
+class ModelCombinationCols(StrEnum):
+    correct_models = "correct_models"
+    incorrect_models = "incorrect_models"
+    prompts = "prompts"
+    chosen_prompt = "chosen_prompt"
+
+
+class SlurmStatus(StrEnum):
+    NOT_SUBMITTED = "NOT_SUBMITTED"
+    RUNNING = "RUNNING"
+    PENDING = "PENDING"
+    COMPLETED = "COMPLETED"
+    FAILED = "FAILED"
+    CANCELLED = "CANCELLED"

@@ -4,7 +4,6 @@ from streamlit import cache_resource
 
 from src.analysis.experiment_results.data_requirements import (
     IDataFulfilled,
-    ModelCombination,
     choose_latest_data_fulfilled,
     get_data_fullfment_options,
     get_data_reqs,
@@ -18,11 +17,8 @@ from src.analysis.experiment_results.results_bank import (
 from src.app.app_consts import (
     GLOBAL_APP_CONSTS,
 )
-from src.core.names import DATASETS
-from src.core.types import MODEL_ARCH_AND_SIZE, TPromptOriginalIndex, TVariationName, TWindowSize
-from src.data_ingestion.data_defs import DataReqs, ResultBank, SummarizedDataFulfilledReqs
-from src.experiments.infrastructure.base_config import CommonParams, SelectivePromptFilteration
-from src.experiments.runners.heatmap import HeatmapConfig, HeatmapParams
+from src.core.types import MODEL_ARCH_AND_SIZE, TPromptOriginalIndex, TVariationName
+from src.data_ingestion.data_defs import DataReqs, ModelCombinationsPrompts, ResultBank, SummarizedDataFulfilledReqs
 from src.utils.streamlit.helpers.cache import CacheWithDependencies
 
 
@@ -125,37 +121,11 @@ def get_merged_evaluations(prompt_idx: TPromptOriginalIndex, variation: TVariati
 
 
 @CacheWithDependencies()
-def get_models_remaining_prompts(
-    model_combinations: list[MODEL_ARCH_AND_SIZE],
-    window_size: TWindowSize,
-    variation: TVariationName,
-    prompt_original_indices: list[TPromptOriginalIndex],
-) -> dict[MODEL_ARCH_AND_SIZE, HeatmapConfig]:
-    """Get the remaining prompts for each model."""
-    res = {}
-    for model_arch, model_size in model_combinations:
-        config = HeatmapConfig(
-            variation=variation,
-            common_params=CommonParams(
-                model_arch=model_arch,
-                model_size=model_size,
-            ),
-            prompt_filteration=SelectivePromptFilteration(
-                dataset_name=DATASETS.COUNTER_FACT,
-                prompt_ids=prompt_original_indices,
-            ),
-            runner_params=HeatmapParams(
-                window_size=window_size,
-            ),
-        )
-        if config.get_remaining_prompt_original_indices():
-            res[MODEL_ARCH_AND_SIZE(model_arch, model_size)] = config
-    return res
-
-
-@CacheWithDependencies()
 def load_model_combinations_prompts(
-    variation: TVariationName, model_arch_and_sizes: list[MODEL_ARCH_AND_SIZE]
-) -> list[ModelCombination]:
-    """Get all possible model combinations and their corresponding prompts."""
-    return get_model_combinations_prompts(variation, model_arch_and_sizes)
+    variation: TVariationName, model_arch_and_sizes: list[MODEL_ARCH_AND_SIZE], seed: int
+) -> ModelCombinationsPrompts:
+    return (
+        ModelCombinationsPrompts(get_model_combinations_prompts(variation, model_arch_and_sizes, seed))
+        .sort_by_prompt_count()
+        .change_chosen_prompt_by_seed(seed)
+    )

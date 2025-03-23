@@ -28,7 +28,9 @@ def select_window_size():
     )
 
 
-def select_models_and_sizes(available_models: list[MODEL_ARCH_AND_SIZE]) -> list[MODEL_ARCH_AND_SIZE]:
+def select_models_and_sizes(
+    available_models: list[MODEL_ARCH_AND_SIZE],
+) -> list[MODEL_ARCH_AND_SIZE]:
     """Display a multi-select widget for choosing model architectures and sizes.
 
     Args:
@@ -43,18 +45,16 @@ def select_models_and_sizes(available_models: list[MODEL_ARCH_AND_SIZE]) -> list
 
     # Create mapping from display name back to tuple
     name_to_model: dict[str, MODEL_ARCH_AND_SIZE] = dict(zip(model_display_names, model_options))
+    selected_names = st.pills(
+        "Select Models",
+        options=model_display_names,
+        default=model_display_names,
+        key="model_multiselect",
+        selection_mode="multi",
+    )
 
-    with st.expander("Filter Models", expanded=False):
-        selected_names = st.pills(
-            "Select Models",
-            options=model_display_names,
-            default=model_display_names,
-            key="model_multiselect",
-            selection_mode="multi",
-        )
-
-        # Convert selected names back to model tuples
-        selected_models = [name_to_model[name] for name in selected_names]
+    # Convert selected names back to model tuples
+    selected_models = [name_to_model[name] for name in selected_names]
 
     return selected_models
 

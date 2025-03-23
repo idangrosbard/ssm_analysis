@@ -19,8 +19,9 @@ from src.utils.streamlit.helpers.session_keys import SessionKeyDescriptor, Sessi
 
 
 class GLOBAL_APP_CONSTS:
-    DEFAULT_VARIATION = TVariationName("v3")
+    DEFAULT_VARIATION = TVariationName("v1")
     DEFAULT_WINDOW_SIZE = TWindowSize(9)
+    DEFAULT_SEED = 42
     MODELS_COMBINATIONS = list(GRAPHS_ORDER.keys())
     PROMPT_RELATED_COLUMNS = [
         COLS.COUNTER_FACT.PROMPT,

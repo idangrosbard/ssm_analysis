@@ -5,6 +5,7 @@ import streamlit as st
 from annotated_text import annotated_text, annotation
 from pandas import DataFrame
 from st_aggrid import AgGrid, DataReturnMode, GridUpdateMode
+from streamlit.delta_generator import DeltaGenerator
 
 from src.analysis.experiment_results.data_requirements import ModelCombination, save_model_combinations_prompts
 from src.app.app_consts import GLOBAL_APP_CONSTS, AppSessionKeys
@@ -16,6 +17,7 @@ from src.app.data_store import get_merged_evaluations
 from src.app.texts import HEATMAP_TEXTS
 from src.core.names import COLS, HeatmapCols
 from src.core.types import TPromptOriginalIndex
+from src.data_ingestion.data_defs import ModelCombinationsPrompts
 from src.data_ingestion.helpers.dataframe import (
     index_to_row_position,
     validate_one_selected_row_dataframe,
@@ -45,46 +47,28 @@ def show_prompt(prompt: Prompt):
     )
 
 
-class ModelCombinations(StreamlitComponent):
+class ShowModelCombinations(StreamlitComponent):
     def __init__(
         self,
-        combinations_df: list[ModelCombination],
+        model_combinations_prompts: ModelCombinationsPrompts,
         representative_model_evaluations: pd.DataFrame,
+        filters_container: Optional[DeltaGenerator] = None,
     ):
-        self.combinations_df = combinations_df
+        self.model_combinations_prompts = model_combinations_prompts
         self.representative_model_evaluations = representative_model_evaluations
+        self.filters_container = filters_container
 
     def render(self):
-        table_data = []
-        for row in self.combinations_df:
-            # Create row with model correctness
-            table_row = {}
-
-            # Add prompt count and selected prompt first
-            table_row[HeatmapCols.PROMPT_COUNT] = len(row.prompts)
-            table_row[HeatmapCols.SELECTED_PROMPT] = row.chosen_prompt
-
-            # Add model columns at the end
-            for model_name_and_size in GLOBAL_APP_CONSTS.MODELS_COMBINATIONS:
-                model_name = model_name_and_size.model_name
-                if model_name_and_size in row.correct_models:
-                    table_row[model_name] = "✅"
-                elif model_name_and_size in row.incorrect_models:
-                    table_row[model_name] = "❌"
-                else:
-                    table_row[model_name] = "-"
-            table_data.append(table_row)
-
-        # endregion
-        # region Create DataFrame for display
-        display_df = pd.DataFrame(table_data)
-
+        display_df = self.model_combinations_prompts.to_display_df(GLOBAL_APP_CONSTS.MODELS_COMBINATIONS)
         assert display_df[HeatmapCols.PROMPT_COUNT].sum() == len(self.representative_model_evaluations), (
             "Display df prompt count mismatch, "
             f"{display_df[HeatmapCols.PROMPT_COUNT].sum()} != {len(self.representative_model_evaluations)}"
         )
 
-        with st.sidebar.expander(HEATMAP_TEXTS.MODEL_COMBINATIONS_FILTERING, expanded=True):
+        filter_container = self.filters_container
+        if filter_container is None:
+            filter_container = st.sidebar.expander(HEATMAP_TEXTS.MODEL_COMBINATIONS_FILTERING, expanded=True)
+        with filter_container:
             filtered_df = filter_combinations(
                 display_df,
                 [model_name_and_size.model_name for model_name_and_size in GLOBAL_APP_CONSTS.MODELS_COMBINATIONS],
@@ -153,11 +137,11 @@ class PromptSelectionComponent(StreamlitComponent):
         self,
         combination_row: ModelCombination,
         representative_model_evaluations: pd.DataFrame,
-        combinations_df: list[ModelCombination],
+        model_combinations_prompts: ModelCombinationsPrompts,
     ):
         self.combination_row = combination_row
         self.representative_model_evaluations = representative_model_evaluations
-        self.combinations_df = combinations_df
+        self.model_combinations_prompts = model_combinations_prompts
 
     def render(self):
         possible_prompts = self.representative_model_evaluations.loc[self.combination_row.prompts]
@@ -176,7 +160,7 @@ class PromptSelectionComponent(StreamlitComponent):
                 if st.button(HEATMAP_TEXTS.BUT_SAVE_NEW_SELECTION(chosen_prompt_idx, selected_prompt_idx_new)):
                     # selected_prompt = possible_prompts.iloc[selected_row_idx]  # type: ignore
                     raise NotImplementedError("Saving is not implemented yet")
-                    save_model_combinations_prompts(self.combinations_df)
+                    save_model_combinations_prompts(self.model_combinations_prompts)
 
                 # Update the selected prompt index
                 chosen_prompt_idx = TPromptOriginalIndex(selected_prompt_idx_new)

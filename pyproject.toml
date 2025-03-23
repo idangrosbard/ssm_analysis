@@ -9,6 +9,7 @@ extend-include = [
 exclude = [
     "**/*.ipynb.py",
     ".history/**",
+    "tests/src/experiments/baselines/full_pipeline/**",
 ]
 
 [tool.ruff.lint]
@@ -81,6 +82,7 @@ files = [
 exclude = [
     ".*/__pycache__",
     ".history/**",
+    "tests/src/experiments/baselines/full_pipeline/**",
     # "src/embeddings",
     # "src/evaluate",
     # "src/knockout",
@@ -114,6 +116,7 @@ exclude = [
     "**/__pycache__",
     "notebooks/**",
     ".history/**",
+    "tests/src/experiments/baselines/full_pipeline/**",
 ]
 ignore = [
     # "src/embeddings",

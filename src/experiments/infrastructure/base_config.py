@@ -8,7 +8,7 @@ from typing import Any, Generic, Mapping, Optional, TypeVar, Union, final
 from submitit.slurm.slurm import SlurmJob
 
 from src.core.consts import MODEL_SIZES_PER_ARCH_TO_MODEL_ID, PATHS, PathsConfig, RunnerPaths
-from src.core.names import EXPERIMENT_NAMES
+from src.core.names import EXPERIMENT_NAMES, SlurmStatus
 from src.core.types import (
     MODEL_ARCH,
     MODEL_ARCH_AND_SIZE,
@@ -203,10 +203,32 @@ class BaseRunner(ABC, Generic[_TRunnerParams, _TRunnerOutputs]):
 
     @property
     def job_name(self) -> str:
-        return combine_output_keys(
-            self,
-            self.experiment_output_keys,
-            sep="_",
+        sep = "_"
+        return sep.join(
+            [
+                combine_output_keys(
+                    self,
+                    [
+                        BASE_OUTPUT_KEYS.EXPERIMENT_NAME,
+                        BASE_OUTPUT_KEYS.VARIATION,
+                    ],
+                    sep=sep,
+                ),
+                combine_output_keys(
+                    self.common_params,
+                    [
+                        BASE_OUTPUT_KEYS.MODEL_ARCH,
+                        BASE_OUTPUT_KEYS.MODEL_SIZE,
+                        BASE_OUTPUT_KEYS.DATASET_NAME,
+                    ],
+                    sep=sep,
+                ),
+                combine_output_keys(
+                    self.runner_params,
+                    self.experiment_output_keys,
+                    sep=sep,
+                ),
+            ]
         )
 
     def set_running_params(
@@ -286,11 +308,11 @@ class BaseRunner(ABC, Generic[_TRunnerParams, _TRunnerOutputs]):
             return None
         return SlurmJob(submission_file_path[0], job_id=job_path.stem)
 
-    def is_running(self) -> bool:
+    def get_slurm_status(self) -> SlurmStatus:
         latest_job = self.get_latest_slurm_job()
         if latest_job is None:
-            return False
-        return latest_job.state == "RUNNING"
+            return SlurmStatus.NOT_SUBMITTED
+        return SlurmStatus[latest_job.state]
 
     def run(self) -> None:
         if not self.run_params.with_slurm:
@@ -299,7 +321,7 @@ class BaseRunner(ABC, Generic[_TRunnerParams, _TRunnerOutputs]):
         else:
             job = submit_job(
                 self.compute,
-                log_folder=str(self.global_path_config.get_slurm_job_submission_file_path(self.job_name, "%j")),
+                log_folder=str(self.global_path_config.get_slurm_job_log_folder(self.job_name, "%j")),
                 job_name=self.job_name,
                 # timeout_min=1200,
                 gpu_type=self.run_params.slurm_gpu_type,

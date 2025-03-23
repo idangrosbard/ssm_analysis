@@ -19,6 +19,7 @@ import pandas as pd
 import streamlit as st
 from st_aggrid import AgGridReturn
 
+from src.app.app_consts import GLOBAL_APP_CONSTS
 from src.app.app_utils import reverse_format_path_for_display
 from src.app.components.info_flow import InfoFlowAnalysisComponent
 from src.app.components.result_bank import SelectionMode, ShowResultsBank
@@ -179,7 +180,7 @@ class InfoFlowAnalysisPage(StreamlitPage):
             selection_mode=SelectionMode.MULTIPLE,  # Changed to MULTIPLE
             height=300,
             filters={
-                ResultBankParamNames.variation: ["v3"],
+                ResultBankParamNames.variation: [GLOBAL_APP_CONSTS.DEFAULT_VARIATION],
                 ResultBankParamNames.model_size: [
                     model_arch_and_size.size
                     for model_arch_and_size, size_cat in GRAPHS_ORDER.items()
