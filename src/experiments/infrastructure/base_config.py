@@ -22,6 +22,7 @@ from src.core.types import (
 )
 from src.data_ingestion.datasets.download_dataset import DATASETS, get_prompt_ids
 from src.experiments.infrastructure.model_interface import ModelInterface, get_model_interface
+from src.experiments.infrastructure.setup_models import get_tokenizer
 from src.utils.infra.experiment_helper import create_run_id
 from src.utils.infra.output_path import (
     OutputKey,
@@ -130,7 +131,7 @@ class CommonParams:
 
     @property
     def get_tokenizer(self) -> TTokenizer:
-        return self.get_model_interface().tokenizer
+        return get_tokenizer(self.model_arch, self.model_size)
 
 
 @dataclass

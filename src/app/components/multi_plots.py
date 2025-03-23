@@ -32,8 +32,9 @@ class HeatmapPlotGenerationComponent(StreamlitComponent):
         grid: list[list[Path | None]] = [[None for _ in range(N)] for _ in range(M)]  # 3x3 grid of None values
         size_cats = [MODEL_SIZE_CAT.SMALL, MODEL_SIZE_CAT.MEDIUM, MODEL_SIZE_CAT.LARGE, MODEL_SIZE_CAT.HUGE]
 
-        i = 0
-        for model_arch_and_size in GLOBAL_APP_CONSTS.MODELS_COMBINATIONS:
+        rows_count = len(GLOBAL_APP_CONSTS.MODELS_COMBINATIONS)
+        progress_bar = st.progress(0, text="Plotting...")
+        for i, model_arch_and_size in enumerate(GLOBAL_APP_CONSTS.MODELS_COMBINATIONS):
             model_arch, model_size = model_arch_and_size
             config = HeatmapConfig(
                 variation=AppSessionKeys.variation.value,
@@ -56,11 +57,15 @@ class HeatmapPlotGenerationComponent(StreamlitComponent):
             if not plots_path.exists():
                 config.plot(heatmap_parms.plot_name)
 
+            progress = min((i + 1) / rows_count, 1.0)
+            progress_bar.progress(progress, text=f"Plotting {i + 1}/{rows_count}")
+
             # Add plot path to its position in the grid
             size_cat = GRAPHS_ORDER[model_arch_and_size]
             if size_cat in size_cats:
                 grid[i // N][i % N] = plots_path
                 i += 1
+        progress_bar.empty()
 
         # Create the combined image
         if any(any(row) for row in grid):  # Only show if we have any images
