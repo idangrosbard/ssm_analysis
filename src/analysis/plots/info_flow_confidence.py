@@ -11,16 +11,9 @@ from matplotlib.figure import Figure
 from numpy.typing import NDArray
 from scipy import stats
 
-from src.core.consts import (
-    CONVERT_TO_PLOTLY_LINE_STYLE,
-    TOKEN_TYPE_COLORS,
-    TOKEN_TYPE_LINE_STYLES,
-)
+from src.core.consts import CONVERT_TO_PLOTLY_LINE_STYLE
 from src.core.names import COLS
-from src.core.types import (
-    TInfoFlowOutput,
-    TokenType,
-)
+from src.core.types import TInfoFlowOutput, TokenType
 from src.utils.types_utils import first_dict_value
 
 
@@ -49,6 +42,14 @@ class PlotMetadata(TypedDict):
     ylim: Optional[tuple[float, float]]
 
 
+class LinePlotMetadata(TypedDict):
+    label: str
+    color: str
+    linestyle: str
+    data: TInfoFlowOutput
+
+
+# region Confidence Calculation
 def calculate_ci(data: NDArray[np.float64], confidence_level: float = 0.95) -> Confidence:
     """Calculate confidence intervals for a given data set using standard error."""
     mean = np.mean(data)
@@ -178,6 +179,9 @@ def calculate_confidence(
         raise ValueError(f"Invalid confidence method: {confidence_method}")
 
 
+# endregion
+
+
 def calculate_metrics_with_confidence(
     window_outputs: TInfoFlowOutput,
     metric_types: list[Literal["acc", "diff"]],
@@ -253,7 +257,7 @@ def plot_with_confidence(
 
 
 def create_confidence_plot(
-    targets_window_outputs: dict[str, TInfoFlowOutput],
+    lines_metadata: list[LinePlotMetadata],
     confidence_level: float,
     title: str,
     plots_meta_data: dict[Literal["acc", "diff"], PlotMetadata],
@@ -279,8 +283,7 @@ def create_confidence_plot(
     unique_handles = {}
 
     # Get number of points from first window of first block
-    first_block = first_dict_value(targets_window_outputs)
-    first_window = first_dict_value(first_block)
+    first_window = first_dict_value(lines_metadata[0]["data"])
     n_points = len(first_window[COLS.INFO_FLOW.HIT.value])
 
     # Process each metric type (accuracy and diff)
@@ -288,15 +291,17 @@ def create_confidence_plot(
         ax = axes[i]
 
         # Plot data for each block
-        for label, window_outputs in targets_window_outputs.items():
-            metrics = calculate_metrics_with_confidence(window_outputs, list(plots_meta_data.keys()), confidence_level)
+        for line_metadata in lines_metadata:
+            metrics = calculate_metrics_with_confidence(
+                line_metadata["data"], list(plots_meta_data.keys()), confidence_level
+            )
 
             plot_with_confidence(
                 metrics=metrics,
                 metric_type=metric_type,
-                label=label,
-                color=TOKEN_TYPE_COLORS.get((label), "#000000"),
-                linestyle=TOKEN_TYPE_LINE_STYLES.get(label, "-"),
+                label=line_metadata["label"],
+                color=line_metadata["color"],
+                linestyle=line_metadata["linestyle"],
                 ax=ax,
             )
 
@@ -502,7 +507,7 @@ def process_info_flow_files(
     title = f"Knocking out flow to {target_block}\n{model_id}, window size={window_size}"
 
     fig = create_confidence_plot(
-        targets_window_outputs=targets_window_outputs,  # type: ignore
+        lines_metadata=targets_window_outputs,  # type: ignore
         confidence_level=confidence_level,
         title=title,
         plots_meta_data=plots_meta_data,

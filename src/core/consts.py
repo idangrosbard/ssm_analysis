@@ -9,6 +9,7 @@ from src.core.types import (
     MODEL_ARCH,
     MODEL_ARCH_AND_SIZE,
     MODEL_SIZE_CAT,
+    FeatureCategory,
     TDatasetID,
     TModelID,
     TModelSize,
@@ -243,23 +244,23 @@ COUNTER_FACT_2_KNOWN1000_COL_CONV = {
 }
 
 
-TOKEN_TYPE_COLORS: dict[str, str] = {
-    TokenType.last: "#D2691E",  # orange
+TOKEN_TYPE_COLORS: dict[TokenType, str] = {
     TokenType.first: "#0000FF",  # blue
+    TokenType.last: "#D2691E",  # orange
     TokenType.subject: "#008000",  # green
     TokenType.relation: "#800080",  # purple
     TokenType.context: "#FF0000",  # red
     TokenType.all: "#000000",  # black
+    TokenType.relation_minus_last: "#800000",  # maroon
 }
 
-TOKEN_TYPE_LINE_STYLES: dict[str, str] = {
-    TokenType.last: "-.",
-    TokenType.first: ":",
-    TokenType.subject: "-",
-    TokenType.relation: "--",
-    TokenType.context: "--",
-    TokenType.all: "-",
+TOKEN_TYPE_LINE_STYLES: dict[FeatureCategory, str] = {
+    # Options: "-", ":", "--", "-.", "-.-", "-.-."
+    FeatureCategory.ALL: "-",
+    FeatureCategory.FAST_DECAY: "-.",
+    FeatureCategory.SLOW_DECAY: ":",
 }
+
 CONVERT_TO_PLOTLY_LINE_STYLE = {
     "-": "solid",
     ":": "dot",

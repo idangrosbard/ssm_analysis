@@ -35,7 +35,7 @@ class OutputKey(Generic[_ATTRIBUTE_TYPE]):
         return self.skip_condition(self.get_value(obj))
 
     def get_value(self, obj: object) -> _ATTRIBUTE_TYPE:
-        assert hasattr(obj, self.key_name)
+        assert hasattr(obj, self.key_name), f"Object {obj} does not have attribute {self.key_name}"
         return cast(_ATTRIBUTE_TYPE, getattr(obj, self.key_name))
 
     def display(self, obj: object) -> str:

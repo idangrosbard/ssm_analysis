@@ -12,22 +12,27 @@ consistent configuration across all steps.
 """
 
 from dataclasses import dataclass
+from pathlib import Path
 from typing import TypedDict
 
-from src.core.names import EXPERIMENT_NAMES
+import matplotlib.pyplot as plt
+
+from src.analysis.plots.info_flow_confidence import create_confidence_plot
+from src.core.consts import TOKEN_TYPE_COLORS, TOKEN_TYPE_LINE_STYLES
+from src.core.names import EXPERIMENT_NAMES, INFO_FLOW_HP_COLS
 from src.core.types import FeatureCategory, TokenType, TWindowSize
 from src.experiments.infrastructure.base_config import (
-    BASE_OUTPUT_KEYS,
     BaseRunner,
     PromptFilteration,
 )
 from src.experiments.runners.heatmap import HEATMAP_PLOT_FUNCS, HeatmapConfig, HeatmapParams
-from src.experiments.runners.info_flow import InfoFlowConfig, InfoFlowParams
+from src.experiments.runners.info_flow import InfoFlowConfig, InfoFlowParams, skip_task
+from src.utils.types_utils import first_dict_value
 
 
 class FullPipelineDependencies(TypedDict):
     heatmap: HeatmapConfig
-    info_flow: dict[str, InfoFlowConfig]
+    info_flow: dict[TokenType, dict[tuple[TokenType, FeatureCategory], InfoFlowConfig]]
 
 
 @dataclass
@@ -55,9 +60,18 @@ class FullPipelineConfig(BaseRunner):
 
     @property
     def experiment_output_keys(self):
-        return super().experiment_output_keys + [
-            BASE_OUTPUT_KEYS.WINDOW_SIZE,
-        ]
+        return super().experiment_output_keys
+
+    def target_plot_path(self, target_token: TokenType, plot_name: str) -> Path:
+        info_flow_config = first_dict_value(self.get_runner_dependencies()["info_flow"][target_token])
+        path = info_flow_config.variation_paths.plots_path
+        print(1, path)
+        while not path.name.startswith(INFO_FLOW_HP_COLS.target):
+            path = path.parent
+        print(2, path)
+        path = path.parent / info_flow_config.variation_paths.plots_path.name / f"target={target_token}{plot_name}.png"
+        print(3, path)
+        return path
 
     def get_outputs(self) -> dict:
         """Get outputs from all experiments."""
@@ -67,19 +81,20 @@ class FullPipelineConfig(BaseRunner):
         main_local(self)
 
     def get_runner_dependencies(self) -> FullPipelineDependencies:  # type: ignore
-        info_flow_deps: dict[str, InfoFlowConfig] = {}
+        info_flow_deps: dict[TokenType, dict[tuple[TokenType, FeatureCategory], InfoFlowConfig]] = {}
         for target_token, source in self.runner_params.knockout_map.items():
+            info_flow_deps[target_token] = {}
             for source_token, feature_category in source:
-                info_flow_deps[f"info_flow_{source_token}_{feature_category}->{target_token}"] = (
-                    InfoFlowConfig.init_from_config(
-                        config=self,
-                        runner_params=InfoFlowParams(
-                            window_size=self.runner_params.info_flow_window_size,
-                            source=source_token,
-                            feature_category=feature_category,
-                            target=target_token,
-                        ),
-                    )
+                if skip_task(self.common_params.model_arch, feature_category):
+                    continue
+                info_flow_deps[target_token][(source_token, feature_category)] = InfoFlowConfig.init_from_config(
+                    config=self,
+                    runner_params=InfoFlowParams(
+                        window_size=self.runner_params.info_flow_window_size,
+                        source=source_token,
+                        feature_category=feature_category,
+                        target=target_token,
+                    ),
                 )
 
         return FullPipelineDependencies(
@@ -120,10 +135,54 @@ def main_local(args: FullPipelineConfig):
 
     if args.runner_params.with_plotting:
         print("\nPlotting all info flow blocks...")
-        try:
-            for info_flow_config in args.get_runner_dependencies()["info_flow"].values():
-                info_flow_config.plot()
-        except Exception as e:
-            print(f"Error plotting info flow blocks: {e}")
+        for target_token, source_info_flows in args.get_runner_dependencies()["info_flow"].items():
+            title = (
+                " - ".join(
+                    [
+                        args.common_params.model_arch,
+                        args.common_params.model_size,
+                        f"window_size={args.runner_params.info_flow_window_size}",
+                    ]
+                )
+                + f"\nKnocking out flow to {target_token}"
+            )
+            lines_metadata = []
+            for source_token, feature_category in source_info_flows.keys():
+                info_flow_config = source_info_flows[(source_token, feature_category)]
+                lines_metadata.append(
+                    {
+                        "label": f"{source_token} - {feature_category}",
+                        "color": TOKEN_TYPE_COLORS.get(source_token, "#000000"),
+                        "linestyle": TOKEN_TYPE_LINE_STYLES.get(feature_category, "-"),
+                        "data": info_flow_config.get_outputs(),
+                    }
+                )
+            for with_fixed_limits in [True, False]:
+                plot_name = "_fixed_limits" if with_fixed_limits else ""
+                fig = create_confidence_plot(
+                    lines_metadata=lines_metadata,
+                    confidence_level=0.95,
+                    title=title,
+                    plots_meta_data={
+                        "acc": {
+                            "title": "Accuracy",
+                            "ylabel": "% accuracy",
+                            "ylabel_loc": "center",
+                            "axhline_value": 100.0,
+                            "ylim": (60.0, 105.0) if with_fixed_limits else None,
+                        },
+                        "diff": {
+                            "title": "Normalized change in prediction probability",
+                            "ylabel": "% probability change",
+                            "ylabel_loc": "top",
+                            "axhline_value": 0.0,
+                            "ylim": (-50.0, 50.0) if with_fixed_limits else None,
+                        },
+                    },
+                )
+                path = args.target_plot_path(target_token, plot_name)
+                path.parent.mkdir(parents=True, exist_ok=True)
+                fig.savefig(path)
+                plt.close(fig)
 
     print("\nFull Pipeline Experiment Complete!")

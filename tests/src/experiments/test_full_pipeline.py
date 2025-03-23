@@ -26,6 +26,7 @@ from src.experiments.infrastructure.base_config import CommonParams, SelectivePr
 from src.experiments.runners.evaluate_model import Correctness, ModelCorrectPromptFilteration
 from src.experiments.runners.full_pipeline import FullPipelineConfig, FullPipelineParam
 from src.experiments.runners.info_flow import forward_eval
+from src.utils.types_utils import first_dict_value
 
 HEATMAP_SIZE = 5
 BASELINES_DIR = Path(__file__).parent / "baselines"
@@ -159,9 +160,9 @@ def test_info_flow_intermediate_recovery(tmp_path: Path):
             ],
         }
 
-        info_flow_configs = full_pipeline_config.get_runner_dependencies()["info_flow"]
-        assert len(info_flow_configs) == 1
-        info_flow_config = list(info_flow_configs.values())[0]
+        info_flow_config = first_dict_value(
+            first_dict_value(full_pipeline_config.get_runner_dependencies()["info_flow"])
+        )
         info_flow_config.get_runner_dependencies()["evaluate_model"].compute()
 
         # Mock the save interval to be very short for testing

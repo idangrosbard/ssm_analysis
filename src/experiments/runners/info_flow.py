@@ -11,7 +11,7 @@ import torch
 from tqdm import tqdm
 
 from src.analysis.plots.info_flow_confidence import create_confidence_plot
-from src.core.consts import is_mamba_arch
+from src.core.consts import TOKEN_TYPE_COLORS, TOKEN_TYPE_LINE_STYLES, is_mamba_arch
 from src.core.names import COLS, EXPERIMENT_NAMES, INFO_FLOW_HP_COLS
 from src.core.types import (
     MODEL_ARCH,
@@ -116,14 +116,10 @@ class InfoFlowConfig(BaseRunner[InfoFlowParams, TInfoFlowOutput]):
         if path.exists():
             path.unlink()
 
-    def output_block_target_path(self, is_intermediate: bool) -> Path:
-        output_path = (
-            self.variation_paths.intermediate_outputs if is_intermediate else self.variation_paths.outputs_path
-        )
-        return output_path
-
     def output_block_target_source_path(self, is_intermediate: bool = False) -> Path:
-        return self.output_block_target_path(is_intermediate) / "info_flow.csv"
+        return (
+            self.variation_paths.intermediate_outputs if is_intermediate else self.variation_paths.outputs_path
+        ) / "info_flow.csv"
 
     @staticmethod
     def convert_json_output_to_output(
@@ -137,7 +133,6 @@ class InfoFlowConfig(BaseRunner[InfoFlowParams, TInfoFlowOutput]):
 
     def get_outputs(
         self,
-        enforce_no_missing_outputs: bool = True,
     ):
         return self.load_output(self.output_block_target_source_path())
 
@@ -148,7 +143,6 @@ class InfoFlowConfig(BaseRunner[InfoFlowParams, TInfoFlowOutput]):
         self,
         save: bool = False,
         confidence_level: float = 0.95,
-        enforce_no_missing_outputs: bool = True,
     ):
         """Plot information flow from a target block to its source blocks.
 
@@ -161,7 +155,14 @@ class InfoFlowConfig(BaseRunner[InfoFlowParams, TInfoFlowOutput]):
         for with_fixed_limits in [True, False]:
             sub_title = "_fixed_limits" if with_fixed_limits else ""
             figs[sub_title] = create_confidence_plot(
-                targets_window_outputs={str(self.runner_params.source): data},
+                lines_metadata=[
+                    {
+                        "label": f"{self.runner_params.source} - {self.runner_params.feature_category}",
+                        "color": TOKEN_TYPE_COLORS.get((self.runner_params.source), "#000000"),
+                        "linestyle": TOKEN_TYPE_LINE_STYLES.get(self.runner_params.feature_category, "-"),
+                        "data": data,
+                    }
+                ],
                 confidence_level=confidence_level,
                 title=(
                     " - ".join(
@@ -227,10 +228,7 @@ class InfoFlowConfig(BaseRunner[InfoFlowParams, TInfoFlowOutput]):
 
 
 def plot(args: InfoFlowConfig):
-    knockout_map_outputs = args.get_outputs()
-    for target in knockout_map_outputs:
-        print(f"Plotting {target}")
-        args.plot_block_target(save=True)
+    args.plot_block_target(save=True)
 
 
 def forward_eval(

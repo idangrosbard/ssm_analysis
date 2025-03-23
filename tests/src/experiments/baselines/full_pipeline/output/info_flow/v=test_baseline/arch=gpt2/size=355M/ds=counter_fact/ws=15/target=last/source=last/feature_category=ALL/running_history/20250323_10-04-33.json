@@ -1,0 +1,30 @@
+{
+    "variation": "test_baseline",
+    "common_params": {
+        "model_arch": "gpt2",
+        "model_size": "355M",
+        "dataset_name": "counter_fact"
+    },
+    "prompt_filteration": {
+        "dataset_name": "counter_fact",
+        "model_arch": "gpt2",
+        "model_size": "355M",
+        "correctness": "correct",
+        "variation": "test_baseline"
+    },
+    "runner_params": {
+        "window_size": 15,
+        "source": "last",
+        "feature_category": "ALL",
+        "target": "last"
+    },
+    "run_params": {
+        "_batch_size": 1,
+        "with_slurm": false,
+        "slurm_gpu_type": "l40s",
+        "slurm_gpus_per_node": 1,
+        "overwrite_existing_outputs": false
+    },
+    "run_id": "20250323_10-04-33",
+    "git_commit_hash": "c6016ec364ea53f534f97dc5349b2f8d928e623b"
+}

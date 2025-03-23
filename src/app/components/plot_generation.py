@@ -25,7 +25,7 @@ from src.analysis.experiment_results.plot_plan import PlotPlan, PlotType, get_hy
 from src.analysis.plots.heatmaps import simple_diff_fixed
 from src.analysis.plots.info_flow_confidence import create_confidence_plot
 from src.app.texts import FINAL_PLOTS_TEXTS
-from src.core.consts import MODEL_SIZES_PER_ARCH_TO_MODEL_ID
+from src.core.consts import MODEL_SIZES_PER_ARCH_TO_MODEL_ID, TOKEN_TYPE_COLORS, TOKEN_TYPE_LINE_STYLES
 from src.core.names import SummarizedDataFulfilledReqsCols
 from src.core.types import MODEL_ARCH_AND_SIZE, TInfoFlowOutput, TPromptData
 from src.data_ingestion.data_defs import DataReqs, FulfilledReqs, PlotPlans, ResultBank
@@ -871,29 +871,30 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
         """Generate architecture knockout plot for a single cell."""
         # Create the base figure
         configs = list(fulfilled_reqs.get_config().values())
-        data = {}
+        data = []
+        title = "-".join(
+            [
+                # config.common_params.model_arch,
+                # config.common_params.model_size,
+                # str(config.runner_params.window_size),
+            ]
+        )
         for config in configs:
             assert isinstance(config, InfoFlowConfig)
-            for item, output in config.get_outputs().items():
-                output_keys = list(output.keys())
-                assert len(output_keys) == 1
-                output_key = output_keys[0]
-                windowed_data = output[output_key]
-                key = "-".join(
-                    [
-                        config.common_params.model_arch,
-                        config.common_params.model_size,
-                        str(config.runner_params.window_size),
-                        str(item),
-                        output_key,
-                    ]
-                )
-                data[key] = windowed_data
+
+            data.append(
+                {
+                    "label": f"{config.runner_params.source} - {config.runner_params.feature_category}",
+                    "color": TOKEN_TYPE_COLORS.get(config.runner_params.source, "#000000"),
+                    "linestyle": TOKEN_TYPE_LINE_STYLES.get(config.runner_params.feature_category, "-"),
+                    "data": config.get_outputs(),
+                }
+            )
         with_fixed_limits = False
         fig = create_confidence_plot(
-            targets_window_outputs=data,
+            lines_metadata=data,
             confidence_level=0.95,
-            title="",
+            title=title,
             plots_meta_data={
                 "acc": {
                     "title": "Accuracy",
