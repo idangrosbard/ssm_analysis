@@ -7,7 +7,7 @@ from pandas import DataFrame
 from st_aggrid import AgGrid, DataReturnMode, GridUpdateMode
 from streamlit.delta_generator import DeltaGenerator
 
-from src.analysis.experiment_results.data_requirements import ModelCombination, save_model_combinations_prompts
+from src.analysis.experiment_results.model_prompt_combination import ModelCombination, save_model_combinations_prompts
 from src.app.app_consts import GLOBAL_APP_CONSTS, AppSessionKeys
 from src.app.app_utils import (
     filter_combinations,

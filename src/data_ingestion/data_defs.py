@@ -11,7 +11,8 @@ from src.utils.infra.data_object import DataObject
 from src.utils.types_utils import str_enum_values
 
 if TYPE_CHECKING:
-    from src.analysis.experiment_results.data_requirements import DataReq, ModelCombination
+    from src.analysis.experiment_results.data_requirements import DataReq
+    from src.analysis.experiment_results.model_prompt_combination import ModelCombination
     from src.analysis.experiment_results.plot_plan import PlotPlan
     from src.analysis.experiment_results.results_bank import ResultRecord
 
@@ -43,7 +44,7 @@ class DataReqs(DataObject):
         )
 
     def to_fulfilled_reqs(self, result_bank: "ResultBank") -> "FulfilledReqs":
-        from src.analysis.experiment_results.data_requirements import get_data_fullfment_options
+        from src.analysis.experiment_results.helpers import get_data_fullfment_options
 
         return get_data_fullfment_options(self, result_bank)
 
@@ -56,7 +57,7 @@ class FulfilledReqs(DataObject):
         return SummarizedDataFulfilledReqs(self)
 
     def choose_latest_fulfilled(self, result_bank: "ResultBank") -> "FulfilledReqs":
-        from src.analysis.experiment_results.data_requirements import choose_latest_data_fulfilled
+        from src.analysis.experiment_results.helpers import choose_latest_data_fulfilled
 
         return FulfilledReqs(
             {req: [] if path is None else [path] for req, path in choose_latest_data_fulfilled(self).items()}

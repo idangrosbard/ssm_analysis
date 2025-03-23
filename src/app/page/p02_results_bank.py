@@ -14,7 +14,7 @@ import shutil
 
 import streamlit as st
 
-from src.analysis.experiment_results.data_requirements import result_record_to_data_req
+from src.analysis.experiment_results.helpers import result_record_to_data_req
 from src.app.components.result_bank import ShowResultsBank
 from src.app.data_store import load_results_bank, load_test_results_bank
 from src.app.texts import RESULTS_BANK_TEXTS

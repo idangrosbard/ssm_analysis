@@ -1,7 +1,7 @@
 from src.analysis.experiment_results.data_requirements import (
     DataReq,
-    IDataFulfilled,
 )
+from src.analysis.experiment_results.helpers import IDataFulfilled
 from src.core.consts import (
     GRAPHS_ORDER,
     MODEL_SIZE_CAT,

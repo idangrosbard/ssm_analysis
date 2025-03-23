@@ -20,7 +20,7 @@ import plotly.graph_objects as go
 import streamlit as st
 from plotly.subplots import make_subplots
 
-from src.analysis.experiment_results.data_requirements import get_model_evaluations
+from src.analysis.experiment_results.helpers import get_model_evaluations
 from src.analysis.experiment_results.plot_plan import PlotPlan, PlotType, get_hyper_param_definition
 from src.analysis.plots.heatmaps import simple_diff_fixed
 from src.analysis.plots.info_flow_confidence import create_confidence_plot
