@@ -10,8 +10,12 @@ from src.core.types import (
     TVariationName,
     TWindowSize,
 )
-from src.experiments.infrastructure.base_config import AllPromptFilteration, CommonParams, SelectivePromptFilteration
-from src.experiments.runners.evaluate_model import Correctness, EvaluateModelConfig, ModelCorrectPromptFilteration
+from src.experiments.infrastructure.base_config import CommonParams
+from src.analysis.prompt_filterations import SelectivePromptFilteration
+from src.analysis.prompt_filterations import AllPromptFilteration
+from src.experiments.runners.evaluate_model import EvaluateModelConfig
+from src.analysis.prompt_filterations import ModelCorrectPromptFilteration
+from src.analysis.prompt_filterations import Correctness
 from src.experiments.runners.heatmap import HeatmapConfig, HeatmapParams
 from src.experiments.runners.info_flow import InfoFlowConfig, InfoFlowParams
 

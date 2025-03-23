@@ -1,34 +1,45 @@
 import json
 import subprocess
-from abc import ABC, abstractmethod
-from dataclasses import asdict, dataclass
+from abc import ABC
+from abc import abstractmethod
+from dataclasses import asdict
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Generic, Mapping, Optional, TypeVar, Union, final
+from typing import Any
+from typing import Generic
+from typing import Mapping
+from typing import Optional
+from typing import TypeVar
+from typing import Union
+from typing import final
 
 from submitit.slurm.slurm import SlurmJob
 
-from src.core.consts import MODEL_SIZES_PER_ARCH_TO_MODEL_ID, PATHS, PathsConfig, RunnerPaths
-from src.core.names import EXPERIMENT_NAMES, SlurmStatus
-from src.core.types import (
-    MODEL_ARCH,
-    MODEL_ARCH_AND_SIZE,
-    TBatchSize,
-    TModelID,
-    TModelSize,
-    TPromptOriginalIndex,
-    TTokenizer,
-    TVariationName,
-    TWindowSize,
-)
-from src.data_ingestion.datasets.download_dataset import DATASETS, get_prompt_ids
-from src.experiments.infrastructure.model_interface import ModelInterface, get_model_interface
+from src.core.consts import MODEL_SIZES_PER_ARCH_TO_MODEL_ID
+from src.core.consts import PATHS
+from src.core.consts import PathsConfig
+from src.core.consts import RunnerPaths
+from src.core.names import EXPERIMENT_NAMES
+from src.core.names import SlurmStatus
+from src.core.types import MODEL_ARCH
+from src.core.types import MODEL_ARCH_AND_SIZE
+from src.core.types import TBatchSize
+from src.core.types import TModelID
+from src.core.types import TModelSize
+from src.core.types import TPromptOriginalIndex
+from src.core.types import TTokenizer
+from src.core.types import TVariationName
+from src.core.types import TWindowSize
+from src.data_ingestion.datasets.download_dataset import DATASETS
+from src.data_ingestion.datasets.download_dataset import get_prompt_ids
+from src.experiments.infrastructure.model_interface import ModelInterface
+from src.experiments.infrastructure.model_interface import get_model_interface
 from src.experiments.infrastructure.setup_models import get_tokenizer
 from src.utils.infra.experiment_helper import create_run_id
-from src.utils.infra.output_path import (
-    OutputKey,
-    combine_output_keys,
-)
-from src.utils.infra.slurm import SLURM_GPU_TYPE, submit_job
+from src.utils.infra.output_path import OutputKey
+from src.utils.infra.output_path import combine_output_keys
+from src.utils.infra.slurm import SLURM_GPU_TYPE
+from src.utils.infra.slurm import submit_job
 from src.utils.types_utils import create_mutable_field
 
 
@@ -60,7 +71,7 @@ TDependencies = Mapping[str, Union["BaseRunner", "TDependencies"]]
 
 
 @dataclass
-class PromptFilteration(ABC):
+class BasePromptFilteration(ABC):
     """Filteration of prompts to run the experiment on."""
 
     dataset_name: DATASETS
@@ -72,44 +83,6 @@ class PromptFilteration(ABC):
     @abstractmethod
     def get_dependencies(self) -> TDependencies:
         pass
-
-
-@dataclass
-class AllPromptFilteration(PromptFilteration):
-    def get_prompt_ids(self) -> list[TPromptOriginalIndex]:
-        return super().get_prompt_ids()
-
-    def get_dependencies(self) -> TDependencies:
-        return {}
-
-
-@dataclass
-class SelectivePromptFilteration(PromptFilteration):
-    prompt_ids: list[TPromptOriginalIndex]
-
-    def get_prompt_ids(self) -> list[TPromptOriginalIndex]:
-        return self.prompt_ids
-
-    def get_dependencies(self) -> TDependencies:
-        return {}
-
-
-@dataclass
-class MultiplePromptFilteration(PromptFilteration):
-    prompt_filterations: list[PromptFilteration]
-
-    def get_prompt_ids(self) -> list[TPromptOriginalIndex]:
-        prompt_ids = super().get_prompt_ids()
-
-        for prompt_filteration in self.prompt_filterations:
-            prompt_ids = [prompt_id for prompt_id in prompt_ids if prompt_id in prompt_filteration.get_prompt_ids()]
-        return prompt_ids
-
-    def get_dependencies(self) -> TDependencies:
-        dependencies = {}
-        for prompt_filteration in self.prompt_filterations:
-            dependencies.update(prompt_filteration.get_dependencies())
-        return dependencies
 
 
 @dataclass
@@ -140,7 +113,7 @@ class BaseRunner(ABC, Generic[_TRunnerParams, _TRunnerOutputs]):
 
     variation: TVariationName
     common_params: CommonParams
-    prompt_filteration: PromptFilteration
+    prompt_filteration: BasePromptFilteration
     runner_params: _TRunnerParams
     run_params: RunParams = create_mutable_field(lambda: RunParams())
 
@@ -233,10 +206,10 @@ class BaseRunner(ABC, Generic[_TRunnerParams, _TRunnerOutputs]):
         )
 
     def set_running_params(
-        self,
-        with_slurm: bool,
-        slurm_gpu_type: SLURM_GPU_TYPE,
-        slurm_gpus_per_node: Optional[int] = None,
+            self,
+            with_slurm: bool,
+            slurm_gpu_type: SLURM_GPU_TYPE,
+            slurm_gpus_per_node: Optional[int] = None,
     ):
         self.run_params.with_slurm = with_slurm
         self.run_params.slurm_gpu_type = slurm_gpu_type
@@ -353,13 +326,13 @@ class BaseRunner(ABC, Generic[_TRunnerParams, _TRunnerOutputs]):
 
     @classmethod
     def init_from_config(
-        cls,
-        config: "BaseRunner",
-        runner_params: _TRunnerParams,
-        variation: Optional[TVariationName] = None,
-        common_params: Optional[CommonParams] = None,
-        prompt_filteration: Optional[PromptFilteration] = None,
-        run_params: Optional[RunParams] = None,
+            cls,
+            config: "BaseRunner",
+            runner_params: _TRunnerParams,
+            variation: Optional[TVariationName] = None,
+            common_params: Optional[CommonParams] = None,
+            prompt_filteration: Optional[BasePromptFilteration] = None,
+            run_params: Optional[RunParams] = None,
     ):
         return cls(
             variation=variation or config.variation,

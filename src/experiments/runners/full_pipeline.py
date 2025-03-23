@@ -23,7 +23,7 @@ from src.core.names import EXPERIMENT_NAMES, INFO_FLOW_HP_COLS
 from src.core.types import FeatureCategory, TokenType, TWindowSize
 from src.experiments.infrastructure.base_config import (
     BaseRunner,
-    PromptFilteration,
+    BasePromptFilteration,
 )
 from src.experiments.runners.heatmap import HEATMAP_PLOT_FUNCS, HeatmapConfig, HeatmapParams
 from src.experiments.runners.info_flow import InfoFlowConfig, InfoFlowParams, skip_task
@@ -41,7 +41,7 @@ class FullPipelineParam:
     info_flow_window_size: TWindowSize
 
     heatmap_window_size: TWindowSize
-    heatmap_prompts: PromptFilteration
+    heatmap_prompts: BasePromptFilteration
 
     with_plotting: bool = False
     enforce_no_missing_outputs: bool = True

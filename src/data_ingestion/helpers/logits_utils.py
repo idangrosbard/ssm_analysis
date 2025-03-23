@@ -1,21 +1,23 @@
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import Any, Union, assert_never, cast
+from typing import Any
+from typing import Union
+from typing import assert_never
+from typing import cast
 
 import pandas as pd
 import torch
 
 from src.core.names import COLS
-from src.core.types import (
-    TDevice,
-    TNum2Mask,
-    TokenType,
-    TPromptData,
-    TPromptOriginalIndex,
-    TRowPosition,
-    TTokenizer,
-    TWindow,
-)
+from src.core.types import MODEL_ARCH
+from src.core.types import TDevice
+from src.core.types import TNum2Mask
+from src.core.types import TPromptData
+from src.core.types import TPromptOriginalIndex
+from src.core.types import TRowPosition
+from src.core.types import TTokenizer
+from src.core.types import TWindow
+from src.core.types import TokenType
 
 
 def get_last_token_logits(logits: torch.Tensor) -> torch.Tensor:
@@ -62,9 +64,9 @@ def decode_tokens(tokenizer: TTokenizer, token_array: torch.Tensor) -> Union[lis
 
 
 def find_token_range(
-    tokenizer,
-    token_array,
-    substring,
+        tokenizer,
+        token_array,
+        substring,
 ) -> tuple[int, int]:
     """Find the tokens corresponding to the given substring in token_array."""
     toks = decode_tokens(tokenizer, token_array)
@@ -157,12 +159,12 @@ class Prompt:
 
 
 def get_num_to_masks(
-    prompt: Prompt,
-    tokenizer,
-    window: TWindow,
-    knockout_source: TokenType,
-    knockout_target: TokenType,
-    device,
+        prompt: Prompt,
+        tokenizer,
+        window: TWindow,
+        knockout_source: TokenType,
+        knockout_target: TokenType,
+        device,
 ) -> tuple[TNum2Mask, bool]:
     input_ids = prompt.input_ids(tokenizer, device)
     num_to_masks = TNum2Mask(defaultdict(list))
@@ -190,3 +192,108 @@ def get_prompt_row(data: TPromptData, prompt_idx: TRowPosition) -> Prompt:
 
 def get_prompt_row_index(data: TPromptData, prompt_idx: TPromptOriginalIndex) -> Prompt:
     return Prompt(prompt_row=data.loc[prompt_idx])  # type: ignore
+
+
+def get_subj_idx(
+        input: str,
+        subj: str,
+        tokenizer: TTokenizer,
+        last: bool = True,
+) -> int:
+    prefix = input.split(subj)[0]
+    sent2subj = prefix
+    if last:
+        sent2subj = prefix + subj
+
+    sent2subj_tokens = tokenizer(sent2subj)["input_ids"]
+    return len(sent2subj_tokens) - 1  # type: ignore
+
+
+def _get_logits(out, model_arch: MODEL_ARCH):
+    match model_arch:
+        case MODEL_ARCH.MAMBA2:
+            logits, _ = out
+        case MODEL_ARCH.MAMBA1 | MODEL_ARCH.LLAMA2 | MODEL_ARCH.LLAMA3_2 | MODEL_ARCH.GPT2:
+            logits = out.logits
+        case _:
+            assert_never(model_arch)
+
+    return logits
+
+
+def generate_next_tokens(
+        model: Any,
+        input_ids: torch.Tensor,
+        num_tokens_to_generate: int,
+        model_arch: MODEL_ARCH,
+):
+    """
+    Generate the next `num_tokens_to_generate` tokens and collect their logits for each input in the batch.
+
+    Args:
+        model: The language model (e.g., LLaMA) used for token generation.
+        input_ids: Tokenized input IDs (torch.Tensor) with shape [batch_size, sequence_length].
+        num_tokens_to_generate: Number of tokens to generate for each input in the batch.
+        model_arch: The architecture of the model.
+    Returns:
+        all_logits: with shape [batch_size, num_tokens_to_generate, vocab_size].
+        first_next_logits: with shape [batch_size, vocab_size].
+        new_input_ids: with shape [batch_size, num_tokens_to_generate].
+    """
+    first_logits = None
+    logits = None
+    for _ in range(num_tokens_to_generate):
+        with torch.no_grad():
+            out = model(input_ids)
+        logits = _get_logits(out, model_arch)
+        next_tokens = get_last_token_logits(logits)
+        if first_logits is None:
+            first_logits = next_tokens
+
+        input_ids = torch.cat([input_ids, torch.argmax(next_tokens, dim=-1, keepdim=True)], dim=-1)
+
+    assert first_logits is not None
+    return logits, first_logits, input_ids[:, -num_tokens_to_generate:]
+
+
+def trim_left_and_right_pad(tensor, trim_value=2, pad_value=0):
+    """
+    Trims leading specified values from each row and pads rows on the right to equalize their lengths.
+
+    Args:
+        tensor (torch.Tensor): The input tensor.
+        trim_value (int): The value to trim from the start of each row (default is 2).
+        pad_value (int): The value to use for padding on the right (default is 0).
+
+    Returns:
+        torch.Tensor: The processed tensor with trimmed rows and right padding.
+    """
+    # Remove leading trim_value from each row
+    trimmed_rows = [row[torch.nonzero(row != trim_value, as_tuple=True)[0][0]:] for row in tensor]
+
+    # Determine the maximum length after trimming
+    max_length = max(len(row) for row in trimmed_rows)
+
+    # Pad each row from the right to make all rows equal to the max length
+    padded_tensor = torch.stack(
+        [torch.cat([row, torch.full((max_length - len(row),), pad_value)]) for row in trimmed_rows]
+    )
+
+    return padded_tensor
+
+
+def _generate_few_tokens(model, tokenizer, input_ids, new_max_tokens):
+    with torch.no_grad():
+        generated_ids = model.generate(
+            input_ids,
+            max_length=input_ids.size(1) + new_max_tokens,
+            num_return_sequences=1,
+            top_k=1,
+            temperature=1.0,
+        )
+    generated_text = tokenizer.batch_decode(
+        generated_ids,
+        skip_special_tokens=True,
+        clean_up_tokenization_spaces=True,
+    )
+    return "".join(generated_text)

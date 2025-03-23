@@ -10,26 +10,25 @@ The combined result is saved as a CSV file
 
 import json
 from dataclasses import dataclass
-from enum import StrEnum
 from pathlib import Path
-from typing import Any, assert_never, cast
+from typing import cast
 
 import pandas as pd
 import torch
 from tqdm import tqdm
 
 from src.core.consts import COUNTER_FACT_2_KNOWN1000_COL_CONV
-from src.core.names import COLS, EXPERIMENT_NAMES
-from src.core.types import MODEL_ARCH, TModelSize, TPromptData, TPromptOriginalIndex, TTokenizer, TVariationName
+from src.core.names import COLS
+from src.core.names import EXPERIMENT_NAMES
+from src.core.types import MODEL_ARCH
+from src.core.types import TPromptData
 from src.data_ingestion.datasets.download_dataset import get_row_data
-from src.data_ingestion.helpers.logits_utils import get_last_token_logits, logits_to_probs
-from src.experiments.infrastructure.base_config import (
-    AllPromptFilteration,
-    BaseRunner,
-    CommonParams,
-    PromptFilteration,
-    create_mutable_field,
-)
+from src.data_ingestion.helpers.logits_utils import generate_next_tokens
+from src.data_ingestion.helpers.logits_utils import get_subj_idx
+from src.data_ingestion.helpers.logits_utils import logits_to_probs
+from src.data_ingestion.helpers.logits_utils import trim_left_and_right_pad
+from src.experiments.infrastructure.base_config import BaseRunner
+from src.experiments.infrastructure.base_config import create_mutable_field
 
 
 @dataclass
@@ -62,8 +61,8 @@ class EvaluateModelConfig(BaseRunner[EvaluateModelParams, pd.DataFrame]):
     def get_outputs(self) -> pd.DataFrame:
         df = pd.read_csv(self.output_result_path, index_col=False)
         for (
-            counter_fact_col,
-            known1000_col,
+                counter_fact_col,
+                known1000_col,
         ) in COUNTER_FACT_2_KNOWN1000_COL_CONV.items():
             if counter_fact_col not in df.columns:
                 assert known1000_col in df.columns
@@ -89,149 +88,6 @@ class EvaluateModelConfig(BaseRunner[EvaluateModelParams, pd.DataFrame]):
 
     def get_runner_dependencies(self):
         return self.prompt_filteration.get_dependencies()
-
-
-class Correctness(StrEnum):
-    correct = "correct"
-    top_5_correct = "top_5_correct"
-
-
-@dataclass
-class ModelCorrectPromptFilteration(PromptFilteration):
-    model_arch: MODEL_ARCH
-    model_size: TModelSize
-    correctness: Correctness
-    variation: TVariationName
-
-    def get_prompt_ids(self) -> list[TPromptOriginalIndex]:
-        df = self.get_dependencies()["evaluate_model"].get_outputs()
-        match self.correctness:
-            case Correctness.correct:
-                df = df[df[COLS.EVALUATE_MODEL.MODEL_CORRECT]]
-            case Correctness.top_5_correct:
-                df = df[df[COLS.EVALUATE_MODEL.MODEL_CORRECT]]
-            case _:
-                raise NotImplementedError(f"Correctness {self.correctness} not implemented")
-
-        return df[COLS.ORIGINAL_IDX].tolist()
-
-    def get_dependencies(self):
-        return {
-            "evaluate_model": EvaluateModelConfig(
-                common_params=CommonParams(
-                    model_arch=self.model_arch,
-                    model_size=self.model_size,
-                    dataset_name=self.dataset_name,
-                ),
-                prompt_filteration=AllPromptFilteration(dataset_name=self.dataset_name),
-                variation=self.variation,
-            ),
-        }
-
-
-def get_subj_idx(
-    input: str,
-    subj: str,
-    tokenizer: TTokenizer,
-    last: bool = True,
-) -> int:
-    prefix = input.split(subj)[0]
-    sent2subj = prefix
-    if last:
-        sent2subj = prefix + subj
-
-    sent2subj_tokens = tokenizer(sent2subj)["input_ids"]
-    return len(sent2subj_tokens) - 1  # type: ignore
-
-
-def _get_logits(out, model_arch: MODEL_ARCH):
-    match model_arch:
-        case MODEL_ARCH.MAMBA2:
-            logits, _ = out
-        case MODEL_ARCH.MAMBA1 | MODEL_ARCH.LLAMA2 | MODEL_ARCH.LLAMA3_2 | MODEL_ARCH.GPT2:
-            logits = out.logits
-        case _:
-            assert_never(model_arch)
-
-    return logits
-
-
-def generate_next_tokens(
-    model: Any,
-    input_ids: torch.Tensor,
-    num_tokens_to_generate: int,
-    model_arch: MODEL_ARCH,
-):
-    """
-    Generate the next `num_tokens_to_generate` tokens and collect their logits for each input in the batch.
-
-    Args:
-        model: The language model (e.g., LLaMA) used for token generation.
-        input_ids: Tokenized input IDs (torch.Tensor) with shape [batch_size, sequence_length].
-        num_tokens_to_generate: Number of tokens to generate for each input in the batch.
-        model_arch: The architecture of the model.
-    Returns:
-        all_logits: with shape [batch_size, num_tokens_to_generate, vocab_size].
-        first_next_logits: with shape [batch_size, vocab_size].
-        new_input_ids: with shape [batch_size, num_tokens_to_generate].
-    """
-    first_logits = None
-    logits = None
-    for _ in range(num_tokens_to_generate):
-        with torch.no_grad():
-            out = model(input_ids)
-        logits = _get_logits(out, model_arch)
-        next_tokens = get_last_token_logits(logits)
-        if first_logits is None:
-            first_logits = next_tokens
-
-        input_ids = torch.cat([input_ids, torch.argmax(next_tokens, dim=-1, keepdim=True)], dim=-1)
-
-    assert first_logits is not None
-    return logits, first_logits, input_ids[:, -num_tokens_to_generate:]
-
-
-def trim_left_and_right_pad(tensor, trim_value=2, pad_value=0):
-    """
-    Trims leading specified values from each row and pads rows on the right to equalize their lengths.
-
-    Args:
-        tensor (torch.Tensor): The input tensor.
-        trim_value (int): The value to trim from the start of each row (default is 2).
-        pad_value (int): The value to use for padding on the right (default is 0).
-
-    Returns:
-        torch.Tensor: The processed tensor with trimmed rows and right padding.
-    """
-    # Remove leading trim_value from each row
-    trimmed_rows = [row[torch.nonzero(row != trim_value, as_tuple=True)[0][0] :] for row in tensor]
-
-    # Determine the maximum length after trimming
-    max_length = max(len(row) for row in trimmed_rows)
-
-    # Pad each row from the right to make all rows equal to the max length
-    padded_tensor = torch.stack(
-        [torch.cat([row, torch.full((max_length - len(row),), pad_value)]) for row in trimmed_rows]
-    )
-
-    return padded_tensor
-
-
-def _generate_few_tokens(model, tokenizer, input_ids, new_max_tokens):
-    with torch.no_grad():
-        generated_ids = model.generate(
-            input_ids,
-            max_length=input_ids.size(1) + new_max_tokens,
-            num_return_sequences=1,
-            top_k=1,
-            temperature=1.0,
-        )
-    generated_text = tokenizer.batch_decode(
-        generated_ids,
-        skip_special_tokens=True,
-        clean_up_tokenization_spaces=True,
-    )
-    return "".join(generated_text)
 
 
 def run(args: EvaluateModelConfig):
@@ -267,7 +123,7 @@ def run(args: EvaluateModelConfig):
 
     pbar = tqdm(range(0, len(df), args.batch_size), total=len(df) // args.batch_size)
     for start_idx in pbar:
-        idx = df.index[start_idx : start_idx + args.batch_size]
+        idx = df.index[start_idx: start_idx + args.batch_size]
         input_prompt = df.loc[idx, COLS.COUNTER_FACT.PROMPT]
         target = df.loc[idx, COLS.COUNTER_FACT.TARGET_TRUE]
 
@@ -294,11 +150,11 @@ def run(args: EvaluateModelConfig):
                     lambda x: tokenizer.batch_decode(x, skip_special_tokens=True),
                     [
                         lst[
-                            : next(
-                                (i for i in range(len(lst) - 1, -1, -1) if lst[i] != tokenizer.pad_token_id),
-                                -1,
-                            )
-                            + 1
+                        : next(
+                            (i for i in range(len(lst) - 1, -1, -1) if lst[i] != tokenizer.pad_token_id),
+                            -1,
+                        )
+                          + 1
                         ]
                         for lst in target_token_idx_padded.tolist()  # type: ignore
                     ],
@@ -316,7 +172,7 @@ def run(args: EvaluateModelConfig):
         input_ids = tokenizer(input_prompt.to_list(), return_tensors="pt", padding=True)["input_ids"]
 
         if args.runner_params.drop_subj_last_token:
-            input_ids = input_ids[:subj_idx] + input_ids[subj_idx + 1 :]  # type: ignore
+            input_ids = input_ids[:subj_idx] + input_ids[subj_idx + 1:]  # type: ignore
 
         input_ids = input_ids.to(device)  # type: ignore
 
