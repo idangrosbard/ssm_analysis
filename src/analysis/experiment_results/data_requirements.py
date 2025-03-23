@@ -1,5 +1,11 @@
 from typing import NamedTuple, Optional, Union
 
+from src.analysis.prompt_filterations import (
+    AllPromptFilteration,
+    Correctness,
+    ModelCorrectPromptFilteration,
+    SelectivePromptFilteration,
+)
 from src.core.consts import MODEL_ARCH, TokenType
 from src.core.names import DATASETS, EXPERIMENT_NAMES, DataReqCols
 from src.core.types import (
@@ -11,11 +17,7 @@ from src.core.types import (
     TWindowSize,
 )
 from src.experiments.infrastructure.base_config import CommonParams
-from src.analysis.prompt_filterations import SelectivePromptFilteration
-from src.analysis.prompt_filterations import AllPromptFilteration
 from src.experiments.runners.evaluate_model import EvaluateModelConfig
-from src.analysis.prompt_filterations import ModelCorrectPromptFilteration
-from src.analysis.prompt_filterations import Correctness
 from src.experiments.runners.heatmap import HeatmapConfig, HeatmapParams
 from src.experiments.runners.info_flow import InfoFlowConfig, InfoFlowParams
 

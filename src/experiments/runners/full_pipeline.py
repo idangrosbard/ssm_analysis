@@ -22,8 +22,8 @@ from src.core.consts import TOKEN_TYPE_COLORS, TOKEN_TYPE_LINE_STYLES
 from src.core.names import EXPERIMENT_NAMES, INFO_FLOW_HP_COLS
 from src.core.types import FeatureCategory, TokenType, TWindowSize
 from src.experiments.infrastructure.base_config import (
-    BaseRunner,
     BasePromptFilteration,
+    BaseRunner,
 )
 from src.experiments.runners.heatmap import HEATMAP_PLOT_FUNCS, HeatmapConfig, HeatmapParams
 from src.experiments.runners.info_flow import InfoFlowConfig, InfoFlowParams, skip_task

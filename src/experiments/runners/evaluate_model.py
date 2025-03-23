@@ -18,17 +18,16 @@ import torch
 from tqdm import tqdm
 
 from src.core.consts import COUNTER_FACT_2_KNOWN1000_COL_CONV
-from src.core.names import COLS
-from src.core.names import EXPERIMENT_NAMES
-from src.core.types import MODEL_ARCH
-from src.core.types import TPromptData
+from src.core.names import COLS, EXPERIMENT_NAMES
+from src.core.types import MODEL_ARCH, TPromptData
 from src.data_ingestion.datasets.download_dataset import get_row_data
-from src.data_ingestion.helpers.logits_utils import generate_next_tokens
-from src.data_ingestion.helpers.logits_utils import get_subj_idx
-from src.data_ingestion.helpers.logits_utils import logits_to_probs
-from src.data_ingestion.helpers.logits_utils import trim_left_and_right_pad
-from src.experiments.infrastructure.base_config import BaseRunner
-from src.experiments.infrastructure.base_config import create_mutable_field
+from src.data_ingestion.helpers.logits_utils import (
+    generate_next_tokens,
+    get_subj_idx,
+    logits_to_probs,
+    trim_left_and_right_pad,
+)
+from src.experiments.infrastructure.base_config import BaseRunner, create_mutable_field
 
 
 @dataclass
@@ -61,8 +60,8 @@ class EvaluateModelConfig(BaseRunner[EvaluateModelParams, pd.DataFrame]):
     def get_outputs(self) -> pd.DataFrame:
         df = pd.read_csv(self.output_result_path, index_col=False)
         for (
-                counter_fact_col,
-                known1000_col,
+            counter_fact_col,
+            known1000_col,
         ) in COUNTER_FACT_2_KNOWN1000_COL_CONV.items():
             if counter_fact_col not in df.columns:
                 assert known1000_col in df.columns
@@ -123,7 +122,7 @@ def run(args: EvaluateModelConfig):
 
     pbar = tqdm(range(0, len(df), args.batch_size), total=len(df) // args.batch_size)
     for start_idx in pbar:
-        idx = df.index[start_idx: start_idx + args.batch_size]
+        idx = df.index[start_idx : start_idx + args.batch_size]
         input_prompt = df.loc[idx, COLS.COUNTER_FACT.PROMPT]
         target = df.loc[idx, COLS.COUNTER_FACT.TARGET_TRUE]
 
@@ -150,11 +149,11 @@ def run(args: EvaluateModelConfig):
                     lambda x: tokenizer.batch_decode(x, skip_special_tokens=True),
                     [
                         lst[
-                        : next(
-                            (i for i in range(len(lst) - 1, -1, -1) if lst[i] != tokenizer.pad_token_id),
-                            -1,
-                        )
-                          + 1
+                            : next(
+                                (i for i in range(len(lst) - 1, -1, -1) if lst[i] != tokenizer.pad_token_id),
+                                -1,
+                            )
+                            + 1
                         ]
                         for lst in target_token_idx_padded.tolist()  # type: ignore
                     ],
@@ -172,7 +171,7 @@ def run(args: EvaluateModelConfig):
         input_ids = tokenizer(input_prompt.to_list(), return_tensors="pt", padding=True)["input_ids"]
 
         if args.runner_params.drop_subj_last_token:
-            input_ids = input_ids[:subj_idx] + input_ids[subj_idx + 1:]  # type: ignore
+            input_ids = input_ids[:subj_idx] + input_ids[subj_idx + 1 :]  # type: ignore
 
         input_ids = input_ids.to(device)  # type: ignore
 

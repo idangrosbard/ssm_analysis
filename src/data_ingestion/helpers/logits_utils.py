@@ -1,23 +1,22 @@
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import Any
-from typing import Union
-from typing import assert_never
-from typing import cast
+from typing import Any, Union, assert_never, cast
 
 import pandas as pd
 import torch
 
 from src.core.names import COLS
-from src.core.types import MODEL_ARCH
-from src.core.types import TDevice
-from src.core.types import TNum2Mask
-from src.core.types import TPromptData
-from src.core.types import TPromptOriginalIndex
-from src.core.types import TRowPosition
-from src.core.types import TTokenizer
-from src.core.types import TWindow
-from src.core.types import TokenType
+from src.core.types import (
+    MODEL_ARCH,
+    TDevice,
+    TNum2Mask,
+    TokenType,
+    TPromptData,
+    TPromptOriginalIndex,
+    TRowPosition,
+    TTokenizer,
+    TWindow,
+)
 
 
 def get_last_token_logits(logits: torch.Tensor) -> torch.Tensor:
@@ -64,9 +63,9 @@ def decode_tokens(tokenizer: TTokenizer, token_array: torch.Tensor) -> Union[lis
 
 
 def find_token_range(
-        tokenizer,
-        token_array,
-        substring,
+    tokenizer,
+    token_array,
+    substring,
 ) -> tuple[int, int]:
     """Find the tokens corresponding to the given substring in token_array."""
     toks = decode_tokens(tokenizer, token_array)
@@ -159,12 +158,12 @@ class Prompt:
 
 
 def get_num_to_masks(
-        prompt: Prompt,
-        tokenizer,
-        window: TWindow,
-        knockout_source: TokenType,
-        knockout_target: TokenType,
-        device,
+    prompt: Prompt,
+    tokenizer,
+    window: TWindow,
+    knockout_source: TokenType,
+    knockout_target: TokenType,
+    device,
 ) -> tuple[TNum2Mask, bool]:
     input_ids = prompt.input_ids(tokenizer, device)
     num_to_masks = TNum2Mask(defaultdict(list))
@@ -195,10 +194,10 @@ def get_prompt_row_index(data: TPromptData, prompt_idx: TPromptOriginalIndex) ->
 
 
 def get_subj_idx(
-        input: str,
-        subj: str,
-        tokenizer: TTokenizer,
-        last: bool = True,
+    input: str,
+    subj: str,
+    tokenizer: TTokenizer,
+    last: bool = True,
 ) -> int:
     prefix = input.split(subj)[0]
     sent2subj = prefix
@@ -222,10 +221,10 @@ def _get_logits(out, model_arch: MODEL_ARCH):
 
 
 def generate_next_tokens(
-        model: Any,
-        input_ids: torch.Tensor,
-        num_tokens_to_generate: int,
-        model_arch: MODEL_ARCH,
+    model: Any,
+    input_ids: torch.Tensor,
+    num_tokens_to_generate: int,
+    model_arch: MODEL_ARCH,
 ):
     """
     Generate the next `num_tokens_to_generate` tokens and collect their logits for each input in the batch.
@@ -269,7 +268,7 @@ def trim_left_and_right_pad(tensor, trim_value=2, pad_value=0):
         torch.Tensor: The processed tensor with trimmed rows and right padding.
     """
     # Remove leading trim_value from each row
-    trimmed_rows = [row[torch.nonzero(row != trim_value, as_tuple=True)[0][0]:] for row in tensor]
+    trimmed_rows = [row[torch.nonzero(row != trim_value, as_tuple=True)[0][0] :] for row in tensor]
 
     # Determine the maximum length after trimming
     max_length = max(len(row) for row in trimmed_rows)

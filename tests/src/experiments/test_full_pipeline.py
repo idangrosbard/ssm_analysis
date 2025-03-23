@@ -8,6 +8,7 @@ from typing import cast
 import pytest
 from datasets import DatasetDict
 
+from src.analysis.prompt_filterations import Correctness, ModelCorrectPromptFilteration, SelectivePromptFilteration
 from src.core.consts import PathsConfig
 from src.core.names import COLS
 from src.core.types import (
@@ -23,9 +24,6 @@ from src.core.types import (
 )
 from src.data_ingestion.datasets.download_dataset import DATASETS, load_splitted_counter_fact
 from src.experiments.infrastructure.base_config import CommonParams
-from src.analysis.prompt_filterations import SelectivePromptFilteration
-from src.analysis.prompt_filterations import ModelCorrectPromptFilteration
-from src.analysis.prompt_filterations import Correctness
 from src.experiments.runners.full_pipeline import FullPipelineConfig, FullPipelineParam
 from src.experiments.runners.info_flow import forward_eval
 from src.utils.types_utils import first_dict_value

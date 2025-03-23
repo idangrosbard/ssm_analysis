@@ -1,9 +1,9 @@
+from src.analysis.prompt_filterations import AllPromptFilteration
 from src.core.names import DATASETS
 from src.core.types import MODEL_ARCH, FeatureCategory, TModelSize, TokenType, TVariationName, TWindowSize
 from src.experiments.infrastructure.base_config import (
     CommonParams,
 )
-from src.analysis.prompt_filterations import AllPromptFilteration
 from src.experiments.runners.evaluate_model import EvaluateModelConfig
 from src.experiments.runners.heatmap import HeatmapConfig, HeatmapParams
 from src.experiments.runners.info_flow import InfoFlowConfig, InfoFlowParams

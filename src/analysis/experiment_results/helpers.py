@@ -9,11 +9,11 @@ from src.analysis.experiment_results.results_bank import (
     InfoFlowRecord,
     ResultRecord,
 )
+from src.analysis.prompt_filterations import AllPromptFilteration
 from src.core.names import COLS, DATASETS
 from src.core.types import MODEL_ARCH_AND_SIZE, TVariationName
 from src.data_ingestion.data_defs import DataReqs, FulfilledReqs, ResultBank
 from src.experiments.infrastructure.base_config import CommonParams
-from src.analysis.prompt_filterations import AllPromptFilteration
 from src.experiments.runners.evaluate_model import EvaluateModelConfig
 
 

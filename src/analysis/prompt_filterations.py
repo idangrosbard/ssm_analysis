@@ -1,20 +1,9 @@
 from dataclasses import dataclass
-from dataclasses import dataclass
 from enum import StrEnum
 
 from src.core.names import COLS
-from src.core.names import COLS
-from src.core.names import COLS
-from src.core.types import MODEL_ARCH
-from src.core.types import TModelSize
-
-from src.core.types import TPromptOriginalIndex
-from src.core.types import TPromptOriginalIndex
-from src.core.types import TVariationName
-from src.experiments.infrastructure.base_config import BasePromptFilteration
-from src.experiments.infrastructure.base_config import BasePromptFilteration
-from src.experiments.infrastructure.base_config import CommonParams
-from src.experiments.infrastructure.base_config import TDependencies
+from src.core.types import MODEL_ARCH, TModelSize, TPromptOriginalIndex, TVariationName
+from src.experiments.infrastructure.base_config import BasePromptFilteration, CommonParams, TDependencies
 from src.experiments.runners.evaluate_model import EvaluateModelConfig
 
 

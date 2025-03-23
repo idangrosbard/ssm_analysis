@@ -9,6 +9,7 @@ import streamlit as st
 from rich.console import Console
 from st_aggrid import AgGrid, DataReturnMode, GridUpdateMode
 
+from src.analysis.prompt_filterations import SelectivePromptFilteration
 from src.app.app_consts import (
     GLOBAL_APP_CONSTS,
     AppSessionKeys,
@@ -20,7 +21,6 @@ from src.core.names import DATASETS, HeatmapCols, SlurmStatus, SummarizedDataFul
 from src.core.types import MODEL_ARCH_AND_SIZE, TPromptOriginalIndex, TVariationName, TWindowSize
 from src.data_ingestion.data_defs import DataReqs, SummarizedDataFulfilledReqs
 from src.experiments.infrastructure.base_config import CommonParams
-from src.analysis.prompt_filterations import SelectivePromptFilteration
 from src.experiments.runners.heatmap import HeatmapConfig, HeatmapParams
 from src.utils.streamlit.components.aagrid import SelectionMode, base_grid_builder, set_aagrid_apply_default_filters
 from src.utils.streamlit.helpers.component import StreamlitComponent
