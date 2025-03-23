@@ -84,6 +84,12 @@ class ResultBank(DataObject):
     def to_rows(self) -> list["ResultRecord"]:
         return self._raw
 
+    def __getstate__(self):
+        return self._raw
+
+    def __setstate__(self, state):
+        self._raw = state
+
     def to_experiment_results(self) -> ExperimentDisplayResults:
         from src.app.app_utils import format_path_for_display
 

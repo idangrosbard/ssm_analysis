@@ -143,7 +143,11 @@ class FeatureCategoryHPD(HyperParamDefinition[FeatureCategory]):
 
 class WindowSizeHPD(HyperParamDefinition[TWindowSize]):
     def get_result_bank_options(self, result_bank):
-        return list(set([result.window_size for result in result_bank.to_rows()]))
+        window_sizes = set()
+        for result in result_bank.to_rows():
+            if isinstance(result, InfoFlowRecord) or isinstance(result, HeatmapRecord):
+                window_sizes.add(result.window_size)
+        return list(window_sizes)
 
     def get_static_options(self):
         return list([TWindowSize(i) for i in range(1, 20)])

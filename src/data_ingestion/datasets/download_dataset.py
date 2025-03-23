@@ -1,3 +1,6 @@
+from typing import assert_never, cast
+
+import pandas as pd
 from datasets import (
     Dataset,
     DatasetDict,
@@ -9,8 +12,8 @@ from datasets import (
 )
 
 from src.core.consts import COUNTER_FACT_2_KNOWN1000_COL_CONV, DATASETS_IDS, PATHS
-from src.core.names import COLS
-from src.core.types import ALL_SPLITS_LITERAL, DATASETS, SPLIT, TSplitChoise
+from src.core.names import COLS, DATASETS
+from src.core.types import ALL_SPLITS_LITERAL, SPLIT, TPromptOriginalIndex, TSplitChoise
 from src.data_ingestion.datasets.splitting import split_dataset
 
 
@@ -19,7 +22,7 @@ def load_splitted_counter_fact(
     add_split_name_column: bool = False,
     align_to_known: bool = False,
 ) -> Dataset:
-    splitted_path = PATHS.COUNTER_FACT_DIR / "splitted"
+    splitted_path = PATHS.dataset_dir(DATASETS.COUNTER_FACT) / "splitted"
 
     if not splitted_path.exists():
         print("Creating splitted dataset")
@@ -57,3 +60,23 @@ def load_splitted_counter_fact(
             dataset = dataset.rename_column(counter_fact_col, known1000_col)
         dataset = dataset.remove_columns([COLS.COUNTER_FACT.TARGET_FALSE, COLS.COUNTER_FACT.TARGET_FALSE_ID])
     return dataset
+
+
+def get_prompt_ids(dataset_name: DATASETS) -> list[TPromptOriginalIndex]:
+    match dataset_name:
+        case DATASETS.COUNTER_FACT:
+            dataset = load_splitted_counter_fact(
+                ALL_SPLITS_LITERAL,
+            )
+            return dataset[COLS.ORIGINAL_IDX]
+    assert_never(dataset_name)
+
+
+def get_row_data(dataset_name: DATASETS) -> pd.DataFrame:
+    match dataset_name:
+        case DATASETS.COUNTER_FACT:
+            dataset = load_splitted_counter_fact(
+                ALL_SPLITS_LITERAL,
+            )
+            return pd.DataFrame(cast(dict, dataset))
+    assert_never(dataset_name)

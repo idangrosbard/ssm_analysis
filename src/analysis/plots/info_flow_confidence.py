@@ -18,10 +18,7 @@ from src.core.consts import (
 )
 from src.core.names import COLS
 from src.core.types import (
-    FeatureCategory,
     TInfoFlowOutput,
-    TInfoFlowSource,
-    TInfoFlowTargetOutputs,
     TokenType,
 )
 from src.utils.types_utils import first_dict_value
@@ -227,7 +224,7 @@ def calculate_metrics_with_confidence(
 def plot_with_confidence(
     metrics: MetricsDict,
     metric_type: Literal["acc", "diff"],
-    block: TInfoFlowSource,
+    label: str,
     color: str,
     linestyle: str,
     ax: Axes,
@@ -236,15 +233,11 @@ def plot_with_confidence(
     """Plot a single metric with confidence intervals."""
     layers = np.arange(len(metrics[metric_type]["mean"]))
 
-    block_label = f"{block[0]}"
-    if block[1] != FeatureCategory.ALL:
-        block_label += f" feature={block[1]}"
-
     # Plot mean line
     ax.plot(
         layers,
         metrics[metric_type]["mean"] * (100 if metric_type == "acc" else 1),
-        label=block_label,
+        label=label,
         color=color,
         linestyle=linestyle,
     )
@@ -260,7 +253,7 @@ def plot_with_confidence(
 
 
 def create_confidence_plot(
-    targets_window_outputs: TInfoFlowTargetOutputs,
+    targets_window_outputs: dict[str, TInfoFlowOutput],
     confidence_level: float,
     title: str,
     plots_meta_data: dict[Literal["acc", "diff"], PlotMetadata],
@@ -295,15 +288,15 @@ def create_confidence_plot(
         ax = axes[i]
 
         # Plot data for each block
-        for block, window_outputs in targets_window_outputs.items():
+        for label, window_outputs in targets_window_outputs.items():
             metrics = calculate_metrics_with_confidence(window_outputs, list(plots_meta_data.keys()), confidence_level)
 
             plot_with_confidence(
                 metrics=metrics,
                 metric_type=metric_type,
-                block=block,
-                color=TOKEN_TYPE_COLORS.get(block[0], "#000000"),
-                linestyle=TOKEN_TYPE_LINE_STYLES.get(block[0], "-"),
+                label=label,
+                color=TOKEN_TYPE_COLORS.get((label), "#000000"),
+                linestyle=TOKEN_TYPE_LINE_STYLES.get(label, "-"),
                 ax=ax,
             )
 

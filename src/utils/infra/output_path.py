@@ -70,28 +70,23 @@ class OutputKey(Generic[_ATTRIBUTE_TYPE]):
         else:
             raise ValueError(f"Value {value_str} does not start with {self.key_display_name}")
 
+    def __repr__(self) -> str:
+        return f"{self.key_name}={self.key_display_name}{self.suffix}"
+
 
 def combine_output_keys(
     obj: object,
-    keys: list[Union[OutputKey[Any], list[OutputKey[Any]]]],
+    keys: list[OutputKey[Any]],
     sep: str = "/",
-    secondary_sep: str = "_",
 ) -> str:
     res = []
     for output_key in keys:
-        if isinstance(output_key, list):
-            res.append(
-                secondary_sep.join(
-                    [output_key.display(obj) for output_key in output_key if not output_key.should_skip(obj)]
-                )
-            )
-        else:
-            if not output_key.should_skip(obj):
-                res.append(output_key.display(obj))
+        if not output_key.should_skip(obj):
+            res.append(output_key.display(obj))
     return sep.join(res)
 
 
-IPathComponent = Union[str, OutputKey, list[OutputKey]]
+IPathComponent = Union[str, OutputKey]
 
 
 def dict_to_obj(d: dict[str, str]) -> object:
@@ -140,8 +135,6 @@ class OutputPath:
         for component in self.path_components:
             if isinstance(component, OutputKey):
                 key_names.append(component.key_name)
-            elif isinstance(component, list):
-                key_names.extend(k.key_name for k in component)
         return key_names
 
     def extract_values_from_path(self, path: Path, allow_extra_parts: bool = True) -> dict[str, str]:
@@ -158,18 +151,6 @@ class OutputPath:
 
             if isinstance(component, OutputKey):
                 values[component.key_name] = component.extract_value_from_str(path_parts[current_part_idx])
-                current_part_idx += 1
-            elif isinstance(component, list):
-                # For combined components, split by secondary separator
-                combined_value = path_parts[current_part_idx]
-                value_parts = combined_value.split("_")
-                if len(value_parts) != len(component):
-                    raise ValueError(
-                        f"Combined component {combined_value} does not match expected structure: "
-                        f"expected {len(component)} parts but got {len(value_parts)}"
-                    )
-                for key, value in zip(component, value_parts):
-                    values[key.key_name] = key.extract_value_from_str(value)
                 current_part_idx += 1
             elif isinstance(component, str):
                 if path_parts[current_part_idx] != component:

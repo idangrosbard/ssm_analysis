@@ -4,21 +4,30 @@ from typing import cast
 from src.utils.types_utils import class_values
 
 
+class DATASETS(StrEnum):
+    COUNTER_FACT = "counter_fact"
+
+
 class BASE_CONFIG_HP_COLS(StrEnum):
     experiment_name = "experiment_name"
     model_arch = "model_arch"
     model_size = "model_size"
-    window_size = "window_size"
     variation = "variation"
 
 
+class WINDOW_SIZE_HP_COLS(StrEnum):
+    window_size = "window_size"
+
+
 class INFO_FLOW_HP_COLS(StrEnum):
+    window_size = WINDOW_SIZE_HP_COLS.window_size
     source = "source"
     feature_category = "feature_category"
     target = "target"
 
 
 class HEATMAP_HP_COLS(StrEnum):
+    window_size = WINDOW_SIZE_HP_COLS.window_size
     prompt_idx = "prompt_idx"
 
 
@@ -36,6 +45,8 @@ class EXPERIMENT_NAMES(StrEnum):
                 return base_cols + class_values(INFO_FLOW_HP_COLS)
             case EXPERIMENT_NAMES.HEATMAP:
                 return base_cols + class_values(HEATMAP_HP_COLS)
+            case EXPERIMENT_NAMES.EVALUATE_MODEL:
+                return cast(list[str], base_cols)
             case _:
                 raise ValueError(f"Experiment name {col} is not implemented")
 
@@ -94,7 +105,7 @@ class DataReqCols(StrEnum):
     experiment_name = BASE_CONFIG_HP_COLS.experiment_name
     model_arch = BASE_CONFIG_HP_COLS.model_arch
     model_size = BASE_CONFIG_HP_COLS.model_size
-    window_size = BASE_CONFIG_HP_COLS.window_size
+    window_size = WINDOW_SIZE_HP_COLS.window_size
     source = INFO_FLOW_HP_COLS.source
     feature_category = INFO_FLOW_HP_COLS.feature_category
     target = INFO_FLOW_HP_COLS.target

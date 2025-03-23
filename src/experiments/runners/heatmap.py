@@ -13,7 +13,7 @@ import functools
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
-from typing import Callable, cast
+from typing import Callable, TypedDict, cast
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -22,11 +22,8 @@ import torch
 from tqdm import tqdm
 
 from src.analysis.plots.heatmaps import simple_diff_fixed
-from src.core.consts import MODEL_SIZES_PER_ARCH_TO_MODEL_ID
 from src.core.names import EXPERIMENT_NAMES
 from src.core.types import (
-    FILTERATIONS,
-    MODEL_ARCH_AND_SIZE,
     FeatureCategory,
     TPromptOriginalIndex,
     TWindow,
@@ -35,11 +32,9 @@ from src.core.types import (
 from src.data_ingestion.helpers.logits_utils import Prompt, decode_tokens, get_prompt_row_index
 from src.experiments.infrastructure.base_config import (
     BASE_OUTPUT_KEYS,
-    BaseConfig,
-    create_mutable_field,
+    BaseRunner,
 )
-from src.experiments.infrastructure.model_interface import get_model_interface
-from src.experiments.infrastructure.setup_models import get_tokenizer
+from src.experiments.runners.evaluate_model import EvaluateModelConfig, EvaluateModelParams
 
 
 class HEATMAP_PLOT_FUNCS(StrEnum):
@@ -54,12 +49,23 @@ plot_suffix_to_function: dict[HEATMAP_PLOT_FUNCS, Callable] = {
 
 
 @dataclass
-class HeatmapConfig(BaseConfig):
+class HeatmapParams:
+    window_size: TWindowSize
+
+
+class HeatmapDependencies(TypedDict):
+    evaluate_model: EvaluateModelConfig
+
+
+@dataclass
+class HeatmapConfig(BaseRunner[HeatmapParams, dict[TPromptOriginalIndex, IHeatmap]]):
     """Configuration for heatmap generation."""
 
-    experiment_name: EXPERIMENT_NAMES = EXPERIMENT_NAMES.HEATMAP
-    window_size: TWindowSize = TWindowSize(5)
-    prompt_original_indices: list[TPromptOriginalIndex] = create_mutable_field(lambda: [])
+    runner_params: HeatmapParams
+
+    @property
+    def experiment_name(self):
+        return EXPERIMENT_NAMES.HEATMAP
 
     @property
     def experiment_output_keys(self):
@@ -68,20 +74,20 @@ class HeatmapConfig(BaseConfig):
         ]
 
     def output_heatmap_path(self, prompt_idx: TPromptOriginalIndex):
-        return self.outputs_path / f"idx={prompt_idx}.csv"
+        return self.variation_paths.outputs_path / f"idx={prompt_idx}.csv"
 
     def get_remaining_prompt_original_indices(self):
         return [
             idx
-            for idx in self.prompt_original_indices
-            if not self.output_heatmap_path(idx).exists() or self.overwrite_existing_outputs
+            for idx in self.prompt_ids
+            if not self.output_heatmap_path(idx).exists() or self.run_params.overwrite_existing_outputs
         ]
 
     def get_outputs(self) -> dict[TPromptOriginalIndex, IHeatmap]:
-        return {idx: pd.read_csv(self.output_heatmap_path(idx)) for idx in self.prompt_original_indices}
+        return {idx: pd.read_csv(self.output_heatmap_path(idx)) for idx in self.prompt_ids}
 
     def get_plot_output_path(self, prompt_idx: TPromptOriginalIndex, plot_name: HEATMAP_PLOT_FUNCS) -> Path:
-        return self.plots_path / f"idx={prompt_idx}{plot_name}.png"
+        return self.variation_paths.plots_path / f"idx={prompt_idx}{plot_name}.png"
 
     def plot(self, plot_name: HEATMAP_PLOT_FUNCS) -> None:
         plot(self, plot_name)
@@ -89,11 +95,22 @@ class HeatmapConfig(BaseConfig):
     def compute(self) -> None:
         run(self)
 
+    def is_computed(self) -> bool:
+        return all(self.output_heatmap_path(idx).exists() for idx in self.prompt_ids)
+
+    def get_runner_dependencies(self) -> HeatmapDependencies:  # type: ignore
+        return HeatmapDependencies(
+            evaluate_model=EvaluateModelConfig.init_from_config(
+                self,
+                runner_params=EvaluateModelParams(),
+            ),
+        )
+
 
 def plot(args: HeatmapConfig, plot_name: HEATMAP_PLOT_FUNCS):
-    data = args.get_prompt_data(FILTERATIONS.ALL)
-    tokenizer = get_tokenizer(args.model_arch, args.model_size)
-    model_id = MODEL_SIZES_PER_ARCH_TO_MODEL_ID[args.model_arch][args.model_size]
+    data = args.get_runner_dependencies()["evaluate_model"].get_prompt_data()
+    tokenizer = args.common_params.get_tokenizer
+    model_id = args.common_params.model_id
 
     prob_mats = args.get_outputs()
     for prompt_idx, prob_mat in tqdm(prob_mats.items(), desc="Plotting heatmaps"):
@@ -106,7 +123,7 @@ def plot(args: HeatmapConfig, plot_name: HEATMAP_PLOT_FUNCS):
         fig, _ = simple_diff_fixed(
             prob_mat=prob_mat,
             model_id=model_id,
-            window_size=args.window_size,
+            window_size=args.runner_params.window_size,
             last_tok=last_tok,
             base_prob=prompt.base_prob,
             true_word=prompt.true_word,
@@ -120,14 +137,14 @@ def plot(args: HeatmapConfig, plot_name: HEATMAP_PLOT_FUNCS):
 
 def run(args: HeatmapConfig):
     print(args)
-    data = args.get_prompt_data(FILTERATIONS.ALL)
+    data = args.get_runner_dependencies()["evaluate_model"].get_prompt_data()
     remaining_idx = args.get_remaining_prompt_original_indices()
     if not remaining_idx:
         print("All heatmaps already exist")
         return
 
     args.create_experiment_run_path()
-    model_interface = get_model_interface(MODEL_ARCH_AND_SIZE(args.model_arch, args.model_size))
+    model_interface = args.common_params.get_model_interface()
     tokenizer = model_interface.tokenizer
     device = model_interface.device
 
@@ -152,7 +169,10 @@ def run(args: HeatmapConfig):
             torch.cuda.empty_cache()
         return probs
 
-    windows = [TWindow(list(range(i, i + args.window_size))) for i in range(0, n_layers - args.window_size + 1)]
+    windows = [
+        TWindow(list(range(i, i + args.runner_params.window_size)))
+        for i in range(0, n_layers - args.runner_params.window_size + 1)
+    ]
 
     for prompt_idx in tqdm(remaining_idx, desc="Prompts"):
         prob_mat = []

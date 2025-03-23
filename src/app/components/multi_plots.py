@@ -6,8 +6,10 @@ from src.analysis.plots.image_combiner import ImageGridParams, combine_image_gri
 from src.app.app_consts import GLOBAL_APP_CONSTS, AppSessionKeys
 from src.app.components.inputs import choose_heatmap_parms
 from src.core.consts import GRAPHS_ORDER
+from src.core.names import DATASETS
 from src.core.types import MODEL_SIZE_CAT, TPromptOriginalIndex
-from src.experiments.runners.heatmap import HeatmapConfig
+from src.experiments.infrastructure.base_config import CommonParams, SelectivePromptFilteration
+from src.experiments.runners.heatmap import HeatmapConfig, HeatmapParams
 from src.utils.streamlit.components.extended_streamlit_pydantic import pydantic_input
 from src.utils.streamlit.helpers.component import StreamlitComponent
 
@@ -34,11 +36,18 @@ class HeatmapPlotGenerationComponent(StreamlitComponent):
         for model_arch_and_size in GLOBAL_APP_CONSTS.MODELS_COMBINATIONS:
             model_arch, model_size = model_arch_and_size
             config = HeatmapConfig(
-                model_arch=model_arch,
-                model_size=model_size,
-                window_size=AppSessionKeys.window_size.value,
                 variation=AppSessionKeys.variation.value,
-                prompt_original_indices=[self.prompt_idx],
+                common_params=CommonParams(
+                    model_arch=model_arch,
+                    model_size=model_size,
+                ),
+                prompt_filteration=SelectivePromptFilteration(
+                    dataset_name=DATASETS.COUNTER_FACT,
+                    prompt_ids=[self.prompt_idx],
+                ),
+                runner_params=HeatmapParams(
+                    window_size=AppSessionKeys.window_size.value,
+                ),
             )
 
             if not config.output_heatmap_path(self.prompt_idx).exists():

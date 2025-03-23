@@ -256,7 +256,9 @@ class SessionKeyDescriptor(Generic[TSessionKey]):
             if session_key.is_erroneous:
                 if session_key.is_changed:
                     session_key.restore_prev_value()
-                elif is_in_global_refresh():
+                else:
+                    if not is_in_global_refresh():
+                        print(f"resetting value {session_key.key} -> {session_key.default_value}")
                     # if global refresh is in progress, meaning that we need to reset the values,
                     # else, it will raise an error later
                     session_key.reset_value()

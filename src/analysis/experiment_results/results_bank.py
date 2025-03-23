@@ -1,11 +1,11 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from enum import StrEnum
+from enum import IntEnum, auto
 from pathlib import Path
 from typing import Optional, Sequence, Type, assert_never
 
 from src.core.consts import MODEL_SIZES_PER_ARCH_TO_MODEL_ID, PATHS, reverse_model_id
-from src.core.names import EXPERIMENT_NAMES, ResultBankParamNames
+from src.core.names import EXPERIMENT_NAMES, INFO_FLOW_HP_COLS, ResultBankParamNames
 from src.core.types import (
     FeatureCategory,
     TModelID,
@@ -29,17 +29,20 @@ class IntermediateParamNames:
     _block_target = "_block_target"
 
 
-class RESULTS_BASE_PATH(StrEnum):
-    v1 = "v1"
-    CURRENT = "new"
+class RESULTS_BASE_PATH(IntEnum):
+    v1 = auto()
+    v2 = auto()
+    CURRENT = auto()
+    TEST = auto()
 
     @property
     def path(self) -> Path:
-        match self:
-            case RESULTS_BASE_PATH.CURRENT:
-                return PATHS.OUTPUT_DIR
-            case _:
-                return PATHS.OUTPUT_DIR.parent / f"{PATHS.OUTPUT_DIR.name}.{self}"
+        if self <= RESULTS_BASE_PATH.v2:
+            return PATHS.OUTPUT_DIR.parent / f"{PATHS.OUTPUT_DIR.name}.{self.name}"
+        elif self == RESULTS_BASE_PATH.TEST:
+            return PATHS.PROJECT_DIR / "tests/src/experiments/baselines/full_pipeline/output"
+        else:
+            return PATHS.OUTPUT_DIR
 
     @classmethod
     def from_path(cls, path: Path) -> "RESULTS_BASE_PATH":
@@ -62,7 +65,7 @@ class RESULTS_BASE_PATH(StrEnum):
                         *middle_experiment_keys,
                     ],
                 )
-            case RESULTS_BASE_PATH.CURRENT:
+            case _:
                 return OutputPath(
                     self.path,
                     [
@@ -75,8 +78,6 @@ class RESULTS_BASE_PATH(StrEnum):
                         OutputKey(key_name="_", key_display_name="outputs"),
                     ],
                 )
-            case _:
-                assert_never(self)
 
     def process_values(self, values: dict[str, str]) -> Optional[dict[str, str]]:
         experiment_name: str = values.pop(ResultBankParamNames.experiment_name)
@@ -101,7 +102,7 @@ class RESULTS_BASE_PATH(StrEnum):
         match self:
             case RESULTS_BASE_PATH.v1:
                 return ".npy"
-            case RESULTS_BASE_PATH.CURRENT:
+            case RESULTS_BASE_PATH.v2 | RESULTS_BASE_PATH.CURRENT | RESULTS_BASE_PATH.TEST:
                 return ".csv"
             case _:
                 assert_never(self)
@@ -119,12 +120,10 @@ class ResultRecord(ABC):
     model_arch: MODEL_ARCH
     model_size: TModelSize
     dataset_and_filteration: str
-    window_size: TWindowSize
     results_base_path: RESULTS_BASE_PATH
 
     def __post_init__(self):
         self.model_arch = MODEL_ARCH(self.model_arch)
-        self.window_size = TWindowSize(int(self.window_size))
 
     @property
     def dataset(self) -> DATASETS:
@@ -183,12 +182,47 @@ class ResultRecord(ABC):
 
 
 @dataclass
+class EvaluateModelRecord(ResultRecord):
+    experiment_name = EXPERIMENT_NAMES.EVALUATE_MODEL
+
+    @classmethod
+    def get_results_output_path(cls, path: Path) -> OutputPath:
+        results_base_path = cls.get_results_base_path(path)
+        output_path = results_base_path.pattern_output_path([])
+
+        match results_base_path:
+            case RESULTS_BASE_PATH.v1 | RESULTS_BASE_PATH.v2:
+                output_path.path_components = output_path.path_components[:-2] + output_path.path_components[-1:]
+                output_path.add(
+                    [
+                        OutputKey(
+                            key_name="dataset_and_filteration",
+                            key_display_name="",
+                            suffix=".csv",
+                        ),
+                    ]
+                )
+            case RESULTS_BASE_PATH.CURRENT | RESULTS_BASE_PATH.TEST:
+                output_path.add(
+                    [
+                        "outputs.csv",
+                    ]
+                )
+            case _:
+                assert_never(results_base_path)
+
+        return output_path
+
+
+@dataclass
 class HeatmapRecord(ResultRecord):
     experiment_name = EXPERIMENT_NAMES.HEATMAP
+    window_size: TWindowSize
     prompt_idx: TPromptOriginalIndex
 
     def __post_init__(self):
         super().__post_init__()
+        self.window_size = TWindowSize(int(self.window_size))
         assert self.prompt_idx is not None
         self.prompt_idx = TPromptOriginalIndex(int(self.prompt_idx))
 
@@ -211,11 +245,16 @@ class HeatmapRecord(ResultRecord):
 
 
 @dataclass
-class InfoFlowRecord(ResultRecord):
+class InfoFlowRecordOld(ResultRecord):
     experiment_name = EXPERIMENT_NAMES.INFO_FLOW
+    window_size: TWindowSize
     _block_target: Optional[str] = None  # v1
     _target: Optional[str] = None  # v2
     _source_and_feature_category: Optional[str] = None  # v2
+
+    def __post_init__(self):
+        super().__post_init__()
+        self.window_size = TWindowSize(int(self.window_size))
 
     @property
     def target(self) -> TokenType:
@@ -258,50 +297,89 @@ class InfoFlowRecord(ResultRecord):
     @classmethod
     def get_results_output_path(cls, path: Path) -> OutputPath:
         results_base_path = cls.get_results_base_path(path)
-        output_path = results_base_path.pattern_output_path(
-            [
-                BASE_OUTPUT_KEYS.WINDOW_SIZE,
-            ]
-        )
-        if results_base_path == RESULTS_BASE_PATH.v1:
-            output_path = output_path.add(
-                [
-                    OutputKey(key_name=IntermediateParamNames._block_target, key_display_name="block_"),
-                    OutputKey("_", key_display_name="outputs.json"),
-                ]
-            )
-        else:
-            output_path = output_path.add(
-                [
-                    OutputKey(key_name=f"_{ResultBankParamNames.target}", key_display_name="target="),
-                    OutputKey(
-                        key_name=IntermediateParamNames._source_and_feature_category,
-                        key_display_name="source=",
-                        suffix=results_base_path.info_flow_suffix,
-                    ),
-                ]
-            )
-
-        return output_path
+        match results_base_path:
+            case RESULTS_BASE_PATH.v1:
+                return results_base_path.pattern_output_path(
+                    [
+                        BASE_OUTPUT_KEYS.WINDOW_SIZE,
+                    ]
+                ).add(
+                    [
+                        OutputKey(key_name=IntermediateParamNames._block_target, key_display_name="block_"),
+                        OutputKey("_", key_display_name="outputs.json"),
+                    ]
+                )
+            case RESULTS_BASE_PATH.v2:
+                return results_base_path.pattern_output_path(
+                    [
+                        BASE_OUTPUT_KEYS.WINDOW_SIZE,
+                    ]
+                ).add(
+                    [
+                        OutputKey(key_name=f"_{ResultBankParamNames.target}", key_display_name="target="),
+                        OutputKey(
+                            key_name=IntermediateParamNames._source_and_feature_category,
+                            key_display_name="source=",
+                            suffix=results_base_path.info_flow_suffix,
+                        ),
+                    ]
+                )
+            case _:
+                raise ValueError(f"Unknown results base path: {results_base_path}")
 
     @classmethod
     def init_from_processed_values(
         cls, path: Path, results_base_path: RESULTS_BASE_PATH, values: dict[str, str]
     ) -> Optional["ResultRecord"]:
         result_record = super().init_from_processed_values(path, results_base_path, values)
-        assert isinstance(result_record, InfoFlowRecord)
-        if results_base_path == RESULTS_BASE_PATH.CURRENT:
+        assert isinstance(result_record, cls)
+        if results_base_path == RESULTS_BASE_PATH.v2:
             if result_record._feature_category_str == "NONE":
                 return None
         return result_record
 
 
+@dataclass
+class InfoFlowRecord(ResultRecord):
+    experiment_name = EXPERIMENT_NAMES.INFO_FLOW
+    window_size: TWindowSize
+    target: TokenType
+    source: TokenType
+    feature_category: FeatureCategory
+
+    def __post_init__(self):
+        super().__post_init__()
+        self.window_size = TWindowSize(int(self.window_size))
+        self.target = TokenType(self.target)
+        self.source = TokenType(self.source)
+        self.feature_category = FeatureCategory(self.feature_category)
+
+    @classmethod
+    def get_results_output_path(cls, path: Path) -> OutputPath:
+        results_base_path = cls.get_results_base_path(path)
+        if results_base_path <= RESULTS_BASE_PATH.v2:
+            raise ValueError(f"Results base path {results_base_path} is not supported for {cls.__name__}")
+        return results_base_path.pattern_output_path(
+            [
+                BASE_OUTPUT_KEYS.WINDOW_SIZE,
+                OutputKey[TokenType](INFO_FLOW_HP_COLS.target),
+                OutputKey[TokenType](INFO_FLOW_HP_COLS.source),
+                OutputKey[FeatureCategory](INFO_FLOW_HP_COLS.feature_category),
+            ]
+        ).add(
+            [
+                "info_flow.csv",
+            ]
+        )
+
+
 def get_experiment_results_bank(
     results_base_paths: Sequence[RESULTS_BASE_PATH] = (
         # RESULTS_BASE_PATH.Prev,
+        # RESULTS_BASE_PATH.v2,
         RESULTS_BASE_PATH.CURRENT,
     ),
-    experiment_records: Sequence[Type[ResultRecord]] = (HeatmapRecord, InfoFlowRecord),
+    experiment_records: Sequence[Type[ResultRecord]] = (EvaluateModelRecord, HeatmapRecord, InfoFlowRecord),
 ) -> ResultBank:
     results: list[ResultRecord] = []
     for results_base_path in results_base_paths:

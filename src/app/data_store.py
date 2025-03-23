@@ -12,14 +12,17 @@ from src.analysis.experiment_results.data_requirements import (
     get_model_evaluations,
 )
 from src.analysis.experiment_results.results_bank import (
+    RESULTS_BASE_PATH,
     get_experiment_results_bank,
 )
 from src.app.app_consts import (
     GLOBAL_APP_CONSTS,
 )
+from src.core.names import DATASETS
 from src.core.types import MODEL_ARCH_AND_SIZE, TPromptOriginalIndex, TVariationName, TWindowSize
 from src.data_ingestion.data_defs import DataReqs, ResultBank, SummarizedDataFulfilledReqs
-from src.experiments.runners.heatmap import HeatmapConfig
+from src.experiments.infrastructure.base_config import CommonParams, SelectivePromptFilteration
+from src.experiments.runners.heatmap import HeatmapConfig, HeatmapParams
 from src.utils.streamlit.helpers.cache import CacheWithDependencies
 
 
@@ -55,6 +58,11 @@ def merge_model_evaluations_streamlit_rendered(variation: TVariationName) -> Str
 @CacheWithDependencies()
 def load_results_bank() -> ResultBank:
     return get_experiment_results_bank()
+
+
+@CacheWithDependencies()
+def load_test_results_bank() -> ResultBank:
+    return get_experiment_results_bank(results_base_paths=(RESULTS_BASE_PATH.TEST,))
 
 
 @CacheWithDependencies()
@@ -127,15 +135,20 @@ def get_models_remaining_prompts(
     res = {}
     for model_arch, model_size in model_combinations:
         config = HeatmapConfig(
-            model_arch=model_arch,
-            model_size=model_size,
-            window_size=window_size,
             variation=variation,
-            prompt_original_indices=prompt_original_indices,
+            common_params=CommonParams(
+                model_arch=model_arch,
+                model_size=model_size,
+            ),
+            prompt_filteration=SelectivePromptFilteration(
+                dataset_name=DATASETS.COUNTER_FACT,
+                prompt_ids=prompt_original_indices,
+            ),
+            runner_params=HeatmapParams(
+                window_size=window_size,
+            ),
         )
-        remaining_prompt_original_indices = config.get_remaining_prompt_original_indices()
-        if remaining_prompt_original_indices:
-            config.prompt_original_indices = remaining_prompt_original_indices
+        if config.get_remaining_prompt_original_indices():
             res[MODEL_ARCH_AND_SIZE(model_arch, model_size)] = config
     return res
 

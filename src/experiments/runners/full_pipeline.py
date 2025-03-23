@@ -12,61 +12,52 @@ consistent configuration across all steps.
 """
 
 from dataclasses import dataclass
+from typing import TypedDict
 
 from src.core.names import EXPERIMENT_NAMES
-from src.core.types import TInfoFlowSource, TokenType, TPromptOriginalIndex, TWindowSize
+from src.core.types import FeatureCategory, TokenType, TWindowSize
 from src.experiments.infrastructure.base_config import (
     BASE_OUTPUT_KEYS,
-    BaseConfig,
-    create_mutable_field,
+    BaseRunner,
+    PromptFilteration,
 )
-from src.experiments.runners.evaluate_model import EvaluateModelConfig
-from src.experiments.runners.heatmap import HEATMAP_PLOT_FUNCS, HeatmapConfig
-from src.experiments.runners.info_flow import InfoFlowConfig
+from src.experiments.runners.heatmap import HEATMAP_PLOT_FUNCS, HeatmapConfig, HeatmapParams
+from src.experiments.runners.info_flow import InfoFlowConfig, InfoFlowParams
+
+
+class FullPipelineDependencies(TypedDict):
+    heatmap: HeatmapConfig
+    info_flow: dict[str, InfoFlowConfig]
 
 
 @dataclass
-class FullPipelineConfig(BaseConfig):
-    """Configuration for the full experiment pipeline."""
+class FullPipelineParam:
+    knockout_map: dict[TokenType, list[tuple[TokenType, FeatureCategory]]]
+    info_flow_window_size: TWindowSize
 
-    experiment_name: EXPERIMENT_NAMES = EXPERIMENT_NAMES.FULL_PIPELINE
+    heatmap_window_size: TWindowSize
+    heatmap_prompts: PromptFilteration
 
     with_plotting: bool = False
     enforce_no_missing_outputs: bool = True
     with_generation: bool = True
 
-    # EvaluateModelConfig
-    drop_subject: bool = EvaluateModelConfig.drop_subject
-    drop_subj_last_token: bool = EvaluateModelConfig.drop_subj_last_token
-    with_3_dots: bool = EvaluateModelConfig.with_3_dots
-    new_max_tokens: int = EvaluateModelConfig.new_max_tokens
-    top_k_tokens: int = EvaluateModelConfig.top_k_tokens
 
-    # HeatmapConfig
-    window_size: TWindowSize = HeatmapConfig.window_size
-    prompt_original_indices: list[TPromptOriginalIndex] = create_mutable_field(
-        lambda: HeatmapConfig().prompt_original_indices
-    )
+@dataclass
+class FullPipelineConfig(BaseRunner):
+    """Configuration for the full experiment pipeline."""
 
-    # InfoFlowConfig
-    knockout_map: dict[TokenType, list[TInfoFlowSource]] = create_mutable_field(lambda: InfoFlowConfig().knockout_map)
+    runner_params: FullPipelineParam
+
+    @property
+    def experiment_name(self):
+        return EXPERIMENT_NAMES.FULL_PIPELINE
 
     @property
     def experiment_output_keys(self):
         return super().experiment_output_keys + [
             BASE_OUTPUT_KEYS.WINDOW_SIZE,
         ]
-
-    def evaluate_model_config(self) -> EvaluateModelConfig:
-        return self.init_sub_config_from_full_pipeline_config(
-            EvaluateModelConfig,
-        )
-
-    def heatmap_config(self) -> HeatmapConfig:
-        return self.init_sub_config_from_full_pipeline_config(HeatmapConfig)
-
-    def info_flow_config(self) -> InfoFlowConfig:
-        return self.init_sub_config_from_full_pipeline_config(InfoFlowConfig)
 
     def get_outputs(self) -> dict:
         """Get outputs from all experiments."""
@@ -75,40 +66,63 @@ class FullPipelineConfig(BaseConfig):
     def compute(self) -> None:
         main_local(self)
 
+    def get_runner_dependencies(self) -> FullPipelineDependencies:  # type: ignore
+        info_flow_deps: dict[str, InfoFlowConfig] = {}
+        for target_token, source in self.runner_params.knockout_map.items():
+            for source_token, feature_category in source:
+                info_flow_deps[f"info_flow_{source_token}_{feature_category}->{target_token}"] = (
+                    InfoFlowConfig.init_from_config(
+                        config=self,
+                        runner_params=InfoFlowParams(
+                            window_size=self.runner_params.info_flow_window_size,
+                            source=source_token,
+                            feature_category=feature_category,
+                            target=target_token,
+                        ),
+                    )
+                )
+
+        return FullPipelineDependencies(
+            heatmap=HeatmapConfig.init_from_config(
+                config=self,
+                runner_params=HeatmapParams(
+                    window_size=self.runner_params.heatmap_window_size,
+                ),
+                prompt_filteration=self.runner_params.heatmap_prompts,
+            ),
+            info_flow=info_flow_deps,
+        )
+
+    def is_computed(self) -> bool:
+        return True
+
 
 def main_local(args: FullPipelineConfig):
     """Run the full pipeline of experiments."""
     print("Starting Full Pipeline Experiment")
-    print(f"{args.with_generation=} {args.with_plotting=} {args.enforce_no_missing_outputs=}")
+    print(
+        " ".join(
+            [
+                f"{args.runner_params.with_generation=}",
+                f"{args.runner_params.with_plotting=}",
+                f"{args.runner_params.enforce_no_missing_outputs=}",
+            ]
+        )
+    )
     print(args)
 
-    # Step 1: Model Evaluation
-    if args.with_generation:
-        print("\nRunning Model Evaluation Experiment...")
-        args.evaluate_model_config().compute()
-
-    # Step 2: Heatmap Analysis
-
-    print("\nRunning Heatmap Analysis Experiment...")
-    heatmap_config = args.heatmap_config()
-    if args.with_generation:
-        heatmap_config.compute()
-    if args.with_plotting:
+    if args.runner_params.with_plotting:
         print("\nPlotting all heatmaps...")
         try:
-            heatmap_config.plot(HEATMAP_PLOT_FUNCS._simple_diff_fixed_0_3)
+            args.get_runner_dependencies()["heatmap"].plot(HEATMAP_PLOT_FUNCS._simple_diff_fixed_0_3)
         except Exception as e:
             print(f"Error plotting heatmaps: {e}")
 
-    # Step 3: Information Flow Analysis
-    info_flow_config = args.info_flow_config()
-    if args.with_generation:
-        print("\nRunning Information Flow Analysis Experiment...")
-        info_flow_config.compute()
-    if args.with_plotting:
+    if args.runner_params.with_plotting:
         print("\nPlotting all info flow blocks...")
         try:
-            info_flow_config.plot(args.enforce_no_missing_outputs)
+            for info_flow_config in args.get_runner_dependencies()["info_flow"].values():
+                info_flow_config.plot()
         except Exception as e:
             print(f"Error plotting info flow blocks: {e}")
 

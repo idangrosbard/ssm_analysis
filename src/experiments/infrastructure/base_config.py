@@ -1,50 +1,34 @@
 import json
 import subprocess
 from abc import ABC, abstractmethod
-from dataclasses import asdict, dataclass, fields
+from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any, Callable, Generic, Optional, Type, TypeVar, cast, final
+from typing import Any, Generic, Mapping, Optional, TypeVar, Union, final
 
-import pandas as pd
-import pyrallis
 from submitit.slurm.slurm import SlurmJob
 
-from src.core.consts import MODEL_SIZES_PER_ARCH_TO_MODEL_ID, PATHS
-from src.core.names import COLS, EXPERIMENT_NAMES
+from src.core.consts import MODEL_SIZES_PER_ARCH_TO_MODEL_ID, PATHS, PathsConfig, RunnerPaths
+from src.core.names import EXPERIMENT_NAMES
 from src.core.types import (
-    ALL_SPLITS_LITERAL,
-    DATASETS,
-    FILTERATIONS,
     MODEL_ARCH,
+    MODEL_ARCH_AND_SIZE,
     TBatchSize,
     TModelID,
     TModelSize,
-    TPromptData,
+    TPromptOriginalIndex,
+    TTokenizer,
     TVariationName,
     TWindowSize,
 )
-from src.data_ingestion.datasets.download_dataset import load_splitted_counter_fact
+from src.data_ingestion.datasets.download_dataset import DATASETS, get_prompt_ids
+from src.experiments.infrastructure.model_interface import ModelInterface, get_model_interface
 from src.utils.infra.experiment_helper import create_run_id
 from src.utils.infra.output_path import (
-    _ATTRIBUTE_TYPE,
     OutputKey,
     combine_output_keys,
 )
 from src.utils.infra.slurm import SLURM_GPU_TYPE, submit_job
-
-_TBaseConfig = TypeVar("_TBaseConfig", bound="BaseConfig")
-
-
-def create_mutable_field(
-    default_factory: Callable[[], _ATTRIBUTE_TYPE],
-) -> _ATTRIBUTE_TYPE:
-    # Pyralis need mutable fields to be defined with field but it's typing is not complete.
-    # This is a fix to make it work.
-
-    return cast(
-        _ATTRIBUTE_TYPE,
-        pyrallis.field(default_factory=default_factory, is_mutable=True),
-    )
+from src.utils.types_utils import create_mutable_field
 
 
 class BASE_OUTPUT_KEYS:
@@ -57,19 +41,12 @@ class BASE_OUTPUT_KEYS:
     WINDOW_SIZE = OutputKey[TWindowSize]("window_size", key_display_name="ws=")
 
 
-_TConfigOutputs = TypeVar("_TConfigOutputs", bound=Any)
+_TRunnerOutputs = TypeVar("_TRunnerOutputs", bound=Any)
+_TRunnerParams = TypeVar("_TRunnerParams", bound=Any)
 
 
 @dataclass
-class BaseConfig(ABC, Generic[_TConfigOutputs]):
-    """Base configuration class with common parameters across all scripts."""
-
-    experiment_name: EXPERIMENT_NAMES
-    variation: TVariationName = TVariationName("v3")
-
-    model_arch: MODEL_ARCH = MODEL_ARCH.MAMBA1
-    model_size: TModelSize = TModelSize("130M")
-    dataset_name: DATASETS = DATASETS.COUNTER_FACT
+class RunParams:
     _batch_size: TBatchSize = TBatchSize(1)  # Adjust based on GPU memory
     with_slurm: bool = False
     # slurm_gpu_type: SLURM_GPU_TYPE = SLURM_GPU_TYPE.TITAN_XP_STUDENTRUN
@@ -77,33 +54,152 @@ class BaseConfig(ABC, Generic[_TConfigOutputs]):
     slurm_gpus_per_node: int = 1
     overwrite_existing_outputs: bool = False
 
+
+TDependencies = Mapping[str, Union["BaseRunner", "TDependencies"]]
+
+
+@dataclass
+class PromptFilteration(ABC):
+    """Filteration of prompts to run the experiment on."""
+
+    dataset_name: DATASETS
+
+    @abstractmethod
+    def get_prompt_ids(self) -> list[TPromptOriginalIndex]:
+        return get_prompt_ids(self.dataset_name)
+
+    @abstractmethod
+    def get_dependencies(self) -> TDependencies:
+        pass
+
+
+@dataclass
+class AllPromptFilteration(PromptFilteration):
+    def get_prompt_ids(self) -> list[TPromptOriginalIndex]:
+        return super().get_prompt_ids()
+
+    def get_dependencies(self) -> TDependencies:
+        return {}
+
+
+@dataclass
+class SelectivePromptFilteration(PromptFilteration):
+    prompt_ids: list[TPromptOriginalIndex]
+
+    def get_prompt_ids(self) -> list[TPromptOriginalIndex]:
+        return self.prompt_ids
+
+    def get_dependencies(self) -> TDependencies:
+        return {}
+
+
+@dataclass
+class MultiplePromptFilteration(PromptFilteration):
+    prompt_filterations: list[PromptFilteration]
+
+    def get_prompt_ids(self) -> list[TPromptOriginalIndex]:
+        prompt_ids = super().get_prompt_ids()
+
+        for prompt_filteration in self.prompt_filterations:
+            prompt_ids = [prompt_id for prompt_id in prompt_ids if prompt_id in prompt_filteration.get_prompt_ids()]
+        return prompt_ids
+
+    def get_dependencies(self) -> TDependencies:
+        dependencies = {}
+        for prompt_filteration in self.prompt_filterations:
+            dependencies.update(prompt_filteration.get_dependencies())
+        return dependencies
+
+
+@dataclass
+class CommonParams:
+    model_arch: MODEL_ARCH
+    model_size: TModelSize
+    dataset_name: DATASETS = DATASETS.COUNTER_FACT
+
     @property
-    def batch_size(self) -> TBatchSize:
-        return TBatchSize(1) if (self.model_arch == MODEL_ARCH.MAMBA2) else self._batch_size
+    def model_arch_and_size(self) -> MODEL_ARCH_AND_SIZE:
+        return MODEL_ARCH_AND_SIZE(self.model_arch, self.model_size)
+
+    def get_model_interface(self) -> ModelInterface:
+        return get_model_interface(self.model_arch_and_size)
 
     @property
     def model_id(self) -> TModelID:
         return MODEL_SIZES_PER_ARCH_TO_MODEL_ID[self.model_arch][self.model_size]
 
     @property
-    @abstractmethod
-    def experiment_output_keys(self) -> list[OutputKey | list[OutputKey]]:
-        return [
-            BASE_OUTPUT_KEYS.EXPERIMENT_NAME,
-            BASE_OUTPUT_KEYS.VARIATION,
-            BASE_OUTPUT_KEYS.MODEL_ARCH,
-            BASE_OUTPUT_KEYS.MODEL_SIZE,
-            BASE_OUTPUT_KEYS.DATASET_NAME,
-        ]
+    def get_tokenizer(self) -> TTokenizer:
+        return self.get_model_interface().tokenizer
 
-    @final
+
+@dataclass
+class BaseRunner(ABC, Generic[_TRunnerParams, _TRunnerOutputs]):
+    """Base configuration class with common parameters across all scripts."""
+
+    variation: TVariationName
+    common_params: CommonParams
+    prompt_filteration: PromptFilteration
+    runner_params: _TRunnerParams
+    run_params: RunParams = create_mutable_field(lambda: RunParams())
+
     @property
-    def experiment_variation_base_path(self) -> Path:
-        return PATHS.OUTPUT_DIR / combine_output_keys(
+    def global_path_config(self) -> PathsConfig:
+        return PATHS
+
+    @property
+    @abstractmethod
+    def experiment_name(self) -> EXPERIMENT_NAMES:
+        pass
+
+    @property
+    def batch_size(self) -> TBatchSize:
+        assert self.run_params._batch_size == 1, "Batch size must be 1, unless we debug the issue"
+        return TBatchSize(1) if (self.common_params.model_arch == MODEL_ARCH.MAMBA2) else self.run_params._batch_size
+
+    @property
+    def model_id(self) -> TModelID:
+        return MODEL_SIZES_PER_ARCH_TO_MODEL_ID[self.common_params.model_arch][self.common_params.model_size]
+
+    @property
+    @abstractmethod
+    def experiment_output_keys(self) -> list[OutputKey]:
+        return []
+
+    @property
+    def variation_relative_path(self) -> Path:
+        path = Path(".")
+
+        path /= combine_output_keys(
             self,
+            [
+                BASE_OUTPUT_KEYS.EXPERIMENT_NAME,
+                BASE_OUTPUT_KEYS.VARIATION,
+            ],
+            sep="/",
+        )
+
+        path /= combine_output_keys(
+            self.common_params,
+            [
+                BASE_OUTPUT_KEYS.MODEL_ARCH,
+                BASE_OUTPUT_KEYS.MODEL_SIZE,
+                BASE_OUTPUT_KEYS.DATASET_NAME,
+            ],
+            sep="/",
+        )
+
+        path /= combine_output_keys(
+            self.runner_params,
             self.experiment_output_keys,
             sep="/",
         )
+        return path
+
+    @final
+    @property
+    def variation_paths(self) -> RunnerPaths:
+        return RunnerPaths(self.global_path_config.OUTPUT_DIR / self.variation_relative_path)
 
     @property
     def job_name(self) -> str:
@@ -119,33 +215,43 @@ class BaseConfig(ABC, Generic[_TConfigOutputs]):
         slurm_gpu_type: SLURM_GPU_TYPE,
         slurm_gpus_per_node: Optional[int] = None,
     ):
-        self.with_slurm = with_slurm
-        self.slurm_gpu_type = slurm_gpu_type
+        self.run_params.with_slurm = with_slurm
+        self.run_params.slurm_gpu_type = slurm_gpu_type
         if slurm_gpus_per_node is not None:
-            self.slurm_gpus_per_node = slurm_gpus_per_node
+            self.run_params.slurm_gpus_per_node = slurm_gpus_per_node
+
+    @abstractmethod
+    def is_computed(self) -> bool:
+        pass
+
+    @abstractmethod
+    def get_runner_dependencies(self) -> TDependencies:
+        pass
+
+    def uncomputed_dependencies(self) -> TDependencies:
+        def rec_uncomputed_dependencies(dependencies: TDependencies) -> TDependencies:
+            res = {}
+            for k, v in dependencies.items():
+                if isinstance(v, BaseRunner):
+                    if not v.is_computed():
+                        res[k] = v
+                else:
+                    res[k] = rec_uncomputed_dependencies(v)
+            return res
+
+        return rec_uncomputed_dependencies(self.get_runner_dependencies())
+
+    def dependencies_are_computed(self) -> bool:
+        return len(self.uncomputed_dependencies()) == 0
 
     @property
-    def running_history_path(self) -> Path:
-        return self.experiment_variation_base_path / "running_history"
-
-    @property
-    def plots_path(self) -> Path:
-        return self.experiment_variation_base_path / "plots"
-
-    @property
-    def outputs_path(self) -> Path:
-        return self.experiment_variation_base_path / "outputs"
-
-    def running_history_json_path(self, run_id: str) -> Path:
-        return self.running_history_path / f"{run_id}.json"
-
-    def slurm_logs_path(self) -> Path:
-        return self.experiment_variation_base_path / "slurm_logs"
+    def prompt_ids(self) -> list[TPromptOriginalIndex]:
+        return self.prompt_filteration.get_prompt_ids()
 
     def create_experiment_run_path(self) -> None:
-        self.running_history_path.mkdir(parents=True, exist_ok=True)
-        self.plots_path.mkdir(parents=True, exist_ok=True)
-        self.outputs_path.mkdir(parents=True, exist_ok=True)
+        self.variation_paths.running_history_path.mkdir(parents=True, exist_ok=True)
+        self.variation_paths.plots_path.mkdir(parents=True, exist_ok=True)
+        self.variation_paths.outputs_path.mkdir(parents=True, exist_ok=True)
 
         run_id = create_run_id(None)
 
@@ -156,83 +262,10 @@ class BaseConfig(ABC, Generic[_TConfigOutputs]):
         except Exception:
             pass
 
-        json.dump(params, self.running_history_json_path(run_id).open("w"), indent=4)
-
-    def get_raw_data(self, align_to_known: bool = False) -> pd.DataFrame:
-        dataset = load_splitted_counter_fact(
-            ALL_SPLITS_LITERAL,
-            align_to_known=align_to_known,
-        )
-        return pd.DataFrame(cast(dict, dataset))
-
-    def init_sub_config_from_full_pipeline_config(
-        self,
-        sub_config_cls: Type[_TBaseConfig],
-        **kwargs,
-    ) -> _TBaseConfig:
-        """Initialize a sub-config from this full pipeline config.
-
-        Args:
-            sub_config_cls: The class of the sub-config to initialize
-
-        Returns:
-            An instance of the sub-config with values copied from this config
-
-        Raises:
-            ValueError: If a required field in sub_config is missing from full_pipeline_config
-        """
-        # Get all fields from the sub-config class
-        sub_config_field_names = {f.name for f in fields(sub_config_cls) if not f.name.startswith("_")}
-
-        # Get all fields from this class
-        full_config_fields = {f.name: getattr(self, f.name) for f in fields(self) if not f.name.startswith("_")}
-
-        # Create kwargs for sub-config initialization
-        init_kwargs = {}
-        for field_name in sub_config_field_names:
-            if field_name == "experiment_name":
-                # Special case: use the sub-config's default experiment_name
-                continue
-            if field_name in kwargs:
-                init_kwargs[field_name] = kwargs[field_name]
-            elif field_name not in full_config_fields:
-                raise ValueError(
-                    f"Field '{field_name}' required by {sub_config_cls.__name__} "
-                    f"is missing in {self.__class__.__name__}"
-                )
-            else:
-                init_kwargs[field_name] = full_config_fields[field_name]
-
-        # Initialize the sub-config
-        return sub_config_cls(**init_kwargs)
-
-    def get_prompt_data(self, filteration: FILTERATIONS) -> TPromptData:
-        from src.experiments.runners.evaluate_model import EvaluateModelConfig
-
-        df = self.init_sub_config_from_full_pipeline_config(
-            EvaluateModelConfig,
-            drop_subject=EvaluateModelConfig.drop_subject,
-            drop_subj_last_token=EvaluateModelConfig.drop_subj_last_token,
-            with_3_dots=EvaluateModelConfig.with_3_dots,
-            new_max_tokens=EvaluateModelConfig.new_max_tokens,
-            top_k_tokens=EvaluateModelConfig.top_k_tokens,
-        ).get_outputs()
-
-        match filteration:
-            case FILTERATIONS.current_model_correct:
-                df = df[df[COLS.EVALUATE_MODEL.MODEL_CORRECT]]
-            case FILTERATIONS.ALL:
-                pass
-            case _:
-                raise NotImplementedError(f"Filteration {filteration} not implemented")
-
-        return cast(
-            TPromptData,
-            df.set_index(COLS.ORIGINAL_IDX),
-        )
+        json.dump(params, self.variation_paths.running_history_json_path(run_id).open("w"), indent=4)
 
     @abstractmethod
-    def get_outputs(self) -> _TConfigOutputs:
+    def get_outputs(self) -> _TRunnerOutputs:
         pass
 
     @abstractmethod
@@ -240,7 +273,7 @@ class BaseConfig(ABC, Generic[_TConfigOutputs]):
         pass
 
     def get_latest_slurm_job(self) -> Optional[SlurmJob]:
-        slurm_logs_path = self.slurm_logs_path()
+        slurm_logs_path = self.variation_paths.slurm_logs_path
         if not slurm_logs_path.exists():
             return None
 
@@ -260,24 +293,55 @@ class BaseConfig(ABC, Generic[_TConfigOutputs]):
         return latest_job.state == "RUNNING"
 
     def run(self) -> None:
-        if not self.with_slurm:
+        if not self.run_params.with_slurm:
             self.compute()
             return
         else:
-            slurm_experiment_dir = PATHS.SLURM_DIR / self.job_name
             job = submit_job(
                 self.compute,
-                log_folder=str(slurm_experiment_dir / "%j"),
+                log_folder=str(self.global_path_config.get_slurm_job_submission_file_path(self.job_name, "%j")),
                 job_name=self.job_name,
                 # timeout_min=1200,
-                gpu_type=self.slurm_gpu_type,
-                slurm_gpus_per_node=self.slurm_gpus_per_node,
+                gpu_type=self.run_params.slurm_gpu_type,
+                slurm_gpus_per_node=self.run_params.slurm_gpus_per_node,
             )
-            self.slurm_logs_path().mkdir(parents=True, exist_ok=True)
-            slurm_experiment_dir /= f"{job.job_id}"
+            self.variation_paths.slurm_logs_path.mkdir(parents=True, exist_ok=True)
             # create symlink to slurm logs
-            (self.slurm_logs_path() / f"{job.job_id}").symlink_to(slurm_experiment_dir)
+            (self.variation_paths.slurm_log_folder(job_id=job.job_id)).symlink_to(
+                self.global_path_config.get_slurm_job_log_folder(self.job_name, job.job_id)
+            )
 
-            (slurm_experiment_dir / "experiment_variation_base_path").symlink_to(self.experiment_variation_base_path)
+            self.global_path_config.get_slurm_job_submission_file_path(self.job_name, job.job_id).symlink_to(
+                self.variation_paths.variation_base_path
+            )
 
             print(f"{job}: {self.job_name}")
+
+    def compute_with_dependencies(self) -> None:
+        def rec_compute_with_dependencies(dependencies: TDependencies) -> None:
+            for dependency in dependencies.values():
+                if isinstance(dependency, BaseRunner):
+                    dependency.compute_with_dependencies()
+                else:
+                    rec_compute_with_dependencies(dependency)
+
+        rec_compute_with_dependencies(self.get_runner_dependencies())
+        self.compute()
+
+    @classmethod
+    def init_from_config(
+        cls,
+        config: "BaseRunner",
+        runner_params: _TRunnerParams,
+        variation: Optional[TVariationName] = None,
+        common_params: Optional[CommonParams] = None,
+        prompt_filteration: Optional[PromptFilteration] = None,
+        run_params: Optional[RunParams] = None,
+    ):
+        return cls(
+            variation=variation or config.variation,
+            common_params=common_params or config.common_params,
+            prompt_filteration=prompt_filteration or config.prompt_filteration,
+            runner_params=runner_params,
+            run_params=run_params or config.run_params,
+        )

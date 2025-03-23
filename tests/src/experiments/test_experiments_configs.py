@@ -1,13 +1,46 @@
+from src.core.names import DATASETS
+from src.core.types import MODEL_ARCH, FeatureCategory, TModelSize, TokenType, TVariationName, TWindowSize
+from src.experiments.infrastructure.base_config import (
+    AllPromptFilteration,
+    CommonParams,
+)
 from src.experiments.runners.evaluate_model import EvaluateModelConfig
-from src.experiments.runners.heatmap import HeatmapConfig
-from src.experiments.runners.info_flow import InfoFlowConfig
+from src.experiments.runners.heatmap import HeatmapConfig, HeatmapParams
+from src.experiments.runners.info_flow import InfoFlowConfig, InfoFlowParams
 
 
 def test_experiments_configs():
-    evaluate_model_config = EvaluateModelConfig()
-    heatmap_config = HeatmapConfig()
-    info_flow_config = InfoFlowConfig()
-
+    variation = TVariationName("test")
+    common_params = CommonParams(
+        model_arch=MODEL_ARCH.MAMBA1,
+        model_size=TModelSize("130M"),
+    )
+    prompt_filteration = AllPromptFilteration(dataset_name=DATASETS.COUNTER_FACT)
+    window_size = TWindowSize(10)
+    evaluate_model_config = EvaluateModelConfig(
+        variation=variation,
+        common_params=common_params,
+        prompt_filteration=prompt_filteration,
+    )
+    heatmap_config = HeatmapConfig(
+        variation=variation,
+        common_params=common_params,
+        prompt_filteration=prompt_filteration,
+        runner_params=HeatmapParams(
+            window_size=window_size,
+        ),
+    )
+    info_flow_config = InfoFlowConfig(
+        variation=variation,
+        common_params=common_params,
+        prompt_filteration=prompt_filteration,
+        runner_params=InfoFlowParams(
+            window_size=window_size,
+            source=TokenType.last,
+            target=TokenType.last,
+            feature_category=FeatureCategory.ALL,
+        ),
+    )
     assert evaluate_model_config
     assert heatmap_config
     assert info_flow_config

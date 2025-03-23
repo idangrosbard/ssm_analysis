@@ -74,17 +74,6 @@ class MODEL_SIZE_CAT(Enum):
     HUGE = 3
 
 
-class DATASETS(StrEnum):
-    COUNTER_FACT = "counter_fact"
-
-
-class FILTERATIONS(StrEnum):
-    all_correct = "all_correct"
-    current_model_correct = "current_model_correct"
-    all_any_correct = "all_any_correct"
-    ALL = "all"
-
-
 TLayerIndex: TypeAlias = int
 TTokenIndex: TypeAlias = int
 TBatchSize = NewType("TBatchSize", int)
@@ -145,11 +134,8 @@ class TInfoFlowWindowValue(TypedDict):
     original_idx: list[TPromptOriginalIndex]
 
 
-TInfoFlowSource = tuple[TokenType, FeatureCategory]
 TInfoFlowOutputJSONOutput = dict[str, TInfoFlowWindowValue]
 TInfoFlowOutput = dict[TLayerIndex, TInfoFlowWindowValue]
-TInfoFlowTargetOutputs = dict[TInfoFlowSource, TInfoFlowOutput]
-TInfoFlowOutputs = dict[TokenType, TInfoFlowTargetOutputs]
 
 
 class MODEL_ARCH_AND_SIZE(NamedTuple):

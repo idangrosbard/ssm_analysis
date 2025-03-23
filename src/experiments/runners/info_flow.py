@@ -3,7 +3,7 @@ import time
 from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
-from typing import cast
+from typing import TypedDict, cast
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -12,17 +12,12 @@ from tqdm import tqdm
 
 from src.analysis.plots.info_flow_confidence import create_confidence_plot
 from src.core.consts import is_mamba_arch
-from src.core.names import COLS, EXPERIMENT_NAMES
+from src.core.names import COLS, EXPERIMENT_NAMES, INFO_FLOW_HP_COLS
 from src.core.types import (
-    FILTERATIONS,
     MODEL_ARCH,
-    MODEL_ARCH_AND_SIZE,
     FeatureCategory,
     TInfoFlowOutput,
     TInfoFlowOutputJSONOutput,
-    TInfoFlowOutputs,
-    TInfoFlowSource,
-    TInfoFlowTargetOutputs,
     TInfoFlowWindowValue,
     TLayerIndex,
     TokenType,
@@ -35,67 +30,63 @@ from src.core.types import (
 from src.data_ingestion.helpers.logits_utils import Prompt, get_num_to_masks, get_prompt_row_index
 from src.experiments.infrastructure.base_config import (
     BASE_OUTPUT_KEYS,
-    BaseConfig,
-    create_mutable_field,
+    BaseRunner,
 )
-from src.experiments.infrastructure.model_interface import ModelInterface, get_model_interface
+from src.experiments.infrastructure.model_interface import ModelInterface
+from src.experiments.runners.evaluate_model import EvaluateModelConfig, EvaluateModelParams
+from src.utils.infra.output_path import OutputKey
+from src.utils.types_utils import first_dict_value
 
 # Time in seconds between intermediate saves
 SAVE_INTERVAL = 600  # 10 minutes
 
 
-def skip_task(model_arch: MODEL_ARCH, source: TInfoFlowSource) -> bool:
-    return not (is_mamba_arch(model_arch) or source[1] == FeatureCategory.ALL)
+def skip_task(model_arch: MODEL_ARCH, feature_category: FeatureCategory) -> bool:
+    return not (is_mamba_arch(model_arch) or feature_category == FeatureCategory.ALL)
 
 
 @dataclass
-class InfoFlowConfig(BaseConfig):
+class InfoFlowParams:
+    window_size: TWindowSize
+    source: TokenType
+    feature_category: FeatureCategory
+    target: TokenType
+
+
+class InfoFlowDependencies(TypedDict):
+    evaluate_model: EvaluateModelConfig
+
+
+@dataclass
+class InfoFlowConfig(BaseRunner[InfoFlowParams, TInfoFlowOutput]):
     """Configuration for information flow analysis."""
 
-    experiment_name: EXPERIMENT_NAMES = EXPERIMENT_NAMES.INFO_FLOW
-    window_size: TWindowSize = TWindowSize(9)
-    knockout_map: dict[TokenType, list[TInfoFlowSource]] = create_mutable_field(
-        lambda: {
-            TokenType.last: [
-                (TokenType.last, FeatureCategory.ALL),
-                (TokenType.subject, FeatureCategory.SLOW_DECAY),
-                (TokenType.subject, FeatureCategory.FAST_DECAY),
-                (TokenType.first, FeatureCategory.ALL),
-                (TokenType.subject, FeatureCategory.ALL),
-                (TokenType.relation, FeatureCategory.ALL),
-            ],
-            TokenType.subject: [
-                (TokenType.context, FeatureCategory.ALL),
-                (TokenType.subject, FeatureCategory.ALL),
-            ],
-            TokenType.relation: [
-                (TokenType.context, FeatureCategory.ALL),
-                (TokenType.subject, FeatureCategory.ALL),
-                (TokenType.relation, FeatureCategory.ALL),
-            ],
-        }
-    )
+    runner_params: InfoFlowParams
+
+    @property
+    def experiment_name(self):
+        return EXPERIMENT_NAMES.INFO_FLOW
 
     @property
     def experiment_output_keys(self):
-        return super().experiment_output_keys + [BASE_OUTPUT_KEYS.WINDOW_SIZE]
+        return super().experiment_output_keys + [
+            BASE_OUTPUT_KEYS.WINDOW_SIZE,
+            OutputKey[TokenType](INFO_FLOW_HP_COLS.target),
+            OutputKey[TokenType](INFO_FLOW_HP_COLS.source),
+            OutputKey[FeatureCategory](INFO_FLOW_HP_COLS.feature_category),
+        ]
 
-    def intermediate_outputs_path(self) -> Path:
-        return self.experiment_variation_base_path / "intermediate_outputs"
-
-    def get_intermediate_output_path(self, target: TokenType, source: TInfoFlowSource) -> Path:
+    def get_intermediate_output_path(self) -> Path:
         """Get the path for intermediate results for a specific target-source pair."""
-        return self.intermediate_outputs_path() / f"intermediate_{target}_{source}.json"
+        return self.variation_paths.intermediate_outputs / "intermediate.json"
 
     def save_intermediate_results(
         self,
-        target: TokenType,
-        source: TInfoFlowSource,
         window_outputs: TInfoFlowOutput,
         current_window: TLayerIndex,
     ) -> None:
         """Save intermediate results to a temporary file."""
-        path = self.get_intermediate_output_path(target, source)
+        path = self.get_intermediate_output_path()
         path.parent.mkdir(parents=True, exist_ok=True)
         # Save current progress and metadata
         data = {
@@ -105,11 +96,9 @@ class InfoFlowConfig(BaseConfig):
         }
         json.dump(data, path.open("w"))
 
-    def load_intermediate_results(
-        self, target: TokenType, source: TInfoFlowSource
-    ) -> tuple[TInfoFlowOutput, TWindowStartIndex]:
+    def load_intermediate_results(self) -> tuple[TInfoFlowOutput, TWindowStartIndex]:
         """Load intermediate results if they exist."""
-        path = self.get_intermediate_output_path(target, source)
+        path = self.get_intermediate_output_path()
         if path.exists():
             try:
                 data = json.load(path.open("r"))
@@ -121,23 +110,20 @@ class InfoFlowConfig(BaseConfig):
                 print(f"Error loading intermediate results: {e}")
         return cast(TInfoFlowOutput, defaultdict(lambda: defaultdict(list))), TWindowStartIndex(0)
 
-    def cleanup_intermediate_results(self, target: TokenType, source: TInfoFlowSource) -> None:
+    def cleanup_intermediate_results(self) -> None:
         """Clean up intermediate results after successful completion."""
-        path = self.get_intermediate_output_path(target, source)
+        path = self.get_intermediate_output_path()
         if path.exists():
             path.unlink()
 
-    def output_block_target_path(self, target: TokenType, is_intermediate: bool) -> Path:
-        output_path = self.intermediate_outputs_path() if is_intermediate else self.outputs_path
-        return output_path / f"target={target}"
+    def output_block_target_path(self, is_intermediate: bool) -> Path:
+        output_path = (
+            self.variation_paths.intermediate_outputs if is_intermediate else self.variation_paths.outputs_path
+        )
+        return output_path
 
-    def output_block_target_source_path(
-        self, target: TokenType, source: TInfoFlowSource, is_intermediate: bool = False
-    ) -> Path:
-        feature_category_str = f"source={source[0]}"
-        if source[1] != FeatureCategory.ALL:
-            feature_category_str += f"_feature_category={source[1]}"
-        return self.output_block_target_path(target, is_intermediate) / f"{feature_category_str}.csv"
+    def output_block_target_source_path(self, is_intermediate: bool = False) -> Path:
+        return self.output_block_target_path(is_intermediate) / "info_flow.csv"
 
     @staticmethod
     def convert_json_output_to_output(
@@ -149,28 +135,17 @@ class InfoFlowConfig(BaseConfig):
     def load_output(path: Path) -> TInfoFlowOutput:
         return InfoFlowConfig.convert_json_output_to_output(json.load(path.open("r")))
 
-    def get_block_target_outputs(self, target: TokenType, enforce_no_missing_outputs: bool) -> TInfoFlowTargetOutputs:
-        return {
-            source: self.load_output(self.output_block_target_source_path(target, source))
-            for source in self.knockout_map[target]
-            if not skip_task(self.model_arch, source)
-            and (not enforce_no_missing_outputs or self.output_block_target_source_path(target, source).exists())
-        }
-
     def get_outputs(
         self,
         enforce_no_missing_outputs: bool = True,
-    ) -> TInfoFlowOutputs:
-        return {
-            target: self.get_block_target_outputs(target, enforce_no_missing_outputs) for target in self.knockout_map
-        }
+    ):
+        return self.load_output(self.output_block_target_source_path())
 
-    def get_plot_output_path(self, target: TokenType, plot_name: str) -> Path:
-        return self.plots_path / f"target={target}{plot_name}.png"
+    def get_plot_output_path(self, plot_name: str) -> Path:
+        return self.variation_paths.plots_path / f"{plot_name}.png"
 
     def plot_block_target(
         self,
-        target: TokenType,
         save: bool = False,
         confidence_level: float = 0.95,
         enforce_no_missing_outputs: bool = True,
@@ -181,16 +156,22 @@ class InfoFlowConfig(BaseConfig):
             target: The target TokenType to analyze flows from
             save: Whether to save the figure
         """
-        data = self.get_block_target_outputs(target, enforce_no_missing_outputs)
+        data = self.get_outputs()
         figs = {}
         for with_fixed_limits in [True, False]:
             sub_title = "_fixed_limits" if with_fixed_limits else ""
             figs[sub_title] = create_confidence_plot(
-                targets_window_outputs=data,
+                targets_window_outputs={str(self.runner_params.source): data},
                 confidence_level=confidence_level,
                 title=(
-                    f"{self.model_arch} - {self.model_size} - window_size={self.window_size}"
-                    + f"\nKnocking out flow to {target}"
+                    " - ".join(
+                        [
+                            self.common_params.model_arch,
+                            self.common_params.model_size,
+                            f"window_size={self.runner_params.window_size}",
+                        ]
+                    )
+                    + f"\nKnocking out flow to {self.runner_params.target}"
                 ),
                 plots_meta_data={
                     "acc": {
@@ -210,37 +191,59 @@ class InfoFlowConfig(BaseConfig):
                 },
             )
             if save:
-                p = self.get_plot_output_path(target, sub_title)
+                p = self.get_plot_output_path(sub_title)
                 p.parent.mkdir(parents=True, exist_ok=True)
                 figs[sub_title].savefig(p)
                 plt.close(figs[sub_title])
         return figs
 
-    def plot(self, enforce_no_missing_outputs: bool = True) -> None:
-        plot(self, enforce_no_missing_outputs)
+    def plot(self) -> None:
+        plot(self)
 
     def compute(self) -> None:
         run(self)
 
+    def remining_prompts_for_output_block_target_source(self) -> list[TPromptOriginalIndex]:
+        remaining_prompts = self.prompt_ids
+        output_path = self.output_block_target_source_path()
+        if output_path.exists():
+            output = self.load_output(output_path)
+            first_windows_output = first_dict_value(output)
+            existing_prompts = set(first_windows_output[COLS.ORIGINAL_IDX])
+            remaining_prompts = [idx for idx in remaining_prompts if idx not in existing_prompts]
 
-def plot(args: InfoFlowConfig, enforce_no_missing_outputs: bool = True):
+        return remaining_prompts
+
+    def is_computed(self) -> bool:
+        return len(self.remining_prompts_for_output_block_target_source()) == 0
+
+    def get_runner_dependencies(self) -> InfoFlowDependencies:  # type: ignore
+        return InfoFlowDependencies(
+            evaluate_model=EvaluateModelConfig.init_from_config(
+                self,
+                runner_params=EvaluateModelParams(),
+            ),
+        )
+
+
+def plot(args: InfoFlowConfig):
     knockout_map_outputs = args.get_outputs()
     for target in knockout_map_outputs:
         print(f"Plotting {target}")
-        args.plot_block_target(target, save=True)
+        args.plot_block_target(save=True)
 
 
 def forward_eval(
     prompt: Prompt,
     window: TWindow,
-    knockout_source: TInfoFlowSource,
+    knockout_source: TokenType,
+    feature_category: FeatureCategory,
     knockout_target: TokenType,
     model_interface: ModelInterface,
     tokenizer: TTokenizer,
     device,
 ):
-    source, feature_category = knockout_source
-    num_to_masks, first_token = get_num_to_masks(prompt, tokenizer, window, source, knockout_target, device)
+    num_to_masks, first_token = get_num_to_masks(prompt, tokenizer, window, knockout_source, knockout_target, device)
 
     next_token_probs = model_interface.generate_logits(
         input_ids=prompt.input_ids(tokenizer, device),
@@ -265,13 +268,16 @@ def forward_eval(
 def run(args: InfoFlowConfig):
     print(args)
 
-    remaining_knockout_map: list[tuple[TokenType, TInfoFlowSource]] = [
-        (target, source)
-        for target in args.knockout_map
-        for source in args.knockout_map[target]
+    remaining_knockout_map: list[tuple[TokenType, TokenType, FeatureCategory, list[TPromptOriginalIndex]]] = [
+        (target, source, args.runner_params.feature_category, remaining_prompts)
+        for target in [args.runner_params.target]
+        for source in [args.runner_params.source]
         if (
-            (args.overwrite_existing_outputs or not args.output_block_target_source_path(target, source).exists())
-            and not skip_task(args.model_arch, source)
+            (
+                len(remaining_prompts := args.remining_prompts_for_output_block_target_source()) > 0
+                or args.run_params.overwrite_existing_outputs
+            )
+            and not skip_task(args.common_params.model_arch, args.runner_params.feature_category)
         )
     ]
     if not remaining_knockout_map:
@@ -279,9 +285,9 @@ def run(args: InfoFlowConfig):
         return
 
     args.create_experiment_run_path()
-    data = args.get_prompt_data(FILTERATIONS.current_model_correct)
+    data = args.get_runner_dependencies()["evaluate_model"].get_prompt_data()
 
-    model_interface = get_model_interface(MODEL_ARCH_AND_SIZE(args.model_arch, args.model_size))
+    model_interface = args.common_params.get_model_interface()
     tokenizer = model_interface.tokenizer
     device = model_interface.device
 
@@ -291,12 +297,13 @@ def run(args: InfoFlowConfig):
     def evaluate(
         prompt_indices: list[TPromptOriginalIndex],
         windows: list[TWindow],
-        knockout_source: TInfoFlowSource,
+        knockout_source: TokenType,
+        feature_category: FeatureCategory,
         knockout_target: TokenType,
         print_period=100,
     ):
         # Try to load intermediate results
-        windows_true_probs, start_window_idx = args.load_intermediate_results(knockout_target, knockout_source)
+        windows_true_probs, start_window_idx = args.load_intermediate_results()
         last_save_time = time.time()
 
         for i, window in enumerate(
@@ -313,6 +320,7 @@ def run(args: InfoFlowConfig):
                         get_prompt_row_index(data, prompt_idx),
                         window,
                         knockout_source,
+                        feature_category,
                         knockout_target,
                         model_interface,
                         tokenizer,
@@ -334,7 +342,10 @@ def run(args: InfoFlowConfig):
             # Check if it's time to save intermediate results
             current_time = time.time()
             if current_time - last_save_time >= SAVE_INTERVAL:
-                args.save_intermediate_results(knockout_target, knockout_source, dict(windows_true_probs), i)
+                args.save_intermediate_results(
+                    window_outputs=dict(windows_true_probs),
+                    current_window=i,
+                )
                 last_save_time = current_time
                 print(f"\nSaved intermediate results at window {i}")
 
@@ -342,22 +353,24 @@ def run(args: InfoFlowConfig):
 
     prompt_indices: list[TPromptOriginalIndex] = list(data.index)
     windows: list[TWindow] = [
-        TWindow(list(range(i, i + args.window_size))) for i in range(0, n_layers - args.window_size + 1)
+        TWindow(list(range(i, i + args.runner_params.window_size)))
+        for i in range(0, n_layers - args.runner_params.window_size + 1)
     ]
 
-    for target, source in remaining_knockout_map:
+    for target, source, feature_category, remaining_prompts in remaining_knockout_map:
         print(f"Knocking out flow to {target} from {source}")
 
         window_outputs = evaluate(
             prompt_indices,
             windows,
             knockout_source=source,
+            feature_category=feature_category,
             knockout_target=target,
         )
-        args.output_block_target_source_path(target, source).parent.mkdir(parents=True, exist_ok=True)
+        args.output_block_target_source_path().parent.mkdir(parents=True, exist_ok=True)
         json.dump(
             window_outputs,
-            args.output_block_target_source_path(target, source).open("w"),
+            args.output_block_target_source_path().open("w"),
         )
         # Clean up intermediate results after successful completion
-        args.cleanup_intermediate_results(target, source)
+        args.cleanup_intermediate_results()

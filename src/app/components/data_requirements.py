@@ -18,7 +18,7 @@ from src.app.components.inputs import select_gpu_type, select_window_size
 from src.app.data_store import get_models_remaining_prompts
 from src.app.texts import HEATMAP_TEXTS
 from src.core.names import HeatmapCols, SummarizedDataFulfilledReqsCols
-from src.core.types import MODEL_ARCH_AND_SIZE, TPromptOriginalIndex
+from src.core.types import TPromptOriginalIndex
 from src.data_ingestion.data_defs import DataReqs, SummarizedDataFulfilledReqs
 from src.utils.streamlit.components.aagrid import SelectionMode, base_grid_builder, set_aagrid_apply_default_filters
 from src.utils.streamlit.helpers.component import StreamlitComponent
@@ -194,7 +194,7 @@ class HeatmapGenerationComponent(StreamlitComponent):
                 table_data.append(
                     {
                         "Model": model_name,
-                        "Prompt Count": len(heatmap_config.prompt_original_indices),
+                        "Prompt Count": len(heatmap_config.get_remaining_prompt_original_indices()),
                         "Running": heatmap_config.is_running(),
                         "GPU": AppSessionKeys.get_selected_gpu(model_arch_and_size),
                     }
@@ -215,7 +215,9 @@ class HeatmapGenerationComponent(StreamlitComponent):
                     try:
                         if skip_running and heatmap_config.is_running():
                             st.warning(
-                                HEATMAP_TEXTS.skipping_running(heatmap_config.model_arch, heatmap_config.model_size)
+                                HEATMAP_TEXTS.skipping_running(
+                                    heatmap_config.common_params.model_arch, heatmap_config.common_params.model_size
+                                )
                             )
                             continue
 
@@ -223,7 +225,7 @@ class HeatmapGenerationComponent(StreamlitComponent):
                         heatmap_config.set_running_params(
                             with_slurm=True,
                             slurm_gpu_type=AppSessionKeys.get_selected_gpu(
-                                MODEL_ARCH_AND_SIZE(heatmap_config.model_arch, heatmap_config.model_size)
+                                heatmap_config.common_params.model_arch_and_size
                             ),
                         )
 
@@ -232,7 +234,7 @@ class HeatmapGenerationComponent(StreamlitComponent):
                         success_count += 1
 
                     except Exception as e:
-                        st.error(HEATMAP_TEXTS.submit_failed(heatmap_config.prompt_original_indices, e))
+                        st.error(HEATMAP_TEXTS.submit_failed(heatmap_config.get_remaining_prompt_original_indices(), e))
                         failed_count += 1
 
                     # Update progress

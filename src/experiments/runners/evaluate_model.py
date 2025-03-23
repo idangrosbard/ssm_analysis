@@ -10,8 +10,9 @@ The combined result is saved as a CSV file
 
 import json
 from dataclasses import dataclass
+from enum import StrEnum
 from pathlib import Path
-from typing import Any, assert_never
+from typing import Any, assert_never, cast
 
 import pandas as pd
 import torch
@@ -19,30 +20,44 @@ from tqdm import tqdm
 
 from src.core.consts import COUNTER_FACT_2_KNOWN1000_COL_CONV
 from src.core.names import COLS, EXPERIMENT_NAMES
-from src.core.types import MODEL_ARCH, MODEL_ARCH_AND_SIZE, TTokenizer
+from src.core.types import MODEL_ARCH, TModelSize, TPromptData, TPromptOriginalIndex, TTokenizer, TVariationName
+from src.data_ingestion.datasets.download_dataset import get_row_data
 from src.data_ingestion.helpers.logits_utils import get_last_token_logits, logits_to_probs
-from src.experiments.infrastructure.base_config import BaseConfig
-from src.experiments.infrastructure.model_interface import get_model_interface
+from src.experiments.infrastructure.base_config import (
+    AllPromptFilteration,
+    BaseRunner,
+    CommonParams,
+    PromptFilteration,
+    create_mutable_field,
+)
 
 
 @dataclass
-class EvaluateModelConfig(BaseConfig):
-    """Configuration for model evaluation."""
-
-    experiment_name: EXPERIMENT_NAMES = EXPERIMENT_NAMES.EVALUATE_MODEL
+class EvaluateModelParams:
     drop_subject: bool = False
     drop_subj_last_token: bool = False
     with_3_dots: bool = False
     new_max_tokens: int = 5
     top_k_tokens: int = 5
 
+
+@dataclass
+class EvaluateModelConfig(BaseRunner[EvaluateModelParams, pd.DataFrame]):
+    """Configuration for model evaluation."""
+
+    runner_params: EvaluateModelParams = create_mutable_field(lambda: EvaluateModelParams())
+
+    @property
+    def experiment_name(self) -> EXPERIMENT_NAMES:
+        return EXPERIMENT_NAMES.EVALUATE_MODEL
+
     @property
     def experiment_output_keys(self):
-        return super().experiment_output_keys[:-1]
+        return super().experiment_output_keys
 
     @property
     def output_result_path(self) -> Path:
-        return self.outputs_path / f"{self.dataset_name}.csv"
+        return self.variation_paths.outputs_path / "outputs.csv"
 
     def get_outputs(self) -> pd.DataFrame:
         df = pd.read_csv(self.output_result_path, index_col=False)
@@ -58,8 +73,60 @@ class EvaluateModelConfig(BaseConfig):
                 df = df.drop(columns=[known1000_col])
         return df
 
+    def get_prompt_data(self) -> TPromptData:
+        df = self.get_outputs()
+
+        return cast(
+            TPromptData,
+            df.set_index(COLS.ORIGINAL_IDX).loc[self.prompt_ids],
+        )
+
     def compute(self) -> None:
         run(self)
+
+    def is_computed(self) -> bool:
+        return self.output_result_path.exists()
+
+    def get_runner_dependencies(self):
+        return self.prompt_filteration.get_dependencies()
+
+
+class Correctness(StrEnum):
+    correct = "correct"
+    top_5_correct = "top_5_correct"
+
+
+@dataclass
+class ModelCorrectPromptFilteration(PromptFilteration):
+    model_arch: MODEL_ARCH
+    model_size: TModelSize
+    correctness: Correctness
+    variation: TVariationName
+
+    def get_prompt_ids(self) -> list[TPromptOriginalIndex]:
+        df = self.get_dependencies()["evaluate_model"].get_outputs()
+        match self.correctness:
+            case Correctness.correct:
+                df = df[df[COLS.EVALUATE_MODEL.MODEL_CORRECT]]
+            case Correctness.top_5_correct:
+                df = df[df[COLS.EVALUATE_MODEL.MODEL_CORRECT]]
+            case _:
+                raise NotImplementedError(f"Correctness {self.correctness} not implemented")
+
+        return df[COLS.ORIGINAL_IDX].tolist()
+
+    def get_dependencies(self):
+        return {
+            "evaluate_model": EvaluateModelConfig(
+                common_params=CommonParams(
+                    model_arch=self.model_arch,
+                    model_size=self.model_size,
+                    dataset_name=self.dataset_name,
+                ),
+                prompt_filteration=AllPromptFilteration(dataset_name=self.dataset_name),
+                variation=self.variation,
+            ),
+        }
 
 
 def get_subj_idx(
@@ -168,16 +235,16 @@ def _generate_few_tokens(model, tokenizer, input_ids, new_max_tokens):
 
 
 def run(args: EvaluateModelConfig):
-    assert args.batch_size == 1, "Batch size must be 1, unless we debug the issue"
     print(args)
-    if args.output_result_path.exists() and not args.overwrite_existing_outputs:
+    if args.output_result_path.exists() and not args.run_params.overwrite_existing_outputs:
         print(f"Output file {args.output_result_path} already exists")
         return
 
     args.create_experiment_run_path()
-    df = args.get_raw_data()
+    df = get_row_data(args.common_params.dataset_name)
 
-    model_interface = get_model_interface(MODEL_ARCH_AND_SIZE(args.model_arch, args.model_size))
+    model_interface = args.common_params.get_model_interface()
+
     model = model_interface.model
     tokenizer = model_interface.tokenizer
     tokenizer.padding_side = "left"
@@ -212,7 +279,7 @@ def run(args: EvaluateModelConfig):
             padding_side="right",  # type: ignore
         )["input_ids"]
 
-        if args.model_arch == MODEL_ARCH.LLAMA2:
+        if args.common_params.model_arch == MODEL_ARCH.LLAMA2:
             target_token_idx_padded = trim_left_and_right_pad(
                 target_token_idx_padded,
                 trim_value=29871,
@@ -239,28 +306,30 @@ def run(args: EvaluateModelConfig):
             )
         )
 
-        if args.with_3_dots:
+        if args.runner_params.with_3_dots:
             input_prompt += " ..."
-        if args.drop_subject:
+        if args.runner_params.drop_subject:
             input_prompt = input_prompt.replace(df.loc[idx, COLS.COUNTER_FACT.SUBJECT], "")
-        elif args.drop_subj_last_token:
+        elif args.runner_params.drop_subj_last_token:
             subj_idx = get_subj_idx(input_prompt, df.loc[idx, COLS.COUNTER_FACT.SUBJECT], tokenizer)  # type: ignore
 
         input_ids = tokenizer(input_prompt.to_list(), return_tensors="pt", padding=True)["input_ids"]
 
-        if args.drop_subj_last_token:
+        if args.runner_params.drop_subj_last_token:
             input_ids = input_ids[:subj_idx] + input_ids[subj_idx + 1 :]  # type: ignore
 
         input_ids = input_ids.to(device)  # type: ignore
 
         # TODO: the logits of the next token is different for different the amount token generated, understand why
-        _, first_logits, new_input_ids = generate_next_tokens(model, input_ids, args.new_max_tokens, args.model_arch)
+        _, first_logits, new_input_ids = generate_next_tokens(
+            model, input_ids, args.runner_params.new_max_tokens, args.common_params.model_arch
+        )
 
         # Get the next token probs
         next_probs = logits_to_probs(first_logits)
 
         # Get the top k outputs and their probs
-        top_probs, top_indices = map(torch.Tensor.tolist, torch.topk(next_probs, args.top_k_tokens))
+        top_probs, top_indices = map(torch.Tensor.tolist, torch.topk(next_probs, args.runner_params.top_k_tokens))
         top_tokens = list(map(tokenizer.batch_decode, top_indices))  # type: ignore
         top_outputs = list(
             map(

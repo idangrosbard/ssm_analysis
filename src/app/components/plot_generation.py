@@ -819,15 +819,19 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
                 assert len(configs) == 1
                 config = configs[-1]
                 assert isinstance(config, HeatmapConfig)
-                prompt_idx = config.prompt_original_indices
+                prompt_idx = config.get_remaining_prompt_original_indices()
                 assert len(prompt_idx) == 1
                 prompt_id = prompt_idx[0]
-                model_arch_and_size = MODEL_ARCH_AND_SIZE(config.model_arch, config.model_size)
+                model_arch_and_size = MODEL_ARCH_AND_SIZE(
+                    config.common_params.model_arch, config.common_params.model_size
+                )
                 data = cast(
                     TPromptData, get_model_evaluations(config.variation, [model_arch_and_size])[model_arch_and_size]
                 )
-                tokenizer = get_tokenizer(config.model_arch, config.model_size)
-                model_id = MODEL_SIZES_PER_ARCH_TO_MODEL_ID[config.model_arch][config.model_size]
+                tokenizer = get_tokenizer(config.common_params.model_arch, config.common_params.model_size)
+                model_id = MODEL_SIZES_PER_ARCH_TO_MODEL_ID[config.common_params.model_arch][
+                    config.common_params.model_size
+                ]
                 prob_mat = config.get_outputs()[prompt_id]
                 prompt = get_prompt_row_index(data, prompt_id)
                 input_ids = prompt.input_ids(tokenizer, "cpu")
@@ -838,7 +842,7 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
                 fig, _ = simple_diff_fixed(
                     prob_mat=prob_mat,
                     model_id=model_id,
-                    window_size=config.window_size,
+                    window_size=config.runner_params.window_size,
                     last_tok=last_tok,
                     base_prob=prompt.base_prob,
                     true_word=prompt.true_word,
@@ -875,7 +879,15 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
                 assert len(output_keys) == 1
                 output_key = output_keys[0]
                 windowed_data = output[output_key]
-                key = f"{config.model_arch}-{config.model_size}-{config.window_size}-{item}-{output_key}"
+                key = "-".join(
+                    [
+                        config.common_params.model_arch,
+                        config.common_params.model_size,
+                        str(config.runner_params.window_size),
+                        str(item),
+                        output_key,
+                    ]
+                )
                 data[key] = windowed_data
         with_fixed_limits = False
         fig = create_confidence_plot(

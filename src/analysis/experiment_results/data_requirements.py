@@ -6,7 +6,12 @@ from typing import Any, NamedTuple, Optional, Union
 
 import pandas as pd
 
-from src.analysis.experiment_results.results_bank import HeatmapRecord, InfoFlowRecord, ResultRecord
+from src.analysis.experiment_results.results_bank import (
+    EvaluateModelRecord,
+    HeatmapRecord,
+    InfoFlowRecord,
+    ResultRecord,
+)
 from src.core.consts import (
     GRAPHS_ORDER,
     MODEL_ARCH,
@@ -15,27 +20,27 @@ from src.core.consts import (
     is_falcon,
     is_mamba_arch,
 )
-from src.core.names import COLS, EXPERIMENT_NAMES, DataReqCols
+from src.core.names import COLS, DATASETS, EXPERIMENT_NAMES, DataReqCols
 from src.core.types import (
     MODEL_ARCH_AND_SIZE,
     FeatureCategory,
-    TInfoFlowSource,
     TModelSize,
     TPromptOriginalIndex,
     TVariationName,
     TWindowSize,
 )
 from src.data_ingestion.data_defs import DataReqs, FulfilledReqs, ResultBank
-from src.experiments.runners.evaluate_model import EvaluateModelConfig
-from src.experiments.runners.heatmap import HeatmapConfig
-from src.experiments.runners.info_flow import InfoFlowConfig
+from src.experiments.infrastructure.base_config import AllPromptFilteration, CommonParams, SelectivePromptFilteration
+from src.experiments.runners.evaluate_model import Correctness, EvaluateModelConfig, ModelCorrectPromptFilteration
+from src.experiments.runners.heatmap import HeatmapConfig, HeatmapParams
+from src.experiments.runners.info_flow import InfoFlowConfig, InfoFlowParams
 
 
 class DataReq(NamedTuple):
     experiment_name: EXPERIMENT_NAMES
     model_arch: MODEL_ARCH
     model_size: TModelSize
-    window_size: TWindowSize
+    window_size: Optional[TWindowSize]
     source: Optional[TokenType]
     feature_category: Optional[FeatureCategory]
     target: Optional[TokenType]
@@ -55,30 +60,63 @@ class DataReq(NamedTuple):
     def model_arch_and_size(self) -> MODEL_ARCH_AND_SIZE:
         return MODEL_ARCH_AND_SIZE(self.model_arch, self.model_size)
 
-    def get_config(self, variation: Optional[TVariationName] = None) -> Union[InfoFlowConfig, HeatmapConfig]:
-        if self.experiment_name == EXPERIMENT_NAMES.INFO_FLOW:
-            assert self.source is not None
-            assert self.feature_category is not None
-            assert self.target is not None
-            token_source: TInfoFlowSource = (self.source, self.feature_category)
-            config = InfoFlowConfig(
-                model_arch=self.model_arch,
-                model_size=self.model_size,
-                window_size=self.window_size,
-                knockout_map={
-                    self.target: [token_source],
-                },
-            )
-        elif self.experiment_name == EXPERIMENT_NAMES.HEATMAP:
-            assert self.prompt_idx is not None
-            config = HeatmapConfig(
-                model_arch=self.model_arch,
-                model_size=self.model_size,
-                window_size=self.window_size,
-                prompt_original_indices=[self.prompt_idx],
-            )
-        else:
-            raise ValueError(f"Unknown experiment name: {self.experiment_name}")
+    def get_config(self, variation: TVariationName) -> Union[InfoFlowConfig, HeatmapConfig, EvaluateModelConfig]:
+        match self.experiment_name:
+            case EXPERIMENT_NAMES.INFO_FLOW:
+                assert self.source is not None
+                assert self.feature_category is not None
+                assert self.target is not None
+                assert self.window_size is not None
+                config = InfoFlowConfig(
+                    variation=variation,
+                    common_params=CommonParams(
+                        model_arch=self.model_arch,
+                        model_size=self.model_size,
+                    ),
+                    prompt_filteration=ModelCorrectPromptFilteration(
+                        DATASETS.COUNTER_FACT,
+                        model_arch=self.model_arch,
+                        model_size=self.model_size,
+                        correctness=Correctness.correct,
+                        variation=variation,
+                    ),
+                    runner_params=InfoFlowParams(
+                        window_size=self.window_size,
+                        source=self.source,
+                        feature_category=self.feature_category,
+                        target=self.target,
+                    ),
+                )
+            case EXPERIMENT_NAMES.HEATMAP:
+                assert self.prompt_idx is not None
+                assert self.window_size is not None
+                config = HeatmapConfig(
+                    variation=variation,
+                    common_params=CommonParams(
+                        model_arch=self.model_arch,
+                        model_size=self.model_size,
+                    ),
+                    prompt_filteration=SelectivePromptFilteration(
+                        dataset_name=DATASETS.COUNTER_FACT,
+                        prompt_ids=[self.prompt_idx],
+                    ),
+                    runner_params=HeatmapParams(
+                        window_size=self.window_size,
+                    ),
+                )
+            case EXPERIMENT_NAMES.EVALUATE_MODEL:
+                config = EvaluateModelConfig(
+                    variation=variation,
+                    common_params=CommonParams(
+                        model_arch=self.model_arch,
+                        model_size=self.model_size,
+                    ),
+                    prompt_filteration=AllPromptFilteration(
+                        dataset_name=DATASETS.COUNTER_FACT,
+                    ),
+                )
+            case _:
+                raise ValueError(f"Unknown experiment name: {self.experiment_name}")
 
         if variation is not None:
             config.variation = variation
@@ -96,18 +134,27 @@ def result_record_to_data_req(result_record: ResultRecord) -> DataReq:
         feature_category = result_record.feature_category
         source = result_record.source
         prompt_idx = None
+        window_size = result_record.window_size
     elif isinstance(result_record, HeatmapRecord):
         target = None
         feature_category = None
         source = None
         prompt_idx = result_record.prompt_idx
+        window_size = result_record.window_size
+    elif isinstance(result_record, EvaluateModelRecord):
+        target = None
+        feature_category = None
+        source = None
+        prompt_idx = None
+        window_size = None
     else:
         raise ValueError(f"Unknown result record type: {type(result_record)}")
+
     return DataReq(
         experiment_name=result_record.experiment_name,
         model_arch=result_record.model_arch,
         model_size=result_record.model_size,
-        window_size=result_record.window_size,
+        window_size=window_size,
         source=source,
         feature_category=feature_category,
         target=target,
@@ -472,9 +519,12 @@ def get_model_evaluations(
 ) -> dict[MODEL_ARCH_AND_SIZE, pd.DataFrame]:
     return {
         model_arch_and_size: EvaluateModelConfig(
-            model_arch=model_arch_and_size[0],
-            model_size=model_arch_and_size[1],
             variation=variation,
+            common_params=CommonParams(
+                model_arch=model_arch_and_size[0],
+                model_size=model_arch_and_size[1],
+            ),
+            prompt_filteration=AllPromptFilteration(dataset_name=DATASETS.COUNTER_FACT),
         )
         .get_outputs()
         .set_index(COLS.ORIGINAL_IDX)

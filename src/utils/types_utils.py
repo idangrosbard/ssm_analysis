@@ -1,6 +1,8 @@
 import contextlib
 from enum import StrEnum
-from typing import Any, ContextManager, Type, TypeVar, cast
+from typing import Any, Callable, ContextManager, Type, TypeVar, cast
+
+import pyrallis
 
 
 def class_values(cls: Type) -> list[str]:
@@ -44,3 +46,17 @@ def conditional_context_manager(use_ctx: bool, ctx: ContextManager[None]) -> Con
     :return: The appropriate context manager (either ctx or nullcontext).
     """
     return ctx if use_ctx else contextlib.nullcontext()
+
+
+_ATTRIBUTE_TYPE = TypeVar("_ATTRIBUTE_TYPE")
+
+
+def create_mutable_field(
+    default_factory: Callable[[], _ATTRIBUTE_TYPE],
+) -> _ATTRIBUTE_TYPE:
+    # Pyralis need mutable fields to be defined with field but it's typing is not complete.
+    # This is a fix to make it work.
+    return cast(
+        _ATTRIBUTE_TYPE,
+        pyrallis.field(default_factory=default_factory, is_mutable=True),
+    )

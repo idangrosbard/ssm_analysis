@@ -4,9 +4,8 @@ from enum import StrEnum
 from pathlib import Path
 from typing import assert_never
 
-from src.core.names import COLS, ResultBankParamNames
+from src.core.names import COLS, DATASETS, ResultBankParamNames
 from src.core.types import (
-    DATASETS,
     MODEL_ARCH,
     MODEL_ARCH_AND_SIZE,
     MODEL_SIZE_CAT,
@@ -35,6 +34,9 @@ class PathsConfig:
 
     PROJECT_DIR: Path = Path(__file__).parent.parent.parent.resolve()
 
+    def __hash__(self) -> int:
+        return hash(str(self.PROJECT_DIR))
+
     @property
     def DATA_DIR(self) -> Path:
         return self.PROJECT_DIR / "data"
@@ -44,20 +46,11 @@ class PathsConfig:
         return self.DATA_DIR / "raw"
 
     @property
-    def OTHER_DATA_DIR(self) -> Path:
-        return self.DATA_DIR / "other"
-
-    @property
     def PREPROCESSED_DATA_DIR(self) -> Path:
         return self.DATA_DIR / "preprocessed"
 
-    @property
-    def COUNTER_FACT_DIR(self) -> Path:
-        return self.PREPROCESSED_DATA_DIR / DATASETS.COUNTER_FACT
-
-    @property
-    def COUNTER_FACT_FILTERATIONS_DIR(self) -> Path:
-        return self.COUNTER_FACT_DIR / "filterations"
+    def dataset_dir(self, dataset_name: DATASETS) -> Path:
+        return self.PREPROCESSED_DATA_DIR / dataset_name
 
     @property
     def DATA_SHARED_DIR(self) -> Path:
@@ -87,9 +80,46 @@ class PathsConfig:
     def FINAL_PLOTS_DIR(self) -> Path:
         return self.PROJECT_DIR / "final_plots"
 
+    def get_slurm_job_log_folder(self, job_name: str, job_id: str) -> Path:
+        return self.SLURM_DIR / job_name / f"{job_id}"
+
+    def get_slurm_job_submission_file_path(self, job_name: str, job_id: str) -> Path:
+        return self.get_slurm_job_log_folder(job_name, job_id) / "experiment_variation_base_path"
+
 
 # Global instance
 PATHS = PathsConfig()
+
+
+@dataclass
+class RunnerPaths:
+    variation_base_path: Path
+
+    @property
+    def running_history_path(self) -> Path:
+        return self.variation_base_path / "running_history"
+
+    @property
+    def plots_path(self) -> Path:
+        return self.variation_base_path / "plots"
+
+    @property
+    def outputs_path(self) -> Path:
+        return self.variation_base_path / "outputs"
+
+    @property
+    def slurm_logs_path(self) -> Path:
+        return self.variation_base_path / "slurm_logs"
+
+    @property
+    def intermediate_outputs(self) -> Path:
+        return self.variation_base_path / "intermediate_outputs"
+
+    def running_history_json_path(self, run_id: str) -> Path:
+        return self.running_history_path / f"{run_id}.json"
+
+    def slurm_log_folder(self, job_id: str) -> Path:
+        return self.slurm_logs_path / f"{job_id}"
 
 
 class ENV_VARS:
@@ -213,7 +243,7 @@ COUNTER_FACT_2_KNOWN1000_COL_CONV = {
 }
 
 
-TOKEN_TYPE_COLORS: dict[TokenType, str] = {
+TOKEN_TYPE_COLORS: dict[str, str] = {
     TokenType.last: "#D2691E",  # orange
     TokenType.first: "#0000FF",  # blue
     TokenType.subject: "#008000",  # green
@@ -222,7 +252,7 @@ TOKEN_TYPE_COLORS: dict[TokenType, str] = {
     TokenType.all: "#000000",  # black
 }
 
-TOKEN_TYPE_LINE_STYLES: dict[TokenType, str] = {
+TOKEN_TYPE_LINE_STYLES: dict[str, str] = {
     TokenType.last: "-.",
     TokenType.first: ":",
     TokenType.subject: "-",
