@@ -45,7 +45,7 @@ class HeatmapPlotGenerationComponent(StreamlitComponent):
                 ),
                 prompt_filteration=SelectivePromptFilteration(
                     dataset_name=DATASETS.COUNTER_FACT,
-                    prompt_ids=[self.prompt_idx],
+                    prompt_ids=(self.prompt_idx,),
                 ),
                 runner_params=HeatmapParams(
                     window_size=AppSessionKeys.window_size.value,

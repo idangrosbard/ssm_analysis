@@ -68,7 +68,7 @@ def result_record_to_data_req(result_record: ResultRecord) -> DataReq:
         target = None
         feature_category = None
         source = None
-        prompt_idx = result_record.prompt_idx
+        prompt_idx = tuple(result_record.prompt_idx)
         window_size = result_record.window_size
     elif isinstance(result_record, EvaluateModelRecord):
         target = None

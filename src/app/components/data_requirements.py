@@ -176,7 +176,7 @@ def get_models_remaining_prompts(
             ),
             prompt_filteration=SelectivePromptFilteration(
                 dataset_name=DATASETS.COUNTER_FACT,
-                prompt_ids=prompt_original_indices,
+                prompt_ids=tuple(prompt_original_indices),
             ),
             runner_params=HeatmapParams(
                 window_size=window_size,

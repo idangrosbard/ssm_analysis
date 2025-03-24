@@ -18,10 +18,10 @@ class AllPromptFilteration(BasePromptFilteration):
 
 @dataclass
 class SelectivePromptFilteration(BasePromptFilteration):
-    prompt_ids: list[TPromptOriginalIndex]
+    prompt_ids: tuple[TPromptOriginalIndex, ...]
 
     def get_prompt_ids(self) -> list[TPromptOriginalIndex]:
-        return self.prompt_ids
+        return list(self.prompt_ids)
 
     def get_dependencies(self) -> TDependencies:
         return {}

@@ -30,7 +30,7 @@ class DataReq(NamedTuple):
     source: Optional[TokenType]
     feature_category: Optional[FeatureCategory]
     target: Optional[TokenType]
-    prompt_idx: Optional[list[TPromptOriginalIndex]]
+    prompt_idx: Optional[tuple[TPromptOriginalIndex, ...]]
 
     def validate(self):
         experiment_name = EXPERIMENT_NAMES.get_experiment_name_by_str(self.experiment_name)

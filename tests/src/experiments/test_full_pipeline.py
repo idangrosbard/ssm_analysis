@@ -35,23 +35,26 @@ from src.utils.types_utils import first_dict_value
 HEATMAP_SIZE = 5
 BASELINES_DIR = Path(__file__).parent / "baselines"
 TEST_BASE_PATH = BASELINES_DIR / "full_pipeline"
-ORIGINAL_IDS = {
-    SPLIT.TRAIN1: [
-        53,
-        59,
-        74,
-        90,
-        93,
-    ],
-    SPLIT.TRAIN2: [
-        10594,
-        6410,
-        140,
-        148,
-        159,
-        182,
-    ],
-}
+ORIGINAL_IDS = cast(
+    dict[SPLIT, list[TPromptOriginalIndex]],
+    {
+        SPLIT.TRAIN1: [
+            53,
+            59,
+            74,
+            90,
+            93,
+        ],
+        SPLIT.TRAIN2: [
+            10594,
+            6410,
+            140,
+            148,
+            159,
+            182,
+        ],
+    },
+)
 
 # HARDCODED CODE PATHS FOR TESTS
 PATHS_PROJECT_DIR_PATH = "src.core.consts.PATHS.PROJECT_DIR"
@@ -86,9 +89,7 @@ def get_config(variation_name: str, model_arch: MODEL_ARCH, model_size: str, wit
             },
             info_flow_window_size=TWindowSize(15),
             heatmap_window_size=TWindowSize(15),
-            heatmap_prompts=SelectivePromptFilteration(
-                DATASETS.COUNTER_FACT, cast(list[TPromptOriginalIndex], ORIGINAL_IDS[SPLIT.TRAIN1])
-            ),
+            heatmap_prompts=SelectivePromptFilteration(DATASETS.COUNTER_FACT, tuple(ORIGINAL_IDS[SPLIT.TRAIN1])),
             with_plotting=with_plotting,
             enforce_no_missing_outputs=True,
             with_generation=True,
