@@ -66,8 +66,15 @@ class HDF5HeatmapFile:
             return [TPromptOriginalIndex(int(p)) for p in f.keys()]
 
     def get_prompt_idx_heatmaps(self) -> dict[TPromptOriginalIndex, pd.DataFrame]:
+        result = {}
         with h5py.File(self.path, "r") as f:
-            return {TPromptOriginalIndex(int(p)): pd.DataFrame(f[p][:]) for p in f.keys()}
+            for p in f.keys():
+                # Extract dataset as numpy array explicitly before converting to DataFrame
+                dataset = f[p]
+                if isinstance(dataset, h5py.Dataset):
+                    numpy_array = dataset[:]
+                    result[TPromptOriginalIndex(int(p))] = pd.DataFrame(numpy_array)
+        return result
 
 
 @dataclass
