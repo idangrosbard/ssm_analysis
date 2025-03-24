@@ -116,4 +116,4 @@ def serialize_result_bank(result_bank: ResultBank) -> str:
         else:
             return item
 
-    return json.dumps(rec_serialize_dependencies(result_bank.to_rows()))
+    return json.dumps(rec_serialize_dependencies(result_bank.to_rows()), indent=1)
