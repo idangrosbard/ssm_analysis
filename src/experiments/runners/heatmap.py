@@ -15,6 +15,7 @@ from enum import StrEnum
 from pathlib import Path
 from typing import Callable, TypedDict, cast
 
+import h5py
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -25,6 +26,7 @@ from src.analysis.plots.heatmaps import simple_diff_fixed
 from src.core.names import EXPERIMENT_NAMES
 from src.core.types import (
     FeatureCategory,
+    IHeatmap,
     TPromptOriginalIndex,
     TWindow,
     TWindowSize,
@@ -41,8 +43,6 @@ class HEATMAP_PLOT_FUNCS(StrEnum):
     _simple_diff_fixed_0_3 = "_simple_diff_fixed_0.3"
 
 
-IHeatmap = pd.DataFrame
-
 plot_suffix_to_function: dict[HEATMAP_PLOT_FUNCS, Callable] = {
     HEATMAP_PLOT_FUNCS._simple_diff_fixed_0_3: functools.partial(simple_diff_fixed, fixed_diff=0.3),
 }
@@ -55,6 +55,19 @@ class HeatmapParams:
 
 class HeatmapDependencies(TypedDict):
     evaluate_model: EvaluateModelConfig
+
+
+@dataclass
+class HDF5HeatmapFile:
+    path: Path
+
+    def get_existing_prompt_idx(self) -> list[TPromptOriginalIndex]:
+        with h5py.File(self.path, "r") as f:
+            return [TPromptOriginalIndex(int(p)) for p in f.keys()]
+
+    def get_prompt_idx_heatmaps(self) -> dict[TPromptOriginalIndex, pd.DataFrame]:
+        with h5py.File(self.path, "r") as f:
+            return {TPromptOriginalIndex(int(p)): pd.DataFrame(f[p][:]) for p in f.keys()}
 
 
 @dataclass
@@ -73,18 +86,25 @@ class HeatmapConfig(BaseRunner[HeatmapParams, dict[TPromptOriginalIndex, IHeatma
             BASE_OUTPUT_KEYS.WINDOW_SIZE,
         ]
 
-    def output_heatmap_path(self, prompt_idx: TPromptOriginalIndex):
-        return self.variation_paths.outputs_path / f"idx={prompt_idx}.csv"
+    @property
+    def output_hdf5_path(self) -> HDF5HeatmapFile:
+        """Return the path to the HDF5 file containing all prompt heatmaps."""
+        return HDF5HeatmapFile(self.variation_paths.outputs_path / "heatmaps.h5")
 
     def get_remaining_prompt_original_indices(self):
-        return [
-            idx
-            for idx in self.prompt_ids
-            if not self.output_heatmap_path(idx).exists() or self.run_params.overwrite_existing_outputs
-        ]
+        """Return the list of prompt indices that need to be computed."""
+        if not self.output_hdf5_path.path.exists() or self.run_params.overwrite_existing_outputs:
+            return self.prompt_ids
+
+        existing_prompts = self.output_hdf5_path.get_existing_prompt_idx()
+        return [idx for idx in self.prompt_ids if idx not in existing_prompts]
 
     def get_outputs(self) -> dict[TPromptOriginalIndex, IHeatmap]:
-        return {idx: pd.read_csv(self.output_heatmap_path(idx)) for idx in self.prompt_ids}
+        """Load all prompt heatmaps from the HDF5 file."""
+        if not self.output_hdf5_path.path.exists():
+            return {}
+
+        return self.output_hdf5_path.get_prompt_idx_heatmaps()
 
     def get_plot_output_path(self, prompt_idx: TPromptOriginalIndex, plot_name: HEATMAP_PLOT_FUNCS) -> Path:
         return self.variation_paths.plots_path / f"idx={prompt_idx}{plot_name}.png"
@@ -96,7 +116,12 @@ class HeatmapConfig(BaseRunner[HeatmapParams, dict[TPromptOriginalIndex, IHeatma
         run(self)
 
     def is_computed(self) -> bool:
-        return all(self.output_heatmap_path(idx).exists() for idx in self.prompt_ids)
+        """Check if all required prompt heatmaps exist in the HDF5 file."""
+        if not self.output_hdf5_path.path.exists():
+            return False
+
+        existing_prompts = self.output_hdf5_path.get_existing_prompt_idx()
+        return all(idx in existing_prompts for idx in self.prompt_ids)
 
     def get_runner_dependencies(self) -> HeatmapDependencies:  # type: ignore
         return HeatmapDependencies(
@@ -174,12 +199,24 @@ def run(args: HeatmapConfig):
         for i in range(0, n_layers - args.runner_params.window_size + 1)
     ]
 
-    for prompt_idx in tqdm(remaining_idx, desc="Prompts"):
-        prob_mat = []
-        prompt = get_prompt_row_index(data, prompt_idx)
-        for window in windows:
-            model_interface.setup(layers=window)
-            prob_mat.append(forward_eval(prompt, window))
+    # Prepare HDF5 file for storing all heatmaps
+    output_path = args.output_hdf5_path.path
 
-        prob_mat = np.array(prob_mat).T
-        pd.DataFrame(prob_mat).to_csv(args.output_heatmap_path(prompt.original_idx), index=False)
+    # Create or open the HDF5 file in append mode
+    with h5py.File(output_path, "a") as hf:
+        for prompt_idx in tqdm(remaining_idx, desc="Prompts"):
+            prob_mat = []
+            prompt = get_prompt_row_index(data, prompt_idx)
+
+            for window in windows:
+                model_interface.setup(layers=window)
+                prob_mat.append(forward_eval(prompt, window))
+
+            prob_mat_array = np.array(prob_mat).T
+
+            # Store heatmap data in HDF5 file with prompt index as the key
+            prompt_key = str(prompt.original_idx)
+            if prompt_key in hf:
+                del hf[prompt_key]  # Replace existing dataset if it exists
+
+            hf.create_dataset(prompt_key, data=prob_mat_array)

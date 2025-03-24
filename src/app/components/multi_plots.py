@@ -52,8 +52,15 @@ class HeatmapPlotGenerationComponent(StreamlitComponent):
                 ),
             )
 
-            if not config.output_heatmap_path(self.prompt_idx).exists():
+            # Check if the prompt exists in the HDF5 file
+            prompt_exists = False
+            existing_prompts = config.output_hdf5_path.get_existing_prompt_idx()
+            if self.prompt_idx in existing_prompts:
+                prompt_exists = True
+
+            if not prompt_exists:
                 continue
+
             plots_path = config.get_plot_output_path(self.prompt_idx, heatmap_parms.plot_name)
             if not plots_path.exists():
                 config.plot(heatmap_parms.plot_name)

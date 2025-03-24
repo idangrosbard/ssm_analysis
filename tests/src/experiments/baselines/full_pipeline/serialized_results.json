@@ -830,7 +830,13 @@
             "source": null,
             "feature_category": null,
             "target": null,
-            "prompt_idx": 53
+            "prompt_idx": [
+                53,
+                59,
+                74,
+                90,
+                93
+            ]
         },
         {
             "53": {
@@ -964,21 +970,7 @@
                     "9": 0.3503131866455078,
                     "10": 0.3557125329971313
                 }
-            }
-        }
-    ],
-    [
-        {
-            "experiment_name": "heatmap",
-            "model_arch": "gpt2",
-            "model_size": "355M",
-            "window_size": 15,
-            "source": null,
-            "feature_category": null,
-            "target": null,
-            "prompt_idx": 59
-        },
-        {
+            },
             "59": {
                 "0": {
                     "0": 0.000477655295981,
@@ -1050,21 +1042,7 @@
                     "3": 0.5269858241081238,
                     "4": 0.6485943794250488
                 }
-            }
-        }
-    ],
-    [
-        {
-            "experiment_name": "heatmap",
-            "model_arch": "gpt2",
-            "model_size": "355M",
-            "window_size": 15,
-            "source": null,
-            "feature_category": null,
-            "target": null,
-            "prompt_idx": 74
-        },
-        {
+            },
             "74": {
                 "0": {
                     "0": 1.140087806561496e-05,
@@ -1166,21 +1144,7 @@
                     "6": 0.7073959708213806,
                     "7": 0.8321524262428284
                 }
-            }
-        }
-    ],
-    [
-        {
-            "experiment_name": "heatmap",
-            "model_arch": "gpt2",
-            "model_size": "355M",
-            "window_size": 15,
-            "source": null,
-            "feature_category": null,
-            "target": null,
-            "prompt_idx": 90
-        },
-        {
+            },
             "90": {
                 "0": {
                     "0": 1.142775563067744e-08,
@@ -1302,21 +1266,7 @@
                     "8": 0.0001855440496001,
                     "9": 0.0001162975313491
                 }
-            }
-        }
-    ],
-    [
-        {
-            "experiment_name": "heatmap",
-            "model_arch": "gpt2",
-            "model_size": "355M",
-            "window_size": 15,
-            "source": null,
-            "feature_category": null,
-            "target": null,
-            "prompt_idx": 93
-        },
-        {
+            },
             "93": {
                 "0": {
                     "0": 1.0227042366750538e-05,
@@ -1420,7 +1370,13 @@
             "source": null,
             "feature_category": null,
             "target": null,
-            "prompt_idx": 53
+            "prompt_idx": [
+                53,
+                59,
+                74,
+                90,
+                93
+            ]
         },
         {
             "53": {
@@ -1544,21 +1500,7 @@
                     "8": 0.3061640858650207,
                     "9": 3.1675120859553374e-11
                 }
-            }
-        }
-    ],
-    [
-        {
-            "experiment_name": "heatmap",
-            "model_arch": "mamba1",
-            "model_size": "130M",
-            "window_size": 15,
-            "source": null,
-            "feature_category": null,
-            "target": null,
-            "prompt_idx": 59
-        },
-        {
+            },
             "59": {
                 "0": {
                     "0": 0.520882785320282,
@@ -1630,21 +1572,7 @@
                     "3": 0.4192585051059723,
                     "4": 3.392112193978392e-05
                 }
-            }
-        }
-    ],
-    [
-        {
-            "experiment_name": "heatmap",
-            "model_arch": "mamba1",
-            "model_size": "130M",
-            "window_size": 15,
-            "source": null,
-            "feature_category": null,
-            "target": null,
-            "prompt_idx": 74
-        },
-        {
+            },
             "74": {
                 "0": {
                     "0": 0.557141900062561,
@@ -1756,21 +1684,7 @@
                     "7": 0.5660494565963745,
                     "8": 0.0002691087138373
                 }
-            }
-        }
-    ],
-    [
-        {
-            "experiment_name": "heatmap",
-            "model_arch": "mamba1",
-            "model_size": "130M",
-            "window_size": 15,
-            "source": null,
-            "feature_category": null,
-            "target": null,
-            "prompt_idx": 90
-        },
-        {
+            },
             "90": {
                 "0": {
                     "0": 0.0003818065451923,
@@ -1892,21 +1806,7 @@
                     "8": 0.0004783770418725,
                     "9": 8.191641340784619e-26
                 }
-            }
-        }
-    ],
-    [
-        {
-            "experiment_name": "heatmap",
-            "model_arch": "mamba1",
-            "model_size": "130M",
-            "window_size": 15,
-            "source": null,
-            "feature_category": null,
-            "target": null,
-            "prompt_idx": 93
-        },
-        {
+            },
             "93": {
                 "0": {
                     "0": 0.4111887514591217,
@@ -2020,7 +1920,13 @@
             "source": null,
             "feature_category": null,
             "target": null,
-            "prompt_idx": 53
+            "prompt_idx": [
+                53,
+                59,
+                74,
+                90,
+                93
+            ]
         },
         {
             "53": {
@@ -2144,21 +2050,7 @@
                     "8": 0.552858829498291,
                     "9": 0.5230017304420471
                 }
-            }
-        }
-    ],
-    [
-        {
-            "experiment_name": "heatmap",
-            "model_arch": "mamba2",
-            "model_size": "130M",
-            "window_size": 15,
-            "source": null,
-            "feature_category": null,
-            "target": null,
-            "prompt_idx": 59
-        },
-        {
+            },
             "59": {
                 "0": {
                     "0": 0.4617514312267303,
@@ -2230,21 +2122,7 @@
                     "3": 0.4333966076374054,
                     "4": 0.4767211675643921
                 }
-            }
-        }
-    ],
-    [
-        {
-            "experiment_name": "heatmap",
-            "model_arch": "mamba2",
-            "model_size": "130M",
-            "window_size": 15,
-            "source": null,
-            "feature_category": null,
-            "target": null,
-            "prompt_idx": 74
-        },
-        {
+            },
             "74": {
                 "0": {
                     "0": 0.9021308422088624,
@@ -2356,21 +2234,7 @@
                     "7": 0.8837629556655884,
                     "8": 0.8440927267074585
                 }
-            }
-        }
-    ],
-    [
-        {
-            "experiment_name": "heatmap",
-            "model_arch": "mamba2",
-            "model_size": "130M",
-            "window_size": 15,
-            "source": null,
-            "feature_category": null,
-            "target": null,
-            "prompt_idx": 90
-        },
-        {
+            },
             "90": {
                 "0": {
                     "0": 0.0001620544062461,
@@ -2492,21 +2356,7 @@
                     "8": 0.0001883322984213,
                     "9": 0.0001990822347579
                 }
-            }
-        }
-    ],
-    [
-        {
-            "experiment_name": "heatmap",
-            "model_arch": "mamba2",
-            "model_size": "130M",
-            "window_size": 15,
-            "source": null,
-            "feature_category": null,
-            "target": null,
-            "prompt_idx": 93
-        },
-        {
+            },
             "93": {
                 "0": {
                     "0": 0.6161594390869141,

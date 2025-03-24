@@ -30,7 +30,7 @@ class DataReq(NamedTuple):
     source: Optional[TokenType]
     feature_category: Optional[FeatureCategory]
     target: Optional[TokenType]
-    prompt_idx: Optional[TPromptOriginalIndex]
+    prompt_idx: Optional[list[TPromptOriginalIndex]]
 
     def validate(self):
         experiment_name = EXPERIMENT_NAMES.get_experiment_name_by_str(self.experiment_name)
@@ -84,7 +84,7 @@ class DataReq(NamedTuple):
                     ),
                     prompt_filteration=SelectivePromptFilteration(
                         dataset_name=DATASETS.COUNTER_FACT,
-                        prompt_ids=[self.prompt_idx],
+                        prompt_ids=self.prompt_idx,
                     ),
                     runner_params=HeatmapParams(
                         window_size=self.window_size,

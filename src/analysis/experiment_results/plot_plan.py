@@ -164,7 +164,7 @@ class PromptIdxHPD(HyperParamDefinition[TPromptOriginalIndex]):
         prompts: set[TPromptOriginalIndex] = set()
         for result in result_bank.to_rows():
             if isinstance(result, HeatmapRecord):
-                prompts.add(result.prompt_idx)
+                prompts.update(result.prompt_idx)
         return sorted(prompts)
 
     def get_static_options(self):
