@@ -1,3 +1,4 @@
+import json
 from typing import Optional
 
 import pandas as pd
@@ -13,7 +14,7 @@ from src.analysis.prompt_filterations import AllPromptFilteration
 from src.core.names import COLS, DATASETS
 from src.core.types import MODEL_ARCH_AND_SIZE, TVariationName
 from src.data_ingestion.data_defs import DataReqs, FulfilledReqs, ResultBank
-from src.experiments.infrastructure.base_config import CommonParams
+from src.experiments.infrastructure.base_config import BaseRunner, CommonParams
 from src.experiments.runners.evaluate_model import EvaluateModelConfig
 
 
@@ -88,3 +89,31 @@ def result_record_to_data_req(result_record: ResultRecord) -> DataReq:
         target=target,
         prompt_idx=prompt_idx,
     ).validate()
+
+
+def result_record_to_config(result_record: ResultRecord) -> BaseRunner:
+    data_req = result_record_to_data_req(result_record)
+    return data_req.get_config(result_record.variation)
+
+
+def serialize_result_bank(result_bank: ResultBank) -> str:
+    def rec_serialize_dependencies(item):
+        if isinstance(item, dict):
+            res = {}
+            for k, v in item.items():
+                if isinstance(k, tuple):
+                    k = str(k)
+                res[k] = rec_serialize_dependencies(v)
+            return res
+        if isinstance(item, ResultRecord):
+            return rec_serialize_dependencies(result_record_to_config(item))
+        elif isinstance(item, BaseRunner):
+            return rec_serialize_dependencies(item.get_outputs())
+        elif isinstance(item, list):
+            return [rec_serialize_dependencies(v) for v in item]
+        elif isinstance(item, pd.DataFrame):
+            return item.to_dict()
+        else:
+            return item
+
+    return json.dumps(rec_serialize_dependencies(result_bank.to_rows()))

@@ -212,3 +212,8 @@ class SlurmStatus(StrEnum):
     COMPLETED = "COMPLETED"
     FAILED = "FAILED"
     CANCELLED = "CANCELLED"
+
+
+class RunningHistoryCols(StrEnum):
+    run_id = "run_id"
+    git_commit_hash = "git_commit_hash"

@@ -2,12 +2,16 @@
 
 import shutil
 import time
+from dataclasses import dataclass
 from pathlib import Path
 from typing import cast
 
+import pyrallis
 import pytest
 from datasets import DatasetDict
 
+from src.analysis.experiment_results.helpers import serialize_result_bank
+from src.analysis.experiment_results.results_bank import get_experiment_results_bank
 from src.analysis.prompt_filterations import Correctness, ModelCorrectPromptFilteration, SelectivePromptFilteration
 from src.core.consts import PathsConfig
 from src.core.names import COLS
@@ -53,6 +57,8 @@ ORIGINAL_IDS = {
 PATHS_PROJECT_DIR_PATH = "src.core.consts.PATHS.PROJECT_DIR"
 INFO_FLOW_FORWARD_EVAL_PATH = "src.experiments.runners.info_flow.forward_eval"
 INFO_FLOW_SAVE_INTERVAL_PATH = "src.experiments.runners.info_flow.SAVE_INTERVAL"
+GET_COMMIT_HASH_PATH = "src.experiments.infrastructure.base_config.get_git_commit_hash"
+CREATE_RUN_ID_PATH = "src.experiments.infrastructure.base_config.create_run_id"
 
 
 def get_config(variation_name: str, model_arch: MODEL_ARCH, model_size: str) -> FullPipelineConfig:
@@ -122,9 +128,13 @@ def clean_and_generate_base_test_data(test_base_path: Path):
     DatasetDict(dataset).save_to_disk(test_paths.dataset_dir(DATASETS.COUNTER_FACT) / "splitted")
 
 
-def run_test_experiment(test_base_path: Path):
+def run_test_experiment(test_base_path: Path, normalizing_outputs: bool):
     with pytest.MonkeyPatch().context() as mp:
         mp.setattr(PATHS_PROJECT_DIR_PATH, test_base_path)
+        if normalizing_outputs:
+            mp.setattr(GET_COMMIT_HASH_PATH, lambda *args, **kwargs: "test_commit_hash")
+            mp.setattr(CREATE_RUN_ID_PATH, lambda *args, **kwargs: "test_run_id")
+
         for model_arch, model_size in [
             (MODEL_ARCH.MAMBA1, "130M"),
             (MODEL_ARCH.MAMBA2, "130M"),
@@ -136,7 +146,12 @@ def run_test_experiment(test_base_path: Path):
                 model_size=model_size,
             )
             config.compute_with_dependencies()
-            print(f"Baseline updated at: {test_base_path}")
+
+        if normalizing_outputs:
+            (test_base_path / "serialized_results.json").write_text(
+                serialize_result_bank(get_experiment_results_bank())
+            )
+        print(f"Baseline updated at: {test_base_path}")
 
 
 def test_info_flow_intermediate_recovery(tmp_path: Path):
@@ -224,13 +239,23 @@ def test_info_flow_intermediate_recovery(tmp_path: Path):
         assert created_data == baseline_data, "Data should be the same"
 
 
-def create_test_experiment(test_base_path: Path, resume: bool = False):
+def create_test_experiment(test_base_path: Path, resume: bool, normalizing_outputs: bool):
     if not resume:
         clean_and_generate_base_test_data(test_base_path)
     # TODO: test why there was a change at commit of 7f0fdded984bca60686dd8586c365534aeffa009
-    run_test_experiment(test_base_path)
+    run_test_experiment(test_base_path, normalizing_outputs)
+
+
+@dataclass
+class CreateBaselineParams:
+    resume: bool = False
+    normalizing_outputs: bool = True
+
+
+@pyrallis.wrap()
+def main(params: CreateBaselineParams):
+    create_test_experiment(TEST_BASE_PATH, resume=params.resume, normalizing_outputs=params.normalizing_outputs)
 
 
 if __name__ == "__main__":
-    # For updating baseline
-    create_test_experiment(TEST_BASE_PATH, resume=False)
+    main()  # type: ignore

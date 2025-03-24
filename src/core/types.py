@@ -136,6 +136,7 @@ class TInfoFlowWindowValue(TypedDict):
 
 TInfoFlowOutputJSONOutput = dict[str, TInfoFlowWindowValue]
 TInfoFlowOutput = dict[TLayerIndex, TInfoFlowWindowValue]
+IHeatmap = pd.DataFrame
 
 
 class MODEL_ARCH_AND_SIZE(NamedTuple):

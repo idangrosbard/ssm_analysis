@@ -129,7 +129,7 @@ class ENV_VARS:
 
 
 class FORMATS:
-    TIME = "%Y%m%d_%H-%M-%S"
+    TIME_WITH_MICROSECONDS = "%Y-%m-%d_%H-%M-%S_%f"
     LOGGER_FORMAT = "%(asctime)s - %(message)s"
 
 

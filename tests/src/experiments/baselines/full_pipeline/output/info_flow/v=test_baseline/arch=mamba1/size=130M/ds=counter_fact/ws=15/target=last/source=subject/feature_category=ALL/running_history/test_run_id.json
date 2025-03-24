@@ -1,0 +1,30 @@
+{
+    "variation": "test_baseline",
+    "common_params": {
+        "model_arch": "mamba1",
+        "model_size": "130M",
+        "dataset_name": "counter_fact"
+    },
+    "prompt_filteration": {
+        "dataset_name": "counter_fact",
+        "model_arch": "mamba1",
+        "model_size": "130M",
+        "correctness": "correct",
+        "variation": "test_baseline"
+    },
+    "runner_params": {
+        "window_size": 15,
+        "source": "subject",
+        "feature_category": "ALL",
+        "target": "last"
+    },
+    "run_params": {
+        "_batch_size": 1,
+        "with_slurm": false,
+        "slurm_gpu_type": "l40s",
+        "slurm_gpus_per_node": 1,
+        "overwrite_existing_outputs": false
+    },
+    "run_id": "test_run_id",
+    "git_commit_hash": "test_commit_hash"
+}

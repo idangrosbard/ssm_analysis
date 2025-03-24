@@ -1,5 +1,4 @@
 import json
-import subprocess
 from abc import ABC, abstractmethod
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -8,7 +7,7 @@ from typing import Any, Generic, Mapping, Optional, TypeVar, Union, final
 from submitit.slurm.slurm import SlurmJob
 
 from src.core.consts import MODEL_SIZES_PER_ARCH_TO_MODEL_ID, PATHS, PathsConfig, RunnerPaths
-from src.core.names import EXPERIMENT_NAMES, SlurmStatus
+from src.core.names import EXPERIMENT_NAMES, RunningHistoryCols, SlurmStatus
 from src.core.types import (
     MODEL_ARCH,
     MODEL_ARCH_AND_SIZE,
@@ -24,6 +23,7 @@ from src.data_ingestion.datasets.download_dataset import DATASETS, get_prompt_id
 from src.experiments.infrastructure.model_interface import ModelInterface, get_model_interface
 from src.experiments.infrastructure.setup_models import get_tokenizer
 from src.utils.infra.experiment_helper import create_run_id
+from src.utils.infra.git import get_git_commit_hash
 from src.utils.infra.output_path import OutputKey, combine_output_keys
 from src.utils.infra.slurm import SLURM_GPU_TYPE, submit_job
 from src.utils.types_utils import create_mutable_field
@@ -238,11 +238,8 @@ class BaseRunner(ABC, Generic[_TRunnerParams, _TRunnerOutputs]):
         run_id = create_run_id(None)
 
         params = asdict(self)
-        params["run_id"] = run_id
-        try:
-            params["git_commit_hash"] = subprocess.check_output(["git", "rev-parse", "HEAD"]).decode("utf-8").strip()
-        except Exception:
-            pass
+        params[RunningHistoryCols.run_id] = run_id
+        params[RunningHistoryCols.git_commit_hash] = get_git_commit_hash()
 
         json.dump(params, self.variation_paths.running_history_json_path(run_id).open("w"), indent=4)
 
