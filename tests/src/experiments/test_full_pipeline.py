@@ -61,7 +61,7 @@ GET_COMMIT_HASH_PATH = "src.experiments.infrastructure.base_config.get_git_commi
 CREATE_RUN_ID_PATH = "src.experiments.infrastructure.base_config.create_run_id"
 
 
-def get_config(variation_name: str, model_arch: MODEL_ARCH, model_size: str) -> FullPipelineConfig:
+def get_config(variation_name: str, model_arch: MODEL_ARCH, model_size: str, with_plotting: bool) -> FullPipelineConfig:
     return FullPipelineConfig(
         variation=TVariationName(variation_name),
         runner_params=FullPipelineParam(
@@ -89,7 +89,7 @@ def get_config(variation_name: str, model_arch: MODEL_ARCH, model_size: str) -> 
             heatmap_prompts=SelectivePromptFilteration(
                 DATASETS.COUNTER_FACT, cast(list[TPromptOriginalIndex], ORIGINAL_IDS[SPLIT.TRAIN1])
             ),
-            with_plotting=True,
+            with_plotting=with_plotting,
             enforce_no_missing_outputs=True,
             with_generation=True,
         ),
@@ -128,7 +128,7 @@ def clean_and_generate_base_test_data(test_base_path: Path):
     DatasetDict(dataset).save_to_disk(test_paths.dataset_dir(DATASETS.COUNTER_FACT) / "splitted")
 
 
-def run_test_experiment(test_base_path: Path, normalizing_outputs: bool):
+def run_test_experiment(test_base_path: Path, normalizing_outputs: bool, with_plotting: bool):
     with pytest.MonkeyPatch().context() as mp:
         mp.setattr(PATHS_PROJECT_DIR_PATH, test_base_path)
         if normalizing_outputs:
@@ -144,6 +144,7 @@ def run_test_experiment(test_base_path: Path, normalizing_outputs: bool):
                 variation_name="test_baseline",
                 model_arch=model_arch,
                 model_size=model_size,
+                with_plotting=with_plotting,
             )
             config.compute_with_dependencies()
 
@@ -167,6 +168,7 @@ def test_info_flow_intermediate_recovery(tmp_path: Path):
             variation_name="test_recovery",
             model_arch=MODEL_ARCH.MAMBA1,
             model_size="130M",
+            with_plotting=True,
         )
 
         full_pipeline_config.runner_params.knockout_map = {
@@ -239,22 +241,28 @@ def test_info_flow_intermediate_recovery(tmp_path: Path):
         assert created_data == baseline_data, "Data should be the same"
 
 
-def create_test_experiment(test_base_path: Path, resume: bool, normalizing_outputs: bool):
+def create_test_experiment(test_base_path: Path, resume: bool, normalizing_outputs: bool, with_plotting: bool):
     if not resume:
         clean_and_generate_base_test_data(test_base_path)
     # TODO: test why there was a change at commit of 7f0fdded984bca60686dd8586c365534aeffa009
-    run_test_experiment(test_base_path, normalizing_outputs)
+    run_test_experiment(test_base_path, normalizing_outputs, with_plotting)
 
 
 @dataclass
 class CreateBaselineParams:
     resume: bool = False
     normalizing_outputs: bool = True
+    with_plotting: bool = True
 
 
 @pyrallis.wrap()
 def main(params: CreateBaselineParams):
-    create_test_experiment(TEST_BASE_PATH, resume=params.resume, normalizing_outputs=params.normalizing_outputs)
+    create_test_experiment(
+        TEST_BASE_PATH,
+        resume=params.resume,
+        normalizing_outputs=params.normalizing_outputs,
+        with_plotting=params.with_plotting,
+    )
 
 
 if __name__ == "__main__":

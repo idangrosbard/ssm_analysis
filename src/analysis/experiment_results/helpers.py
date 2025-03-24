@@ -106,9 +106,9 @@ def serialize_result_bank(result_bank: ResultBank) -> str:
                 res[k] = rec_serialize_dependencies(v)
             return res
         if isinstance(item, ResultRecord):
-            return rec_serialize_dependencies(result_record_to_config(item))
-        elif isinstance(item, BaseRunner):
-            return rec_serialize_dependencies(item.get_outputs())
+            data_req = result_record_to_data_req(item)
+            config = data_req.get_config(item.variation)
+            return [data_req._asdict(), rec_serialize_dependencies(config.get_outputs())]
         elif isinstance(item, list):
             return [rec_serialize_dependencies(v) for v in item]
         elif isinstance(item, pd.DataFrame):
@@ -116,4 +116,6 @@ def serialize_result_bank(result_bank: ResultBank) -> str:
         else:
             return item
 
-    return json.dumps(rec_serialize_dependencies(result_bank.to_rows()), indent=1)
+    return json.dumps(
+        sorted(rec_serialize_dependencies(result_bank.to_rows()), key=lambda x: list(x[0].values())), indent=4
+    )
