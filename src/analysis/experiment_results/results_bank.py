@@ -8,10 +8,10 @@ from src.core.consts import MODEL_SIZES_PER_ARCH_TO_MODEL_ID, PATHS, reverse_mod
 from src.core.names import EXPERIMENT_NAMES, INFO_FLOW_HP_COLS, ResultBankParamNames
 from src.core.types import (
     FeatureCategory,
+    TCodeVersionName,
     TModelID,
     TModelSize,
     TokenType,
-    TVersionName,
     TWindowSize,
 )
 from src.data_ingestion.data_defs import ResultBank
@@ -22,7 +22,7 @@ from src.utils.infra.output_path import OutputKey, OutputPath
 class IntermediateParamNames:
     _model_id_source = "_model_id_source"
     _model_id_name = "_model_id_name"
-    _experiment_name_and_version = "_experiment_name_and_version"
+    _experiment_name_and_code_version = "_experiment_name_and_code_version"
     _dataset_and_filteration = "_dataset_and_filteration"
     _source_and_feature_category = "_source_and_feature_category"
     _block_target = "_block_target"
@@ -59,7 +59,9 @@ class RESULTS_BASE_PATH(IntEnum):
                     [
                         OutputKey(key_name=IntermediateParamNames._model_id_source, key_display_name=""),
                         OutputKey(key_name=IntermediateParamNames._model_id_name, key_display_name=""),
-                        OutputKey(key_name=IntermediateParamNames._experiment_name_and_version, key_display_name=""),
+                        OutputKey(
+                            key_name=IntermediateParamNames._experiment_name_and_code_version, key_display_name=""
+                        ),
                         dataset_output_key,
                         *middle_experiment_keys,
                     ],
@@ -69,7 +71,7 @@ class RESULTS_BASE_PATH(IntEnum):
                     self.path,
                     [
                         BASE_OUTPUT_KEYS.EXPERIMENT_NAME,
-                        BASE_OUTPUT_KEYS.VERSION,
+                        BASE_OUTPUT_KEYS.CODE_VERSION,
                         BASE_OUTPUT_KEYS.MODEL_ARCH,
                         BASE_OUTPUT_KEYS.MODEL_SIZE,
                         dataset_output_key,
@@ -89,10 +91,10 @@ class RESULTS_BASE_PATH(IntEnum):
             values[ResultBankParamNames.model_arch] = model_arch.value
             values[ResultBankParamNames.model_size] = model_size
 
-            experiment_name_and_version = values.pop(IntermediateParamNames._experiment_name_and_version)
-            if not experiment_name_and_version.startswith(experiment_name):
+            experiment_name_and_code_version = values.pop(IntermediateParamNames._experiment_name_and_code_version)
+            if not experiment_name_and_code_version.startswith(experiment_name):
                 return None
-            values[ResultBankParamNames.version] = experiment_name_and_version[len(experiment_name) :]
+            values[ResultBankParamNames.code_version] = experiment_name_and_code_version[len(experiment_name) :]
 
         return values
 
@@ -115,7 +117,7 @@ class RESULTS_BASE_PATH(IntEnum):
 class ResultRecord(ABC):
     experiment_name: EXPERIMENT_NAMES = field(init=False)
     path: Path
-    version: TVersionName
+    code_version: TCodeVersionName
     model_arch: MODEL_ARCH
     model_size: TModelSize
     dataset_and_filteration: str
@@ -164,8 +166,8 @@ class ResultRecord(ABC):
             raise ValueError(f"Cannot compare {type(self)} with {type(other)}")
         if self.results_base_path != other.results_base_path:
             return self.results_base_path == RESULTS_BASE_PATH.v1
-        elif self.version != other.version:
-            return self.version < other.version
+        elif self.code_version != other.code_version:
+            return self.code_version < other.code_version
         else:
             raise ValueError(f"Cannot compare {self} with {other}")
 

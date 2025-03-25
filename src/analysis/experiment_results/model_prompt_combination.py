@@ -8,7 +8,7 @@ import pandas as pd
 
 from src.analysis.experiment_results.helpers import get_model_evaluations
 from src.core.names import COLS, ModelCombinationCols
-from src.core.types import MODEL_ARCH_AND_SIZE, TPromptOriginalIndex, TVersionName
+from src.core.types import MODEL_ARCH_AND_SIZE, TCodeVersionName, TPromptOriginalIndex
 
 
 @dataclass
@@ -59,7 +59,7 @@ def save_model_combinations_prompts(model_combinations: list[ModelCombination]) 
 
 
 def get_model_combinations_prompts(
-    version: Optional[TVersionName],
+    code_version: Optional[TCodeVersionName],
     model_arch_and_sizes: list[MODEL_ARCH_AND_SIZE],
     seed: int,
 ) -> list[ModelCombination]:
@@ -87,8 +87,8 @@ def get_model_combinations_prompts(
 
     # Otherwise generate new combinations
     assert seed is not None
-    assert version is not None
-    model_evaluations = get_model_evaluations(version, model_arch_and_sizes)
+    assert code_version is not None
+    model_evaluations = get_model_evaluations(code_version, model_arch_and_sizes)
     # Get all prompts
     all_prompts = set(model_evaluations[model_arch_and_sizes[0]].index)
 
@@ -140,7 +140,7 @@ def get_model_combinations_prompts(
         )
 
     save_model_combinations_prompts(combinations)
-    return get_model_combinations_prompts(version, model_arch_and_sizes, seed)
+    return get_model_combinations_prompts(code_version, model_arch_and_sizes, seed)
 
 
 def derive_subset_model_combinations(

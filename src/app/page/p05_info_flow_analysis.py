@@ -180,7 +180,7 @@ class InfoFlowAnalysisPage(StreamlitPage):
             selection_mode=SelectionMode.MULTIPLE,  # Changed to MULTIPLE
             height=300,
             filters={
-                ResultBankParamNames.version: [GLOBAL_APP_CONSTS.DEFAULT_VERSION],
+                ResultBankParamNames.code_version: [GLOBAL_APP_CONSTS.DEFAULT_CODE_VERSION],
                 ResultBankParamNames.model_size: [
                     model_arch_and_size.size
                     for model_arch_and_size, size_cat in GRAPHS_ORDER.items()
@@ -220,7 +220,9 @@ class InfoFlowAnalysisPage(StreamlitPage):
             )
 
             # Get model evaluations if not already loaded
-            model_evaluations = load_model_evaluations(result_dict[ResultBankParamNames.version], model_arch_and_size)
+            model_evaluations = load_model_evaluations(
+                result_dict[ResultBankParamNames.code_version], model_arch_and_size
+            )
             model_evaluations_list.append(model_evaluations)
 
             # Load info flow results

@@ -304,15 +304,15 @@ def plot_trend(
     upper = filtered["Probability diff_mean"] + filtered["Probability diff_ci95"]
     lower = filtered["Probability diff_mean"] - filtered["Probability diff_ci95"]
 
-    name_conversion = {
+    name_concode_version = {
         "Mamba-1 2.8B": "mamba-2.8B",
         "Mamba-2 2.7B": "mamba2-2.7B",
         "Falcon-Mamba 7B": "falcon-mamba-7B",
         "GPT-2 1.5B": "gpt2-1.5B",
     }
 
-    if model in name_conversion:
-        title = name_conversion[model]
+    if model in name_concode_version:
+        title = name_concode_version[model]
     else:
         title = model
 
@@ -826,7 +826,7 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
                     config.common_params.model_arch, config.common_params.model_size
                 )
                 data = cast(
-                    TPromptData, get_model_evaluations(config.version, [model_arch_and_size])[model_arch_and_size]
+                    TPromptData, get_model_evaluations(config.code_version, [model_arch_and_size])[model_arch_and_size]
                 )
                 tokenizer = get_tokenizer(config.common_params.model_arch, config.common_params.model_size)
                 model_id = MODEL_SIZES_PER_ARCH_TO_MODEL_ID[config.common_params.model_arch][

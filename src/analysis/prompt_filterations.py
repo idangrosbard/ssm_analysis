@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from enum import StrEnum
 
 from src.core.names import COLS
-from src.core.types import MODEL_ARCH, TModelSize, TPromptOriginalIndex, TVersionName
+from src.core.types import MODEL_ARCH, TCodeVersionName, TModelSize, TPromptOriginalIndex
 from src.experiments.infrastructure.base_config import BasePromptFilteration, CommonParams, TDependencies
 from src.experiments.runners.evaluate_model import EvaluateModelConfig
 
@@ -73,7 +73,7 @@ class ModelCorrectPromptFilteration(BasePromptFilteration):
     model_arch: MODEL_ARCH
     model_size: TModelSize
     correctness: Correctness
-    version: TVersionName
+    code_version: TCodeVersionName
 
     def get_prompt_ids(self) -> list[TPromptOriginalIndex]:
         df = self.get_dependencies()["evaluate_model"].get_outputs()
@@ -96,6 +96,6 @@ class ModelCorrectPromptFilteration(BasePromptFilteration):
                     dataset_name=self.dataset_name,
                 ),
                 prompt_filteration=AllPromptFilteration(dataset_name=self.dataset_name),
-                version=self.version,
+                code_version=self.code_version,
             ),
         }

@@ -35,7 +35,7 @@ class DataReqs(DataObject):
                         **{
                             col: row[col]
                             for col in str_enum_values(ResultBankParamNames)
-                            if col not in [ResultBankParamNames.path, ResultBankParamNames.version]
+                            if col not in [ResultBankParamNames.path, ResultBankParamNames.code_version]
                         }
                     )
                     for row in df.to_dict(orient="records")
@@ -64,7 +64,7 @@ class FulfilledReqs(DataObject):
         )
 
     def get_config(self):
-        return {req: req.get_config(result_records[0].version) for req, result_records in self.to_rows()}
+        return {req: req.get_config(result_records[0].code_version) for req, result_records in self.to_rows()}
 
     def to_rows(self) -> list[tuple["DataReq", list["ResultRecord"]]]:
         return list(self._raw.items())
@@ -106,7 +106,7 @@ class SummarizedDataFulfilledReqs(DataObject):
                 **{
                     param: getattr(req, param, None)
                     for param in ResultBankParamNames
-                    if param not in [ResultBankParamNames.path, ResultBankParamNames.version]
+                    if param not in [ResultBankParamNames.path, ResultBankParamNames.code_version]
                 },
                 SummarizedDataFulfilledReqsCols.AvailableOptions: len(opts),
                 SummarizedDataFulfilledReqsCols.Options: opts,
@@ -126,7 +126,7 @@ class SummarizedDataFulfilledReqs(DataObject):
                     **{
                         param: row[param]
                         for param in ResultBankParamNames
-                        if param not in [ResultBankParamNames.path, ResultBankParamNames.version]
+                        if param not in [ResultBankParamNames.path, ResultBankParamNames.code_version]
                     }
                 )
                 for row in self._raw

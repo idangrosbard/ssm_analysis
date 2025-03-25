@@ -63,7 +63,7 @@ class INFO_FLOW_TEXTS:
 class AppGlobalText:
     window_size = "Window Size"
     gpu_type = "GPU Type"
-    version = "Version"
+    code_version = "CodeVersion"
 
 
 class RESULTS_BANK_TEXTS:

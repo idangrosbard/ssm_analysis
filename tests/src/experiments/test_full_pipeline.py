@@ -23,10 +23,10 @@ from src.core.types import (
     MODEL_ARCH,
     SPLIT,
     FeatureCategory,
+    TCodeVersionName,
     TModelSize,
     TokenType,
     TPromptOriginalIndex,
-    TVersionName,
     TWindowSize,
 )
 from src.data_ingestion.datasets.download_dataset import DATASETS, load_splitted_counter_fact
@@ -66,10 +66,10 @@ CREATE_RUN_ID_PATH = "src.experiments.infrastructure.base_config.create_run_id"
 
 
 def get_test_full_pipeline_config(
-    version_name: str, model_arch: MODEL_ARCH, model_size: str, with_plotting: bool
+    code_version_name: str, model_arch: MODEL_ARCH, model_size: str, with_plotting: bool
 ) -> FullPipelineConfig:
     return FullPipelineConfig(
-        version=TVersionName(version_name),
+        code_version=TCodeVersionName(code_version_name),
         runner_params=FullPipelineParam(
             knockout_map={
                 TokenType.last: [
@@ -107,7 +107,7 @@ def get_test_full_pipeline_config(
             model_arch=model_arch,
             model_size=TModelSize(model_size),
             correctness=Correctness.correct,
-            version=TVersionName(version_name),
+            code_version=TCodeVersionName(code_version_name),
         ),
     )
 
@@ -147,7 +147,7 @@ def run_test_experiment(test_base_path: Path, normalizing_outputs: bool, with_pl
             (MODEL_ARCH.GPT2, "355M"),
         ]:
             config = get_test_full_pipeline_config(
-                version_name="test_baseline",
+                code_version_name="test_baseline",
                 model_arch=model_arch,
                 model_size=model_size,
                 with_plotting=with_plotting,

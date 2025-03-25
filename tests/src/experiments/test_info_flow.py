@@ -8,8 +8,8 @@ import pytest
 from src.core.types import (
     MODEL_ARCH,
     FeatureCategory,
+    TCodeVersionName,
     TokenType,
-    TVersionName,
 )
 from src.experiments.runners.info_flow import forward_eval
 from src.utils.types_utils import first_dict_value
@@ -34,7 +34,7 @@ def test_info_flow_recovery(tmp_path: Path):
         mp.setattr(INFO_FLOW_PRINT_INTERVAL_PATH, 1)
         # Create a test config with minimal settings
         full_pipeline_config = get_test_full_pipeline_config(
-            version_name="test_recovery",
+            code_version_name="test_recovery",
             model_arch=MODEL_ARCH.MAMBA1,
             model_size="130M",
             with_plotting=True,
@@ -95,6 +95,6 @@ def test_info_flow_recovery(tmp_path: Path):
     _test_base_path = Path(__file__).parent / "baselines" / "full_pipeline"
     with pytest.MonkeyPatch().context() as mp:
         mp.setattr(PATHS_PROJECT_DIR_PATH, _test_base_path)
-        info_flow_config.version = TVersionName("test_baseline")
+        info_flow_config.code_version = TCodeVersionName("test_baseline")
         baseline_data = info_flow_config.get_outputs()
         assert created_data == baseline_data, "Data should be the same"

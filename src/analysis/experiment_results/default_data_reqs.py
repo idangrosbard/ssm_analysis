@@ -13,7 +13,7 @@ from src.core.consts import (
 from src.core.names import DATASETS, EXPERIMENT_NAMES
 from src.core.types import (
     FeatureCategory,
-    TVersionName,
+    TCodeVersionName,
     TWindowSize,
 )
 from src.data_ingestion.data_defs import DataReqs
@@ -21,7 +21,7 @@ from src.data_ingestion.data_defs import DataReqs
 STANDARD_WINDOW_SIZE_FOR_INFO_FLOW = TWindowSize(9)
 STANDARD_WINDOW_SIZE_FOR_HEATMAP = TWindowSize(5)
 ALL_WINDOW_SIZES = [TWindowSize(size) for size in [1, 3, 5, 9, 12, 15]]
-MODEL_CORRECT_MODEL_VERSION = TVersionName("v1")
+MODEL_CORRECT_MODEL_CODE_VERSION = TCodeVersionName("v1")
 
 
 def get_default_data_reqs() -> DataReqs:
@@ -65,7 +65,7 @@ def get_default_data_reqs() -> DataReqs:
                         model_arch=model_arch_and_size.arch,
                         model_size=model_arch_and_size.size,
                         correctness=Correctness.correct,
-                        version=MODEL_CORRECT_MODEL_VERSION,
+                        code_version=MODEL_CORRECT_MODEL_CODE_VERSION,
                     ),
                 ).validate()
             ] = None
@@ -110,7 +110,7 @@ def get_default_data_reqs() -> DataReqs:
                             model_arch=model_arch_and_size.arch,
                             model_size=model_arch_and_size.size,
                             correctness=Correctness.correct,
-                            version=MODEL_CORRECT_MODEL_VERSION,
+                            code_version=MODEL_CORRECT_MODEL_CODE_VERSION,
                         ),
                     ).validate()
                 ] = None
@@ -151,7 +151,7 @@ def get_default_data_reqs() -> DataReqs:
                             model_arch=model_arch_and_size.arch,
                             model_size=model_arch_and_size.size,
                             correctness=Correctness.correct,
-                            version=MODEL_CORRECT_MODEL_VERSION,
+                            code_version=MODEL_CORRECT_MODEL_CODE_VERSION,
                         ),
                     ).validate()
                 ] = None
@@ -191,7 +191,7 @@ def get_default_data_reqs() -> DataReqs:
                         model_arch=model_arch_and_size.arch,
                         model_size=model_arch_and_size.size,
                         correctness=Correctness.correct,
-                        version=MODEL_CORRECT_MODEL_VERSION,
+                        code_version=MODEL_CORRECT_MODEL_CODE_VERSION,
                     ),
                 ).validate()
             ] = None
@@ -238,7 +238,7 @@ def get_default_data_reqs() -> DataReqs:
                             model_arch=model_arch_and_size.arch,
                             model_size=model_arch_and_size.size,
                             correctness=Correctness.correct,
-                            version=MODEL_CORRECT_MODEL_VERSION,
+                            code_version=MODEL_CORRECT_MODEL_CODE_VERSION,
                         ),
                     ).validate()
                 ] = None
@@ -268,7 +268,7 @@ def get_default_data_reqs() -> DataReqs:
                                 model_arch=model_arch_and_size.arch,
                                 model_size=model_arch_and_size.size,
                                 correctness=Correctness.correct,
-                                version=MODEL_CORRECT_MODEL_VERSION,
+                                code_version=MODEL_CORRECT_MODEL_CODE_VERSION,
                             ),
                         ).validate()
                     ] = None
@@ -321,7 +321,7 @@ def get_default_data_reqs() -> DataReqs:
                                 model_arch=model_arch_and_size.arch,
                                 model_size=model_arch_and_size.size,
                                 correctness=Correctness.correct,
-                                version=MODEL_CORRECT_MODEL_VERSION,
+                                code_version=MODEL_CORRECT_MODEL_CODE_VERSION,
                             ),
                         ).validate()
                     ] = None
@@ -364,7 +364,7 @@ def get_default_data_reqs() -> DataReqs:
                             model_arch=model_arch_and_size.arch,
                             model_size=model_arch_and_size.size,
                             correctness=Correctness.correct,
-                            version=MODEL_CORRECT_MODEL_VERSION,
+                            code_version=MODEL_CORRECT_MODEL_CODE_VERSION,
                         ),
                     ).validate()
                 ] = None

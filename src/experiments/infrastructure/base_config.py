@@ -12,11 +12,11 @@ from src.core.types import (
     MODEL_ARCH,
     MODEL_ARCH_AND_SIZE,
     TBatchSize,
+    TCodeVersionName,
     TModelID,
     TModelSize,
     TPromptOriginalIndex,
     TTokenizer,
-    TVersionName,
     TWindowSize,
 )
 from src.data_ingestion.datasets.download_dataset import DATASETS, get_prompt_ids
@@ -32,7 +32,7 @@ from src.utils.types_utils import create_mutable_field
 class BASE_OUTPUT_KEYS:
     MODEL_ARCH = OutputKey[MODEL_ARCH]("model_arch", key_display_name="arch=")
     MODEL_SIZE = OutputKey[TModelSize]("model_size", key_display_name="size=")
-    VERSION = OutputKey[TVersionName]("version", key_display_name="v=")
+    CODE_VERSION = OutputKey[TCodeVersionName]("code_version", key_display_name="v=")
     EXPERIMENT_NAME = OutputKey[EXPERIMENT_NAMES]("experiment_name", key_display_name="")
     DATASET_NAME = OutputKey[DATASETS]("dataset_name", key_display_name="ds=")
     WINDOW_SIZE = OutputKey[TWindowSize]("window_size", key_display_name="ws=")
@@ -96,7 +96,7 @@ class CommonParams:
 class BaseRunner(ABC, Generic[_TRunnerParams, _TRunnerOutputs]):
     """Base configuration class with common parameters across all scripts."""
 
-    version: TVersionName
+    code_version: TCodeVersionName
     common_params: CommonParams
     prompt_filteration: BasePromptFilteration
     runner_params: _TRunnerParams
@@ -133,7 +133,7 @@ class BaseRunner(ABC, Generic[_TRunnerParams, _TRunnerOutputs]):
             self,
             [
                 BASE_OUTPUT_KEYS.EXPERIMENT_NAME,
-                BASE_OUTPUT_KEYS.VERSION,
+                BASE_OUTPUT_KEYS.CODE_VERSION,
             ],
             sep="/",
         )
@@ -169,7 +169,7 @@ class BaseRunner(ABC, Generic[_TRunnerParams, _TRunnerOutputs]):
                     self,
                     [
                         BASE_OUTPUT_KEYS.EXPERIMENT_NAME,
-                        BASE_OUTPUT_KEYS.VERSION,
+                        BASE_OUTPUT_KEYS.CODE_VERSION,
                     ],
                     sep=sep,
                 ),
@@ -311,13 +311,13 @@ class BaseRunner(ABC, Generic[_TRunnerParams, _TRunnerOutputs]):
         cls,
         config: "BaseRunner",
         runner_params: _TRunnerParams,
-        version: Optional[TVersionName] = None,
+        code_version: Optional[TCodeVersionName] = None,
         common_params: Optional[CommonParams] = None,
         prompt_filteration: Optional[BasePromptFilteration] = None,
         run_params: Optional[RunParams] = None,
     ):
         return cls(
-            version=version or config.version,
+            code_version=code_version or config.code_version,
             common_params=common_params or config.common_params,
             prompt_filteration=prompt_filteration or config.prompt_filteration,
             runner_params=runner_params,

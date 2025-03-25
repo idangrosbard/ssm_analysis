@@ -18,7 +18,7 @@ from src.app.app_consts import (
 from src.app.components.inputs import select_gpu_type, select_window_size
 from src.app.texts import HEATMAP_TEXTS
 from src.core.names import DATASETS, HeatmapCols, SlurmStatus, SummarizedDataFulfilledReqsCols
-from src.core.types import MODEL_ARCH_AND_SIZE, TPromptOriginalIndex, TVersionName, TWindowSize
+from src.core.types import MODEL_ARCH_AND_SIZE, TCodeVersionName, TPromptOriginalIndex, TWindowSize
 from src.data_ingestion.data_defs import DataReqs, SummarizedDataFulfilledReqs
 from src.experiments.infrastructure.base_config import CommonParams
 from src.experiments.runners.heatmap import HeatmapConfig, HeatmapParams
@@ -103,7 +103,7 @@ class RequirementExecution(StreamlitComponent):
             col1, col2 = st.columns(2)
 
             with col1:
-                AppSessionKeys.version.create_input_widget()
+                AppSessionKeys.code_version.create_input_widget()
 
             with col2:
                 if with_slurm:
@@ -124,7 +124,7 @@ class RequirementExecution(StreamlitComponent):
                 for i, req in enumerate(self.data_reqs_to_run.to_rows()):
                     try:
                         # Get config and set running parameters
-                        config = req.get_config(version=AppSessionKeys.version.value)
+                        config = req.get_config(code_version=AppSessionKeys.code_version.value)
                         if with_slurm:
                             config.set_running_params(
                                 with_slurm=True,
@@ -162,14 +162,14 @@ class RequirementExecution(StreamlitComponent):
 def get_models_remaining_prompts(
     model_combinations: list[MODEL_ARCH_AND_SIZE],
     window_size: TWindowSize,
-    version: TVersionName,
+    code_version: TCodeVersionName,
     prompt_original_indices: list[TPromptOriginalIndex],
 ) -> dict[MODEL_ARCH_AND_SIZE, HeatmapConfig]:
     """Get the remaining prompts for each model."""
     res = {}
     for model_arch, model_size in model_combinations:
         config = HeatmapConfig(
-            version=version,
+            code_version=code_version,
             common_params=CommonParams(
                 model_arch=model_arch,
                 model_size=model_size,
@@ -199,7 +199,7 @@ class HeatmapGenerationComponent(StreamlitComponent):
         with col1:
             select_window_size()
         with col2:
-            AppSessionKeys.version.create_input_widget()
+            AppSessionKeys.code_version.create_input_widget()
         with col3:
             select_gpu_type()
 
@@ -213,7 +213,7 @@ class HeatmapGenerationComponent(StreamlitComponent):
                 models_remaining_prompts = get_models_remaining_prompts(
                     GLOBAL_APP_CONSTS.MODELS_COMBINATIONS,
                     AppSessionKeys.window_size.value,
-                    AppSessionKeys.version.value,
+                    AppSessionKeys.code_version.value,
                     prompt_original_indices,
                 )
 

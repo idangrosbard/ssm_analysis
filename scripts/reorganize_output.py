@@ -71,8 +71,8 @@ if __name__ == "__main__":
             BASE_OUTPUT_KEYS.MODEL_ARCH,
             BASE_OUTPUT_KEYS.MODEL_SIZE,
             BASE_OUTPUT_KEYS.EXPERIMENT_NAME,
-            OutputKey(key_name="version", key_display_name=""),
-            BASE_OUTPUT_KEYS.VERSION,
+            OutputKey(key_name="code_version", key_display_name=""),
+            BASE_OUTPUT_KEYS.CODE_VERSION,
         ],
     )
     new_path_structure = OutputPath(
@@ -81,7 +81,7 @@ if __name__ == "__main__":
         # base_path,
         [
             BASE_OUTPUT_KEYS.EXPERIMENT_NAME,
-            BASE_OUTPUT_KEYS.VERSION,
+            BASE_OUTPUT_KEYS.CODE_VERSION,
             BASE_OUTPUT_KEYS.MODEL_ARCH,
             BASE_OUTPUT_KEYS.MODEL_SIZE,
         ],
