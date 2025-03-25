@@ -826,7 +826,7 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
                     config.common_params.model_arch, config.common_params.model_size
                 )
                 data = cast(
-                    TPromptData, get_model_evaluations(config.variation, [model_arch_and_size])[model_arch_and_size]
+                    TPromptData, get_model_evaluations(config.version, [model_arch_and_size])[model_arch_and_size]
                 )
                 tokenizer = get_tokenizer(config.common_params.model_arch, config.common_params.model_size)
                 model_id = MODEL_SIZES_PER_ARCH_TO_MODEL_ID[config.common_params.model_arch][

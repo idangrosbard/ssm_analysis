@@ -16,7 +16,7 @@ from src.core.types import (
     TModelSize,
     TPromptOriginalIndex,
     TTokenizer,
-    TVariationName,
+    TVersionName,
     TWindowSize,
 )
 from src.data_ingestion.datasets.download_dataset import DATASETS, get_prompt_ids
@@ -30,10 +30,9 @@ from src.utils.types_utils import create_mutable_field
 
 
 class BASE_OUTPUT_KEYS:
-    MODEL_ID = OutputKey[TModelID]("model_id", key_display_name="")
     MODEL_ARCH = OutputKey[MODEL_ARCH]("model_arch", key_display_name="arch=")
     MODEL_SIZE = OutputKey[TModelSize]("model_size", key_display_name="size=")
-    VARIATION = OutputKey[TVariationName]("variation", key_display_name="v=")
+    VERSION = OutputKey[TVersionName]("version", key_display_name="v=")
     EXPERIMENT_NAME = OutputKey[EXPERIMENT_NAMES]("experiment_name", key_display_name="")
     DATASET_NAME = OutputKey[DATASETS]("dataset_name", key_display_name="ds=")
     WINDOW_SIZE = OutputKey[TWindowSize]("window_size", key_display_name="ws=")
@@ -97,7 +96,7 @@ class CommonParams:
 class BaseRunner(ABC, Generic[_TRunnerParams, _TRunnerOutputs]):
     """Base configuration class with common parameters across all scripts."""
 
-    variation: TVariationName
+    version: TVersionName
     common_params: CommonParams
     prompt_filteration: BasePromptFilteration
     runner_params: _TRunnerParams
@@ -134,7 +133,7 @@ class BaseRunner(ABC, Generic[_TRunnerParams, _TRunnerOutputs]):
             self,
             [
                 BASE_OUTPUT_KEYS.EXPERIMENT_NAME,
-                BASE_OUTPUT_KEYS.VARIATION,
+                BASE_OUTPUT_KEYS.VERSION,
             ],
             sep="/",
         )
@@ -170,7 +169,7 @@ class BaseRunner(ABC, Generic[_TRunnerParams, _TRunnerOutputs]):
                     self,
                     [
                         BASE_OUTPUT_KEYS.EXPERIMENT_NAME,
-                        BASE_OUTPUT_KEYS.VARIATION,
+                        BASE_OUTPUT_KEYS.VERSION,
                     ],
                     sep=sep,
                 ),
@@ -312,13 +311,13 @@ class BaseRunner(ABC, Generic[_TRunnerParams, _TRunnerOutputs]):
         cls,
         config: "BaseRunner",
         runner_params: _TRunnerParams,
-        variation: Optional[TVariationName] = None,
+        version: Optional[TVersionName] = None,
         common_params: Optional[CommonParams] = None,
         prompt_filteration: Optional[BasePromptFilteration] = None,
         run_params: Optional[RunParams] = None,
     ):
         return cls(
-            variation=variation or config.variation,
+            version=version or config.version,
             common_params=common_params or config.common_params,
             prompt_filteration=prompt_filteration or config.prompt_filteration,
             runner_params=runner_params,

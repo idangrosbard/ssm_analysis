@@ -38,7 +38,7 @@ class HeatmapPlotGenerationComponent(StreamlitComponent):
         for i, model_arch_and_size in enumerate(GLOBAL_APP_CONSTS.MODELS_COMBINATIONS):
             model_arch, model_size = model_arch_and_size
             config = HeatmapConfig(
-                variation=AppSessionKeys.variation.value,
+                version=AppSessionKeys.version.value,
                 common_params=CommonParams(
                     model_arch=model_arch,
                     model_size=model_size,

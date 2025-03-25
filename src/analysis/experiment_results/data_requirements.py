@@ -6,7 +6,7 @@ from src.core.types import (
     MODEL_ARCH_AND_SIZE,
     FeatureCategory,
     TModelSize,
-    TVariationName,
+    TVersionName,
     TWindowSize,
 )
 from src.experiments.infrastructure.base_config import BasePromptFilteration, CommonParams
@@ -39,7 +39,7 @@ class DataReq(NamedTuple):
     def model_arch_and_size(self) -> MODEL_ARCH_AND_SIZE:
         return MODEL_ARCH_AND_SIZE(self.model_arch, self.model_size)
 
-    def get_config(self, variation: TVariationName) -> Union[InfoFlowConfig, HeatmapConfig, EvaluateModelConfig]:
+    def get_config(self, version: TVersionName) -> Union[InfoFlowConfig, HeatmapConfig, EvaluateModelConfig]:
         match self.experiment_name:
             case EXPERIMENT_NAMES.INFO_FLOW:
                 assert self.source is not None
@@ -47,7 +47,7 @@ class DataReq(NamedTuple):
                 assert self.target is not None
                 assert self.window_size is not None
                 config = InfoFlowConfig(
-                    variation=variation,
+                    version=version,
                     common_params=CommonParams(
                         model_arch=self.model_arch,
                         model_size=self.model_size,
@@ -63,7 +63,7 @@ class DataReq(NamedTuple):
             case EXPERIMENT_NAMES.HEATMAP:
                 assert self.window_size is not None
                 config = HeatmapConfig(
-                    variation=variation,
+                    version=version,
                     common_params=CommonParams(
                         model_arch=self.model_arch,
                         model_size=self.model_size,
@@ -75,7 +75,7 @@ class DataReq(NamedTuple):
                 )
             case EXPERIMENT_NAMES.EVALUATE_MODEL:
                 config = EvaluateModelConfig(
-                    variation=variation,
+                    version=version,
                     common_params=CommonParams(
                         model_arch=self.model_arch,
                         model_size=self.model_size,
@@ -85,6 +85,6 @@ class DataReq(NamedTuple):
             case _:
                 raise ValueError(f"Unknown experiment name: {self.experiment_name}")
 
-        if variation is not None:
-            config.variation = variation
+        if version is not None:
+            config.version = version
         return config

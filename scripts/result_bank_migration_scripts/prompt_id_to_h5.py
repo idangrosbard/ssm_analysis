@@ -9,7 +9,7 @@ from tqdm import tqdm
 from src.analysis.experiment_results.helpers import result_record_to_data_req
 from src.core.consts import PATHS
 from src.core.names import EXPERIMENT_NAMES
-from src.core.types import TInfoFlowOutput, TLayerIndex, TPromptOriginalIndex, TVariationName
+from src.core.types import TInfoFlowOutput, TLayerIndex, TPromptOriginalIndex, TVersionName
 from src.data_ingestion.data_defs import ResultBank
 from src.experiments.runners.evaluate_model import EvaluateModelConfig
 from src.experiments.runners.heatmap import HeatmapConfig
@@ -86,7 +86,7 @@ class MigrateResults(StreamlitComponent):
 
             for result_record in rows:
                 data_req = result_record_to_data_req(result_record)
-                new_config = data_req.get_config(TVariationName("v2"))
+                new_config = data_req.get_config(TVersionName("v2"))
                 source_path = result_record.path
                 if isinstance(new_config, EvaluateModelConfig):
                     assert isinstance(new_config, EvaluateModelConfig)

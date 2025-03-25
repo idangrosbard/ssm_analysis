@@ -12,7 +12,7 @@ class BASE_CONFIG_HP_COLS(StrEnum):
     experiment_name = "experiment_name"
     model_arch = "model_arch"
     model_size = "model_size"
-    variation = "variation"
+    version = "version"
     prompt_filteration = "prompt_filteration"
 
 
@@ -141,7 +141,7 @@ class ResultBankParamNames(StrEnum):
     source = DataReqCols.source
     feature_category = DataReqCols.feature_category
     target = DataReqCols.target
-    variation = BASE_CONFIG_HP_COLS.variation
+    version = BASE_CONFIG_HP_COLS.version
     path = "path"
 
 

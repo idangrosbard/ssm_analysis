@@ -43,11 +43,11 @@ class HeatmapCreationPage(StreamlitPage):
 
         with st.spinner(COMMON_TEXTS.LOADING("data"), show_time=True):
             # Get combinations data
-            model_evaluations = load_model_evaluations_dict(AppSessionKeys.variation.value)
+            model_evaluations = load_model_evaluations_dict(AppSessionKeys.version.value)
             representative_model_evaluations = next(iter(model_evaluations.values()))
             # Get combinations using selected models
             model_combinations_prompts = load_model_combinations_prompts(
-                AppSessionKeys.variation.value, selected_models, seed
+                AppSessionKeys.version.value, selected_models, seed
             )
 
         with clear_deps_expander:

@@ -167,7 +167,7 @@ class PromptSelectionComponent(StreamlitComponent):
 
         if chosen_prompt_idx is not None:
             show_prompt(Prompt(possible_prompts.loc[chosen_prompt_idx]))
-            model_evals: DataFrame = get_merged_evaluations(chosen_prompt_idx, AppSessionKeys.variation.value)
+            model_evals: DataFrame = get_merged_evaluations(chosen_prompt_idx, AppSessionKeys.version.value)
             st.dataframe(
                 (
                     model_evals.pipe(

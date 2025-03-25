@@ -16,7 +16,7 @@ class HomePage(StreamlitPage):
             st.session_state.clear()
 
         select_gpu_type()
-        AppSessionKeys.variation.create_input_widget("Variation")
+        AppSessionKeys.version.create_input_widget("Version")
         select_window_size()
 
 

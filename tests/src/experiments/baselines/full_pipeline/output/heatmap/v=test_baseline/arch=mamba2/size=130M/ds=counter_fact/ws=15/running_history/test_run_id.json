@@ -1,5 +1,5 @@
 {
-    "variation": "test_baseline",
+    "version": "test_baseline",
     "common_params": {
         "model_arch": "mamba2",
         "model_size": "130M",

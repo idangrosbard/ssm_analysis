@@ -17,36 +17,36 @@ from src.analysis.experiment_results.results_bank import (
 from src.app.app_consts import (
     GLOBAL_APP_CONSTS,
 )
-from src.core.types import MODEL_ARCH_AND_SIZE, TPromptOriginalIndex, TVariationName
+from src.core.types import MODEL_ARCH_AND_SIZE, TPromptOriginalIndex, TVersionName
 from src.data_ingestion.data_defs import ModelCombinationsPrompts, ResultBank, SummarizedDataFulfilledReqs
 from src.utils.streamlit.helpers.cache import CacheWithDependencies
 
 
 @CacheWithDependencies()
-def load_model_evaluations(variation: TVariationName, model_arch_and_size: MODEL_ARCH_AND_SIZE) -> pd.DataFrame:
-    return get_model_evaluations(variation, [model_arch_and_size])[model_arch_and_size]
+def load_model_evaluations(version: TVersionName, model_arch_and_size: MODEL_ARCH_AND_SIZE) -> pd.DataFrame:
+    return get_model_evaluations(version, [model_arch_and_size])[model_arch_and_size]
 
 
 @CacheWithDependencies()
-def load_model_evaluations_dict(variation: TVariationName) -> dict[MODEL_ARCH_AND_SIZE, pd.DataFrame]:
+def load_model_evaluations_dict(version: TVersionName) -> dict[MODEL_ARCH_AND_SIZE, pd.DataFrame]:
     """Load evaluation data for all models with caching"""
     return {
-        model_arch_and_size: load_model_evaluations(variation, model_arch_and_size)
+        model_arch_and_size: load_model_evaluations(version, model_arch_and_size)
         for model_arch_and_size in GLOBAL_APP_CONSTS.MODELS_COMBINATIONS
     }
 
 
 @cache_resource
-def merge_model_evaluations_streamlit_rendered(variation: TVariationName) -> StreamlitRenderer:
+def merge_model_evaluations_streamlit_rendered(version: TVersionName) -> StreamlitRenderer:
     """Load evaluation data for all models with caching"""
     return StreamlitRenderer(
         pd.concat(
             [
                 df.assign(model_arch=key.arch, model_size=key.size)
-                for key, df in load_model_evaluations_dict(variation).items()
+                for key, df in load_model_evaluations_dict(version).items()
             ]
         ),
-        spec=f"model_evals_{variation}.csv",
+        spec=f"model_evals_{version}.csv",
         spec_io_mode="rw",
     )
 
@@ -80,7 +80,7 @@ def load_fulfilled_reqs_df() -> SummarizedDataFulfilledReqs:
 
 
 @CacheWithDependencies()
-def get_merged_evaluations(prompt_idx: TPromptOriginalIndex, variation: TVariationName) -> pd.DataFrame:
+def get_merged_evaluations(prompt_idx: TPromptOriginalIndex, version: TVersionName) -> pd.DataFrame:
     """Get merged evaluations for a specific prompt.
 
     Args:
@@ -90,7 +90,7 @@ def get_merged_evaluations(prompt_idx: TPromptOriginalIndex, variation: TVariati
         tuple of:
             - DataFrame with model-specific evaluations merged
     """
-    model_evaluations = load_model_evaluations_dict(variation)
+    model_evaluations = load_model_evaluations_dict(version)
 
     # Create list to hold each model's evaluation
     model_evals = []
@@ -117,10 +117,10 @@ def get_merged_evaluations(prompt_idx: TPromptOriginalIndex, variation: TVariati
 
 @CacheWithDependencies()
 def load_model_combinations_prompts(
-    variation: TVariationName, model_arch_and_sizes: list[MODEL_ARCH_AND_SIZE], seed: int
+    version: TVersionName, model_arch_and_sizes: list[MODEL_ARCH_AND_SIZE], seed: int
 ) -> ModelCombinationsPrompts:
     return (
-        ModelCombinationsPrompts(get_model_combinations_prompts(variation, model_arch_and_sizes, seed))
+        ModelCombinationsPrompts(get_model_combinations_prompts(version, model_arch_and_sizes, seed))
         .sort_by_prompt_count()
         .change_chosen_prompt_by_seed(seed)
     )

@@ -11,7 +11,7 @@ from src.app.texts import (
 )
 from src.core.consts import GRAPHS_ORDER, model_and_size_to_slurm_gpu_type
 from src.core.names import COLS, DataReqCols, SummarizedDataFulfilledReqsCols
-from src.core.types import MODEL_ARCH_AND_SIZE, TVariationName, TWindowSize
+from src.core.types import MODEL_ARCH_AND_SIZE, TVersionName, TWindowSize
 from src.utils.infra.slurm import SLURM_GPU_TYPE
 from src.utils.streamlit.helpers.session_keys import SessionKeyDescriptor, SessionKeysBase
 from src.utils.types_utils import str_enum_values
@@ -20,7 +20,7 @@ from src.utils.types_utils import str_enum_values
 
 
 class GLOBAL_APP_CONSTS:
-    DEFAULT_VARIATION = TVariationName("v1")
+    DEFAULT_VERSION = TVersionName("v1")
     DEFAULT_WINDOW_SIZE = TWindowSize(9)
     DEFAULT_SEED = 42
     MODELS_COMBINATIONS = list(GRAPHS_ORDER.keys())
@@ -50,7 +50,7 @@ class GLOBAL_APP_CONSTS:
 
 class _AppSessionKeys(SessionKeysBase["_AppSessionKeys"]):
     # Each descriptor creates a SessionKey with the class name prefix
-    variation = SessionKeyDescriptor[TVariationName](GLOBAL_APP_CONSTS.DEFAULT_VARIATION)
+    version = SessionKeyDescriptor[TVersionName](GLOBAL_APP_CONSTS.DEFAULT_VERSION)
     _selected_gpu = SessionKeyDescriptor[Union[SLURM_GPU_TYPE, Literal["smart"]]]("smart")
     window_size = SessionKeyDescriptor[TWindowSize](GLOBAL_APP_CONSTS.DEFAULT_WINDOW_SIZE)
 

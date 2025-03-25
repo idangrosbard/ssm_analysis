@@ -13,7 +13,7 @@ from src.analysis.experiment_results.results_bank import (
 )
 from src.analysis.prompt_filterations import AllPromptFilteration, AnyExistingPromptFilteration
 from src.core.names import COLS, DATASETS, DataReqCols
-from src.core.types import MODEL_ARCH_AND_SIZE, TVariationName
+from src.core.types import MODEL_ARCH_AND_SIZE, TVersionName
 from src.data_ingestion.data_defs import DataReqs, FulfilledReqs, ResultBank
 from src.experiments.infrastructure.base_config import BasePromptFilteration, BaseRunner, CommonParams
 from src.experiments.runners.evaluate_model import EvaluateModelConfig
@@ -21,11 +21,11 @@ from src.utils.types_utils import str_enum_values
 
 
 def get_model_evaluations(
-    variation: TVariationName, model_arch_and_sizes: list[MODEL_ARCH_AND_SIZE]
+    version: TVersionName, model_arch_and_sizes: list[MODEL_ARCH_AND_SIZE]
 ) -> dict[MODEL_ARCH_AND_SIZE, pd.DataFrame]:
     return {
         model_arch_and_size: EvaluateModelConfig(
-            variation=variation,
+            version=version,
             common_params=CommonParams(
                 model_arch=model_arch_and_size[0],
                 model_size=model_arch_and_size[1],
@@ -96,14 +96,14 @@ def result_record_to_data_req(
 
 def result_record_to_config(result_record: ResultRecord, prompt_filteration: BasePromptFilteration) -> BaseRunner:
     data_req = result_record_to_data_req(result_record)
-    return data_req.get_config(result_record.variation)
+    return data_req.get_config(result_record.version)
 
 
 def serialize_result_bank(result_bank: ResultBank) -> str:
     def rec_serialize_dependencies(item):
         if isinstance(item, ResultRecord):
             data_req = result_record_to_data_req(item)
-            config = data_req.get_config(item.variation)
+            config = data_req.get_config(item.version)
             return [rec_serialize_dependencies(data_req._asdict()), rec_serialize_dependencies(config.get_outputs())]
         if isinstance(item, dict):
             res = {}

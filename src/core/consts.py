@@ -280,7 +280,7 @@ def format_params_for_title(params: dict) -> str:
         if param in parts_remaining:
             parts_remaining.remove(param)
             match param:
-                case ResultBankParamNames.experiment_name | ResultBankParamNames.variation:
+                case ResultBankParamNames.experiment_name | ResultBankParamNames.version:
                     ordered_parts.append(params[param])
                 case ResultBankParamNames.model_arch:
                     if ResultBankParamNames.model_size in parts_remaining:
