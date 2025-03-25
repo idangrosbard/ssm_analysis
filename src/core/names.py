@@ -1,7 +1,7 @@
 from enum import StrEnum
-from typing import cast
+from typing import Literal, cast
 
-from src.utils.types_utils import class_values
+from src.utils.types_utils import class_values, literal_guard
 
 
 class DATASETS(StrEnum):
@@ -13,6 +13,7 @@ class BASE_CONFIG_HP_COLS(StrEnum):
     model_arch = "model_arch"
     model_size = "model_size"
     variation = "variation"
+    prompt_filteration = "prompt_filteration"
 
 
 class WINDOW_SIZE_HP_COLS(StrEnum):
@@ -28,7 +29,6 @@ class INFO_FLOW_HP_COLS(StrEnum):
 
 class HEATMAP_HP_COLS(StrEnum):
     window_size = WINDOW_SIZE_HP_COLS.window_size
-    prompt_idx = "prompt_idx"
 
 
 class EXPERIMENT_NAMES(StrEnum):
@@ -101,15 +101,31 @@ class COLS:
         DIFFS = "diffs"
 
 
+class InfoFlowCols:
+    hit: Literal["hit"] = literal_guard(COLS.INFO_FLOW.HIT, "hit")
+    diffs: Literal["diffs"] = literal_guard(COLS.INFO_FLOW.DIFFS, "diffs")
+    true_probs: Literal["true_probs"] = literal_guard(COLS.INFO_FLOW.TRUE_PROBS, "true_probs")
+
+
+class InfoFlowJSONFileCols:
+    data: Literal["data"] = "data"
+    metadata: Literal["metadata"] = "metadata"
+
+
+class InfoFlowJSONMetadataCols:
+    layers_amount: Literal["layers_amount"] = "layers_amount"
+    banned_prompts: Literal["banned_prompts"] = "banned_prompts"
+
+
 class DataReqCols(StrEnum):
     experiment_name = BASE_CONFIG_HP_COLS.experiment_name
     model_arch = BASE_CONFIG_HP_COLS.model_arch
     model_size = BASE_CONFIG_HP_COLS.model_size
+    prompt_filteration = BASE_CONFIG_HP_COLS.prompt_filteration
     window_size = WINDOW_SIZE_HP_COLS.window_size
     source = INFO_FLOW_HP_COLS.source
     feature_category = INFO_FLOW_HP_COLS.feature_category
     target = INFO_FLOW_HP_COLS.target
-    prompt_idx = HEATMAP_HP_COLS.prompt_idx
 
     @classmethod
     def get_cols_by_experiment_name(cls, experiment_name: EXPERIMENT_NAMES) -> list[str]:
@@ -125,7 +141,6 @@ class ResultBankParamNames(StrEnum):
     source = DataReqCols.source
     feature_category = DataReqCols.feature_category
     target = DataReqCols.target
-    prompt_idx = DataReqCols.prompt_idx
     variation = BASE_CONFIG_HP_COLS.variation
     path = "path"
 
@@ -138,7 +153,7 @@ class ExperimentHyperParams(StrEnum):
     source = DataReqCols.source
     feature_category = DataReqCols.feature_category
     target = DataReqCols.target
-    prompt_idx = DataReqCols.prompt_idx
+    prompt_filteration = DataReqCols.prompt_filteration
 
 
 class HeatmapCols:

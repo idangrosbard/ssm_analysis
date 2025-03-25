@@ -56,7 +56,7 @@ def submit_job(
     slurm_nodes=1,
     tasks_per_node=1,
     slurm_cpus_per_task=1,
-    slurm_gpus_per_node=1,
+    slurm_gpus_per_node=0,
     slurm_nodelist=None,
 ):
     # Map GPU type and account type to partition and account options based on `sinfo` data
@@ -109,12 +109,45 @@ def submit_job(
         slurm_cpus_per_task=slurm_cpus_per_task,
         slurm_gpus_per_node=slurm_gpus_per_node,
         slurm_mem=memory_required,
-        slurm_constraint=gpu_type.gpu_name,
+        # slurm_constraint=gpu_type.gpu_name,
         **ommit_none(
             dict(
                 slurm_nodelist=slurm_nodelist,
             )
         ),
+    )
+
+    # Submit the job
+    job = executor.submit(func, *args)
+    return job
+
+
+def submit_cpu_job(
+    func,
+    *args,
+    job_name="test",
+    log_folder="log_test/%j",  # %j is replaced by the job id at runtime
+    timeout_min=1200,
+    memory_required=None,
+    slurm_nodes=1,
+    tasks_per_node=1,
+    slurm_cpus_per_task=1,
+):
+    # Map GPU type and account type to partition and account options based on `sinfo` data
+    partition_account = "studentbatch"
+    account = "gpu-students"
+
+    # Setup the executor
+    executor = submitit.AutoExecutor(folder=log_folder)
+    executor.update_parameters(
+        slurm_job_name=job_name,
+        timeout_min=timeout_min,
+        slurm_partition=partition_account,
+        slurm_account=account,
+        slurm_nodes=slurm_nodes,
+        tasks_per_node=tasks_per_node,
+        slurm_cpus_per_task=slurm_cpus_per_task,
+        slurm_mem=memory_required,
     )
 
     # Submit the job

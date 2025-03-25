@@ -60,3 +60,12 @@ def create_mutable_field(
         _ATTRIBUTE_TYPE,
         pyrallis.field(default_factory=default_factory, is_mutable=True),
     )
+
+
+_T_LITERAL = TypeVar("_T_LITERAL")
+
+
+def literal_guard(value: Any, expected: _T_LITERAL) -> _T_LITERAL:
+    assert value == expected, f"Expected literal {expected!r}, got {value!r}"
+    return value
+    # return cast(_T_LITERAL, value)

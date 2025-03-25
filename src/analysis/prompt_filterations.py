@@ -17,6 +17,24 @@ class AllPromptFilteration(BasePromptFilteration):
 
 
 @dataclass
+class AnyExistingPromptFilteration(BasePromptFilteration):
+    def get_prompt_ids(self) -> list[TPromptOriginalIndex]:
+        raise ValueError("Should not be called")
+
+    def get_dependencies(self) -> TDependencies:
+        raise ValueError("Should not be called")
+
+
+@dataclass
+class AnyExistingCompletePromptFilteration(BasePromptFilteration):
+    def get_prompt_ids(self) -> list[TPromptOriginalIndex]:
+        raise ValueError("Should not be called")
+
+    def get_dependencies(self) -> TDependencies:
+        raise ValueError("Should not be called")
+
+
+@dataclass
 class SelectivePromptFilteration(BasePromptFilteration):
     prompt_ids: tuple[TPromptOriginalIndex, ...]
 

@@ -1,4 +1,5 @@
 import json
+from dataclasses import asdict
 from typing import Optional
 
 import pandas as pd
@@ -10,12 +11,13 @@ from src.analysis.experiment_results.results_bank import (
     InfoFlowRecord,
     ResultRecord,
 )
-from src.analysis.prompt_filterations import AllPromptFilteration
-from src.core.names import COLS, DATASETS
+from src.analysis.prompt_filterations import AllPromptFilteration, AnyExistingPromptFilteration
+from src.core.names import COLS, DATASETS, DataReqCols
 from src.core.types import MODEL_ARCH_AND_SIZE, TVariationName
 from src.data_ingestion.data_defs import DataReqs, FulfilledReqs, ResultBank
-from src.experiments.infrastructure.base_config import BaseRunner, CommonParams
+from src.experiments.infrastructure.base_config import BasePromptFilteration, BaseRunner, CommonParams
 from src.experiments.runners.evaluate_model import EvaluateModelConfig
+from src.utils.types_utils import str_enum_values
 
 
 def get_model_evaluations(
@@ -57,24 +59,25 @@ def get_data_fullfment_options(data_reqs: DataReqs, result_bank: ResultBank) -> 
     return data_reqs_options
 
 
-def result_record_to_data_req(result_record: ResultRecord) -> DataReq:
+def result_record_to_data_req(
+    result_record: ResultRecord, prompt_filteration: Optional[BasePromptFilteration] = None
+) -> DataReq:
+    if prompt_filteration is None:
+        prompt_filteration = AnyExistingPromptFilteration(DATASETS.COUNTER_FACT)
     if isinstance(result_record, InfoFlowRecord):
         target = result_record.target
         feature_category = result_record.feature_category
         source = result_record.source
-        prompt_idx = None
         window_size = result_record.window_size
     elif isinstance(result_record, HeatmapRecord):
         target = None
         feature_category = None
         source = None
-        prompt_idx = tuple(result_record.prompt_idx)
         window_size = result_record.window_size
     elif isinstance(result_record, EvaluateModelRecord):
         target = None
         feature_category = None
         source = None
-        prompt_idx = None
         window_size = None
     else:
         raise ValueError(f"Unknown result record type: {type(result_record)}")
@@ -87,17 +90,21 @@ def result_record_to_data_req(result_record: ResultRecord) -> DataReq:
         source=source,
         feature_category=feature_category,
         target=target,
-        prompt_idx=prompt_idx,
+        prompt_filteration=prompt_filteration,
     ).validate()
 
 
-def result_record_to_config(result_record: ResultRecord) -> BaseRunner:
+def result_record_to_config(result_record: ResultRecord, prompt_filteration: BasePromptFilteration) -> BaseRunner:
     data_req = result_record_to_data_req(result_record)
     return data_req.get_config(result_record.variation)
 
 
 def serialize_result_bank(result_bank: ResultBank) -> str:
     def rec_serialize_dependencies(item):
+        if isinstance(item, ResultRecord):
+            data_req = result_record_to_data_req(item)
+            config = data_req.get_config(item.variation)
+            return [rec_serialize_dependencies(data_req._asdict()), rec_serialize_dependencies(config.get_outputs())]
         if isinstance(item, dict):
             res = {}
             for k, v in item.items():
@@ -105,17 +112,18 @@ def serialize_result_bank(result_bank: ResultBank) -> str:
                     k = str(k)
                 res[k] = rec_serialize_dependencies(v)
             return res
-        if isinstance(item, ResultRecord):
-            data_req = result_record_to_data_req(item)
-            config = data_req.get_config(item.variation)
-            return [data_req._asdict(), rec_serialize_dependencies(config.get_outputs())]
         elif isinstance(item, list):
             return [rec_serialize_dependencies(v) for v in item]
+        elif isinstance(item, BasePromptFilteration):
+            return {item.__class__.__name__: rec_serialize_dependencies(asdict(item))}
         elif isinstance(item, pd.DataFrame):
             return item.to_dict()
         else:
             return item
 
-    return json.dumps(
-        sorted(rec_serialize_dependencies(result_bank.to_rows()), key=lambda x: list(x[0].values())), indent=4
-    )
+    def sort_key(item):
+        assert len(item) == 2
+        item = item[0]
+        return tuple([item[col] for col in str_enum_values(DataReqCols) if col != DataReqCols.prompt_filteration])
+
+    return json.dumps(sorted(rec_serialize_dependencies(result_bank.to_rows()), key=sort_key), indent=4)

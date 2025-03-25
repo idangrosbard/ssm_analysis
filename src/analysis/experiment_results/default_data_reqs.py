@@ -2,6 +2,7 @@ from src.analysis.experiment_results.data_requirements import (
     DataReq,
 )
 from src.analysis.experiment_results.helpers import IDataFulfilled
+from src.analysis.prompt_filterations import Correctness, ModelCorrectPromptFilteration
 from src.core.consts import (
     GRAPHS_ORDER,
     MODEL_SIZE_CAT,
@@ -9,9 +10,10 @@ from src.core.consts import (
     is_falcon,
     is_mamba_arch,
 )
-from src.core.names import EXPERIMENT_NAMES
+from src.core.names import DATASETS, EXPERIMENT_NAMES
 from src.core.types import (
     FeatureCategory,
+    TVariationName,
     TWindowSize,
 )
 from src.data_ingestion.data_defs import DataReqs
@@ -19,6 +21,7 @@ from src.data_ingestion.data_defs import DataReqs
 STANDARD_WINDOW_SIZE_FOR_INFO_FLOW = TWindowSize(9)
 STANDARD_WINDOW_SIZE_FOR_HEATMAP = TWindowSize(5)
 ALL_WINDOW_SIZES = [TWindowSize(size) for size in [1, 3, 5, 9, 12, 15]]
+MODEL_CORRECT_MODEL_VARIATION = TVariationName("v1")
 
 
 def get_default_data_reqs() -> DataReqs:
@@ -57,7 +60,13 @@ def get_default_data_reqs() -> DataReqs:
                     source=source,
                     feature_category=FeatureCategory.ALL,
                     target=TokenType.last,
-                    prompt_idx=None,
+                    prompt_filteration=ModelCorrectPromptFilteration(
+                        DATASETS.COUNTER_FACT,
+                        model_arch=model_arch_and_size.arch,
+                        model_size=model_arch_and_size.size,
+                        correctness=Correctness.correct,
+                        variation=MODEL_CORRECT_MODEL_VARIATION,
+                    ),
                 ).validate()
             ] = None
 
@@ -96,7 +105,13 @@ def get_default_data_reqs() -> DataReqs:
                         source=source,
                         feature_category=feature_category,
                         target=TokenType.last,
-                        prompt_idx=None,
+                        prompt_filteration=ModelCorrectPromptFilteration(
+                            DATASETS.COUNTER_FACT,
+                            model_arch=model_arch_and_size.arch,
+                            model_size=model_arch_and_size.size,
+                            correctness=Correctness.correct,
+                            variation=MODEL_CORRECT_MODEL_VARIATION,
+                        ),
                     ).validate()
                 ] = None
 
@@ -131,7 +146,13 @@ def get_default_data_reqs() -> DataReqs:
                         source=source,
                         feature_category=feature_category,
                         target=TokenType.last,
-                        prompt_idx=None,
+                        prompt_filteration=ModelCorrectPromptFilteration(
+                            DATASETS.COUNTER_FACT,
+                            model_arch=model_arch_and_size.arch,
+                            model_size=model_arch_and_size.size,
+                            correctness=Correctness.correct,
+                            variation=MODEL_CORRECT_MODEL_VARIATION,
+                        ),
                     ).validate()
                 ] = None
 
@@ -165,7 +186,13 @@ def get_default_data_reqs() -> DataReqs:
                     source=source,
                     feature_category=FeatureCategory.ALL,
                     target=TokenType.subject,
-                    prompt_idx=None,
+                    prompt_filteration=ModelCorrectPromptFilteration(
+                        DATASETS.COUNTER_FACT,
+                        model_arch=model_arch_and_size.arch,
+                        model_size=model_arch_and_size.size,
+                        correctness=Correctness.correct,
+                        variation=MODEL_CORRECT_MODEL_VARIATION,
+                    ),
                 ).validate()
             ] = None
 
@@ -206,7 +233,13 @@ def get_default_data_reqs() -> DataReqs:
                         source=source,
                         feature_category=feature_category,
                         target=TokenType.last,
-                        prompt_idx=None,
+                        prompt_filteration=ModelCorrectPromptFilteration(
+                            DATASETS.COUNTER_FACT,
+                            model_arch=model_arch_and_size.arch,
+                            model_size=model_arch_and_size.size,
+                            correctness=Correctness.correct,
+                            variation=MODEL_CORRECT_MODEL_VARIATION,
+                        ),
                     ).validate()
                 ] = None
 
@@ -230,7 +263,13 @@ def get_default_data_reqs() -> DataReqs:
                             source=source,
                             feature_category=feature_category,
                             target=TokenType.last,
-                            prompt_idx=None,
+                            prompt_filteration=ModelCorrectPromptFilteration(
+                                DATASETS.COUNTER_FACT,
+                                model_arch=model_arch_and_size.arch,
+                                model_size=model_arch_and_size.size,
+                                correctness=Correctness.correct,
+                                variation=MODEL_CORRECT_MODEL_VARIATION,
+                            ),
                         ).validate()
                     ] = None
 
@@ -277,7 +316,13 @@ def get_default_data_reqs() -> DataReqs:
                             source=source,
                             feature_category=FeatureCategory.ALL,
                             target=TokenType.last,
-                            prompt_idx=None,
+                            prompt_filteration=ModelCorrectPromptFilteration(
+                                DATASETS.COUNTER_FACT,
+                                model_arch=model_arch_and_size.arch,
+                                model_size=model_arch_and_size.size,
+                                correctness=Correctness.correct,
+                                variation=MODEL_CORRECT_MODEL_VARIATION,
+                            ),
                         ).validate()
                     ] = None
 
@@ -314,7 +359,13 @@ def get_default_data_reqs() -> DataReqs:
                         source=source,
                         feature_category=FeatureCategory.ALL,
                         target=TokenType.last,
-                        prompt_idx=None,
+                        prompt_filteration=ModelCorrectPromptFilteration(
+                            DATASETS.COUNTER_FACT,
+                            model_arch=model_arch_and_size.arch,
+                            model_size=model_arch_and_size.size,
+                            correctness=Correctness.correct,
+                            variation=MODEL_CORRECT_MODEL_VARIATION,
+                        ),
                     ).validate()
                 ] = None
 

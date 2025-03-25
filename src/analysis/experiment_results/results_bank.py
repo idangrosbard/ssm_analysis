@@ -4,8 +4,6 @@ from enum import IntEnum, auto
 from pathlib import Path
 from typing import Optional, Sequence, Type, assert_never
 
-import h5py
-
 from src.core.consts import MODEL_SIZES_PER_ARCH_TO_MODEL_ID, PATHS, reverse_model_id
 from src.core.names import EXPERIMENT_NAMES, INFO_FLOW_HP_COLS, ResultBankParamNames
 from src.core.types import (
@@ -13,7 +11,6 @@ from src.core.types import (
     TModelID,
     TModelSize,
     TokenType,
-    TPromptOriginalIndex,
     TVariationName,
     TWindowSize,
 )
@@ -220,13 +217,10 @@ class EvaluateModelRecord(ResultRecord):
 class HeatmapRecord(ResultRecord):
     experiment_name = EXPERIMENT_NAMES.HEATMAP
     window_size: TWindowSize
-    prompt_idx: list[TPromptOriginalIndex]
 
     def __post_init__(self):
         super().__post_init__()
         self.window_size = TWindowSize(int(self.window_size))
-        assert self.prompt_idx is not None
-        self.prompt_idx = [TPromptOriginalIndex(int(prompt_idx)) for prompt_idx in self.prompt_idx]
 
     @classmethod
     def get_results_output_path(cls, path: Path) -> OutputPath:
@@ -246,25 +240,9 @@ class HeatmapRecord(ResultRecord):
     def init_from_processed_values(
         cls, path: Path, results_base_path: RESULTS_BASE_PATH, values: dict[str, str]
     ) -> Optional["ResultRecord"]:
-        assert ResultBankParamNames.prompt_idx not in values
-        if path.is_dir():
-            prompt_idx = []
-            files = list(path.iterdir())
-            assert len(files) > 0
-            if len(files) == 1:
-                assert files[0].suffix == ".h5"
-                return None
-            for p in files:
-                assert p.suffix == ".csv"
-                prompt_idx.append(int(p.stem.split("idx=")[1]))
-        else:
-            assert path.name == "heatmaps.h5"
-            with h5py.File(path, "r") as f:
-                prompt_idx = list(f.keys())
         return cls(
             path=path,
             results_base_path=results_base_path,
-            prompt_idx=prompt_idx,
             **values,  # type: ignore
         )
 
@@ -393,7 +371,7 @@ class InfoFlowRecord(ResultRecord):
             ]
         ).add(
             [
-                "info_flow.csv",
+                "info_flow.json",
             ]
         )
 

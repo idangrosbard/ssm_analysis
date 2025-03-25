@@ -4,11 +4,15 @@
             "experiment_name": "evaluate",
             "model_arch": "gpt2",
             "model_size": "355M",
+            "prompt_filteration": {
+                "AnyExistingPromptFilteration": {
+                    "dataset_name": "counter_fact"
+                }
+            },
             "window_size": null,
             "source": null,
             "feature_category": null,
-            "target": null,
-            "prompt_idx": null
+            "target": null
         },
         {
             "relation": {
@@ -278,11 +282,15 @@
             "experiment_name": "evaluate",
             "model_arch": "mamba1",
             "model_size": "130M",
+            "prompt_filteration": {
+                "AnyExistingPromptFilteration": {
+                    "dataset_name": "counter_fact"
+                }
+            },
             "window_size": null,
             "source": null,
             "feature_category": null,
-            "target": null,
-            "prompt_idx": null
+            "target": null
         },
         {
             "relation": {
@@ -552,11 +560,15 @@
             "experiment_name": "evaluate",
             "model_arch": "mamba2",
             "model_size": "130M",
+            "prompt_filteration": {
+                "AnyExistingPromptFilteration": {
+                    "dataset_name": "counter_fact"
+                }
+            },
             "window_size": null,
             "source": null,
             "feature_category": null,
-            "target": null,
-            "prompt_idx": null
+            "target": null
         },
         {
             "relation": {
@@ -826,17 +838,15 @@
             "experiment_name": "heatmap",
             "model_arch": "gpt2",
             "model_size": "355M",
+            "prompt_filteration": {
+                "AnyExistingPromptFilteration": {
+                    "dataset_name": "counter_fact"
+                }
+            },
             "window_size": 15,
             "source": null,
             "feature_category": null,
-            "target": null,
-            "prompt_idx": [
-                53,
-                59,
-                74,
-                90,
-                93
-            ]
+            "target": null
         },
         {
             "53": {
@@ -1366,17 +1376,15 @@
             "experiment_name": "heatmap",
             "model_arch": "mamba1",
             "model_size": "130M",
+            "prompt_filteration": {
+                "AnyExistingPromptFilteration": {
+                    "dataset_name": "counter_fact"
+                }
+            },
             "window_size": 15,
             "source": null,
             "feature_category": null,
-            "target": null,
-            "prompt_idx": [
-                53,
-                59,
-                74,
-                90,
-                93
-            ]
+            "target": null
         },
         {
             "53": {
@@ -1916,17 +1924,15 @@
             "experiment_name": "heatmap",
             "model_arch": "mamba2",
             "model_size": "130M",
+            "prompt_filteration": {
+                "AnyExistingPromptFilteration": {
+                    "dataset_name": "counter_fact"
+                }
+            },
             "window_size": 15,
             "source": null,
             "feature_category": null,
-            "target": null,
-            "prompt_idx": [
-                53,
-                59,
-                74,
-                90,
-                93
-            ]
+            "target": null
         },
         {
             "53": {
@@ -2466,11 +2472,15 @@
             "experiment_name": "info_flow",
             "model_arch": "gpt2",
             "model_size": "355M",
+            "prompt_filteration": {
+                "AnyExistingPromptFilteration": {
+                    "dataset_name": "counter_fact"
+                }
+            },
             "window_size": 15,
             "source": "context",
             "feature_category": "ALL",
-            "target": "relation",
-            "prompt_idx": null
+            "target": "relation"
         },
         {
             "0": {
@@ -2860,11 +2870,15 @@
             "experiment_name": "info_flow",
             "model_arch": "gpt2",
             "model_size": "355M",
+            "prompt_filteration": {
+                "AnyExistingPromptFilteration": {
+                    "dataset_name": "counter_fact"
+                }
+            },
             "window_size": 15,
             "source": "context",
             "feature_category": "ALL",
-            "target": "subject",
-            "prompt_idx": null
+            "target": "subject"
         },
         {
             "0": {
@@ -3254,11 +3268,15 @@
             "experiment_name": "info_flow",
             "model_arch": "gpt2",
             "model_size": "355M",
+            "prompt_filteration": {
+                "AnyExistingPromptFilteration": {
+                    "dataset_name": "counter_fact"
+                }
+            },
             "window_size": 15,
             "source": "first",
             "feature_category": "ALL",
-            "target": "last",
-            "prompt_idx": null
+            "target": "last"
         },
         {
             "0": {
@@ -3648,11 +3666,15 @@
             "experiment_name": "info_flow",
             "model_arch": "gpt2",
             "model_size": "355M",
+            "prompt_filteration": {
+                "AnyExistingPromptFilteration": {
+                    "dataset_name": "counter_fact"
+                }
+            },
             "window_size": 15,
             "source": "last",
             "feature_category": "ALL",
-            "target": "last",
-            "prompt_idx": null
+            "target": "last"
         },
         {
             "0": {
@@ -4042,11 +4064,15 @@
             "experiment_name": "info_flow",
             "model_arch": "gpt2",
             "model_size": "355M",
+            "prompt_filteration": {
+                "AnyExistingPromptFilteration": {
+                    "dataset_name": "counter_fact"
+                }
+            },
             "window_size": 15,
             "source": "relation",
             "feature_category": "ALL",
-            "target": "last",
-            "prompt_idx": null
+            "target": "last"
         },
         {
             "0": {
@@ -4436,11 +4462,15 @@
             "experiment_name": "info_flow",
             "model_arch": "gpt2",
             "model_size": "355M",
+            "prompt_filteration": {
+                "AnyExistingPromptFilteration": {
+                    "dataset_name": "counter_fact"
+                }
+            },
             "window_size": 15,
             "source": "relation",
             "feature_category": "ALL",
-            "target": "relation",
-            "prompt_idx": null
+            "target": "relation"
         },
         {
             "0": {
@@ -4830,11 +4860,15 @@
             "experiment_name": "info_flow",
             "model_arch": "gpt2",
             "model_size": "355M",
+            "prompt_filteration": {
+                "AnyExistingPromptFilteration": {
+                    "dataset_name": "counter_fact"
+                }
+            },
             "window_size": 15,
             "source": "subject",
             "feature_category": "ALL",
-            "target": "last",
-            "prompt_idx": null
+            "target": "last"
         },
         {
             "0": {
@@ -5224,11 +5258,15 @@
             "experiment_name": "info_flow",
             "model_arch": "gpt2",
             "model_size": "355M",
+            "prompt_filteration": {
+                "AnyExistingPromptFilteration": {
+                    "dataset_name": "counter_fact"
+                }
+            },
             "window_size": 15,
             "source": "subject",
             "feature_category": "ALL",
-            "target": "relation",
-            "prompt_idx": null
+            "target": "relation"
         },
         {
             "0": {
@@ -5618,11 +5656,15 @@
             "experiment_name": "info_flow",
             "model_arch": "gpt2",
             "model_size": "355M",
+            "prompt_filteration": {
+                "AnyExistingPromptFilteration": {
+                    "dataset_name": "counter_fact"
+                }
+            },
             "window_size": 15,
             "source": "subject",
             "feature_category": "ALL",
-            "target": "subject",
-            "prompt_idx": null
+            "target": "subject"
         },
         {
             "0": {
@@ -6012,11 +6054,15 @@
             "experiment_name": "info_flow",
             "model_arch": "mamba1",
             "model_size": "130M",
+            "prompt_filteration": {
+                "AnyExistingPromptFilteration": {
+                    "dataset_name": "counter_fact"
+                }
+            },
             "window_size": 15,
             "source": "context",
             "feature_category": "ALL",
-            "target": "relation",
-            "prompt_idx": null
+            "target": "relation"
         },
         {
             "0": {
@@ -6028,7 +6074,7 @@
                     false,
                     true,
                     true,
-                    false
+                    true
                 ],
                 "true_probs": [
                     0.3839573264122009,
@@ -6036,9 +6082,9 @@
                     0.3825170695781708,
                     0.5679740309715271,
                     0.004400941077619791,
-                    0.10915536433458328,
-                    0.29246193170547485,
-                    0.11297918856143951
+                    0.4499705731868744,
+                    0.47316116094589233,
+                    0.15193676948547363
                 ],
                 "diffs": [
                     0.0,
@@ -6046,9 +6092,9 @@
                     0.0,
                     0.0,
                     -98.77382029432582,
-                    -75.74166604684821,
-                    -38.18978482493855,
-                    -25.640653711384033
+                    0.0,
+                    1.1731975447918417e-14,
+                    1.8267846361102585e-14
                 ],
                 "original_idx": [
                     93,
@@ -6078,9 +6124,9 @@
                     0.3825170695781708,
                     0.5679740309715271,
                     0.004873333033174276,
-                    0.15164577960968018,
-                    0.2706717550754547,
-                    0.06029081344604492
+                    0.4499705731868744,
+                    0.47316116094589233,
+                    0.15193676948547363
                 ],
                 "diffs": [
                     0.0,
@@ -6088,9 +6134,9 @@
                     0.0,
                     0.0,
                     -98.64220357444509,
-                    -66.2987340403922,
-                    -42.795018396193555,
-                    -60.318484031076345
+                    0.0,
+                    1.1731975447918417e-14,
+                    1.8267846361102585e-14
                 ],
                 "original_idx": [
                     93,
@@ -6120,9 +6166,9 @@
                     0.3825170695781708,
                     0.5679740309715271,
                     0.006982860621064901,
-                    0.16166353225708008,
-                    0.25689762830734253,
-                    0.0849192813038826
+                    0.4499705731868744,
+                    0.47316116094589233,
+                    0.15193676948547363
                 ],
                 "diffs": [
                     0.0,
@@ -6130,9 +6176,9 @@
                     0.0,
                     0.0,
                     -98.0544520296709,
-                    -64.07242120032133,
-                    -45.706104069535044,
-                    -44.10880158143578
+                    0.0,
+                    1.1731975447918417e-14,
+                    1.8267846361102585e-14
                 ],
                 "original_idx": [
                     93,
@@ -6154,7 +6200,7 @@
                     false,
                     true,
                     true,
-                    false
+                    true
                 ],
                 "true_probs": [
                     0.3839573264122009,
@@ -6162,9 +6208,9 @@
                     0.3825170695781708,
                     0.5679740309715271,
                     0.003316712798550725,
-                    0.22917857766151428,
-                    0.26686522364616394,
-                    0.07318723946809769
+                    0.4499705731868744,
+                    0.47316116094589233,
+                    0.15193676948547363
                 ],
                 "diffs": [
                     0.0,
@@ -6172,9 +6218,9 @@
                     0.0,
                     0.0,
                     -99.07590539127776,
-                    -49.06809660054468,
-                    -43.59950780561193,
-                    -51.83046229300342
+                    0.0,
+                    1.1731975447918417e-14,
+                    1.8267846361102585e-14
                 ],
                 "original_idx": [
                     93,
@@ -6204,9 +6250,9 @@
                     0.3825170695781708,
                     0.5679740309715271,
                     0.001037132809869945,
-                    0.31630563735961914,
-                    0.29103758931159973,
-                    0.11593100428581238
+                    0.4499705731868744,
+                    0.47316116094589233,
+                    0.15193676948547363
                 ],
                 "diffs": [
                     0.0,
@@ -6214,9 +6260,9 @@
                     0.0,
                     0.0,
                     -99.71103653034156,
-                    -29.705261586460168,
-                    -38.49081172897009,
-                    -23.697861499617886
+                    0.0,
+                    1.1731975447918417e-14,
+                    1.8267846361102585e-14
                 ],
                 "original_idx": [
                     93,
@@ -6246,9 +6292,9 @@
                     0.3825170695781708,
                     0.5679740309715271,
                     0.0008920743712224066,
-                    0.359945148229599,
-                    0.33176103234291077,
-                    0.1077316552400589
+                    0.4499705731868744,
+                    0.47316116094589233,
+                    0.15193676948547363
                 ],
                 "diffs": [
                     0.0,
@@ -6256,9 +6302,9 @@
                     0.0,
                     0.0,
                     -99.75145236651599,
-                    -20.006958303890578,
-                    -29.88413679607806,
-                    -29.094414995865154
+                    0.0,
+                    1.1731975447918417e-14,
+                    1.8267846361102585e-14
                 ],
                 "original_idx": [
                     93,
@@ -6288,9 +6334,9 @@
                     0.3825170695781708,
                     0.5679740309715271,
                     0.0007314473041333258,
-                    0.44810929894447327,
-                    0.33119967579841614,
-                    0.08300484716892242
+                    0.4499705731868744,
+                    0.47316116094589233,
+                    0.15193676948547363
                 ],
                 "diffs": [
                     0.0,
@@ -6298,9 +6344,9 @@
                     0.0,
                     0.0,
                     -99.79620589681163,
-                    -0.4136435476699782,
-                    -30.002776403642724,
-                    -45.36882187898673
+                    0.0,
+                    1.1731975447918417e-14,
+                    1.8267846361102585e-14
                 ],
                 "original_idx": [
                     93,
@@ -6330,9 +6376,9 @@
                     0.3825170695781708,
                     0.5679740309715271,
                     0.0009444932802580297,
-                    0.4839182198047638,
-                    0.3579598069190979,
-                    0.08304367959499359
+                    0.4499705731868744,
+                    0.47316116094589233,
+                    0.15193676948547363
                 ],
                 "diffs": [
                     0.0,
@@ -6340,9 +6386,9 @@
                     0.0,
                     0.0,
                     -99.73684753511301,
-                    7.544414821942329,
-                    -24.34717037985459,
-                    -45.34326359826069
+                    0.0,
+                    1.1731975447918417e-14,
+                    1.8267846361102585e-14
                 ],
                 "original_idx": [
                     93,
@@ -6372,9 +6418,9 @@
                     0.3825170695781708,
                     0.5679740309715271,
                     0.0015383200952783227,
-                    0.5077009797096252,
-                    0.3873390555381775,
-                    0.07467036694288254
+                    0.4499705731868744,
+                    0.47316116094589233,
+                    0.15193676948547363
                 ],
                 "diffs": [
                     0.0,
@@ -6382,9 +6428,9 @@
                     0.0,
                     0.0,
                     -99.57139692434119,
-                    12.829818206528632,
-                    -18.13802832763124,
-                    -50.85431446531997
+                    0.0,
+                    1.1731975447918417e-14,
+                    1.8267846361102585e-14
                 ],
                 "original_idx": [
                     93,
@@ -6414,9 +6460,9 @@
                     0.3825170695781708,
                     0.5679740309715271,
                     0.0019249978940933943,
-                    0.5260374546051025,
-                    0.49123701453208923,
-                    0.10113055258989334
+                    0.4499705731868744,
+                    0.47316116094589233,
+                    0.15193676948547363
                 ],
                 "diffs": [
                     0.0,
@@ -6424,9 +6470,9 @@
                     0.0,
                     0.0,
                     -99.46366167836096,
-                    16.904856884193915,
-                    3.820231895209166,
-                    -33.439053013719466
+                    0.0,
+                    1.1731975447918417e-14,
+                    1.8267846361102585e-14
                 ],
                 "original_idx": [
                     93,
@@ -6446,11 +6492,15 @@
             "experiment_name": "info_flow",
             "model_arch": "mamba1",
             "model_size": "130M",
+            "prompt_filteration": {
+                "AnyExistingPromptFilteration": {
+                    "dataset_name": "counter_fact"
+                }
+            },
             "window_size": 15,
             "source": "context",
             "feature_category": "ALL",
-            "target": "subject",
-            "prompt_idx": null
+            "target": "subject"
         },
         {
             "0": {
@@ -6460,9 +6510,9 @@
                     true,
                     true,
                     true,
-                    false,
                     true,
-                    false
+                    true,
+                    true
                 ],
                 "true_probs": [
                     0.3839573264122009,
@@ -6470,9 +6520,9 @@
                     0.3825170695781708,
                     0.5679740309715271,
                     0.38853347301483154,
-                    0.19233642518520355,
-                    0.40307241678237915,
-                    0.037194591015577316
+                    0.4499705731868744,
+                    0.47316116094589233,
+                    0.15193676948547363
                 ],
                 "diffs": [
                     0.0,
@@ -6480,9 +6530,9 @@
                     0.0,
                     0.0,
                     8.252269499494485,
-                    -57.25577701159459,
-                    -14.812869260739689,
-                    -75.51969076245668
+                    0.0,
+                    1.1731975447918417e-14,
+                    1.8267846361102585e-14
                 ],
                 "original_idx": [
                     93,
@@ -6512,9 +6562,9 @@
                     0.3825170695781708,
                     0.5679740309715271,
                     0.23864604532718658,
-                    0.6471953392028809,
-                    0.3703621029853821,
-                    0.08395741134881973
+                    0.4499705731868744,
+                    0.47316116094589233,
+                    0.15193676948547363
                 ],
                 "diffs": [
                     0.0,
@@ -6522,9 +6572,9 @@
                     0.0,
                     0.0,
                     -33.509008082912295,
-                    43.83059199164527,
-                    -21.726013554241334,
-                    -44.74187411438496
+                    0.0,
+                    1.1731975447918417e-14,
+                    1.8267846361102585e-14
                 ],
                 "original_idx": [
                     93,
@@ -6554,9 +6604,9 @@
                     0.3825170695781708,
                     0.5679740309715271,
                     0.2289140820503235,
-                    0.5971729755401611,
-                    0.3554762303829193,
-                    0.07027386128902435
+                    0.4499705731868744,
+                    0.47316116094589233,
+                    0.15193676948547363
                 ],
                 "diffs": [
                     0.0,
@@ -6564,9 +6614,9 @@
                     0.0,
                     0.0,
                     -36.220504477885584,
-                    32.7137842172077,
-                    -24.872060573972316,
-                    -53.74795612213994
+                    0.0,
+                    1.1731975447918417e-14,
+                    1.8267846361102585e-14
                 ],
                 "original_idx": [
                     93,
@@ -6588,7 +6638,7 @@
                     true,
                     true,
                     true,
-                    false
+                    true
                 ],
                 "true_probs": [
                     0.3839573264122009,
@@ -6596,9 +6646,9 @@
                     0.3825170695781708,
                     0.5679740309715271,
                     0.23176325857639313,
-                    0.5989987850189209,
-                    0.35966333746910095,
-                    0.06518944352865219
+                    0.4499705731868744,
+                    0.47316116094589233,
+                    0.15193676948547363
                 ],
                 "diffs": [
                     0.0,
@@ -6606,9 +6656,9 @@
                     0.0,
                     0.0,
                     -35.42667371020819,
-                    33.11954619089159,
-                    -23.987138599858625,
-                    -57.094359877853776
+                    0.0,
+                    1.1731975447918417e-14,
+                    1.8267846361102585e-14
                 ],
                 "original_idx": [
                     93,
@@ -6630,7 +6680,7 @@
                     true,
                     true,
                     true,
-                    false
+                    true
                 ],
                 "true_probs": [
                     0.3839573264122009,
@@ -6638,9 +6688,9 @@
                     0.3825170695781708,
                     0.5679740309715271,
                     0.19377893209457397,
-                    0.5518588423728943,
-                    0.3387823700904846,
-                    0.0771293118596077
+                    0.4499705731868744,
+                    0.47316116094589233,
+                    0.15193676948547363
                 ],
                 "diffs": [
                     0.0,
@@ -6648,9 +6698,9 @@
                     0.0,
                     0.0,
                     -46.00977615222021,
-                    22.643318309552065,
-                    -28.400215813735052,
-                    -49.23591430777269
+                    0.0,
+                    1.1731975447918417e-14,
+                    1.8267846361102585e-14
                 ],
                 "original_idx": [
                     93,
@@ -6672,7 +6722,7 @@
                     true,
                     true,
                     true,
-                    false
+                    true
                 ],
                 "true_probs": [
                     0.3839573264122009,
@@ -6680,9 +6730,9 @@
                     0.3825170695781708,
                     0.5679740309715271,
                     0.20176303386688232,
-                    0.3526376485824585,
-                    0.35033687949180603,
-                    0.08157291263341904
+                    0.4499705731868744,
+                    0.47316116094589233,
+                    0.15193676948547363
                 ],
                 "diffs": [
                     0.0,
@@ -6690,9 +6740,9 @@
                     0.0,
                     0.0,
                     -43.78526476054837,
-                    -21.630953312138743,
-                    -25.958234020845943,
-                    -46.31127612515279
+                    0.0,
+                    1.1731975447918417e-14,
+                    1.8267846361102585e-14
                 ],
                 "original_idx": [
                     93,
@@ -6722,9 +6772,9 @@
                     0.3825170695781708,
                     0.5679740309715271,
                     0.21137383580207825,
-                    0.34935757517814636,
-                    0.3386060297489166,
-                    0.08709647506475449
+                    0.4499705731868744,
+                    0.47316116094589233,
+                    0.15193676948547363
                 ],
                 "diffs": [
                     0.0,
@@ -6732,9 +6782,9 @@
                     0.0,
                     0.0,
                     -41.107526049589545,
-                    -22.359906181452246,
-                    -28.43748437170703,
-                    -42.67584116754462
+                    0.0,
+                    1.1731975447918417e-14,
+                    1.8267846361102585e-14
                 ],
                 "original_idx": [
                     93,
@@ -6764,9 +6814,9 @@
                     0.3825170695781708,
                     0.5679740309715271,
                     0.21850723028182983,
-                    0.25747138261795044,
-                    0.3406965732574463,
-                    0.09680363535881042
+                    0.4499705731868744,
+                    0.47316116094589233,
+                    0.15193676948547363
                 ],
                 "diffs": [
                     0.0,
@@ -6774,9 +6824,9 @@
                     0.0,
                     0.0,
                     -39.12003669461498,
-                    -42.78039543909871,
-                    -27.99565953884237,
-                    -36.28689376071956
+                    0.0,
+                    1.1731975447918417e-14,
+                    1.8267846361102585e-14
                 ],
                 "original_idx": [
                     93,
@@ -6806,9 +6856,9 @@
                     0.3825170695781708,
                     0.5679740309715271,
                     0.21784459054470062,
-                    0.27955228090286255,
-                    0.34247756004333496,
-                    0.1145259365439415
+                    0.4499705731868744,
+                    0.47316116094589233,
+                    0.15193676948547363
                 ],
                 "diffs": [
                     0.0,
@@ -6816,9 +6866,9 @@
                     0.0,
                     0.0,
                     -39.30465979760834,
-                    -37.873208258273486,
-                    -27.619257810871222,
-                    -24.62263286775285
+                    0.0,
+                    1.1731975447918417e-14,
+                    1.8267846361102585e-14
                 ],
                 "original_idx": [
                     93,
@@ -6848,9 +6898,9 @@
                     0.3825170695781708,
                     0.5679740309715271,
                     0.22568544745445251,
-                    0.2707754969596863,
-                    0.440152108669281,
-                    0.1659247875213623
+                    0.4499705731868744,
+                    0.47316116094589233,
+                    0.15193676948547363
                 ],
                 "diffs": [
                     0.0,
@@ -6858,9 +6908,9 @@
                     0.0,
                     0.0,
                     -37.12005894786628,
-                    -39.823732240545375,
-                    -6.976281022437085,
-                    9.206473247561096
+                    0.0,
+                    1.1731975447918417e-14,
+                    1.8267846361102585e-14
                 ],
                 "original_idx": [
                     93,
@@ -6880,11 +6930,15 @@
             "experiment_name": "info_flow",
             "model_arch": "mamba1",
             "model_size": "130M",
+            "prompt_filteration": {
+                "AnyExistingPromptFilteration": {
+                    "dataset_name": "counter_fact"
+                }
+            },
             "window_size": 15,
             "source": "first",
             "feature_category": "ALL",
-            "target": "last",
-            "prompt_idx": null
+            "target": "last"
         },
         {
             "0": {
@@ -7314,11 +7368,15 @@
             "experiment_name": "info_flow",
             "model_arch": "mamba1",
             "model_size": "130M",
+            "prompt_filteration": {
+                "AnyExistingPromptFilteration": {
+                    "dataset_name": "counter_fact"
+                }
+            },
             "window_size": 15,
             "source": "last",
             "feature_category": "ALL",
-            "target": "last",
-            "prompt_idx": null
+            "target": "last"
         },
         {
             "0": {
@@ -7748,11 +7806,15 @@
             "experiment_name": "info_flow",
             "model_arch": "mamba1",
             "model_size": "130M",
+            "prompt_filteration": {
+                "AnyExistingPromptFilteration": {
+                    "dataset_name": "counter_fact"
+                }
+            },
             "window_size": 15,
             "source": "relation",
             "feature_category": "ALL",
-            "target": "last",
-            "prompt_idx": null
+            "target": "last"
         },
         {
             "0": {
@@ -8182,11 +8244,15 @@
             "experiment_name": "info_flow",
             "model_arch": "mamba1",
             "model_size": "130M",
+            "prompt_filteration": {
+                "AnyExistingPromptFilteration": {
+                    "dataset_name": "counter_fact"
+                }
+            },
             "window_size": 15,
             "source": "relation",
             "feature_category": "ALL",
-            "target": "relation",
-            "prompt_idx": null
+            "target": "relation"
         },
         {
             "0": {
@@ -8616,11 +8682,15 @@
             "experiment_name": "info_flow",
             "model_arch": "mamba1",
             "model_size": "130M",
+            "prompt_filteration": {
+                "AnyExistingPromptFilteration": {
+                    "dataset_name": "counter_fact"
+                }
+            },
             "window_size": 15,
             "source": "subject",
             "feature_category": "ALL",
-            "target": "last",
-            "prompt_idx": null
+            "target": "last"
         },
         {
             "0": {
@@ -9050,11 +9120,15 @@
             "experiment_name": "info_flow",
             "model_arch": "mamba1",
             "model_size": "130M",
+            "prompt_filteration": {
+                "AnyExistingPromptFilteration": {
+                    "dataset_name": "counter_fact"
+                }
+            },
             "window_size": 15,
             "source": "subject",
             "feature_category": "ALL",
-            "target": "relation",
-            "prompt_idx": null
+            "target": "relation"
         },
         {
             "0": {
@@ -9484,11 +9558,15 @@
             "experiment_name": "info_flow",
             "model_arch": "mamba1",
             "model_size": "130M",
+            "prompt_filteration": {
+                "AnyExistingPromptFilteration": {
+                    "dataset_name": "counter_fact"
+                }
+            },
             "window_size": 15,
             "source": "subject",
             "feature_category": "ALL",
-            "target": "subject",
-            "prompt_idx": null
+            "target": "subject"
         },
         {
             "0": {
@@ -9918,11 +9996,15 @@
             "experiment_name": "info_flow",
             "model_arch": "mamba1",
             "model_size": "130M",
+            "prompt_filteration": {
+                "AnyExistingPromptFilteration": {
+                    "dataset_name": "counter_fact"
+                }
+            },
             "window_size": 15,
             "source": "subject",
             "feature_category": "FAST_DECAY",
-            "target": "last",
-            "prompt_idx": null
+            "target": "last"
         },
         {
             "0": {
@@ -10352,11 +10434,15 @@
             "experiment_name": "info_flow",
             "model_arch": "mamba1",
             "model_size": "130M",
+            "prompt_filteration": {
+                "AnyExistingPromptFilteration": {
+                    "dataset_name": "counter_fact"
+                }
+            },
             "window_size": 15,
             "source": "subject",
             "feature_category": "SLOW_DECAY",
-            "target": "last",
-            "prompt_idx": null
+            "target": "last"
         },
         {
             "0": {
@@ -10786,11 +10872,15 @@
             "experiment_name": "info_flow",
             "model_arch": "mamba2",
             "model_size": "130M",
+            "prompt_filteration": {
+                "AnyExistingPromptFilteration": {
+                    "dataset_name": "counter_fact"
+                }
+            },
             "window_size": 15,
             "source": "context",
             "feature_category": "ALL",
-            "target": "relation",
-            "prompt_idx": null
+            "target": "relation"
         },
         {
             "0": {
@@ -11220,11 +11310,15 @@
             "experiment_name": "info_flow",
             "model_arch": "mamba2",
             "model_size": "130M",
+            "prompt_filteration": {
+                "AnyExistingPromptFilteration": {
+                    "dataset_name": "counter_fact"
+                }
+            },
             "window_size": 15,
             "source": "context",
             "feature_category": "ALL",
-            "target": "subject",
-            "prompt_idx": null
+            "target": "subject"
         },
         {
             "0": {
@@ -11654,11 +11748,15 @@
             "experiment_name": "info_flow",
             "model_arch": "mamba2",
             "model_size": "130M",
+            "prompt_filteration": {
+                "AnyExistingPromptFilteration": {
+                    "dataset_name": "counter_fact"
+                }
+            },
             "window_size": 15,
             "source": "first",
             "feature_category": "ALL",
-            "target": "last",
-            "prompt_idx": null
+            "target": "last"
         },
         {
             "0": {
@@ -12088,11 +12186,15 @@
             "experiment_name": "info_flow",
             "model_arch": "mamba2",
             "model_size": "130M",
+            "prompt_filteration": {
+                "AnyExistingPromptFilteration": {
+                    "dataset_name": "counter_fact"
+                }
+            },
             "window_size": 15,
             "source": "last",
             "feature_category": "ALL",
-            "target": "last",
-            "prompt_idx": null
+            "target": "last"
         },
         {
             "0": {
@@ -12522,11 +12624,15 @@
             "experiment_name": "info_flow",
             "model_arch": "mamba2",
             "model_size": "130M",
+            "prompt_filteration": {
+                "AnyExistingPromptFilteration": {
+                    "dataset_name": "counter_fact"
+                }
+            },
             "window_size": 15,
             "source": "relation",
             "feature_category": "ALL",
-            "target": "last",
-            "prompt_idx": null
+            "target": "last"
         },
         {
             "0": {
@@ -12956,11 +13062,15 @@
             "experiment_name": "info_flow",
             "model_arch": "mamba2",
             "model_size": "130M",
+            "prompt_filteration": {
+                "AnyExistingPromptFilteration": {
+                    "dataset_name": "counter_fact"
+                }
+            },
             "window_size": 15,
             "source": "relation",
             "feature_category": "ALL",
-            "target": "relation",
-            "prompt_idx": null
+            "target": "relation"
         },
         {
             "0": {
@@ -13390,11 +13500,15 @@
             "experiment_name": "info_flow",
             "model_arch": "mamba2",
             "model_size": "130M",
+            "prompt_filteration": {
+                "AnyExistingPromptFilteration": {
+                    "dataset_name": "counter_fact"
+                }
+            },
             "window_size": 15,
             "source": "subject",
             "feature_category": "ALL",
-            "target": "last",
-            "prompt_idx": null
+            "target": "last"
         },
         {
             "0": {
@@ -13824,11 +13938,15 @@
             "experiment_name": "info_flow",
             "model_arch": "mamba2",
             "model_size": "130M",
+            "prompt_filteration": {
+                "AnyExistingPromptFilteration": {
+                    "dataset_name": "counter_fact"
+                }
+            },
             "window_size": 15,
             "source": "subject",
             "feature_category": "ALL",
-            "target": "relation",
-            "prompt_idx": null
+            "target": "relation"
         },
         {
             "0": {
@@ -14258,11 +14376,15 @@
             "experiment_name": "info_flow",
             "model_arch": "mamba2",
             "model_size": "130M",
+            "prompt_filteration": {
+                "AnyExistingPromptFilteration": {
+                    "dataset_name": "counter_fact"
+                }
+            },
             "window_size": 15,
             "source": "subject",
             "feature_category": "ALL",
-            "target": "subject",
-            "prompt_idx": null
+            "target": "subject"
         },
         {
             "0": {
@@ -14692,11 +14814,15 @@
             "experiment_name": "info_flow",
             "model_arch": "mamba2",
             "model_size": "130M",
+            "prompt_filteration": {
+                "AnyExistingPromptFilteration": {
+                    "dataset_name": "counter_fact"
+                }
+            },
             "window_size": 15,
             "source": "subject",
             "feature_category": "FAST_DECAY",
-            "target": "last",
-            "prompt_idx": null
+            "target": "last"
         },
         {
             "0": {
@@ -15126,11 +15252,15 @@
             "experiment_name": "info_flow",
             "model_arch": "mamba2",
             "model_size": "130M",
+            "prompt_filteration": {
+                "AnyExistingPromptFilteration": {
+                    "dataset_name": "counter_fact"
+                }
+            },
             "window_size": 15,
             "source": "subject",
             "feature_category": "SLOW_DECAY",
-            "target": "last",
-            "prompt_idx": null
+            "target": "last"
         },
         {
             "0": {

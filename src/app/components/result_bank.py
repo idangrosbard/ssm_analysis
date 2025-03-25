@@ -41,7 +41,7 @@ class ShowResultsBank(StreamlitComponent):
             grid_builder,
             self.filters,
         )
-        for col in [ResultBankParamNames.window_size, ResultBankParamNames.prompt_idx]:
+        for col in [ResultBankParamNames.window_size]:
             if col not in self.hide_columns:
                 grid_builder.configure_column(col, type=["textColumn"])
 

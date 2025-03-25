@@ -1,22 +1,15 @@
 from typing import NamedTuple, Optional, Union
 
-from src.analysis.prompt_filterations import (
-    AllPromptFilteration,
-    Correctness,
-    ModelCorrectPromptFilteration,
-    SelectivePromptFilteration,
-)
 from src.core.consts import MODEL_ARCH, TokenType
-from src.core.names import DATASETS, EXPERIMENT_NAMES, DataReqCols
+from src.core.names import EXPERIMENT_NAMES, DataReqCols
 from src.core.types import (
     MODEL_ARCH_AND_SIZE,
     FeatureCategory,
     TModelSize,
-    TPromptOriginalIndex,
     TVariationName,
     TWindowSize,
 )
-from src.experiments.infrastructure.base_config import CommonParams
+from src.experiments.infrastructure.base_config import BasePromptFilteration, CommonParams
 from src.experiments.runners.evaluate_model import EvaluateModelConfig
 from src.experiments.runners.heatmap import HeatmapConfig, HeatmapParams
 from src.experiments.runners.info_flow import InfoFlowConfig, InfoFlowParams
@@ -26,11 +19,11 @@ class DataReq(NamedTuple):
     experiment_name: EXPERIMENT_NAMES
     model_arch: MODEL_ARCH
     model_size: TModelSize
+    prompt_filteration: BasePromptFilteration
     window_size: Optional[TWindowSize]
     source: Optional[TokenType]
     feature_category: Optional[FeatureCategory]
     target: Optional[TokenType]
-    prompt_idx: Optional[tuple[TPromptOriginalIndex, ...]]
 
     def validate(self):
         experiment_name = EXPERIMENT_NAMES.get_experiment_name_by_str(self.experiment_name)
@@ -59,13 +52,7 @@ class DataReq(NamedTuple):
                         model_arch=self.model_arch,
                         model_size=self.model_size,
                     ),
-                    prompt_filteration=ModelCorrectPromptFilteration(
-                        DATASETS.COUNTER_FACT,
-                        model_arch=self.model_arch,
-                        model_size=self.model_size,
-                        correctness=Correctness.correct,
-                        variation=variation,
-                    ),
+                    prompt_filteration=self.prompt_filteration,
                     runner_params=InfoFlowParams(
                         window_size=self.window_size,
                         source=self.source,
@@ -74,7 +61,6 @@ class DataReq(NamedTuple):
                     ),
                 )
             case EXPERIMENT_NAMES.HEATMAP:
-                assert self.prompt_idx is not None
                 assert self.window_size is not None
                 config = HeatmapConfig(
                     variation=variation,
@@ -82,10 +68,7 @@ class DataReq(NamedTuple):
                         model_arch=self.model_arch,
                         model_size=self.model_size,
                     ),
-                    prompt_filteration=SelectivePromptFilteration(
-                        dataset_name=DATASETS.COUNTER_FACT,
-                        prompt_ids=self.prompt_idx,
-                    ),
+                    prompt_filteration=self.prompt_filteration,
                     runner_params=HeatmapParams(
                         window_size=self.window_size,
                     ),
@@ -97,9 +80,7 @@ class DataReq(NamedTuple):
                         model_arch=self.model_arch,
                         model_size=self.model_size,
                     ),
-                    prompt_filteration=AllPromptFilteration(
-                        dataset_name=DATASETS.COUNTER_FACT,
-                    ),
+                    prompt_filteration=self.prompt_filteration,
                 )
             case _:
                 raise ValueError(f"Unknown experiment name: {self.experiment_name}")

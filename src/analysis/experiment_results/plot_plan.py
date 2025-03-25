@@ -25,7 +25,6 @@ from src.core.types import (
     TModelSize,
     TokenType,
     TPlotID,
-    TPromptOriginalIndex,
     TWindowSize,
 )
 from src.data_ingestion.data_defs import DataReqs, ResultBank
@@ -159,22 +158,22 @@ class WindowSizeHPD(HyperParamDefinition[TWindowSize]):
         return TWindowSize(9)
 
 
-class PromptIdxHPD(HyperParamDefinition[TPromptOriginalIndex]):
-    def get_result_bank_options(self, result_bank: ResultBank) -> Sequence[TPromptOriginalIndex]:
-        prompts: set[TPromptOriginalIndex] = set()
-        for result in result_bank.to_rows():
-            if isinstance(result, HeatmapRecord):
-                prompts.update(result.prompt_idx)
-        return sorted(prompts)
+# class PromptFilterationHPD(HyperParamDefinition[TPromptOriginalIndex]):
+#     def get_result_bank_options(self, result_bank: ResultBank) -> Sequence[TPromptOriginalIndex]:
+#         prompts: set[TPromptOriginalIndex] = set()
+#         for result in result_bank.to_rows():
+#             if isinstance(result, HeatmapRecord):
+#                 prompts.update(result.prompt_idx)
+#         return sorted(prompts)
 
-    def get_static_options(self):
-        raise NotImplementedError("PromptIdxVariationOption does not have static options")
+#     def get_static_options(self):
+#         raise NotImplementedError("PromptIdxVariationOption does not have static options")
 
-    def get_options(self, result_bank: ResultBank) -> Sequence[TPromptOriginalIndex]:
-        return self.get_result_bank_options(result_bank)
+#     def get_options(self, result_bank: ResultBank) -> Sequence[TPromptOriginalIndex]:
+#         return self.get_result_bank_options(result_bank)
 
-    def get_display_name(self, option: TPromptOriginalIndex) -> str:
-        return f"{option}"
+#     def get_display_name(self, option: TPromptOriginalIndex) -> str:
+#         return f"{option}"
 
 
 # endregion
@@ -196,8 +195,8 @@ def get_hyper_param_definition(option: ExperimentHyperParams) -> HyperParamDefin
             return FeatureCategoryHPD()
         case ExperimentHyperParams.window_size:
             return WindowSizeHPD()
-        case ExperimentHyperParams.prompt_idx:
-            return PromptIdxHPD()
+        # case ExperimentHyperParams.prompt_filteration:
+        #     return PromptFilterationHPD()
         case _:
             raise ValueError(f"Unsupported variation option: {option}")
 
@@ -237,7 +236,7 @@ def get_experiment_hyper_param_hyper_param(experiment_name: EXPERIMENT_NAMES) ->
                 ExperimentHyperParams.feature_category,
             ]
         case EXPERIMENT_NAMES.HEATMAP:
-            general += [ExperimentHyperParams.prompt_idx]
+            pass
         case EXPERIMENT_NAMES.EVALUATE_MODEL | EXPERIMENT_NAMES.FULL_PIPELINE:
             raise NotImplementedError(f"Not implemented for {experiment_name}")
         case _:

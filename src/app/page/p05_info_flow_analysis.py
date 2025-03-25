@@ -190,7 +190,6 @@ class InfoFlowAnalysisPage(StreamlitPage):
             },
             hide_columns=[
                 ResultBankParamNames.experiment_name,
-                ResultBankParamNames.prompt_idx,
             ],
             key="info_flow_results_bank",
         ).render()
@@ -213,10 +212,6 @@ class InfoFlowAnalysisPage(StreamlitPage):
             # Cast selected_result to Dict[str, Any] to avoid type errors
             result_dict = cast(Dict[str, Any], dict(selected_result))
             path = result_dict.pop(ResultBankParamNames.path)
-            for col in [
-                ResultBankParamNames.prompt_idx,
-            ]:
-                result_dict.pop(col)
             # Convert to proper types
 
             model_arch_and_size = MODEL_ARCH_AND_SIZE(
