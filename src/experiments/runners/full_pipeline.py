@@ -24,6 +24,8 @@ from src.core.types import FeatureCategory, TokenType, TWindowSize
 from src.experiments.infrastructure.base_config import (
     BasePromptFilteration,
     BaseRunner,
+    BaseVariantParams,
+    InputParams,
 )
 from src.experiments.runners.heatmap import HEATMAP_PLOT_FUNCS, HeatmapConfig, HeatmapParams
 from src.experiments.runners.info_flow import InfoFlowConfig, InfoFlowParams, skip_task
@@ -36,7 +38,7 @@ class FullPipelineDependencies(TypedDict):
 
 
 @dataclass
-class FullPipelineParam:
+class FullPipelineParam(BaseVariantParams):
     knockout_map: dict[TokenType, list[tuple[TokenType, FeatureCategory]]]
     info_flow_window_size: TWindowSize
 
@@ -52,15 +54,15 @@ class FullPipelineParam:
 class FullPipelineConfig(BaseRunner):
     """Configuration for the full experiment pipeline."""
 
-    runner_params: FullPipelineParam
+    variant_params: FullPipelineParam
 
     @property
     def experiment_name(self):
         return EXPERIMENT_NAMES.FULL_PIPELINE
 
     @property
-    def experiment_output_keys(self):
-        return super().experiment_output_keys
+    def variant_output_keys(self):
+        return super().variant_output_keys
 
     def target_plot_path(self, target_token: TokenType, plot_name: str) -> Path:
         info_flow_config = first_dict_value(self.get_runner_dependencies()["info_flow"][target_token])
@@ -82,15 +84,17 @@ class FullPipelineConfig(BaseRunner):
 
     def get_runner_dependencies(self) -> FullPipelineDependencies:  # type: ignore
         info_flow_deps: dict[TokenType, dict[tuple[TokenType, FeatureCategory], InfoFlowConfig]] = {}
-        for target_token, source in self.runner_params.knockout_map.items():
+        for target_token, source in self.variant_params.knockout_map.items():
             info_flow_deps[target_token] = {}
             for source_token, feature_category in source:
-                if skip_task(self.common_params.model_arch, feature_category):
+                if skip_task(self.variant_params.model_arch, feature_category):
                     continue
                 info_flow_deps[target_token][(source_token, feature_category)] = InfoFlowConfig.init_from_config(
                     config=self,
-                    runner_params=InfoFlowParams(
-                        window_size=self.runner_params.info_flow_window_size,
+                    variant_params=InfoFlowParams(
+                        model_arch=self.variant_params.model_arch,
+                        model_size=self.variant_params.model_size,
+                        window_size=self.variant_params.info_flow_window_size,
                         source=source_token,
                         feature_category=feature_category,
                         target=target_token,
@@ -100,10 +104,14 @@ class FullPipelineConfig(BaseRunner):
         return FullPipelineDependencies(
             heatmap=HeatmapConfig.init_from_config(
                 config=self,
-                runner_params=HeatmapParams(
-                    window_size=self.runner_params.heatmap_window_size,
+                variant_params=HeatmapParams(
+                    model_arch=self.variant_params.model_arch,
+                    model_size=self.variant_params.model_size,
+                    window_size=self.variant_params.heatmap_window_size,
                 ),
-                prompt_filteration=self.runner_params.heatmap_prompts,
+                input_params=InputParams(
+                    filteration=self.variant_params.heatmap_prompts,
+                ),
             ),
             info_flow=info_flow_deps,
         )
@@ -118,30 +126,30 @@ def main_local(args: FullPipelineConfig):
     print(
         " ".join(
             [
-                f"{args.runner_params.with_generation=}",
-                f"{args.runner_params.with_plotting=}",
-                f"{args.runner_params.enforce_no_missing_outputs=}",
+                f"{args.variant_params.with_generation=}",
+                f"{args.variant_params.with_plotting=}",
+                f"{args.variant_params.enforce_no_missing_outputs=}",
             ]
         )
     )
     print(args)
 
-    if args.runner_params.with_plotting:
+    if args.variant_params.with_plotting:
         print("\nPlotting all heatmaps...")
         try:
             args.get_runner_dependencies()["heatmap"].plot(HEATMAP_PLOT_FUNCS._simple_diff_fixed_0_3)
         except Exception as e:
             print(f"Error plotting heatmaps: {e}")
 
-    if args.runner_params.with_plotting:
+    if args.variant_params.with_plotting:
         print("\nPlotting all info flow blocks...")
         for target_token, source_info_flows in args.get_runner_dependencies()["info_flow"].items():
             title = (
                 " - ".join(
                     [
-                        args.common_params.model_arch,
-                        args.common_params.model_size,
-                        f"window_size={args.runner_params.info_flow_window_size}",
+                        args.variant_params.model_arch,
+                        args.variant_params.model_size,
+                        f"window_size={args.variant_params.info_flow_window_size}",
                     ]
                 )
                 + f"\nKnocking out flow to {target_token}"

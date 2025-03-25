@@ -30,7 +30,7 @@ from src.core.types import (
     TWindowSize,
 )
 from src.data_ingestion.datasets.download_dataset import DATASETS, load_splitted_counter_fact
-from src.experiments.infrastructure.base_config import CommonParams
+from src.experiments.infrastructure.base_config import InputParams, MetadataParams
 from src.experiments.runners.full_pipeline import FullPipelineConfig, FullPipelineParam
 
 HEATMAP_SIZE = 5
@@ -69,8 +69,9 @@ def get_test_full_pipeline_config(
     code_version_name: str, model_arch: MODEL_ARCH, model_size: str, with_plotting: bool
 ) -> FullPipelineConfig:
     return FullPipelineConfig(
-        code_version=TCodeVersionName(code_version_name),
-        runner_params=FullPipelineParam(
+        variant_params=FullPipelineParam(
+            model_arch=model_arch,
+            model_size=TModelSize(model_size),
             knockout_map={
                 TokenType.last: [
                     (TokenType.last, FeatureCategory.ALL),
@@ -97,16 +98,18 @@ def get_test_full_pipeline_config(
             enforce_no_missing_outputs=True,
             with_generation=True,
         ),
-        common_params=CommonParams(
-            model_arch=model_arch,
-            model_size=TModelSize(model_size),
-        ),
         # prompt_filteration=AllPromptFilteration(DATASETS.COUNTER_FACT),
-        prompt_filteration=ModelCorrectPromptFilteration(
-            DATASETS.COUNTER_FACT,
-            model_arch=model_arch,
-            model_size=TModelSize(model_size),
-            correctness=Correctness.correct,
+        input_params=InputParams(
+            dataset_name=DATASETS.COUNTER_FACT,
+            filteration=ModelCorrectPromptFilteration(
+                dataset_name=DATASETS.COUNTER_FACT,
+                model_arch=model_arch,
+                model_size=TModelSize(model_size),
+                correctness=Correctness.correct,
+                code_version=TCodeVersionName(code_version_name),
+            ),
+        ),
+        metadata_params=MetadataParams(
             code_version=TCodeVersionName(code_version_name),
         ),
     )

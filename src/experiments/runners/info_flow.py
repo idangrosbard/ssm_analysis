@@ -39,6 +39,7 @@ from src.data_ingestion.helpers.logits_utils import Prompt, get_num_to_masks, ge
 from src.experiments.infrastructure.base_config import (
     BASE_OUTPUT_KEYS,
     BaseRunner,
+    BaseVariantParams,
 )
 from src.experiments.infrastructure.model_interface import ModelInterface
 from src.experiments.runners.evaluate_model import EvaluateModelConfig, EvaluateModelParams
@@ -51,18 +52,6 @@ PRINT_INTERVAL = 100
 
 def skip_task(model_arch: MODEL_ARCH, feature_category: FeatureCategory) -> bool:
     return not (is_mamba_arch(model_arch) or feature_category == FeatureCategory.ALL)
-
-
-@dataclass
-class InfoFlowParams:
-    window_size: TWindowSize
-    source: TokenType
-    feature_category: FeatureCategory
-    target: TokenType
-
-
-class InfoFlowDependencies(TypedDict):
-    evaluate_model: EvaluateModelConfig
 
 
 class InfoFlowMetadata(TypedDict):
@@ -204,18 +193,30 @@ class JSONInfoFlowFile:
 
 
 @dataclass
-class InfoFlowConfig(BaseRunner[InfoFlowParams, TInfoFlowOutput]):
+class InfoFlowParams(BaseVariantParams):
+    window_size: TWindowSize
+    source: TokenType
+    feature_category: FeatureCategory
+    target: TokenType
+
+
+class InfoFlowDependencies(TypedDict):
+    evaluate_model: EvaluateModelConfig
+
+
+@dataclass
+class InfoFlowConfig(BaseRunner[InfoFlowParams]):
     """Configuration for information flow analysis."""
 
-    runner_params: InfoFlowParams
+    variant_params: InfoFlowParams
 
     @property
     def experiment_name(self):
         return EXPERIMENT_NAMES.INFO_FLOW
 
     @property
-    def experiment_output_keys(self):
-        return super().experiment_output_keys + [
+    def variant_output_keys(self):
+        return super().variant_output_keys + [
             BASE_OUTPUT_KEYS.WINDOW_SIZE,
             OutputKey[TokenType](INFO_FLOW_HP_COLS.target),
             OutputKey[TokenType](INFO_FLOW_HP_COLS.source),
@@ -231,9 +232,9 @@ class InfoFlowConfig(BaseRunner[InfoFlowParams, TInfoFlowOutput]):
         return JSONInfoFlowFile(path).load_to_info_flow_output()
 
     def get_outputs(self) -> TInfoFlowOutput:
-        if isinstance(self.prompt_filteration, AnyExistingCompletePromptFilteration):
+        if isinstance(self.input_params.filteration, AnyExistingCompletePromptFilteration):
             prompt_ids = self.output_file.get_existing_prompt_idx()
-        elif isinstance(self.prompt_filteration, AnyExistingPromptFilteration):
+        elif isinstance(self.input_params.filteration, AnyExistingPromptFilteration):
             prompt_ids = None
         else:
             prompt_ids = self.prompt_ids
@@ -253,7 +254,10 @@ class InfoFlowConfig(BaseRunner[InfoFlowParams, TInfoFlowOutput]):
         return InfoFlowDependencies(
             evaluate_model=EvaluateModelConfig.init_from_config(
                 self,
-                runner_params=EvaluateModelParams(),
+                variant_params=EvaluateModelParams(
+                    model_arch=self.variant_params.model_arch,
+                    model_size=self.variant_params.model_size,
+                ),
             ),
         )
 
@@ -292,15 +296,15 @@ def forward_eval(
 
 def run(args: InfoFlowConfig):
     print(args)
-    args.create_experiment_run_path()
+    args.create_experiment_dir()
 
-    model_interface = args.common_params.get_model_interface()
+    model_interface = args.variant_params.get_model_interface()
     tokenizer = model_interface.tokenizer
     device = model_interface.device
-    layers_amount = model_interface.n_layers() - args.runner_params.window_size + 1
+    layers_amount = model_interface.n_layers() - args.variant_params.window_size + 1
 
     windows: dict[TLayerIndex, TWindow] = {
-        layer_idx: TWindow(list(range(layer_idx, layer_idx + args.runner_params.window_size)))
+        layer_idx: TWindow(list(range(layer_idx, layer_idx + args.variant_params.window_size)))
         for layer_idx in range(0, layers_amount)
     }
 
@@ -335,9 +339,9 @@ def run(args: InfoFlowConfig):
                 content[InfoFlowJSONFileCols.data][prompt_id][layer_idx] = forward_eval(
                     get_prompt_row_index(data, prompt_id),
                     window,
-                    args.runner_params.source,
-                    args.runner_params.feature_category,
-                    args.runner_params.target,
+                    args.variant_params.source,
+                    args.variant_params.feature_category,
+                    args.variant_params.target,
                     model_interface,
                     tokenizer,
                     device,

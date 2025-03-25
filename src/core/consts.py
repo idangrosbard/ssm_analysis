@@ -4,17 +4,20 @@ from enum import StrEnum
 from pathlib import Path
 from typing import assert_never
 
-from src.core.names import COLS, DATASETS, ResultBankParamNames
+from src.core.names import COLS, DATASETS, EXPERIMENT_NAMES, ResultBankParamNames
 from src.core.types import (
     MODEL_ARCH,
     MODEL_ARCH_AND_SIZE,
     MODEL_SIZE_CAT,
     FeatureCategory,
+    TCodeVersionName,
     TDatasetID,
     TModelID,
     TModelSize,
     TokenType,
+    TWindowSize,
 )
+from src.utils.infra.output_path import OutputKey
 from src.utils.infra.slurm import SLURM_GPU_TYPE
 
 
@@ -33,7 +36,7 @@ if env_user := os.environ.get("USER"):
 class PathsConfig:
     """Configuration for project paths that can be easily mocked."""
 
-    PROJECT_DIR: Path = Path(__file__).parent.parent.parent.resolve()
+    PROJECT_DIR: Path
 
     def __hash__(self) -> int:
         return hash(str(self.PROJECT_DIR))
@@ -89,7 +92,7 @@ class PathsConfig:
 
 
 # Global instance
-PATHS = PathsConfig()
+PATHS = PathsConfig(PROJECT_DIR=Path(__file__).parent.parent.parent.resolve())
 
 
 @dataclass
@@ -306,3 +309,12 @@ def format_params_for_title(params: dict) -> str:
         ordered_parts.append(f"{param}={params[param]}")
 
     return " | ".join(ordered_parts)
+
+
+class BASE_OUTPUT_KEYS:
+    MODEL_ARCH = OutputKey[MODEL_ARCH]("model_arch", key_display_name="arch=")
+    MODEL_SIZE = OutputKey[TModelSize]("model_size", key_display_name="size=")
+    CODE_VERSION = OutputKey[TCodeVersionName]("code_version", key_display_name="v=")
+    EXPERIMENT_NAME = OutputKey[EXPERIMENT_NAMES]("experiment_name", key_display_name="")
+    DATASET_NAME = OutputKey[DATASETS]("dataset_name", key_display_name="ds=")
+    WINDOW_SIZE = OutputKey[TWindowSize]("window_size", key_display_name="ws=")

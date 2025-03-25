@@ -40,7 +40,7 @@ def test_info_flow_recovery(tmp_path: Path):
             with_plotting=True,
         )
 
-        full_pipeline_config.runner_params.knockout_map = {
+        full_pipeline_config.variant_params.knockout_map = {
             TokenType.last: [
                 (TokenType.last, FeatureCategory.ALL),
             ],
@@ -95,6 +95,6 @@ def test_info_flow_recovery(tmp_path: Path):
     _test_base_path = Path(__file__).parent / "baselines" / "full_pipeline"
     with pytest.MonkeyPatch().context() as mp:
         mp.setattr(PATHS_PROJECT_DIR_PATH, _test_base_path)
-        info_flow_config.code_version = TCodeVersionName("test_baseline")
+        info_flow_config.metadata_params.code_version = TCodeVersionName("test_baseline")
         baseline_data = info_flow_config.get_outputs()
         assert created_data == baseline_data, "Data should be the same"

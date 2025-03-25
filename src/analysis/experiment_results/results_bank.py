@@ -4,7 +4,14 @@ from enum import IntEnum, auto
 from pathlib import Path
 from typing import Optional, Sequence, Type, assert_never
 
-from src.core.consts import MODEL_SIZES_PER_ARCH_TO_MODEL_ID, PATHS, reverse_model_id
+from src.core.consts import (
+    BASE_OUTPUT_KEYS,
+    DATASETS,
+    MODEL_ARCH,
+    MODEL_SIZES_PER_ARCH_TO_MODEL_ID,
+    PATHS,
+    reverse_model_id,
+)
 from src.core.names import EXPERIMENT_NAMES, INFO_FLOW_HP_COLS, ResultBankParamNames
 from src.core.types import (
     FeatureCategory,
@@ -15,7 +22,6 @@ from src.core.types import (
     TWindowSize,
 )
 from src.data_ingestion.data_defs import ResultBank
-from src.experiments.infrastructure.base_config import BASE_OUTPUT_KEYS, DATASETS, MODEL_ARCH
 from src.utils.infra.output_path import OutputKey, OutputPath
 
 

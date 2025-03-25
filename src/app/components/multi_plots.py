@@ -9,7 +9,7 @@ from src.app.components.inputs import choose_heatmap_parms
 from src.core.consts import GRAPHS_ORDER
 from src.core.names import DATASETS
 from src.core.types import MODEL_SIZE_CAT, TPromptOriginalIndex
-from src.experiments.infrastructure.base_config import CommonParams
+from src.experiments.infrastructure.base_config import InputParams, MetadataParams
 from src.experiments.runners.heatmap import HeatmapConfig, HeatmapParams
 from src.utils.streamlit.components.extended_streamlit_pydantic import pydantic_input
 from src.utils.streamlit.helpers.component import StreamlitComponent
@@ -38,17 +38,19 @@ class HeatmapPlotGenerationComponent(StreamlitComponent):
         for i, model_arch_and_size in enumerate(GLOBAL_APP_CONSTS.MODELS_COMBINATIONS):
             model_arch, model_size = model_arch_and_size
             config = HeatmapConfig(
-                code_version=AppSessionKeys.code_version.value,
-                common_params=CommonParams(
+                variant_params=HeatmapParams(
                     model_arch=model_arch,
                     model_size=model_size,
-                ),
-                prompt_filteration=SelectivePromptFilteration(
-                    dataset_name=DATASETS.COUNTER_FACT,
-                    prompt_ids=(self.prompt_idx,),
-                ),
-                runner_params=HeatmapParams(
                     window_size=AppSessionKeys.window_size.value,
+                ),
+                input_params=InputParams(
+                    filteration=SelectivePromptFilteration(
+                        dataset_name=DATASETS.COUNTER_FACT,
+                        prompt_ids=(self.prompt_idx,),
+                    ),
+                ),
+                metadata_params=MetadataParams(
+                    code_version=AppSessionKeys.code_version.value,
                 ),
             )
 

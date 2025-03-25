@@ -9,8 +9,8 @@ from src.core.types import (
     TModelSize,
     TWindowSize,
 )
-from src.experiments.infrastructure.base_config import BasePromptFilteration, CommonParams
-from src.experiments.runners.evaluate_model import EvaluateModelConfig
+from src.experiments.infrastructure.base_config import BasePromptFilteration, InputParams, MetadataParams
+from src.experiments.runners.evaluate_model import EvaluateModelConfig, EvaluateModelParams
 from src.experiments.runners.heatmap import HeatmapConfig, HeatmapParams
 from src.experiments.runners.info_flow import InfoFlowConfig, InfoFlowParams
 
@@ -47,44 +47,50 @@ class DataReq(NamedTuple):
                 assert self.target is not None
                 assert self.window_size is not None
                 config = InfoFlowConfig(
-                    code_version=code_version,
-                    common_params=CommonParams(
+                    variant_params=InfoFlowParams(
                         model_arch=self.model_arch,
                         model_size=self.model_size,
-                    ),
-                    prompt_filteration=self.prompt_filteration,
-                    runner_params=InfoFlowParams(
                         window_size=self.window_size,
                         source=self.source,
                         feature_category=self.feature_category,
                         target=self.target,
                     ),
+                    input_params=InputParams(
+                        filteration=self.prompt_filteration,
+                    ),
+                    metadata_params=MetadataParams(
+                        code_version=code_version,
+                    ),
                 )
             case EXPERIMENT_NAMES.HEATMAP:
                 assert self.window_size is not None
                 config = HeatmapConfig(
-                    code_version=code_version,
-                    common_params=CommonParams(
+                    variant_params=HeatmapParams(
                         model_arch=self.model_arch,
                         model_size=self.model_size,
-                    ),
-                    prompt_filteration=self.prompt_filteration,
-                    runner_params=HeatmapParams(
                         window_size=self.window_size,
+                    ),
+                    input_params=InputParams(
+                        filteration=self.prompt_filteration,
+                    ),
+                    metadata_params=MetadataParams(
+                        code_version=code_version,
                     ),
                 )
             case EXPERIMENT_NAMES.EVALUATE_MODEL:
                 config = EvaluateModelConfig(
-                    code_version=code_version,
-                    common_params=CommonParams(
+                    variant_params=EvaluateModelParams(
                         model_arch=self.model_arch,
                         model_size=self.model_size,
                     ),
-                    prompt_filteration=self.prompt_filteration,
+                    input_params=InputParams(
+                        filteration=self.prompt_filteration,
+                    ),
+                    metadata_params=MetadataParams(
+                        code_version=code_version,
+                    ),
                 )
             case _:
                 raise ValueError(f"Unknown experiment name: {self.experiment_name}")
 
-        if code_version is not None:
-            config.code_version = code_version
         return config

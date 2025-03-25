@@ -2,12 +2,18 @@ import json
 from abc import ABC, abstractmethod
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any, Generic, Mapping, Optional, TypeVar, Union, final
+from typing import Any, Generic, Mapping, Optional, TypeVar, Union, assert_never, cast, final
 
 from submitit.slurm.slurm import SlurmJob
 
-from src.core.consts import MODEL_SIZES_PER_ARCH_TO_MODEL_ID, PATHS, PathsConfig, RunnerPaths
-from src.core.names import EXPERIMENT_NAMES, RunningHistoryCols, SlurmStatus
+from src.core.consts import (
+    BASE_OUTPUT_KEYS,
+    MODEL_SIZES_PER_ARCH_TO_MODEL_ID,
+    PATHS,
+    PathsConfig,
+    RunnerPaths,
+)
+from src.core.names import BASE_CONFIG_HP_COLS, EXPERIMENT_NAMES, RunningHistoryCols, SlurmStatus
 from src.core.types import (
     MODEL_ARCH,
     MODEL_ARCH_AND_SIZE,
@@ -17,7 +23,6 @@ from src.core.types import (
     TModelSize,
     TPromptOriginalIndex,
     TTokenizer,
-    TWindowSize,
 )
 from src.data_ingestion.datasets.download_dataset import DATASETS, get_prompt_ids
 from src.experiments.infrastructure.model_interface import ModelInterface, get_model_interface
@@ -26,31 +31,7 @@ from src.utils.infra.experiment_helper import create_run_id
 from src.utils.infra.git import get_git_commit_hash
 from src.utils.infra.output_path import OutputKey, combine_output_keys
 from src.utils.infra.slurm import SLURM_GPU_TYPE, submit_job
-from src.utils.types_utils import create_mutable_field
-
-
-class BASE_OUTPUT_KEYS:
-    MODEL_ARCH = OutputKey[MODEL_ARCH]("model_arch", key_display_name="arch=")
-    MODEL_SIZE = OutputKey[TModelSize]("model_size", key_display_name="size=")
-    CODE_VERSION = OutputKey[TCodeVersionName]("code_version", key_display_name="v=")
-    EXPERIMENT_NAME = OutputKey[EXPERIMENT_NAMES]("experiment_name", key_display_name="")
-    DATASET_NAME = OutputKey[DATASETS]("dataset_name", key_display_name="ds=")
-    WINDOW_SIZE = OutputKey[TWindowSize]("window_size", key_display_name="ws=")
-
-
-_TRunnerOutputs = TypeVar("_TRunnerOutputs", bound=Any)
-_TRunnerParams = TypeVar("_TRunnerParams", bound=Any)
-
-
-@dataclass
-class RunParams:
-    _batch_size: TBatchSize = TBatchSize(1)  # Adjust based on GPU memory
-    with_slurm: bool = False
-    # slurm_gpu_type: SLURM_GPU_TYPE = SLURM_GPU_TYPE.TITAN_XP_STUDENTRUN
-    slurm_gpu_type: SLURM_GPU_TYPE = SLURM_GPU_TYPE.L40S
-    slurm_gpus_per_node: int = 1
-    overwrite_existing_outputs: bool = False
-
+from src.utils.types_utils import create_mutable_field, str_enum_values
 
 TDependencies = Mapping[str, Union["BaseRunner", "TDependencies"]]
 
@@ -71,10 +52,9 @@ class BasePromptFilteration(ABC):
 
 
 @dataclass
-class CommonParams:
+class BaseVariantParams:
     model_arch: MODEL_ARCH
     model_size: TModelSize
-    dataset_name: DATASETS = DATASETS.COUNTER_FACT
 
     @property
     def model_arch_and_size(self) -> MODEL_ARCH_AND_SIZE:
@@ -93,67 +73,110 @@ class CommonParams:
 
 
 @dataclass
-class BaseRunner(ABC, Generic[_TRunnerParams, _TRunnerOutputs]):
+class InputParams:
+    filteration: BasePromptFilteration
+    dataset_name: DATASETS = DATASETS.COUNTER_FACT
+
+
+@dataclass
+class MetadataParams:
+    code_version: TCodeVersionName = TCodeVersionName("v1")
+    requested_batch_size: TBatchSize = TBatchSize(1)  # Adjust based on GPU memory
+    with_slurm: bool = False
+    # slurm_gpu_type: SLURM_GPU_TYPE = SLURM_GPU_TYPE.TITAN_XP_STUDENTRUN
+    slurm_gpu_type: SLURM_GPU_TYPE = SLURM_GPU_TYPE.L40S
+    slurm_gpus_per_node: int = 1
+    overwrite_existing_outputs: bool = False
+    override_base_project_dir: Optional[str] = None
+
+
+_TVariantParams = TypeVar("_TVariantParams", bound=BaseVariantParams)
+
+
+@dataclass
+class BaseRunner(ABC, Generic[_TVariantParams]):
     """Base configuration class with common parameters across all scripts."""
 
-    code_version: TCodeVersionName
-    common_params: CommonParams
-    prompt_filteration: BasePromptFilteration
-    runner_params: _TRunnerParams
-    run_params: RunParams = create_mutable_field(lambda: RunParams())
-
-    @property
-    def global_path_config(self) -> PathsConfig:
-        return PATHS
+    variant_params: _TVariantParams
+    input_params: InputParams
+    metadata_params: MetadataParams = create_mutable_field(lambda: MetadataParams())
 
     @property
     @abstractmethod
     def experiment_name(self) -> EXPERIMENT_NAMES:
         pass
 
-    @property
-    def batch_size(self) -> TBatchSize:
-        assert self.run_params._batch_size == 1, "Batch size must be 1, unless we debug the issue"
-        return TBatchSize(1) if (self.common_params.model_arch == MODEL_ARCH.MAMBA2) else self.run_params._batch_size
+    @classmethod
+    def init_from_config(
+        cls,
+        config: "BaseRunner",
+        variant_params: _TVariantParams,
+        input_params: Optional[InputParams] = None,
+        metadata_params: Optional[MetadataParams] = None,
+    ):
+        return cls(
+            variant_params=variant_params,
+            input_params=input_params or config.input_params,
+            metadata_params=metadata_params or config.metadata_params,
+        )
 
     @property
-    def model_id(self) -> TModelID:
-        return MODEL_SIZES_PER_ARCH_TO_MODEL_ID[self.common_params.model_arch][self.common_params.model_size]
+    def global_path_config(self) -> PathsConfig:
+        return PathsConfig(PROJECT_DIR=Path(self.metadata_params.override_base_project_dir or PATHS.PROJECT_DIR))
+
+    @property
+    def effective_batch_size(self) -> TBatchSize:
+        assert self.metadata_params.requested_batch_size == 1, "Batch size must be 1, unless we debug the issue"
+        return (
+            TBatchSize(1)
+            if (self.variant_params.model_arch == MODEL_ARCH.MAMBA2)
+            else self.metadata_params.requested_batch_size
+        )
 
     @property
     @abstractmethod
-    def experiment_output_keys(self) -> list[OutputKey]:
-        return []
+    def variant_output_keys(self) -> list[OutputKey]:
+        return [
+            BASE_OUTPUT_KEYS.EXPERIMENT_NAME,
+            BASE_OUTPUT_KEYS.CODE_VERSION,
+            BASE_OUTPUT_KEYS.MODEL_ARCH,
+            BASE_OUTPUT_KEYS.MODEL_SIZE,
+            BASE_OUTPUT_KEYS.DATASET_NAME,
+        ]
+
+    def combine_output_keys(self, sep: str) -> str:
+        class CombineParams:
+            @classmethod
+            def __getattr__(cls, item: str) -> Any:
+                if item in str_enum_values(BASE_CONFIG_HP_COLS):
+                    item = cast(BASE_CONFIG_HP_COLS, item)
+                    match item:
+                        case BASE_CONFIG_HP_COLS.experiment_name:
+                            return self.experiment_name
+                        case BASE_CONFIG_HP_COLS.code_version:
+                            return self.metadata_params.code_version
+                        case BASE_CONFIG_HP_COLS.dataset_name:
+                            return self.input_params.dataset_name
+                        case BASE_CONFIG_HP_COLS.prompt_filteration:
+                            return self.input_params.filteration
+                        case BASE_CONFIG_HP_COLS.model_arch:
+                            return self.variant_params.model_arch
+                        case BASE_CONFIG_HP_COLS.model_size:
+                            return self.variant_params.model_size
+                        case _:
+                            assert_never(item)
+                else:
+                    return getattr(self.variant_params, item)
+
+        return combine_output_keys(
+            CombineParams(),
+            self.variant_output_keys,
+            sep=sep,
+        )
 
     @property
     def variation_relative_path(self) -> Path:
-        path = Path(".")
-
-        path /= combine_output_keys(
-            self,
-            [
-                BASE_OUTPUT_KEYS.EXPERIMENT_NAME,
-                BASE_OUTPUT_KEYS.CODE_VERSION,
-            ],
-            sep="/",
-        )
-
-        path /= combine_output_keys(
-            self.common_params,
-            [
-                BASE_OUTPUT_KEYS.MODEL_ARCH,
-                BASE_OUTPUT_KEYS.MODEL_SIZE,
-                BASE_OUTPUT_KEYS.DATASET_NAME,
-            ],
-            sep="/",
-        )
-
-        path /= combine_output_keys(
-            self.runner_params,
-            self.experiment_output_keys,
-            sep="/",
-        )
-        return path
+        return Path(".") / self.combine_output_keys(sep="/")
 
     @final
     @property
@@ -162,33 +185,7 @@ class BaseRunner(ABC, Generic[_TRunnerParams, _TRunnerOutputs]):
 
     @property
     def job_name(self) -> str:
-        sep = "_"
-        return sep.join(
-            [
-                combine_output_keys(
-                    self,
-                    [
-                        BASE_OUTPUT_KEYS.EXPERIMENT_NAME,
-                        BASE_OUTPUT_KEYS.CODE_VERSION,
-                    ],
-                    sep=sep,
-                ),
-                combine_output_keys(
-                    self.common_params,
-                    [
-                        BASE_OUTPUT_KEYS.MODEL_ARCH,
-                        BASE_OUTPUT_KEYS.MODEL_SIZE,
-                        BASE_OUTPUT_KEYS.DATASET_NAME,
-                    ],
-                    sep=sep,
-                ),
-                combine_output_keys(
-                    self.runner_params,
-                    self.experiment_output_keys,
-                    sep=sep,
-                ),
-            ]
-        )
+        return self.combine_output_keys(sep="_")
 
     def set_running_params(
         self,
@@ -196,17 +193,25 @@ class BaseRunner(ABC, Generic[_TRunnerParams, _TRunnerOutputs]):
         slurm_gpu_type: SLURM_GPU_TYPE,
         slurm_gpus_per_node: Optional[int] = None,
     ):
-        self.run_params.with_slurm = with_slurm
-        self.run_params.slurm_gpu_type = slurm_gpu_type
+        self.metadata_params.with_slurm = with_slurm
+        self.metadata_params.slurm_gpu_type = slurm_gpu_type
         if slurm_gpus_per_node is not None:
-            self.run_params.slurm_gpus_per_node = slurm_gpus_per_node
+            self.metadata_params.slurm_gpus_per_node = slurm_gpus_per_node
+
+    @abstractmethod
+    def get_runner_dependencies(self) -> TDependencies:
+        pass
+
+    @abstractmethod
+    def compute(self) -> None:
+        pass
 
     @abstractmethod
     def is_computed(self) -> bool:
         pass
 
     @abstractmethod
-    def get_runner_dependencies(self) -> TDependencies:
+    def get_outputs(self) -> Any:
         pass
 
     def uncomputed_dependencies(self) -> TDependencies:
@@ -227,9 +232,9 @@ class BaseRunner(ABC, Generic[_TRunnerParams, _TRunnerOutputs]):
 
     @property
     def prompt_ids(self) -> list[TPromptOriginalIndex]:
-        return self.prompt_filteration.get_prompt_ids()
+        return self.input_params.filteration.get_prompt_ids()
 
-    def create_experiment_run_path(self) -> None:
+    def create_experiment_dir(self) -> None:
         self.variation_paths.running_history_path.mkdir(parents=True, exist_ok=True)
         self.variation_paths.plots_path.mkdir(parents=True, exist_ok=True)
         self.variation_paths.outputs_path.mkdir(parents=True, exist_ok=True)
@@ -242,13 +247,41 @@ class BaseRunner(ABC, Generic[_TRunnerParams, _TRunnerOutputs]):
 
         json.dump(params, self.variation_paths.running_history_json_path(run_id).open("w"), indent=4)
 
-    @abstractmethod
-    def get_outputs(self) -> _TRunnerOutputs:
-        pass
+    def compute_with_dependencies(self) -> None:
+        def rec_compute_with_dependencies(dependencies: TDependencies) -> None:
+            for dependency in dependencies.values():
+                if isinstance(dependency, BaseRunner):
+                    dependency.compute_with_dependencies()
+                else:
+                    rec_compute_with_dependencies(dependency)
 
-    @abstractmethod
-    def compute(self) -> None:
-        pass
+        rec_compute_with_dependencies(self.get_runner_dependencies())
+        self.compute()
+
+    def run(self) -> None:
+        if not self.metadata_params.with_slurm:
+            self.compute()
+            return
+        else:
+            job = submit_job(
+                self.compute,
+                log_folder=str(self.global_path_config.get_slurm_job_log_folder(self.job_name, "%j")),
+                job_name=self.job_name,
+                # timeout_min=1200,
+                gpu_type=self.metadata_params.slurm_gpu_type,
+                slurm_gpus_per_node=self.metadata_params.slurm_gpus_per_node,
+            )
+            self.variation_paths.slurm_logs_path.mkdir(parents=True, exist_ok=True)
+            # create symlink to slurm logs
+            (self.variation_paths.slurm_log_folder(job_id=job.job_id)).symlink_to(
+                self.global_path_config.get_slurm_job_log_folder(self.job_name, job.job_id)
+            )
+
+            self.global_path_config.get_slurm_job_submission_file_path(self.job_name, job.job_id).symlink_to(
+                self.variation_paths.variation_base_path
+            )
+
+            print(f"{job}: {self.job_name}")
 
     def get_latest_slurm_job(self) -> Optional[SlurmJob]:
         slurm_logs_path = self.variation_paths.slurm_logs_path
@@ -269,57 +302,3 @@ class BaseRunner(ABC, Generic[_TRunnerParams, _TRunnerOutputs]):
         if latest_job is None:
             return SlurmStatus.NOT_SUBMITTED
         return SlurmStatus[latest_job.state]
-
-    def run(self) -> None:
-        if not self.run_params.with_slurm:
-            self.compute()
-            return
-        else:
-            job = submit_job(
-                self.compute,
-                log_folder=str(self.global_path_config.get_slurm_job_log_folder(self.job_name, "%j")),
-                job_name=self.job_name,
-                # timeout_min=1200,
-                gpu_type=self.run_params.slurm_gpu_type,
-                slurm_gpus_per_node=self.run_params.slurm_gpus_per_node,
-            )
-            self.variation_paths.slurm_logs_path.mkdir(parents=True, exist_ok=True)
-            # create symlink to slurm logs
-            (self.variation_paths.slurm_log_folder(job_id=job.job_id)).symlink_to(
-                self.global_path_config.get_slurm_job_log_folder(self.job_name, job.job_id)
-            )
-
-            self.global_path_config.get_slurm_job_submission_file_path(self.job_name, job.job_id).symlink_to(
-                self.variation_paths.variation_base_path
-            )
-
-            print(f"{job}: {self.job_name}")
-
-    def compute_with_dependencies(self) -> None:
-        def rec_compute_with_dependencies(dependencies: TDependencies) -> None:
-            for dependency in dependencies.values():
-                if isinstance(dependency, BaseRunner):
-                    dependency.compute_with_dependencies()
-                else:
-                    rec_compute_with_dependencies(dependency)
-
-        rec_compute_with_dependencies(self.get_runner_dependencies())
-        self.compute()
-
-    @classmethod
-    def init_from_config(
-        cls,
-        config: "BaseRunner",
-        runner_params: _TRunnerParams,
-        code_version: Optional[TCodeVersionName] = None,
-        common_params: Optional[CommonParams] = None,
-        prompt_filteration: Optional[BasePromptFilteration] = None,
-        run_params: Optional[RunParams] = None,
-    ):
-        return cls(
-            code_version=code_version or config.code_version,
-            common_params=common_params or config.common_params,
-            prompt_filteration=prompt_filteration or config.prompt_filteration,
-            runner_params=runner_params,
-            run_params=run_params or config.run_params,
-        )

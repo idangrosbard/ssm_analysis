@@ -27,11 +27,11 @@ from src.data_ingestion.helpers.logits_utils import (
     logits_to_probs,
     trim_left_and_right_pad,
 )
-from src.experiments.infrastructure.base_config import BaseRunner, create_mutable_field
+from src.experiments.infrastructure.base_config import BaseRunner, BaseVariantParams
 
 
 @dataclass
-class EvaluateModelParams:
+class EvaluateModelParams(BaseVariantParams):
     drop_subject: bool = False
     drop_subj_last_token: bool = False
     with_3_dots: bool = False
@@ -40,18 +40,18 @@ class EvaluateModelParams:
 
 
 @dataclass
-class EvaluateModelConfig(BaseRunner[EvaluateModelParams, pd.DataFrame]):
+class EvaluateModelConfig(BaseRunner[EvaluateModelParams]):
     """Configuration for model evaluation."""
 
-    runner_params: EvaluateModelParams = create_mutable_field(lambda: EvaluateModelParams())
+    variant_params: EvaluateModelParams
 
     @property
     def experiment_name(self) -> EXPERIMENT_NAMES:
         return EXPERIMENT_NAMES.EVALUATE_MODEL
 
     @property
-    def experiment_output_keys(self):
-        return super().experiment_output_keys
+    def variant_output_keys(self):
+        return super().variant_output_keys
 
     @property
     def output_result_path(self) -> Path:
@@ -86,19 +86,19 @@ class EvaluateModelConfig(BaseRunner[EvaluateModelParams, pd.DataFrame]):
         return self.output_result_path.exists()
 
     def get_runner_dependencies(self):
-        return self.prompt_filteration.get_dependencies()
+        return self.input_params.filteration.get_dependencies()
 
 
 def run(args: EvaluateModelConfig):
     print(args)
-    if args.output_result_path.exists() and not args.run_params.overwrite_existing_outputs:
+    if args.output_result_path.exists() and not args.metadata_params.overwrite_existing_outputs:
         print(f"Output file {args.output_result_path} already exists")
         return
 
-    args.create_experiment_run_path()
-    df = get_row_data(args.common_params.dataset_name)
+    args.create_experiment_dir()
+    df = get_row_data(args.input_params.dataset_name)
 
-    model_interface = args.common_params.get_model_interface()
+    model_interface = args.variant_params.get_model_interface()
 
     model = model_interface.model
     tokenizer = model_interface.tokenizer
@@ -120,9 +120,9 @@ def run(args: EvaluateModelConfig):
         if known1000_col in df.columns:
             df[counter_fact_col] = df[known1000_col]
 
-    pbar = tqdm(range(0, len(df), args.batch_size), total=len(df) // args.batch_size)
+    pbar = tqdm(range(0, len(df), args.effective_batch_size), total=len(df) // args.effective_batch_size)
     for start_idx in pbar:
-        idx = df.index[start_idx : start_idx + args.batch_size]
+        idx = df.index[start_idx : start_idx + args.effective_batch_size]
         input_prompt = df.loc[idx, COLS.COUNTER_FACT.PROMPT]
         target = df.loc[idx, COLS.COUNTER_FACT.TARGET_TRUE]
 
@@ -134,7 +134,7 @@ def run(args: EvaluateModelConfig):
             padding_side="right",  # type: ignore
         )["input_ids"]
 
-        if args.common_params.model_arch == MODEL_ARCH.LLAMA2:
+        if args.variant_params.model_arch == MODEL_ARCH.LLAMA2:
             target_token_idx_padded = trim_left_and_right_pad(
                 target_token_idx_padded,
                 trim_value=29871,
@@ -161,30 +161,30 @@ def run(args: EvaluateModelConfig):
             )
         )
 
-        if args.runner_params.with_3_dots:
+        if args.variant_params.with_3_dots:
             input_prompt += " ..."
-        if args.runner_params.drop_subject:
+        if args.variant_params.drop_subject:
             input_prompt = input_prompt.replace(df.loc[idx, COLS.COUNTER_FACT.SUBJECT], "")
-        elif args.runner_params.drop_subj_last_token:
+        elif args.variant_params.drop_subj_last_token:
             subj_idx = get_subj_idx(input_prompt, df.loc[idx, COLS.COUNTER_FACT.SUBJECT], tokenizer)  # type: ignore
 
         input_ids = tokenizer(input_prompt.to_list(), return_tensors="pt", padding=True)["input_ids"]
 
-        if args.runner_params.drop_subj_last_token:
+        if args.variant_params.drop_subj_last_token:
             input_ids = input_ids[:subj_idx] + input_ids[subj_idx + 1 :]  # type: ignore
 
         input_ids = input_ids.to(device)  # type: ignore
 
         # TODO: the logits of the next token is different for different the amount token generated, understand why
         _, first_logits, new_input_ids = generate_next_tokens(
-            model, input_ids, args.runner_params.new_max_tokens, args.common_params.model_arch
+            model, input_ids, args.variant_params.new_max_tokens, args.variant_params.model_arch
         )
 
         # Get the next token probs
         next_probs = logits_to_probs(first_logits)
 
         # Get the top k outputs and their probs
-        top_probs, top_indices = map(torch.Tensor.tolist, torch.topk(next_probs, args.runner_params.top_k_tokens))
+        top_probs, top_indices = map(torch.Tensor.tolist, torch.topk(next_probs, args.variant_params.top_k_tokens))
         top_tokens = list(map(tokenizer.batch_decode, top_indices))  # type: ignore
         top_outputs = list(
             map(

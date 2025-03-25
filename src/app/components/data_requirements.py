@@ -20,7 +20,7 @@ from src.app.texts import HEATMAP_TEXTS
 from src.core.names import DATASETS, HeatmapCols, SlurmStatus, SummarizedDataFulfilledReqsCols
 from src.core.types import MODEL_ARCH_AND_SIZE, TCodeVersionName, TPromptOriginalIndex, TWindowSize
 from src.data_ingestion.data_defs import DataReqs, SummarizedDataFulfilledReqs
-from src.experiments.infrastructure.base_config import CommonParams
+from src.experiments.infrastructure.base_config import InputParams, MetadataParams
 from src.experiments.runners.heatmap import HeatmapConfig, HeatmapParams
 from src.utils.streamlit.components.aagrid import SelectionMode, base_grid_builder, set_aagrid_apply_default_filters
 from src.utils.streamlit.helpers.component import StreamlitComponent
@@ -169,17 +169,19 @@ def get_models_remaining_prompts(
     res = {}
     for model_arch, model_size in model_combinations:
         config = HeatmapConfig(
-            code_version=code_version,
-            common_params=CommonParams(
+            variant_params=HeatmapParams(
                 model_arch=model_arch,
                 model_size=model_size,
-            ),
-            prompt_filteration=SelectivePromptFilteration(
-                dataset_name=DATASETS.COUNTER_FACT,
-                prompt_ids=tuple(prompt_original_indices),
-            ),
-            runner_params=HeatmapParams(
                 window_size=window_size,
+            ),
+            input_params=InputParams(
+                filteration=SelectivePromptFilteration(
+                    dataset_name=DATASETS.COUNTER_FACT,
+                    prompt_ids=tuple(prompt_original_indices),
+                ),
+            ),
+            metadata_params=MetadataParams(
+                code_version=code_version,
             ),
         )
         if config.get_remaining_prompt_original_indices():
@@ -249,7 +251,7 @@ class HeatmapGenerationComponent(StreamlitComponent):
                         ]:
                             st.warning(
                                 HEATMAP_TEXTS.skipping_running(
-                                    heatmap_config.common_params.model_arch, heatmap_config.common_params.model_size
+                                    heatmap_config.variant_params.model_arch, heatmap_config.variant_params.model_size
                                 )
                             )
                             continue
@@ -258,7 +260,7 @@ class HeatmapGenerationComponent(StreamlitComponent):
                         heatmap_config.set_running_params(
                             with_slurm=True,
                             slurm_gpu_type=AppSessionKeys.get_selected_gpu(
-                                heatmap_config.common_params.model_arch_and_size
+                                heatmap_config.variant_params.model_arch_and_size
                             ),
                         )
 

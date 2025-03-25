@@ -15,8 +15,8 @@ from src.analysis.prompt_filterations import AllPromptFilteration, AnyExistingPr
 from src.core.names import COLS, DATASETS, DataReqCols
 from src.core.types import MODEL_ARCH_AND_SIZE, TCodeVersionName
 from src.data_ingestion.data_defs import DataReqs, FulfilledReqs, ResultBank
-from src.experiments.infrastructure.base_config import BasePromptFilteration, BaseRunner, CommonParams
-from src.experiments.runners.evaluate_model import EvaluateModelConfig
+from src.experiments.infrastructure.base_config import BasePromptFilteration, BaseRunner, InputParams, MetadataParams
+from src.experiments.runners.evaluate_model import EvaluateModelConfig, EvaluateModelParams
 from src.utils.types_utils import str_enum_values
 
 
@@ -25,12 +25,16 @@ def get_model_evaluations(
 ) -> dict[MODEL_ARCH_AND_SIZE, pd.DataFrame]:
     return {
         model_arch_and_size: EvaluateModelConfig(
-            code_version=code_version,
-            common_params=CommonParams(
+            variant_params=EvaluateModelParams(
                 model_arch=model_arch_and_size[0],
                 model_size=model_arch_and_size[1],
             ),
-            prompt_filteration=AllPromptFilteration(dataset_name=DATASETS.COUNTER_FACT),
+            input_params=InputParams(
+                filteration=AllPromptFilteration(dataset_name=DATASETS.COUNTER_FACT),
+            ),
+            metadata_params=MetadataParams(
+                code_version=code_version,
+            ),
         )
         .get_outputs()
         .set_index(COLS.ORIGINAL_IDX)

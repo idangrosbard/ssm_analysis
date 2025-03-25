@@ -3,8 +3,8 @@ from enum import StrEnum
 
 from src.core.names import COLS
 from src.core.types import MODEL_ARCH, TCodeVersionName, TModelSize, TPromptOriginalIndex
-from src.experiments.infrastructure.base_config import BasePromptFilteration, CommonParams, TDependencies
-from src.experiments.runners.evaluate_model import EvaluateModelConfig
+from src.experiments.infrastructure.base_config import BasePromptFilteration, InputParams, MetadataParams, TDependencies
+from src.experiments.runners.evaluate_model import EvaluateModelConfig, EvaluateModelParams
 
 
 @dataclass
@@ -90,12 +90,15 @@ class ModelCorrectPromptFilteration(BasePromptFilteration):
     def get_dependencies(self):
         return {
             "evaluate_model": EvaluateModelConfig(
-                common_params=CommonParams(
+                variant_params=EvaluateModelParams(
                     model_arch=self.model_arch,
                     model_size=self.model_size,
-                    dataset_name=self.dataset_name,
                 ),
-                prompt_filteration=AllPromptFilteration(dataset_name=self.dataset_name),
-                code_version=self.code_version,
+                input_params=InputParams(
+                    filteration=AllPromptFilteration(dataset_name=self.dataset_name),
+                ),
+                metadata_params=MetadataParams(
+                    code_version=self.code_version,
+                ),
             ),
         }

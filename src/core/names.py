@@ -13,6 +13,7 @@ class BASE_CONFIG_HP_COLS(StrEnum):
     model_arch = "model_arch"
     model_size = "model_size"
     code_version = "code_version"
+    dataset_name = "dataset_name"
     prompt_filteration = "prompt_filteration"
 
 

@@ -823,14 +823,17 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
                 assert len(prompt_idx) == 1
                 prompt_id = prompt_idx[0]
                 model_arch_and_size = MODEL_ARCH_AND_SIZE(
-                    config.common_params.model_arch, config.common_params.model_size
+                    config.variant_params.model_arch, config.variant_params.model_size
                 )
                 data = cast(
-                    TPromptData, get_model_evaluations(config.code_version, [model_arch_and_size])[model_arch_and_size]
+                    TPromptData,
+                    get_model_evaluations(config.metadata_params.code_version, [model_arch_and_size])[
+                        model_arch_and_size
+                    ],
                 )
-                tokenizer = get_tokenizer(config.common_params.model_arch, config.common_params.model_size)
-                model_id = MODEL_SIZES_PER_ARCH_TO_MODEL_ID[config.common_params.model_arch][
-                    config.common_params.model_size
+                tokenizer = get_tokenizer(config.variant_params.model_arch, config.variant_params.model_size)
+                model_id = MODEL_SIZES_PER_ARCH_TO_MODEL_ID[config.variant_params.model_arch][
+                    config.variant_params.model_size
                 ]
                 prob_mat = config.get_outputs()[prompt_id]
                 prompt = get_prompt_row_index(data, prompt_id)
@@ -842,7 +845,7 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
                 fig, _ = simple_diff_fixed(
                     prob_mat=prob_mat,
                     model_id=model_id,
-                    window_size=config.runner_params.window_size,
+                    window_size=config.variant_params.window_size,
                     last_tok=last_tok,
                     base_prob=prompt.base_prob,
                     true_word=prompt.true_word,
@@ -884,9 +887,9 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
 
             data.append(
                 {
-                    "label": f"{config.runner_params.source} - {config.runner_params.feature_category}",
-                    "color": TOKEN_TYPE_COLORS.get(config.runner_params.source, "#000000"),
-                    "linestyle": TOKEN_TYPE_LINE_STYLES.get(config.runner_params.feature_category, "-"),
+                    "label": f"{config.variant_params.source} - {config.variant_params.feature_category}",
+                    "color": TOKEN_TYPE_COLORS.get(config.variant_params.source, "#000000"),
+                    "linestyle": TOKEN_TYPE_LINE_STYLES.get(config.variant_params.feature_category, "-"),
                     "data": config.get_outputs(),
                 }
             )

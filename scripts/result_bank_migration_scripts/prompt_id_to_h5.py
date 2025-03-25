@@ -57,7 +57,7 @@ def migrate_info_flow(tasks: list[tuple[Path, InfoFlowConfig]]):
         print(f"Migrating {source_path} to {new_config.output_file.path}")
         prev_data = read_prev_info_flow_file(source_path)
         new_data = prev_format_to_new_format(prev_data)
-        new_config.create_experiment_run_path()
+        new_config.create_experiment_dir()
         new_config.output_file.save(new_data)
 
 

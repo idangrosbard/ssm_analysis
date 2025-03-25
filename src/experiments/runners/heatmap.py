@@ -35,6 +35,7 @@ from src.data_ingestion.helpers.logits_utils import Prompt, decode_tokens, get_p
 from src.experiments.infrastructure.base_config import (
     BASE_OUTPUT_KEYS,
     BaseRunner,
+    BaseVariantParams,
 )
 from src.experiments.runners.evaluate_model import EvaluateModelConfig, EvaluateModelParams
 
@@ -49,7 +50,7 @@ plot_suffix_to_function: dict[HEATMAP_PLOT_FUNCS, Callable] = {
 
 
 @dataclass
-class HeatmapParams:
+class HeatmapParams(BaseVariantParams):
     window_size: TWindowSize
 
 
@@ -77,19 +78,22 @@ class HDF5HeatmapFile:
         return result
 
 
+HeatmapExperimentOutput = dict[TPromptOriginalIndex, IHeatmap]
+
+
 @dataclass
-class HeatmapConfig(BaseRunner[HeatmapParams, dict[TPromptOriginalIndex, IHeatmap]]):
+class HeatmapConfig(BaseRunner[HeatmapParams]):
     """Configuration for heatmap generation."""
 
-    runner_params: HeatmapParams
+    variant_params: HeatmapParams
 
     @property
     def experiment_name(self):
         return EXPERIMENT_NAMES.HEATMAP
 
     @property
-    def experiment_output_keys(self):
-        return super().experiment_output_keys + [
+    def variant_output_keys(self):
+        return super().variant_output_keys + [
             BASE_OUTPUT_KEYS.WINDOW_SIZE,
         ]
 
@@ -100,13 +104,13 @@ class HeatmapConfig(BaseRunner[HeatmapParams, dict[TPromptOriginalIndex, IHeatma
 
     def get_remaining_prompt_original_indices(self):
         """Return the list of prompt indices that need to be computed."""
-        if not self.output_hdf5_path.path.exists() or self.run_params.overwrite_existing_outputs:
+        if not self.output_hdf5_path.path.exists() or self.metadata_params.overwrite_existing_outputs:
             return self.prompt_ids
 
         existing_prompts = self.output_hdf5_path.get_existing_prompt_idx()
         return [idx for idx in self.prompt_ids if idx not in existing_prompts]
 
-    def get_outputs(self) -> dict[TPromptOriginalIndex, IHeatmap]:
+    def get_outputs(self) -> HeatmapExperimentOutput:
         """Load all prompt heatmaps from the HDF5 file."""
         if not self.output_hdf5_path.path.exists():
             return {}
@@ -134,15 +138,18 @@ class HeatmapConfig(BaseRunner[HeatmapParams, dict[TPromptOriginalIndex, IHeatma
         return HeatmapDependencies(
             evaluate_model=EvaluateModelConfig.init_from_config(
                 self,
-                runner_params=EvaluateModelParams(),
+                variant_params=EvaluateModelParams(
+                    model_arch=self.variant_params.model_arch,
+                    model_size=self.variant_params.model_size,
+                ),
             ),
         )
 
 
 def plot(args: HeatmapConfig, plot_name: HEATMAP_PLOT_FUNCS):
     data = args.get_runner_dependencies()["evaluate_model"].get_prompt_data()
-    tokenizer = args.common_params.get_tokenizer
-    model_id = args.common_params.model_id
+    tokenizer = args.variant_params.get_tokenizer
+    model_id = args.variant_params.model_id
 
     prob_mats = args.get_outputs()
     for prompt_idx, prob_mat in tqdm(prob_mats.items(), desc="Plotting heatmaps"):
@@ -155,7 +162,7 @@ def plot(args: HeatmapConfig, plot_name: HEATMAP_PLOT_FUNCS):
         fig, _ = simple_diff_fixed(
             prob_mat=prob_mat,
             model_id=model_id,
-            window_size=args.runner_params.window_size,
+            window_size=args.variant_params.window_size,
             last_tok=last_tok,
             base_prob=prompt.base_prob,
             true_word=prompt.true_word,
@@ -175,8 +182,8 @@ def run(args: HeatmapConfig):
         print("All heatmaps already exist")
         return
 
-    args.create_experiment_run_path()
-    model_interface = args.common_params.get_model_interface()
+    args.create_experiment_dir()
+    model_interface = args.variant_params.get_model_interface()
     tokenizer = model_interface.tokenizer
     device = model_interface.device
 
@@ -202,8 +209,8 @@ def run(args: HeatmapConfig):
         return probs
 
     windows = [
-        TWindow(list(range(i, i + args.runner_params.window_size)))
-        for i in range(0, n_layers - args.runner_params.window_size + 1)
+        TWindow(list(range(i, i + args.variant_params.window_size)))
+        for i in range(0, n_layers - args.variant_params.window_size + 1)
     ]
 
     # Prepare HDF5 file for storing all heatmaps
