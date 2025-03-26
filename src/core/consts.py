@@ -20,6 +20,8 @@ from src.core.types import (
 from src.utils.infra.output_path import OutputKey
 from src.utils.infra.slurm import SLURM_GPU_TYPE
 
+# os.umask(0o002)  # Set umask to 0o002 which is -rwxr-x---
+
 
 class C_ACTIVE_USERS(StrEnum):
     nirendy = "nirendy"
