@@ -11,7 +11,7 @@ The experiment ensures proper data flow between experiments and maintains
 consistent configuration across all steps.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TypedDict
 
@@ -28,7 +28,7 @@ from src.experiments.infrastructure.base_config import (
     InputParams,
 )
 from src.experiments.runners.heatmap import HEATMAP_PLOT_FUNCS, HeatmapConfig, HeatmapParams
-from src.experiments.runners.info_flow import InfoFlowConfig, InfoFlowParams, skip_task
+from src.experiments.runners.info_flow import InfoFlowConfig, InfoFlowParams
 from src.utils.types_utils import first_dict_value
 
 
@@ -37,8 +37,9 @@ class FullPipelineDependencies(TypedDict):
     info_flow: dict[TokenType, dict[tuple[TokenType, FeatureCategory], InfoFlowConfig]]
 
 
-@dataclass
+@dataclass(frozen=True)
 class FullPipelineParam(BaseVariantParams):
+    experiment_name: EXPERIMENT_NAMES = field(init=False, default=EXPERIMENT_NAMES.FULL_PIPELINE)
     knockout_map: dict[TokenType, list[tuple[TokenType, FeatureCategory]]]
     info_flow_window_size: TWindowSize
 
@@ -56,13 +57,13 @@ class FullPipelineConfig(BaseRunner):
 
     variant_params: FullPipelineParam
 
-    @property
-    def experiment_name(self):
-        return EXPERIMENT_NAMES.FULL_PIPELINE
+    @staticmethod
+    def _get_variant_params():
+        return FullPipelineParam
 
-    @property
-    def variant_output_keys(self):
-        return super().variant_output_keys
+    @classmethod
+    def get_variant_output_keys(cls):
+        return super().get_variant_output_keys()
 
     def target_plot_path(self, target_token: TokenType, plot_name: str) -> Path:
         info_flow_config = first_dict_value(self.get_runner_dependencies()["info_flow"][target_token])
@@ -79,7 +80,7 @@ class FullPipelineConfig(BaseRunner):
         """Get outputs from all experiments."""
         return {}
 
-    def compute(self) -> None:
+    def _compute_impl(self) -> None:
         main_local(self)
 
     def get_runner_dependencies(self) -> FullPipelineDependencies:  # type: ignore
@@ -87,10 +88,8 @@ class FullPipelineConfig(BaseRunner):
         for target_token, source in self.variant_params.knockout_map.items():
             info_flow_deps[target_token] = {}
             for source_token, feature_category in source:
-                if skip_task(self.variant_params.model_arch, feature_category):
-                    continue
-                info_flow_deps[target_token][(source_token, feature_category)] = InfoFlowConfig.init_from_config(
-                    config=self,
+                config = InfoFlowConfig.init_from_runner(
+                    runner=self,
                     variant_params=InfoFlowParams(
                         model_arch=self.variant_params.model_arch,
                         model_size=self.variant_params.model_size,
@@ -100,10 +99,12 @@ class FullPipelineConfig(BaseRunner):
                         target=target_token,
                     ),
                 )
+                if not config.should_skip_task():
+                    info_flow_deps[target_token][(source_token, feature_category)] = config
 
         return FullPipelineDependencies(
-            heatmap=HeatmapConfig.init_from_config(
-                config=self,
+            heatmap=HeatmapConfig.init_from_runner(
+                runner=self,
                 variant_params=HeatmapParams(
                     model_arch=self.variant_params.model_arch,
                     model_size=self.variant_params.model_size,
@@ -117,7 +118,7 @@ class FullPipelineConfig(BaseRunner):
         )
 
     def is_computed(self) -> bool:
-        return True
+        return not self.variant_params.with_plotting
 
 
 def main_local(args: FullPipelineConfig):

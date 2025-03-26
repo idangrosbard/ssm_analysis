@@ -4,8 +4,8 @@ from dataclasses import asdict, dataclass, field
 from itertools import product
 from typing import Any, Dict, Generic, List, NamedTuple, Optional, Sequence, TypeVar, assert_never, cast
 
-from src.analysis.experiment_results.data_requirements import DataReq
-from src.analysis.experiment_results.results_bank import HeatmapRecord, InfoFlowRecord
+from src.analysis.experiment_results.helpers import init_variant_params_from_values
+from src.analysis.prompt_filterations import AnyExistingCompletePromptFilteration
 from src.core.consts import GRAPHS_ORDER
 from src.core.names import (
     EXPERIMENT_NAMES,
@@ -25,9 +25,12 @@ from src.core.types import (
     TModelSize,
     TokenType,
     TPlotID,
+    TPromptOriginalIndex,
     TWindowSize,
 )
-from src.data_ingestion.data_defs import DataReqs, ResultBank
+from src.data_ingestion.data_defs import DataReqiermentCollection, DataReqs, ResultBank
+from src.experiments.runners.heatmap import HeatmapConfig
+from src.experiments.runners.info_flow import InfoFlowConfig
 from src.utils.types_utils import str_enum_values
 
 _T = TypeVar("_T")
@@ -58,7 +61,12 @@ class HyperParamDefinition(ABC, Generic[_T]):
 
 class ModelArchAndSizeHPD(HyperParamDefinition[MODEL_ARCH_AND_SIZE]):
     def get_result_bank_options(self, result_bank: ResultBank) -> list[MODEL_ARCH_AND_SIZE]:
-        return list([MODEL_ARCH_AND_SIZE(result.model_arch, result.model_size) for result in result_bank.to_rows()])
+        return list(
+            [
+                MODEL_ARCH_AND_SIZE(result.variant_params.model_arch, result.variant_params.model_size)
+                for result in result_bank.to_rows()
+            ]
+        )
 
     def get_static_options(self) -> Sequence[MODEL_ARCH_AND_SIZE]:
         return list(GRAPHS_ORDER.keys())
@@ -69,7 +77,7 @@ class ModelArchAndSizeHPD(HyperParamDefinition[MODEL_ARCH_AND_SIZE]):
 
 class ModelArchHPD(HyperParamDefinition[MODEL_ARCH]):
     def get_result_bank_options(self, result_bank: ResultBank):
-        return list(set([result.model_arch for result in result_bank.to_rows()]))
+        return list(set([result.variant_params.model_arch for result in result_bank.to_rows()]))
 
     def get_static_options(self):
         return str_enum_values(MODEL_ARCH)
@@ -80,7 +88,7 @@ class ModelArchHPD(HyperParamDefinition[MODEL_ARCH]):
 
 class ModelSizeHPD(HyperParamDefinition[TModelSize]):
     def get_result_bank_options(self, result_bank: ResultBank):
-        return list(set([result.model_size for result in result_bank.to_rows()]))
+        return list(set([result.variant_params.model_size for result in result_bank.to_rows()]))
 
     def get_static_options(self):
         return list({size: size for _, size in GRAPHS_ORDER.keys()}.keys())
@@ -93,8 +101,8 @@ class SourceHPD(HyperParamDefinition[TokenType]):
     def get_result_bank_options(self, result_bank):
         sources = set()
         for result in result_bank.to_rows():
-            if isinstance(result, InfoFlowRecord):
-                sources.add(result.source)
+            if isinstance(result, InfoFlowConfig):
+                sources.add(result.variant_params.source)
         return list(sources)
 
     def get_static_options(self):
@@ -108,8 +116,8 @@ class TargetHPD(HyperParamDefinition[TokenType]):
     def get_result_bank_options(self, result_bank):
         targets = set()
         for result in result_bank.to_rows():
-            if isinstance(result, InfoFlowRecord):
-                targets.add(result.target)
+            if isinstance(result, InfoFlowConfig):
+                targets.add(result.variant_params.target)
         return list(targets)
 
     def get_static_options(self):
@@ -126,8 +134,8 @@ class FeatureCategoryHPD(HyperParamDefinition[FeatureCategory]):
     def get_result_bank_options(self, result_bank):
         features = set()
         for result in result_bank.to_rows():
-            if isinstance(result, InfoFlowRecord):
-                features.add(result.feature_category)
+            if isinstance(result, InfoFlowConfig):
+                features.add(result.variant_params.feature_category)
         return list(features)
 
     def get_static_options(self):
@@ -144,8 +152,8 @@ class WindowSizeHPD(HyperParamDefinition[TWindowSize]):
     def get_result_bank_options(self, result_bank):
         window_sizes = set()
         for result in result_bank.to_rows():
-            if isinstance(result, InfoFlowRecord) or isinstance(result, HeatmapRecord):
-                window_sizes.add(result.window_size)
+            if isinstance(result, InfoFlowConfig) or isinstance(result, HeatmapConfig):
+                window_sizes.add(result.variant_params.window_size)
         return list(window_sizes)
 
     def get_static_options(self):
@@ -158,22 +166,22 @@ class WindowSizeHPD(HyperParamDefinition[TWindowSize]):
         return TWindowSize(9)
 
 
-# class PromptFilterationHPD(HyperParamDefinition[TPromptOriginalIndex]):
-#     def get_result_bank_options(self, result_bank: ResultBank) -> Sequence[TPromptOriginalIndex]:
-#         prompts: set[TPromptOriginalIndex] = set()
-#         for result in result_bank.to_rows():
-#             if isinstance(result, HeatmapRecord):
-#                 prompts.update(result.prompt_idx)
-#         return sorted(prompts)
+class PromptFilterationHPD(HyperParamDefinition[TPromptOriginalIndex]):
+    def get_result_bank_options(self, result_bank: ResultBank) -> Sequence[TPromptOriginalIndex]:
+        prompts: set[TPromptOriginalIndex] = set()
+        for result in result_bank.to_rows():
+            if isinstance(result, HeatmapConfig):
+                prompts.update(set(result.input_params.filteration.get_prompt_ids()))
+        return sorted(prompts)
 
-#     def get_static_options(self):
-#         raise NotImplementedError("PromptIdxVariationOption does not have static options")
+    def get_static_options(self):
+        raise NotImplementedError("PromptIdxVariationOption does not have static options")
 
-#     def get_options(self, result_bank: ResultBank) -> Sequence[TPromptOriginalIndex]:
-#         return self.get_result_bank_options(result_bank)
+    def get_options(self, result_bank: ResultBank) -> Sequence[TPromptOriginalIndex]:
+        return self.get_result_bank_options(result_bank)
 
-#     def get_display_name(self, option: TPromptOriginalIndex) -> str:
-#         return f"{option}"
+    def get_display_name(self, option: TPromptOriginalIndex) -> str:
+        return f"{option}"
 
 
 # endregion
@@ -195,8 +203,8 @@ def get_hyper_param_definition(option: ExperimentHyperParams) -> HyperParamDefin
             return FeatureCategoryHPD()
         case ExperimentHyperParams.window_size:
             return WindowSizeHPD()
-        # case ExperimentHyperParams.prompt_filteration:
-        #     return PromptFilterationHPD()
+        case ExperimentHyperParams.prompt_idx:
+            return PromptFilterationHPD()
         case _:
             raise ValueError(f"Unsupported variation option: {option}")
 
@@ -398,7 +406,7 @@ class PlotPlan:
 
     def get_data_requirements_per_cell(self, result_bank: ResultBank) -> dict[Cell, DataReqs]:
         """Generate data requirements for this plot plan based on the result bank."""
-        data_reqs_per_cell: dict[Cell, list[DataReq]] = defaultdict(list)
+        data_reqs_per_cell = defaultdict(DataReqiermentCollection)
         experiment_orientations = get_experiment_orientations(self.experiment_name)
         experiment_hyper_param_defs = get_experiment_hyper_param_hyper_param(self.experiment_name)
 
@@ -459,8 +467,6 @@ class PlotPlan:
                     data_req_params[col] = params[ExperimentHyperParams[col]]
                 elif col in experiment_hyper_param_defs:
                     data_req_params[col] = get_hyper_param_definition(ExperimentHyperParams[col]).default_fix_value()
-                else:
-                    data_req_params[col] = None
 
             data_reqs_per_cell[
                 Cell(
@@ -471,14 +477,14 @@ class PlotPlan:
                         for orientation in Cell._fields
                     }
                 )
-            ].append(DataReq.create_and_validate(**data_req_params))
+            ].add_data_req(init_variant_params_from_values(data_req_params), AnyExistingCompletePromptFilteration())
 
-        return {cell: DataReqs(set(data_reqs)) for cell, data_reqs in data_reqs_per_cell.items()}
+        return {cell: DataReqs.from_data_reqs_collection(data_reqs) for cell, data_reqs in data_reqs_per_cell.items()}
 
     def get_data_requirements(self, result_bank: ResultBank) -> DataReqs:
         data_reqs_per_cell = self.get_data_requirements_per_cell(result_bank)
-        data_reqs: set[DataReq] = set()
+        data_reqs_collection = DataReqiermentCollection()
         for data_reqs_per_cell in data_reqs_per_cell.values():
-            for data_req in data_reqs_per_cell.to_rows():
-                data_reqs.add(data_req)
-        return DataReqs(data_reqs)
+            for data_req, prompt_filteration in data_reqs_per_cell.to_rows():
+                data_reqs_collection.add_data_req(data_req, prompt_filteration)
+        return DataReqs.from_data_reqs_collection(data_reqs_collection)

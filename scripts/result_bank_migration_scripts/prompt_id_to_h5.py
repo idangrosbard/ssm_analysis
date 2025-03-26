@@ -6,11 +6,11 @@ from typing import cast
 import streamlit as st
 from tqdm import tqdm
 
-from src.analysis.experiment_results.helpers import result_record_to_data_req
 from src.core.consts import PATHS
 from src.core.names import EXPERIMENT_NAMES
 from src.core.types import TCodeVersionName, TInfoFlowOutput, TLayerIndex, TPromptOriginalIndex
 from src.data_ingestion.data_defs import ResultBank
+from src.experiments.infrastructure.base_config import MetadataParams
 from src.experiments.runners.evaluate_model import EvaluateModelConfig
 from src.experiments.runners.heatmap import HeatmapConfig
 from src.experiments.runners.info_flow import (
@@ -85,9 +85,12 @@ class MigrateResults(StreamlitComponent):
                 PATHS.PROJECT_DIR = TEST_BASE_PATH
 
             for result_record in rows:
-                data_req = result_record_to_data_req(result_record)
-                new_config = data_req.get_config(TCodeVersionName("v2"))
-                source_path = result_record.path
+                new_config = result_record.init_from_runner(
+                    result_record,
+                    result_record.variant_params,
+                    metadata_params=MetadataParams(code_version=TCodeVersionName("v2")),
+                )
+                source_path = result_record.path  # type: ignore
                 if isinstance(new_config, EvaluateModelConfig):
                     assert isinstance(new_config, EvaluateModelConfig)
                     new_path = new_config.output_result_path

@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Callable, Generic, List, Optional, Tuple, TypeVar, Union, assert_never, cast
+from typing import Any, Callable, Generic, List, Optional, Sequence, Tuple, TypeVar, Union, assert_never, cast
 
 from src.utils.file_system import fast_relative_to
 
@@ -107,7 +107,7 @@ def resolve_path_component(component: IPathComponent, obj: object) -> Union[Path
 
 
 class OutputPath:
-    def __init__(self, base_path: Path, path_components: list[IPathComponent]):
+    def __init__(self, base_path: Path, path_components: Sequence[IPathComponent]):
         self.base_path = base_path
         self.path_components = path_components
 
@@ -117,8 +117,8 @@ class OutputPath:
             path /= resolve_path_component(component, obj)
         return path
 
-    def add(self, component: list[IPathComponent]) -> "OutputPath":
-        return OutputPath(self.base_path, self.path_components + component)
+    def add(self, component: Sequence[IPathComponent]) -> "OutputPath":
+        return OutputPath(self.base_path, list(self.path_components) + list(component))
 
     def enforce_value(self, key_name: str, value: str) -> "OutputPath":
         new_components: list[IPathComponent] = []

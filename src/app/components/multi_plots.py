@@ -7,7 +7,6 @@ from src.analysis.prompt_filterations import SelectivePromptFilteration
 from src.app.app_consts import GLOBAL_APP_CONSTS, AppSessionKeys
 from src.app.components.inputs import choose_heatmap_parms
 from src.core.consts import GRAPHS_ORDER
-from src.core.names import DATASETS
 from src.core.types import MODEL_SIZE_CAT, TPromptOriginalIndex
 from src.experiments.infrastructure.base_config import InputParams, MetadataParams
 from src.experiments.runners.heatmap import HeatmapConfig, HeatmapParams
@@ -45,7 +44,6 @@ class HeatmapPlotGenerationComponent(StreamlitComponent):
                 ),
                 input_params=InputParams(
                     filteration=SelectivePromptFilteration(
-                        dataset_name=DATASETS.COUNTER_FACT,
                         prompt_ids=(self.prompt_idx,),
                     ),
                 ),

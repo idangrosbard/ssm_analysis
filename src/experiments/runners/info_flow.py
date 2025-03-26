@@ -1,11 +1,12 @@
 import json
 import time
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Optional, TypedDict
+from typing import Literal, Optional, TypedDict
 
 import numpy as np
 import torch
+from cachetools import TTLCache, cached
 from tqdm import tqdm
 
 from src.analysis.prompt_filterations import (
@@ -20,8 +21,6 @@ from src.core.names import (
     EXPERIMENT_NAMES,
     INFO_FLOW_HP_COLS,
     InfoFlowCols,
-    InfoFlowJSONFileCols,
-    InfoFlowJSONMetadataCols,
 )
 from src.core.types import (
     MODEL_ARCH,
@@ -50,8 +49,14 @@ SAVE_INTERVAL = 600  # 10 minutes
 PRINT_INTERVAL = 100
 
 
-def skip_task(model_arch: MODEL_ARCH, feature_category: FeatureCategory) -> bool:
-    return not (is_mamba_arch(model_arch) or feature_category == FeatureCategory.ALL)
+class InfoFlowJSONFileCols:
+    data: Literal["data"] = "data"
+    metadata: Literal["metadata"] = "metadata"
+
+
+class InfoFlowJSONMetadataCols:
+    layers_amount: Literal["layers_amount"] = "layers_amount"
+    banned_prompts: Literal["banned_prompts"] = "banned_prompts"
 
 
 class InfoFlowMetadata(TypedDict):
@@ -71,8 +76,42 @@ class InfoFlowFileContent(TypedDict):
 
 
 @dataclass
+class InfoFlowFileStatistics:
+    complete_prompt_ids: set[TPromptOriginalIndex]
+    partial_prompt_ids: dict[TPromptOriginalIndex, set[TLayerIndex]]
+    banned_prompt_ids: set[TPromptOriginalIndex]
+    layers_amount: TLayerIndex
+
+    @classmethod
+    def from_json(cls, json_str: str) -> "InfoFlowFileStatistics":
+        data = json.loads(json_str)
+        return cls(
+            complete_prompt_ids=set(data.pop("complete_prompt_ids")),
+            partial_prompt_ids={
+                TPromptOriginalIndex(int(prompt_id)): set(layer_ids)
+                for prompt_id, layer_ids in data.pop("partial_prompt_ids").items()
+            },
+            banned_prompt_ids=set(data.pop("banned_prompt_ids")),
+            layers_amount=data.pop("layers_amount"),
+        )
+
+    def to_json(self) -> str:
+        data = asdict(self)
+        data["partial_prompt_ids"] = {
+            prompt_id: list(layer_ids) for prompt_id, layer_ids in data["partial_prompt_ids"].items()
+        }
+        data["banned_prompt_ids"] = list(data["banned_prompt_ids"])
+        data["complete_prompt_ids"] = list(data["complete_prompt_ids"])
+        return json.dumps(data, indent=4)
+
+
+@dataclass(frozen=True)
 class JSONInfoFlowFile:
     path: Path
+
+    @property
+    def statistics_path(self) -> Path:
+        return self.path.with_suffix(".json.stats")
 
     def create_new(self, layers_amount: int) -> None:
         self.save(
@@ -83,8 +122,10 @@ class JSONInfoFlowFile:
         )
 
     def save(self, data: InfoFlowFileContent) -> None:
+        self.statistics_path.unlink(missing_ok=True)
         self.path.write_text(json.dumps(data, indent=4))
 
+    @cached(TTLCache(maxsize=1, ttl=60))
     def load(self) -> InfoFlowFileContent:
         raw_json = json.load(self.path.open("r"))
         return InfoFlowFileContent(
@@ -144,56 +185,83 @@ class JSONInfoFlowFile:
             for layer_id in layer_idx
         }
 
-    def get_banned_prompt_indices(self) -> set[TPromptOriginalIndex]:
-        return set(self.load()[InfoFlowJSONFileCols.metadata][InfoFlowJSONMetadataCols.banned_prompts])
+    @cached(TTLCache(maxsize=1, ttl=60))
+    def get_statistics(self) -> InfoFlowFileStatistics:
+        if self.statistics_path.exists():
+            try:
+                return InfoFlowFileStatistics.from_json(self.statistics_path.read_text())
+            except Exception as e:
+                print(f"Error reading statistics file at {self.statistics_path}: {e}")
 
-    def get_existing_prompt_idx(
-        self, layer_idx_subset: Optional[list[TLayerIndex]] = None
-    ) -> list[TPromptOriginalIndex]:
-        content: InfoFlowFileContent = self.load()
-        info_flow_data = content["data"]
+        content = self.load()
 
-        layer_idx: list[TLayerIndex] = (
-            list(range(content[InfoFlowJSONFileCols.metadata][InfoFlowJSONMetadataCols.layers_amount]))
-            if layer_idx_subset is None
-            else layer_idx_subset
+        layers_amount = content[InfoFlowJSONFileCols.metadata][InfoFlowJSONMetadataCols.layers_amount]
+        complete_prompt_ids: set[TPromptOriginalIndex] = set()
+        partial_prompt_ids: dict[TPromptOriginalIndex, set[TLayerIndex]] = {}
+
+        for prompt_id in content[InfoFlowJSONFileCols.data]:
+            completed_layer_ids = set(content[InfoFlowJSONFileCols.data][prompt_id].keys())
+            if len(completed_layer_ids) == layers_amount:
+                complete_prompt_ids.add(prompt_id)
+            else:
+                partial_prompt_ids[prompt_id] = completed_layer_ids
+
+        res = InfoFlowFileStatistics(
+            complete_prompt_ids=complete_prompt_ids,
+            partial_prompt_ids=partial_prompt_ids,
+            banned_prompt_ids=set(
+                content[InfoFlowJSONFileCols.metadata][InfoFlowJSONMetadataCols.banned_prompts].keys()
+            ),
+            layers_amount=layers_amount,
         )
 
-        return [
-            prompt_id
-            for prompt_id in info_flow_data.keys()
-            if all(layer_id in info_flow_data[prompt_id] for layer_id in layer_idx)
-        ]
+        self.statistics_path.write_text(res.to_json())
+        return self.get_statistics()
+
+    def get_banned_prompt_indices(self) -> set[TPromptOriginalIndex]:
+        return set(self.get_statistics().banned_prompt_ids)
+
+    def get_computed_prompt_idx(
+        self, layer_idx_subset: Optional[list[TLayerIndex]] = None, include_banned: bool = False
+    ) -> set[TPromptOriginalIndex]:
+        statistics = self.get_statistics()
+        ids = statistics.complete_prompt_ids
+        if include_banned:
+            ids.update(statistics.banned_prompt_ids)
+
+        if layer_idx_subset is not None:
+            layer_idx_set = set(layer_idx_subset)
+            ids.update(
+                prompt_id
+                for prompt_id, layer_ids in statistics.partial_prompt_ids.items()
+                if layer_idx_set.issubset(layer_ids)
+            )
+
+        return ids
 
     def get_missing_prompt_layer_values(
         self,
-        prompt_idx_subset: Optional[list[TPromptOriginalIndex]] = None,
+        prompt_idx_subset: list[TPromptOriginalIndex],
         layer_idx_subset: Optional[list[TLayerIndex]] = None,
     ) -> dict[TPromptOriginalIndex, list[TLayerIndex]]:
-        content = self.load()
-        info_flow_data = content["data"]
-
-        prompt_idx: list[TPromptOriginalIndex] = (
-            list(content[InfoFlowJSONFileCols.data].keys()) if prompt_idx_subset is None else prompt_idx_subset
-        )
-
-        layer_idx: list[TLayerIndex] = (
-            list(range(content[InfoFlowJSONFileCols.metadata][InfoFlowJSONMetadataCols.layers_amount]))
-            if layer_idx_subset is None
-            else layer_idx_subset
-        )
-
-        res: dict[TPromptOriginalIndex, list[TLayerIndex]] = {}
-        for prompt_id in prompt_idx:
-            if prompt_id not in info_flow_data:
-                res[prompt_id] = layer_idx
-            elif all(layer_id not in info_flow_data[prompt_id] for layer_id in layer_idx):
-                res[prompt_id] = layer_idx
-        return res
+        statistics = self.get_statistics()
+        complete_prompt_ids = self.get_computed_prompt_idx(layer_idx_subset=layer_idx_subset, include_banned=True)
+        missing_prompt_ids = {}
+        full_layer_idx_subset = set(range(statistics.layers_amount))
+        for prompt_id in prompt_idx_subset:
+            if prompt_id not in complete_prompt_ids:
+                if prompt_id in statistics.partial_prompt_ids:
+                    missing_prompt_ids[prompt_id] = list(
+                        full_layer_idx_subset - statistics.partial_prompt_ids[prompt_id]
+                    )
+                else:
+                    missing_prompt_ids[prompt_id] = list(full_layer_idx_subset)
+        return missing_prompt_ids
 
 
-@dataclass
+@dataclass(frozen=True)
 class InfoFlowParams(BaseVariantParams):
+    experiment_name: EXPERIMENT_NAMES = field(init=False, default=EXPERIMENT_NAMES.INFO_FLOW)
     window_size: TWindowSize
     source: TokenType
     feature_category: FeatureCategory
@@ -210,13 +278,20 @@ class InfoFlowConfig(BaseRunner[InfoFlowParams]):
 
     variant_params: InfoFlowParams
 
-    @property
-    def experiment_name(self):
-        return EXPERIMENT_NAMES.INFO_FLOW
+    @staticmethod
+    def _get_variant_params():
+        return InfoFlowParams
 
-    @property
-    def variant_output_keys(self):
-        return super().variant_output_keys + [
+    @staticmethod
+    def skip_task(model_arch: MODEL_ARCH, feature_category: FeatureCategory) -> bool:
+        return not (is_mamba_arch(model_arch) or feature_category == FeatureCategory.ALL)
+
+    def should_skip_task(self) -> bool:
+        return self.skip_task(self.variant_params.model_arch, self.variant_params.feature_category)
+
+    @classmethod
+    def get_variant_output_keys(cls):
+        return super().get_variant_output_keys() + [
             BASE_OUTPUT_KEYS.WINDOW_SIZE,
             OutputKey[TokenType](INFO_FLOW_HP_COLS.target),
             OutputKey[TokenType](INFO_FLOW_HP_COLS.source),
@@ -233,26 +308,33 @@ class InfoFlowConfig(BaseRunner[InfoFlowParams]):
 
     def get_outputs(self) -> TInfoFlowOutput:
         if isinstance(self.input_params.filteration, AnyExistingCompletePromptFilteration):
-            prompt_ids = self.output_file.get_existing_prompt_idx()
+            prompt_ids = list(self.output_file.get_computed_prompt_idx())
         elif isinstance(self.input_params.filteration, AnyExistingPromptFilteration):
             prompt_ids = None
         else:
-            prompt_ids = self.prompt_ids
+            prompt_ids = self.input_params.filteration.get_prompt_ids()
         return self.output_file.load_to_info_flow_output(
             prompt_idx_subset=prompt_ids,
         )
 
-    def compute(self) -> None:
+    def _compute_impl(self) -> None:
         run(self)
 
     def is_computed(self) -> bool:
         if not self.output_file.path.exists():
             return False
-        return len(self.output_file.get_missing_prompt_layer_values(prompt_idx_subset=self.prompt_ids)) == 0
+        return (
+            len(
+                self.output_file.get_missing_prompt_layer_values(
+                    prompt_idx_subset=self.input_params.filteration.get_prompt_ids()
+                )
+            )
+            == 0
+        )
 
     def get_runner_dependencies(self) -> InfoFlowDependencies:  # type: ignore
         return InfoFlowDependencies(
-            evaluate_model=EvaluateModelConfig.init_from_config(
+            evaluate_model=EvaluateModelConfig.init_from_runner(
                 self,
                 variant_params=EvaluateModelParams(
                     model_arch=self.variant_params.model_arch,
@@ -311,7 +393,9 @@ def run(args: InfoFlowConfig):
     if not args.output_file.path.exists():
         args.output_file.create_new(layers_amount)
 
-    missing_prompt_layer_values = args.output_file.get_missing_prompt_layer_values(prompt_idx_subset=args.prompt_ids)
+    missing_prompt_layer_values = args.output_file.get_missing_prompt_layer_values(
+        prompt_idx_subset=args.input_params.filteration.get_prompt_ids()
+    )
     content = args.output_file.load()
 
     if not missing_prompt_layer_values:

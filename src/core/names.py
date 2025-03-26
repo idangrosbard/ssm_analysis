@@ -33,7 +33,7 @@ class HEATMAP_HP_COLS(StrEnum):
 
 
 class EXPERIMENT_NAMES(StrEnum):
-    EVALUATE_MODEL = "evaluate"
+    EVALUATE_MODEL = "evaluate_model"
     INFO_FLOW = "info_flow"
     HEATMAP = "heatmap"
     FULL_PIPELINE = "full_pipeline"
@@ -108,21 +108,11 @@ class InfoFlowCols:
     true_probs: Literal["true_probs"] = literal_guard(COLS.INFO_FLOW.TRUE_PROBS, "true_probs")
 
 
-class InfoFlowJSONFileCols:
-    data: Literal["data"] = "data"
-    metadata: Literal["metadata"] = "metadata"
-
-
-class InfoFlowJSONMetadataCols:
-    layers_amount: Literal["layers_amount"] = "layers_amount"
-    banned_prompts: Literal["banned_prompts"] = "banned_prompts"
-
-
 class DataReqCols(StrEnum):
     experiment_name = BASE_CONFIG_HP_COLS.experiment_name
     model_arch = BASE_CONFIG_HP_COLS.model_arch
     model_size = BASE_CONFIG_HP_COLS.model_size
-    prompt_filteration = BASE_CONFIG_HP_COLS.prompt_filteration
+    # prompt_filteration = BASE_CONFIG_HP_COLS.prompt_filteration
     window_size = WINDOW_SIZE_HP_COLS.window_size
     source = INFO_FLOW_HP_COLS.source
     feature_category = INFO_FLOW_HP_COLS.feature_category
@@ -154,7 +144,7 @@ class ExperimentHyperParams(StrEnum):
     source = DataReqCols.source
     feature_category = DataReqCols.feature_category
     target = DataReqCols.target
-    prompt_filteration = DataReqCols.prompt_filteration
+    prompt_idx = "prompt_idx"
 
 
 class HeatmapCols:
@@ -164,11 +154,7 @@ class HeatmapCols:
 
 
 class PlotType(StrEnum):
-    ARCHITECTURE_KNOCKOUT = "architecture_knockout"
-    MODEL_SIZE_KNOCKOUT = "model_size_knockout"
-    WINDOW_SIZE_KNOCKOUT = "window_size_knockout"
-    FEATURE_KNOCKOUT = "feature_knockout"
-    SHARED_KNOCKOUT = "shared_knockout"
+    ARCHITECTURE_KNOCKOUT = "ARCHITECTURE_KNOCKOUT"
     HEATMAP = "heatmap"
 
 
@@ -212,6 +198,7 @@ class SummarizedDataFulfilledReqsCols:
     AvailableOptions = "Available Options"
     Options = "Options"
     Key = "Key"
+    filters_requested = "filters_requested"
 
 
 class ModelCombinationCols(StrEnum):

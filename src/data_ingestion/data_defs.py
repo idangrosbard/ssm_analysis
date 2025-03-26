@@ -1,77 +1,96 @@
 import json
+from collections import defaultdict
 from pathlib import Path
 from typing import TYPE_CHECKING, Type
 
 import pandas as pd
 
+from src.analysis.prompt_filterations import UnionPromptFilteration
 from src.core.consts import PATHS
-from src.core.names import HeatmapCols, ModelCombinationCols, ResultBankParamNames
+from src.core.names import HeatmapCols, ModelCombinationCols, ResultBankParamNames, SummarizedDataFulfilledReqsCols
 from src.core.types import MODEL_ARCH_AND_SIZE, TPlotID
+from src.experiments.infrastructure.base_config import BasePromptFilteration, BaseRunner, BaseVariantParams, InputParams
 from src.utils.infra.data_object import DataObject
-from src.utils.types_utils import str_enum_values
 
 if TYPE_CHECKING:
-    from src.analysis.experiment_results.data_requirements import DataReq
     from src.analysis.experiment_results.model_prompt_combination import ModelCombination
     from src.analysis.experiment_results.plot_plan import PlotPlan
-    from src.analysis.experiment_results.results_bank import ResultRecord
+
+
+class DataReqiermentCollection:
+    def __init__(self):
+        self.data_reqs: dict[BaseVariantParams, UnionPromptFilteration] = defaultdict(UnionPromptFilteration)
+
+    def add_data_req(self, data_req: BaseVariantParams, prompt_filteration: BasePromptFilteration):
+        self.data_reqs[data_req] = self.data_reqs[data_req].add_prompt_filteration(prompt_filteration)
 
 
 class DataReqs(DataObject):
-    def __init__(self, data_reqs: set["DataReq"]):
+    def __init__(self, data_reqs: dict[BaseVariantParams, UnionPromptFilteration]):
         self._raw = data_reqs
 
-    def to_rows(self) -> list["DataReq"]:
-        return list(self._raw)
-
-    @classmethod
-    def from_df(cls, df: pd.DataFrame) -> "DataReqs":
-        from src.analysis.experiment_results.data_requirements import DataReq
-
-        return cls(
-            set(
-                {
-                    DataReq.create_and_validate(
-                        **{
-                            col: row[col]
-                            for col in str_enum_values(ResultBankParamNames)
-                            if col not in [ResultBankParamNames.path, ResultBankParamNames.code_version]
-                        }
-                    )
-                    for row in df.to_dict(orient="records")
-                }
-            )
-        )
+    def to_rows(self):
+        return list(self._raw.items())
 
     def to_fulfilled_reqs(self, result_bank: "ResultBank") -> "FulfilledReqs":
-        from src.analysis.experiment_results.helpers import get_data_fullfment_options
+        data_reqs_options = {data_req: [] for data_req, _ in self.to_rows()}
 
-        return get_data_fullfment_options(self, result_bank)
+        for runner in result_bank.to_rows():
+            if runner.variant_params in self._raw:
+                prompt_filterations = self._raw[runner.variant_params]
+                # if isinstance(runner, InfoFlowConfig):
+                #     if (
+                #         len(
+                #             set(prompt_filterations.get_prompt_ids())
+                #             - set(runner.output_file.get_computed_prompt_idx(include_banned=True))
+                #         )
+                #         == 0
+                #     ):
+                #         data_reqs_options[runner.variant_params].append(runner)
+
+                if runner.init_from_runner(
+                    runner,
+                    variant_params=runner.variant_params,
+                    input_params=InputParams(filteration=prompt_filterations),
+                ).is_computed():
+                    data_reqs_options[runner.variant_params].append(runner)
+
+        return FulfilledReqs(
+            {data_req: (self._raw[data_req], options) for data_req, options in data_reqs_options.items()}
+        )
+
+    @classmethod
+    def from_data_reqs_collection(cls, data_reqs: DataReqiermentCollection) -> "DataReqs":
+        return cls(data_reqs.data_reqs)
 
 
 class FulfilledReqs(DataObject):
-    def __init__(self, fulfilled_reqs: dict["DataReq", list["ResultRecord"]]):
+    def __init__(
+        self,
+        fulfilled_reqs: dict[BaseVariantParams, tuple[UnionPromptFilteration, list[BaseRunner]]],
+    ):
         self._raw = fulfilled_reqs
 
     def summarize(self) -> "SummarizedDataFulfilledReqs":
         return SummarizedDataFulfilledReqs(self)
 
-    def choose_latest_fulfilled(self, result_bank: "ResultBank") -> "FulfilledReqs":
-        from src.analysis.experiment_results.helpers import choose_latest_data_fulfilled
-
+    def choose_latest_fulfilled(self) -> "FulfilledReqs":
         return FulfilledReqs(
-            {req: [] if path is None else [path] for req, path in choose_latest_data_fulfilled(self).items()}
+            {
+                data_req: (filteration, [max(options, key=lambda x: x.metadata_params.code_version)])
+                for data_req, (filteration, options) in self._raw.items()
+            }
         )
 
     def get_config(self):
-        return {req: req.get_config(result_records[0].code_version) for req, result_records in self.to_rows()}
+        return {req: runners[0] for req, runners in self.to_rows() if runners}
 
-    def to_rows(self) -> list[tuple["DataReq", list["ResultRecord"]]]:
+    def to_rows(self):
         return list(self._raw.items())
 
 
 class ExperimentDisplayResults(DataObject):
-    def __init__(self, results_data: list["ResultRecord"]):
+    def __init__(self, results_data: list[BaseRunner]):
         self._raw = results_data
 
     def to_df(self) -> pd.DataFrame:
@@ -79,10 +98,10 @@ class ExperimentDisplayResults(DataObject):
 
 
 class ResultBank(DataObject):
-    def __init__(self, result_bank: list["ResultRecord"]):
+    def __init__(self, result_bank: list[BaseRunner]):
         self._raw = result_bank
 
-    def to_rows(self) -> list["ResultRecord"]:
+    def to_rows(self) -> list[BaseRunner]:
         return self._raw
 
     def to_experiment_results(self) -> ExperimentDisplayResults:
@@ -98,10 +117,10 @@ class ResultBank(DataObject):
 
 class SummarizedDataFulfilledReqs(DataObject):
     def __init__(self, fulfilled_reqs: FulfilledReqs):
-        from src.core.names import SummarizedDataFulfilledReqsCols
-
+        self._fulfilled_reqs = fulfilled_reqs
         self._raw = []
-        for req, opts in fulfilled_reqs._raw.items():
+
+        for req, (filteration, opts) in fulfilled_reqs._raw.items():
             row = {
                 **{
                     param: getattr(req, param, None)
@@ -111,6 +130,7 @@ class SummarizedDataFulfilledReqs(DataObject):
                 SummarizedDataFulfilledReqsCols.AvailableOptions: len(opts),
                 SummarizedDataFulfilledReqsCols.Options: opts,
                 SummarizedDataFulfilledReqsCols.Key: str(req),
+                SummarizedDataFulfilledReqsCols.filters_requested: len(str(filteration)),
             }
             self._raw.append(row)
 
@@ -118,20 +138,10 @@ class SummarizedDataFulfilledReqs(DataObject):
         return self._raw
 
     def to_data_reqs(self) -> DataReqs:
-        from src.analysis.experiment_results.data_requirements import DataReq
-
-        return DataReqs(
-            set(
-                DataReq.create_and_validate(
-                    **{
-                        param: row[param]
-                        for param in ResultBankParamNames
-                        if param not in [ResultBankParamNames.path, ResultBankParamNames.code_version]
-                    }
-                )
-                for row in self._raw
-            )
-        )
+        data_reqs = DataReqiermentCollection()
+        for req, (filteration, _) in self._fulfilled_reqs._raw.items():
+            data_reqs.add_data_req(req, filteration)
+        return DataReqs(data_reqs.data_reqs)
 
     def to_df(self) -> pd.DataFrame:
         return pd.DataFrame(self._raw)

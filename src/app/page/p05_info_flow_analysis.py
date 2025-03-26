@@ -173,7 +173,7 @@ class SubsetInfoFlowResults:
 
 class InfoFlowAnalysisPage(StreamlitPage):
     def render(self):
-        results_bank = load_results_bank()
+        results_bank = load_results_bank.call_and_render()
         result_bank: AgGridReturn = ShowResultsBank(
             results_bank,
             filter_experiment_name=EXPERIMENT_NAMES.INFO_FLOW,

@@ -4,9 +4,6 @@ from streamlit import cache_resource
 
 from src.analysis.experiment_results.default_data_reqs import get_default_data_reqs
 from src.analysis.experiment_results.helpers import (
-    IDataFulfilled,
-    choose_latest_data_fulfilled,
-    get_data_fullfment_options,
     get_model_evaluations,
 )
 from src.analysis.experiment_results.model_prompt_combination import get_model_combinations_prompts
@@ -18,7 +15,7 @@ from src.app.app_consts import (
     GLOBAL_APP_CONSTS,
 )
 from src.core.types import MODEL_ARCH_AND_SIZE, TCodeVersionName, TPromptOriginalIndex
-from src.data_ingestion.data_defs import ModelCombinationsPrompts, ResultBank, SummarizedDataFulfilledReqs
+from src.data_ingestion.data_defs import DataReqs, ModelCombinationsPrompts, ResultBank, SummarizedDataFulfilledReqs
 from src.utils.streamlit.helpers.cache import CacheWithDependencies
 
 
@@ -62,10 +59,10 @@ def load_test_results_bank() -> ResultBank:
 
 
 @CacheWithDependencies()
-def load_latest_fulfilled_reqs() -> IDataFulfilled:
+def load_latest_fulfilled_reqs():
     """Load the latest fulfilled requirements"""
-    data_reqs_options = get_data_fullfment_options(get_default_data_reqs(), load_results_bank())
-    return choose_latest_data_fulfilled(data_reqs_options)
+    data_reqs_options = DataReqs(get_default_data_reqs().data_reqs).to_fulfilled_reqs(load_results_bank())
+    return data_reqs_options.choose_latest_fulfilled()
 
 
 # Data Requirements hooks
@@ -73,8 +70,7 @@ def load_latest_fulfilled_reqs() -> IDataFulfilled:
 def load_fulfilled_reqs_df() -> SummarizedDataFulfilledReqs:
     """Load the data requirements options and overrides to dispaly the fulfilled requirements"""
     results_bank = load_results_bank()
-    data_reqs = get_default_data_reqs()
-    options = get_data_fullfment_options(data_reqs, results_bank)
+    options = DataReqs(get_default_data_reqs().data_reqs).to_fulfilled_reqs(results_bank)
 
     return SummarizedDataFulfilledReqs(options)
 

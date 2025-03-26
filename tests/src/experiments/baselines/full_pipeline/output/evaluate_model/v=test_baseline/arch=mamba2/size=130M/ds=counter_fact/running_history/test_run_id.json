@@ -1,7 +1,8 @@
 {
     "variant_params": {
-        "model_arch": "mamba1",
+        "model_arch": "mamba2",
         "model_size": "130M",
+        "experiment_name": "evaluate_model",
         "drop_subject": false,
         "drop_subj_last_token": false,
         "with_3_dots": false,
@@ -10,7 +11,6 @@
     },
     "input_params": {
         "filteration": {
-            "dataset_name": "counter_fact",
             "prompt_ids": [
                 53,
                 59,

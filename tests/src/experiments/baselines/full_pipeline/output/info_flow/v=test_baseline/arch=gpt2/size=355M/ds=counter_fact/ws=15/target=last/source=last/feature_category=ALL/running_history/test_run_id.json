@@ -2,6 +2,7 @@
     "variant_params": {
         "model_arch": "gpt2",
         "model_size": "355M",
+        "experiment_name": "info_flow",
         "window_size": 15,
         "source": "last",
         "feature_category": "ALL",

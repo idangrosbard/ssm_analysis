@@ -56,7 +56,7 @@ def submit_job(
     slurm_nodes=1,
     tasks_per_node=1,
     slurm_cpus_per_task=1,
-    slurm_gpus_per_node=0,
+    slurm_gpus_per_node=1,
     slurm_nodelist=None,
 ):
     # Map GPU type and account type to partition and account options based on `sinfo` data
@@ -109,7 +109,7 @@ def submit_job(
         slurm_cpus_per_task=slurm_cpus_per_task,
         slurm_gpus_per_node=slurm_gpus_per_node,
         slurm_mem=memory_required,
-        # slurm_constraint=gpu_type.gpu_name,
+        slurm_constraint=gpu_type.gpu_name,
         **ommit_none(
             dict(
                 slurm_nodelist=slurm_nodelist,

@@ -1,22 +1,35 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import StrEnum
+from functools import lru_cache
 
-from src.core.names import COLS
-from src.core.types import MODEL_ARCH, TCodeVersionName, TModelSize, TPromptOriginalIndex
+from src.core.names import COLS, DATASETS
+from src.core.types import (
+    ALL_SPLITS_LITERAL,
+    MODEL_ARCH,
+    TCodeVersionName,
+    TModelSize,
+    TPromptOriginalIndex,
+    TSplitChoise,
+)
+from src.data_ingestion.datasets.download_dataset import get_prompt_ids
 from src.experiments.infrastructure.base_config import BasePromptFilteration, InputParams, MetadataParams, TDependencies
 from src.experiments.runners.evaluate_model import EvaluateModelConfig, EvaluateModelParams
 
 
-@dataclass
+@dataclass(frozen=True)
 class AllPromptFilteration(BasePromptFilteration):
-    def get_prompt_ids(self) -> list[TPromptOriginalIndex]:
-        return super().get_prompt_ids()
+    dataset_name: DATASETS = DATASETS.COUNTER_FACT
+    split: TSplitChoise = ALL_SPLITS_LITERAL
+
+    @lru_cache(maxsize=1)
+    def get_prompt_ids(self) -> list[TPromptOriginalIndex]:  # type: ignore
+        return get_prompt_ids(self.dataset_name, self.split)
 
     def get_dependencies(self) -> TDependencies:
         return {}
 
 
-@dataclass
+@dataclass(frozen=True)
 class AnyExistingPromptFilteration(BasePromptFilteration):
     def get_prompt_ids(self) -> list[TPromptOriginalIndex]:
         raise ValueError("Should not be called")
@@ -25,7 +38,7 @@ class AnyExistingPromptFilteration(BasePromptFilteration):
         raise ValueError("Should not be called")
 
 
-@dataclass
+@dataclass(frozen=True)
 class AnyExistingCompletePromptFilteration(BasePromptFilteration):
     def get_prompt_ids(self) -> list[TPromptOriginalIndex]:
         raise ValueError("Should not be called")
@@ -34,7 +47,7 @@ class AnyExistingCompletePromptFilteration(BasePromptFilteration):
         raise ValueError("Should not be called")
 
 
-@dataclass
+@dataclass(frozen=True)
 class SelectivePromptFilteration(BasePromptFilteration):
     prompt_ids: tuple[TPromptOriginalIndex, ...]
 
@@ -45,9 +58,9 @@ class SelectivePromptFilteration(BasePromptFilteration):
         return {}
 
 
-@dataclass
-class MultiplePromptFilteration(BasePromptFilteration):
-    prompt_filterations: list[BasePromptFilteration]
+@dataclass(frozen=True)
+class IntersectionPromptFilteration(BasePromptFilteration):
+    prompt_filterations: set[BasePromptFilteration]
 
     def get_prompt_ids(self) -> list[TPromptOriginalIndex]:
         prompt_ids = super().get_prompt_ids()
@@ -63,19 +76,45 @@ class MultiplePromptFilteration(BasePromptFilteration):
         return dependencies
 
 
+@dataclass(frozen=True)
+class UnionPromptFilteration(BasePromptFilteration):
+    prompt_filterations: set[BasePromptFilteration] = field(default_factory=set)
+
+    def get_prompt_ids(self) -> list[TPromptOriginalIndex]:
+        prompt_ids = set()
+        for prompt_filteration in self.prompt_filterations:
+            prompt_ids.update(prompt_filteration.get_prompt_ids())
+        return list(prompt_ids)
+
+    def get_dependencies(self) -> TDependencies:
+        dependencies = {}
+        for prompt_filteration in self.prompt_filterations:
+            dependencies.update(prompt_filteration.get_dependencies())
+        return dependencies
+
+    def add_prompt_filteration(self, prompt_filteration: BasePromptFilteration):
+        if isinstance(prompt_filteration, UnionPromptFilteration):
+            return UnionPromptFilteration(self.prompt_filterations.union(prompt_filteration.prompt_filterations))
+        elif isinstance(prompt_filteration, AnyExistingCompletePromptFilteration):
+            return self
+        return UnionPromptFilteration(self.prompt_filterations.union({prompt_filteration}))
+
+
 class Correctness(StrEnum):
     correct = "correct"
     top_5_correct = "top_5_correct"
 
 
-@dataclass
+@dataclass(frozen=True)
 class ModelCorrectPromptFilteration(BasePromptFilteration):
+    dataset_name: DATASETS
     model_arch: MODEL_ARCH
     model_size: TModelSize
     correctness: Correctness
     code_version: TCodeVersionName
 
-    def get_prompt_ids(self) -> list[TPromptOriginalIndex]:
+    @lru_cache(maxsize=1)
+    def get_prompt_ids(self) -> list[TPromptOriginalIndex]:  # type: ignore
         df = self.get_dependencies()["evaluate_model"].get_outputs()
         match self.correctness:
             case Correctness.correct:

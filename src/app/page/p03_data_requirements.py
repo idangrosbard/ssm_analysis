@@ -23,8 +23,7 @@ class DataRequirementsPage(StreamlitPage):
     def render(self):
         # region Data Loading and Preparation
         # Load data
-        df = load_fulfilled_reqs_df()
-        load_fulfilled_reqs_df.render()
+        df = load_fulfilled_reqs_df.call_and_render()
 
         # Filter the data
         # filtered_df = RequirementsFiltering(df).render()

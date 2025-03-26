@@ -1,4 +1,5 @@
 import json
+from dataclasses import asdict
 from typing import cast
 
 import pandas as pd
@@ -9,6 +10,7 @@ import streamlit as st
 from rich.console import Console
 from st_aggrid import AgGrid, DataReturnMode, GridUpdateMode
 
+from src.analysis.experiment_results.helpers import init_runner_from_params
 from src.analysis.prompt_filterations import SelectivePromptFilteration
 from src.app.app_consts import (
     GLOBAL_APP_CONSTS,
@@ -17,7 +19,7 @@ from src.app.app_consts import (
 )
 from src.app.components.inputs import select_gpu_type, select_window_size
 from src.app.texts import HEATMAP_TEXTS
-from src.core.names import DATASETS, HeatmapCols, SlurmStatus, SummarizedDataFulfilledReqsCols
+from src.core.names import HeatmapCols, SlurmStatus, SummarizedDataFulfilledReqsCols
 from src.core.types import MODEL_ARCH_AND_SIZE, TCodeVersionName, TPromptOriginalIndex, TWindowSize
 from src.data_ingestion.data_defs import DataReqs, SummarizedDataFulfilledReqs
 from src.experiments.infrastructure.base_config import InputParams, MetadataParams
@@ -76,7 +78,7 @@ class RequirementsDisplay(StreamlitComponent):
             return None
         st.write(f"Selected {len(grid_response['selected_data'])} requirements")
         return DataReqs(
-            set(
+            dict(
                 select_indexes_from_list(
                     self.summarized_data_fulfilled_reqs.to_data_reqs().to_rows(),
                     [int(i) for i in grid_response["selected_data"].index],
@@ -121,10 +123,14 @@ class RequirementExecution(StreamlitComponent):
 
                 # Get all rows from filtered_df that match selected requirements
                 last_error = None
-                for i, req in enumerate(self.data_reqs_to_run.to_rows()):
+                for i, (req, filteration) in enumerate(self.data_reqs_to_run.to_rows()):
                     try:
                         # Get config and set running parameters
-                        config = req.get_config(code_version=AppSessionKeys.code_version.value)
+                        config = init_runner_from_params(
+                            req,
+                            InputParams(filteration=filteration),
+                            MetadataParams(code_version=AppSessionKeys.code_version.value),
+                        )
                         if with_slurm:
                             config.set_running_params(
                                 with_slurm=True,
@@ -132,11 +138,11 @@ class RequirementExecution(StreamlitComponent):
                             )
 
                         # Run the configuration
-                        config.run()
+                        config.run(with_dependencies=False)
                         success_count += 1
 
                     except Exception as e:
-                        st.error(f"Failed to run requirement: {str(json.dumps(req._asdict(), indent=4))}")
+                        st.error(f"Failed to run requirement: {str(json.dumps(asdict(req), indent=4))}")
                         st.exception(e)
                         failed_count += 1
                         last_error = e
@@ -176,7 +182,6 @@ def get_models_remaining_prompts(
             ),
             input_params=InputParams(
                 filteration=SelectivePromptFilteration(
-                    dataset_name=DATASETS.COUNTER_FACT,
                     prompt_ids=tuple(prompt_original_indices),
                 ),
             ),
@@ -265,7 +270,7 @@ class HeatmapGenerationComponent(StreamlitComponent):
                         )
 
                         # Submit job
-                        heatmap_config.run()
+                        heatmap_config.run(with_dependencies=False)
                         success_count += 1
 
                     except Exception as e:

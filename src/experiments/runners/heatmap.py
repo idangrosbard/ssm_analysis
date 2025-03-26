@@ -10,7 +10,7 @@ The combined result is a dictionary of prompt index -> heatmap
 """
 
 import functools
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import StrEnum
 from pathlib import Path
 from typing import Callable, TypedDict, cast
@@ -49,8 +49,9 @@ plot_suffix_to_function: dict[HEATMAP_PLOT_FUNCS, Callable] = {
 }
 
 
-@dataclass
+@dataclass(frozen=True)
 class HeatmapParams(BaseVariantParams):
+    experiment_name: EXPERIMENT_NAMES = field(init=False, default=EXPERIMENT_NAMES.HEATMAP)
     window_size: TWindowSize
 
 
@@ -87,13 +88,13 @@ class HeatmapConfig(BaseRunner[HeatmapParams]):
 
     variant_params: HeatmapParams
 
-    @property
-    def experiment_name(self):
-        return EXPERIMENT_NAMES.HEATMAP
+    @staticmethod
+    def _get_variant_params():
+        return HeatmapParams
 
-    @property
-    def variant_output_keys(self):
-        return super().variant_output_keys + [
+    @classmethod
+    def get_variant_output_keys(cls):
+        return super().get_variant_output_keys() + [
             BASE_OUTPUT_KEYS.WINDOW_SIZE,
         ]
 
@@ -105,10 +106,10 @@ class HeatmapConfig(BaseRunner[HeatmapParams]):
     def get_remaining_prompt_original_indices(self):
         """Return the list of prompt indices that need to be computed."""
         if not self.output_hdf5_path.path.exists() or self.metadata_params.overwrite_existing_outputs:
-            return self.prompt_ids
+            return self.input_params.filteration.get_prompt_ids()
 
         existing_prompts = self.output_hdf5_path.get_existing_prompt_idx()
-        return [idx for idx in self.prompt_ids if idx not in existing_prompts]
+        return [idx for idx in self.input_params.filteration.get_prompt_ids() if idx not in existing_prompts]
 
     def get_outputs(self) -> HeatmapExperimentOutput:
         """Load all prompt heatmaps from the HDF5 file."""
@@ -123,7 +124,7 @@ class HeatmapConfig(BaseRunner[HeatmapParams]):
     def plot(self, plot_name: HEATMAP_PLOT_FUNCS) -> None:
         plot(self, plot_name)
 
-    def compute(self) -> None:
+    def _compute_impl(self) -> None:
         run(self)
 
     def is_computed(self) -> bool:
@@ -132,11 +133,11 @@ class HeatmapConfig(BaseRunner[HeatmapParams]):
             return False
 
         existing_prompts = self.output_hdf5_path.get_existing_prompt_idx()
-        return all(idx in existing_prompts for idx in self.prompt_ids)
+        return all(idx in existing_prompts for idx in self.input_params.filteration.get_prompt_ids())
 
     def get_runner_dependencies(self) -> HeatmapDependencies:  # type: ignore
         return HeatmapDependencies(
-            evaluate_model=EvaluateModelConfig.init_from_config(
+            evaluate_model=EvaluateModelConfig.init_from_runner(
                 self,
                 variant_params=EvaluateModelParams(
                     model_arch=self.variant_params.model_arch,

@@ -2,6 +2,7 @@
     "variant_params": {
         "model_arch": "mamba1",
         "model_size": "130M",
+        "experiment_name": "info_flow",
         "window_size": 15,
         "source": "context",
         "feature_category": "ALL",

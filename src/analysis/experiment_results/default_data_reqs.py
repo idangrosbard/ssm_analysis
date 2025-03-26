@@ -1,8 +1,4 @@
-from src.analysis.experiment_results.data_requirements import (
-    DataReq,
-)
-from src.analysis.experiment_results.helpers import IDataFulfilled
-from src.analysis.prompt_filterations import Correctness, ModelCorrectPromptFilteration
+from src.analysis.prompt_filterations import AllPromptFilteration, Correctness, ModelCorrectPromptFilteration
 from src.core.consts import (
     GRAPHS_ORDER,
     MODEL_SIZE_CAT,
@@ -10,13 +6,15 @@ from src.core.consts import (
     is_falcon,
     is_mamba_arch,
 )
-from src.core.names import DATASETS, EXPERIMENT_NAMES
+from src.core.names import DATASETS
 from src.core.types import (
+    SPLIT,
     FeatureCategory,
     TCodeVersionName,
     TWindowSize,
 )
-from src.data_ingestion.data_defs import DataReqs
+from src.data_ingestion.data_defs import DataReqiermentCollection
+from src.experiments.runners.info_flow import InfoFlowParams
 
 STANDARD_WINDOW_SIZE_FOR_INFO_FLOW = TWindowSize(9)
 STANDARD_WINDOW_SIZE_FOR_HEATMAP = TWindowSize(5)
@@ -24,8 +22,33 @@ ALL_WINDOW_SIZES = [TWindowSize(size) for size in [1, 3, 5, 9, 12, 15]]
 MODEL_CORRECT_MODEL_CODE_VERSION = TCodeVersionName("v1")
 
 
-def get_default_data_reqs() -> DataReqs:
-    data_reqs: IDataFulfilled = {}
+def get_default_data_reqs() -> DataReqiermentCollection:
+    data_reqs = DataReqiermentCollection()
+
+    for model_arch_and_size in GRAPHS_ORDER:
+        if is_mamba_arch(model_arch_and_size.arch):
+            for source, feature_category in [
+                (TokenType.last, FeatureCategory.ALL),
+                (TokenType.first, FeatureCategory.ALL),
+                (TokenType.subject, FeatureCategory.ALL),
+                (TokenType.relation, FeatureCategory.ALL),
+                (TokenType.subject, FeatureCategory.SLOW_DECAY),
+                (TokenType.subject, FeatureCategory.FAST_DECAY),
+            ]:
+                data_reqs.add_data_req(
+                    InfoFlowParams(
+                        model_arch=model_arch_and_size.arch,
+                        model_size=model_arch_and_size.size,
+                        window_size=STANDARD_WINDOW_SIZE_FOR_INFO_FLOW,
+                        source=source,
+                        feature_category=feature_category,
+                        target=TokenType.last,
+                    ),
+                    AllPromptFilteration(
+                        DATASETS.COUNTER_FACT,
+                        split=(SPLIT.TRAIN1,),
+                    ),
+                )
 
     # region 1. Figure 1 Knockout information flow to the **last** token.
     """
@@ -51,24 +74,23 @@ def get_default_data_reqs() -> DataReqs:
             TokenType.subject,
             TokenType.relation,
         ]:
-            data_reqs[
-                DataReq(
-                    experiment_name=EXPERIMENT_NAMES.INFO_FLOW,
+            data_reqs.add_data_req(
+                InfoFlowParams(
                     model_arch=model_arch_and_size.arch,
                     model_size=model_arch_and_size.size,
                     window_size=STANDARD_WINDOW_SIZE_FOR_INFO_FLOW,
                     source=source,
                     feature_category=FeatureCategory.ALL,
                     target=TokenType.last,
-                    prompt_filteration=ModelCorrectPromptFilteration(
-                        DATASETS.COUNTER_FACT,
-                        model_arch=model_arch_and_size.arch,
-                        model_size=model_arch_and_size.size,
-                        correctness=Correctness.correct,
-                        code_version=MODEL_CORRECT_MODEL_CODE_VERSION,
-                    ),
-                ).validate()
-            ] = None
+                ),
+                ModelCorrectPromptFilteration(
+                    DATASETS.COUNTER_FACT,
+                    model_arch=model_arch_and_size.arch,
+                    model_size=model_arch_and_size.size,
+                    correctness=Correctness.correct,
+                    code_version=MODEL_CORRECT_MODEL_CODE_VERSION,
+                ),
+            )
 
     # endregion
 
@@ -96,24 +118,23 @@ def get_default_data_reqs() -> DataReqs:
                 (TokenType.subject, FeatureCategory.SLOW_DECAY),
                 (TokenType.subject, FeatureCategory.FAST_DECAY),
             ]:
-                data_reqs[
-                    DataReq(
-                        experiment_name=EXPERIMENT_NAMES.INFO_FLOW,
+                data_reqs.add_data_req(
+                    InfoFlowParams(
                         model_arch=model_arch_and_size.arch,
                         model_size=model_arch_and_size.size,
                         window_size=STANDARD_WINDOW_SIZE_FOR_INFO_FLOW,
                         source=source,
                         feature_category=feature_category,
                         target=TokenType.last,
-                        prompt_filteration=ModelCorrectPromptFilteration(
-                            DATASETS.COUNTER_FACT,
-                            model_arch=model_arch_and_size.arch,
-                            model_size=model_arch_and_size.size,
-                            correctness=Correctness.correct,
-                            code_version=MODEL_CORRECT_MODEL_CODE_VERSION,
-                        ),
-                    ).validate()
-                ] = None
+                    ),
+                    ModelCorrectPromptFilteration(
+                        DATASETS.COUNTER_FACT,
+                        model_arch=model_arch_and_size.arch,
+                        model_size=model_arch_and_size.size,
+                        correctness=Correctness.correct,
+                        code_version=MODEL_CORRECT_MODEL_CODE_VERSION,
+                    ),
+                )
 
     # endregion
 
@@ -137,24 +158,23 @@ def get_default_data_reqs() -> DataReqs:
                 (TokenType.subject, FeatureCategory.SLOW_DECAY),
                 (TokenType.subject, FeatureCategory.FAST_DECAY),
             ]:
-                data_reqs[
-                    DataReq(
-                        experiment_name=EXPERIMENT_NAMES.INFO_FLOW,
+                data_reqs.add_data_req(
+                    InfoFlowParams(
                         model_arch=model_arch_and_size.arch,
                         model_size=model_arch_and_size.size,
                         window_size=STANDARD_WINDOW_SIZE_FOR_INFO_FLOW,
                         source=source,
                         feature_category=feature_category,
                         target=TokenType.last,
-                        prompt_filteration=ModelCorrectPromptFilteration(
-                            DATASETS.COUNTER_FACT,
-                            model_arch=model_arch_and_size.arch,
-                            model_size=model_arch_and_size.size,
-                            correctness=Correctness.correct,
-                            code_version=MODEL_CORRECT_MODEL_CODE_VERSION,
-                        ),
-                    ).validate()
-                ] = None
+                    ),
+                    ModelCorrectPromptFilteration(
+                        DATASETS.COUNTER_FACT,
+                        model_arch=model_arch_and_size.arch,
+                        model_size=model_arch_and_size.size,
+                        correctness=Correctness.correct,
+                        code_version=MODEL_CORRECT_MODEL_CODE_VERSION,
+                    ),
+                )
 
     # endregion
 
@@ -177,24 +197,23 @@ def get_default_data_reqs() -> DataReqs:
         if model_size_cat != MODEL_SIZE_CAT.LARGE:
             continue
         for source in [TokenType.context, TokenType.subject]:
-            data_reqs[
-                DataReq(
-                    experiment_name=EXPERIMENT_NAMES.INFO_FLOW,
+            data_reqs.add_data_req(
+                InfoFlowParams(
                     model_arch=model_arch_and_size.arch,
                     model_size=model_arch_and_size.size,
                     window_size=STANDARD_WINDOW_SIZE_FOR_INFO_FLOW,
                     source=source,
                     feature_category=FeatureCategory.ALL,
                     target=TokenType.subject,
-                    prompt_filteration=ModelCorrectPromptFilteration(
-                        DATASETS.COUNTER_FACT,
-                        model_arch=model_arch_and_size.arch,
-                        model_size=model_arch_and_size.size,
-                        correctness=Correctness.correct,
-                        code_version=MODEL_CORRECT_MODEL_CODE_VERSION,
-                    ),
-                ).validate()
-            ] = None
+                ),
+                ModelCorrectPromptFilteration(
+                    DATASETS.COUNTER_FACT,
+                    model_arch=model_arch_and_size.arch,
+                    model_size=model_arch_and_size.size,
+                    correctness=Correctness.correct,
+                    code_version=MODEL_CORRECT_MODEL_CODE_VERSION,
+                ),
+            )
 
     # endregion
 
@@ -224,24 +243,23 @@ def get_default_data_reqs() -> DataReqs:
                 (TokenType.subject, FeatureCategory.ALL),
                 (TokenType.relation, FeatureCategory.ALL),
             ]:
-                data_reqs[
-                    DataReq(
-                        experiment_name=EXPERIMENT_NAMES.INFO_FLOW,
+                data_reqs.add_data_req(
+                    InfoFlowParams(
                         model_arch=model_arch_and_size.arch,
                         model_size=model_arch_and_size.size,
                         window_size=STANDARD_WINDOW_SIZE_FOR_INFO_FLOW,
                         source=source,
                         feature_category=feature_category,
                         target=TokenType.last,
-                        prompt_filteration=ModelCorrectPromptFilteration(
-                            DATASETS.COUNTER_FACT,
-                            model_arch=model_arch_and_size.arch,
-                            model_size=model_arch_and_size.size,
-                            correctness=Correctness.correct,
-                            code_version=MODEL_CORRECT_MODEL_CODE_VERSION,
-                        ),
-                    ).validate()
-                ] = None
+                    ),
+                    ModelCorrectPromptFilteration(
+                        DATASETS.COUNTER_FACT,
+                        model_arch=model_arch_and_size.arch,
+                        model_size=model_arch_and_size.size,
+                        correctness=Correctness.correct,
+                        code_version=MODEL_CORRECT_MODEL_CODE_VERSION,
+                    ),
+                )
 
     # endregion
 
@@ -254,24 +272,23 @@ def get_default_data_reqs() -> DataReqs:
                     FeatureCategory.SLOW_DECAY,
                     FeatureCategory.FAST_DECAY,
                 ]:
-                    data_reqs[
-                        DataReq(
-                            experiment_name=EXPERIMENT_NAMES.INFO_FLOW,
+                    data_reqs.add_data_req(
+                        InfoFlowParams(
                             model_arch=model_arch_and_size.arch,
                             model_size=model_arch_and_size.size,
                             window_size=STANDARD_WINDOW_SIZE_FOR_INFO_FLOW,
                             source=source,
                             feature_category=feature_category,
                             target=TokenType.last,
-                            prompt_filteration=ModelCorrectPromptFilteration(
-                                DATASETS.COUNTER_FACT,
-                                model_arch=model_arch_and_size.arch,
-                                model_size=model_arch_and_size.size,
-                                correctness=Correctness.correct,
-                                code_version=MODEL_CORRECT_MODEL_CODE_VERSION,
-                            ),
-                        ).validate()
-                    ] = None
+                        ),
+                        ModelCorrectPromptFilteration(
+                            DATASETS.COUNTER_FACT,
+                            model_arch=model_arch_and_size.arch,
+                            model_size=model_arch_and_size.size,
+                            correctness=Correctness.correct,
+                            code_version=MODEL_CORRECT_MODEL_CODE_VERSION,
+                        ),
+                    )
 
     # region 6. Figure 6 Heatmaps.
     """
@@ -307,25 +324,23 @@ def get_default_data_reqs() -> DataReqs:
                     TokenType.subject,
                     TokenType.relation,
                 ]:
-                    data_reqs[
-                        DataReq(
-                            experiment_name=EXPERIMENT_NAMES.INFO_FLOW,
+                    data_reqs.add_data_req(
+                        InfoFlowParams(
                             model_arch=model_arch_and_size.arch,
                             model_size=model_arch_and_size.size,
                             window_size=window_size,
                             source=source,
                             feature_category=FeatureCategory.ALL,
                             target=TokenType.last,
-                            prompt_filteration=ModelCorrectPromptFilteration(
-                                DATASETS.COUNTER_FACT,
-                                model_arch=model_arch_and_size.arch,
-                                model_size=model_arch_and_size.size,
-                                correctness=Correctness.correct,
-                                code_version=MODEL_CORRECT_MODEL_CODE_VERSION,
-                            ),
-                        ).validate()
-                    ] = None
-
+                        ),
+                        ModelCorrectPromptFilteration(
+                            DATASETS.COUNTER_FACT,
+                            model_arch=model_arch_and_size.arch,
+                            model_size=model_arch_and_size.size,
+                            correctness=Correctness.correct,
+                            code_version=MODEL_CORRECT_MODEL_CODE_VERSION,
+                        ),
+                    )
     # endregion
 
     # region 8. Appendix: Knockout information flow to the last token - comparing model sizes.
@@ -350,24 +365,23 @@ def get_default_data_reqs() -> DataReqs:
                 TokenType.subject,
                 TokenType.relation,
             ]:
-                data_reqs[
-                    DataReq(
-                        experiment_name=EXPERIMENT_NAMES.INFO_FLOW,
+                data_reqs.add_data_req(
+                    InfoFlowParams(
                         model_arch=model_arch_and_size.arch,
                         model_size=model_arch_and_size.size,
                         window_size=STANDARD_WINDOW_SIZE_FOR_INFO_FLOW,
                         source=source,
                         feature_category=FeatureCategory.ALL,
                         target=TokenType.last,
-                        prompt_filteration=ModelCorrectPromptFilteration(
-                            DATASETS.COUNTER_FACT,
-                            model_arch=model_arch_and_size.arch,
-                            model_size=model_arch_and_size.size,
-                            correctness=Correctness.correct,
-                            code_version=MODEL_CORRECT_MODEL_CODE_VERSION,
-                        ),
-                    ).validate()
-                ] = None
+                    ),
+                    ModelCorrectPromptFilteration(
+                        DATASETS.COUNTER_FACT,
+                        model_arch=model_arch_and_size.arch,
+                        model_size=model_arch_and_size.size,
+                        correctness=Correctness.correct,
+                        code_version=MODEL_CORRECT_MODEL_CODE_VERSION,
+                    ),
+                )
 
     # endregion
 
@@ -383,4 +397,4 @@ def get_default_data_reqs() -> DataReqs:
     # TODO: Add data reqs
     # endregion
 
-    return DataReqs(set(data_reqs.keys()))
+    return data_reqs

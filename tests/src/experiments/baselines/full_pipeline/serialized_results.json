@@ -1,18 +1,18 @@
 [
     [
         {
-            "experiment_name": "evaluate",
             "model_arch": "gpt2",
             "model_size": "355M",
-            "prompt_filteration": {
-                "AnyExistingPromptFilteration": {
-                    "dataset_name": "counter_fact"
-                }
-            },
-            "window_size": null,
-            "source": null,
-            "feature_category": null,
-            "target": null
+            "experiment_name": "evaluate_model",
+            "drop_subject": false,
+            "drop_subj_last_token": false,
+            "with_3_dots": false,
+            "new_max_tokens": 5,
+            "top_k_tokens": 5
+        },
+        {
+            "filteration": {},
+            "dataset_name": "counter_fact"
         },
         {
             "relation": {
@@ -279,18 +279,18 @@
     ],
     [
         {
-            "experiment_name": "evaluate",
             "model_arch": "mamba1",
             "model_size": "130M",
-            "prompt_filteration": {
-                "AnyExistingPromptFilteration": {
-                    "dataset_name": "counter_fact"
-                }
-            },
-            "window_size": null,
-            "source": null,
-            "feature_category": null,
-            "target": null
+            "experiment_name": "evaluate_model",
+            "drop_subject": false,
+            "drop_subj_last_token": false,
+            "with_3_dots": false,
+            "new_max_tokens": 5,
+            "top_k_tokens": 5
+        },
+        {
+            "filteration": {},
+            "dataset_name": "counter_fact"
         },
         {
             "relation": {
@@ -557,18 +557,18 @@
     ],
     [
         {
-            "experiment_name": "evaluate",
             "model_arch": "mamba2",
             "model_size": "130M",
-            "prompt_filteration": {
-                "AnyExistingPromptFilteration": {
-                    "dataset_name": "counter_fact"
-                }
-            },
-            "window_size": null,
-            "source": null,
-            "feature_category": null,
-            "target": null
+            "experiment_name": "evaluate_model",
+            "drop_subject": false,
+            "drop_subj_last_token": false,
+            "with_3_dots": false,
+            "new_max_tokens": 5,
+            "top_k_tokens": 5
+        },
+        {
+            "filteration": {},
+            "dataset_name": "counter_fact"
         },
         {
             "relation": {
@@ -835,18 +835,14 @@
     ],
     [
         {
-            "experiment_name": "heatmap",
             "model_arch": "gpt2",
             "model_size": "355M",
-            "prompt_filteration": {
-                "AnyExistingPromptFilteration": {
-                    "dataset_name": "counter_fact"
-                }
-            },
-            "window_size": 15,
-            "source": null,
-            "feature_category": null,
-            "target": null
+            "experiment_name": "heatmap",
+            "window_size": 15
+        },
+        {
+            "filteration": {},
+            "dataset_name": "counter_fact"
         },
         {
             "53": {
@@ -1373,18 +1369,14 @@
     ],
     [
         {
-            "experiment_name": "heatmap",
             "model_arch": "mamba1",
             "model_size": "130M",
-            "prompt_filteration": {
-                "AnyExistingPromptFilteration": {
-                    "dataset_name": "counter_fact"
-                }
-            },
-            "window_size": 15,
-            "source": null,
-            "feature_category": null,
-            "target": null
+            "experiment_name": "heatmap",
+            "window_size": 15
+        },
+        {
+            "filteration": {},
+            "dataset_name": "counter_fact"
         },
         {
             "53": {
@@ -1921,18 +1913,14 @@
     ],
     [
         {
-            "experiment_name": "heatmap",
             "model_arch": "mamba2",
             "model_size": "130M",
-            "prompt_filteration": {
-                "AnyExistingPromptFilteration": {
-                    "dataset_name": "counter_fact"
-                }
-            },
-            "window_size": 15,
-            "source": null,
-            "feature_category": null,
-            "target": null
+            "experiment_name": "heatmap",
+            "window_size": 15
+        },
+        {
+            "filteration": {},
+            "dataset_name": "counter_fact"
         },
         {
             "53": {
@@ -2469,18 +2457,17 @@
     ],
     [
         {
-            "experiment_name": "info_flow",
             "model_arch": "gpt2",
             "model_size": "355M",
-            "prompt_filteration": {
-                "AnyExistingPromptFilteration": {
-                    "dataset_name": "counter_fact"
-                }
-            },
+            "experiment_name": "info_flow",
             "window_size": 15,
             "source": "context",
             "feature_category": "ALL",
             "target": "relation"
+        },
+        {
+            "filteration": {},
+            "dataset_name": "counter_fact"
         },
         {
             "0": {
@@ -2867,18 +2854,17 @@
     ],
     [
         {
-            "experiment_name": "info_flow",
             "model_arch": "gpt2",
             "model_size": "355M",
-            "prompt_filteration": {
-                "AnyExistingPromptFilteration": {
-                    "dataset_name": "counter_fact"
-                }
-            },
+            "experiment_name": "info_flow",
             "window_size": 15,
             "source": "context",
             "feature_category": "ALL",
             "target": "subject"
+        },
+        {
+            "filteration": {},
+            "dataset_name": "counter_fact"
         },
         {
             "0": {
@@ -3265,18 +3251,17 @@
     ],
     [
         {
-            "experiment_name": "info_flow",
             "model_arch": "gpt2",
             "model_size": "355M",
-            "prompt_filteration": {
-                "AnyExistingPromptFilteration": {
-                    "dataset_name": "counter_fact"
-                }
-            },
+            "experiment_name": "info_flow",
             "window_size": 15,
             "source": "first",
             "feature_category": "ALL",
             "target": "last"
+        },
+        {
+            "filteration": {},
+            "dataset_name": "counter_fact"
         },
         {
             "0": {
@@ -3663,18 +3648,17 @@
     ],
     [
         {
-            "experiment_name": "info_flow",
             "model_arch": "gpt2",
             "model_size": "355M",
-            "prompt_filteration": {
-                "AnyExistingPromptFilteration": {
-                    "dataset_name": "counter_fact"
-                }
-            },
+            "experiment_name": "info_flow",
             "window_size": 15,
             "source": "last",
             "feature_category": "ALL",
             "target": "last"
+        },
+        {
+            "filteration": {},
+            "dataset_name": "counter_fact"
         },
         {
             "0": {
@@ -4061,18 +4045,17 @@
     ],
     [
         {
-            "experiment_name": "info_flow",
             "model_arch": "gpt2",
             "model_size": "355M",
-            "prompt_filteration": {
-                "AnyExistingPromptFilteration": {
-                    "dataset_name": "counter_fact"
-                }
-            },
+            "experiment_name": "info_flow",
             "window_size": 15,
             "source": "relation",
             "feature_category": "ALL",
             "target": "last"
+        },
+        {
+            "filteration": {},
+            "dataset_name": "counter_fact"
         },
         {
             "0": {
@@ -4459,18 +4442,17 @@
     ],
     [
         {
-            "experiment_name": "info_flow",
             "model_arch": "gpt2",
             "model_size": "355M",
-            "prompt_filteration": {
-                "AnyExistingPromptFilteration": {
-                    "dataset_name": "counter_fact"
-                }
-            },
+            "experiment_name": "info_flow",
             "window_size": 15,
             "source": "relation",
             "feature_category": "ALL",
             "target": "relation"
+        },
+        {
+            "filteration": {},
+            "dataset_name": "counter_fact"
         },
         {
             "0": {
@@ -4857,18 +4839,17 @@
     ],
     [
         {
-            "experiment_name": "info_flow",
             "model_arch": "gpt2",
             "model_size": "355M",
-            "prompt_filteration": {
-                "AnyExistingPromptFilteration": {
-                    "dataset_name": "counter_fact"
-                }
-            },
+            "experiment_name": "info_flow",
             "window_size": 15,
             "source": "subject",
             "feature_category": "ALL",
             "target": "last"
+        },
+        {
+            "filteration": {},
+            "dataset_name": "counter_fact"
         },
         {
             "0": {
@@ -5255,18 +5236,17 @@
     ],
     [
         {
-            "experiment_name": "info_flow",
             "model_arch": "gpt2",
             "model_size": "355M",
-            "prompt_filteration": {
-                "AnyExistingPromptFilteration": {
-                    "dataset_name": "counter_fact"
-                }
-            },
+            "experiment_name": "info_flow",
             "window_size": 15,
             "source": "subject",
             "feature_category": "ALL",
             "target": "relation"
+        },
+        {
+            "filteration": {},
+            "dataset_name": "counter_fact"
         },
         {
             "0": {
@@ -5653,18 +5633,17 @@
     ],
     [
         {
-            "experiment_name": "info_flow",
             "model_arch": "gpt2",
             "model_size": "355M",
-            "prompt_filteration": {
-                "AnyExistingPromptFilteration": {
-                    "dataset_name": "counter_fact"
-                }
-            },
+            "experiment_name": "info_flow",
             "window_size": 15,
             "source": "subject",
             "feature_category": "ALL",
             "target": "subject"
+        },
+        {
+            "filteration": {},
+            "dataset_name": "counter_fact"
         },
         {
             "0": {
@@ -6051,18 +6030,17 @@
     ],
     [
         {
-            "experiment_name": "info_flow",
             "model_arch": "mamba1",
             "model_size": "130M",
-            "prompt_filteration": {
-                "AnyExistingPromptFilteration": {
-                    "dataset_name": "counter_fact"
-                }
-            },
+            "experiment_name": "info_flow",
             "window_size": 15,
             "source": "context",
             "feature_category": "ALL",
             "target": "relation"
+        },
+        {
+            "filteration": {},
+            "dataset_name": "counter_fact"
         },
         {
             "0": {
@@ -6489,18 +6467,17 @@
     ],
     [
         {
-            "experiment_name": "info_flow",
             "model_arch": "mamba1",
             "model_size": "130M",
-            "prompt_filteration": {
-                "AnyExistingPromptFilteration": {
-                    "dataset_name": "counter_fact"
-                }
-            },
+            "experiment_name": "info_flow",
             "window_size": 15,
             "source": "context",
             "feature_category": "ALL",
             "target": "subject"
+        },
+        {
+            "filteration": {},
+            "dataset_name": "counter_fact"
         },
         {
             "0": {
@@ -6927,18 +6904,17 @@
     ],
     [
         {
-            "experiment_name": "info_flow",
             "model_arch": "mamba1",
             "model_size": "130M",
-            "prompt_filteration": {
-                "AnyExistingPromptFilteration": {
-                    "dataset_name": "counter_fact"
-                }
-            },
+            "experiment_name": "info_flow",
             "window_size": 15,
             "source": "first",
             "feature_category": "ALL",
             "target": "last"
+        },
+        {
+            "filteration": {},
+            "dataset_name": "counter_fact"
         },
         {
             "0": {
@@ -7365,18 +7341,17 @@
     ],
     [
         {
-            "experiment_name": "info_flow",
             "model_arch": "mamba1",
             "model_size": "130M",
-            "prompt_filteration": {
-                "AnyExistingPromptFilteration": {
-                    "dataset_name": "counter_fact"
-                }
-            },
+            "experiment_name": "info_flow",
             "window_size": 15,
             "source": "last",
             "feature_category": "ALL",
             "target": "last"
+        },
+        {
+            "filteration": {},
+            "dataset_name": "counter_fact"
         },
         {
             "0": {
@@ -7803,18 +7778,17 @@
     ],
     [
         {
-            "experiment_name": "info_flow",
             "model_arch": "mamba1",
             "model_size": "130M",
-            "prompt_filteration": {
-                "AnyExistingPromptFilteration": {
-                    "dataset_name": "counter_fact"
-                }
-            },
+            "experiment_name": "info_flow",
             "window_size": 15,
             "source": "relation",
             "feature_category": "ALL",
             "target": "last"
+        },
+        {
+            "filteration": {},
+            "dataset_name": "counter_fact"
         },
         {
             "0": {
@@ -8241,18 +8215,17 @@
     ],
     [
         {
-            "experiment_name": "info_flow",
             "model_arch": "mamba1",
             "model_size": "130M",
-            "prompt_filteration": {
-                "AnyExistingPromptFilteration": {
-                    "dataset_name": "counter_fact"
-                }
-            },
+            "experiment_name": "info_flow",
             "window_size": 15,
             "source": "relation",
             "feature_category": "ALL",
             "target": "relation"
+        },
+        {
+            "filteration": {},
+            "dataset_name": "counter_fact"
         },
         {
             "0": {
@@ -8679,18 +8652,17 @@
     ],
     [
         {
-            "experiment_name": "info_flow",
             "model_arch": "mamba1",
             "model_size": "130M",
-            "prompt_filteration": {
-                "AnyExistingPromptFilteration": {
-                    "dataset_name": "counter_fact"
-                }
-            },
+            "experiment_name": "info_flow",
             "window_size": 15,
             "source": "subject",
             "feature_category": "ALL",
             "target": "last"
+        },
+        {
+            "filteration": {},
+            "dataset_name": "counter_fact"
         },
         {
             "0": {
@@ -9117,18 +9089,17 @@
     ],
     [
         {
-            "experiment_name": "info_flow",
             "model_arch": "mamba1",
             "model_size": "130M",
-            "prompt_filteration": {
-                "AnyExistingPromptFilteration": {
-                    "dataset_name": "counter_fact"
-                }
-            },
+            "experiment_name": "info_flow",
             "window_size": 15,
             "source": "subject",
             "feature_category": "ALL",
             "target": "relation"
+        },
+        {
+            "filteration": {},
+            "dataset_name": "counter_fact"
         },
         {
             "0": {
@@ -9555,18 +9526,17 @@
     ],
     [
         {
-            "experiment_name": "info_flow",
             "model_arch": "mamba1",
             "model_size": "130M",
-            "prompt_filteration": {
-                "AnyExistingPromptFilteration": {
-                    "dataset_name": "counter_fact"
-                }
-            },
+            "experiment_name": "info_flow",
             "window_size": 15,
             "source": "subject",
             "feature_category": "ALL",
             "target": "subject"
+        },
+        {
+            "filteration": {},
+            "dataset_name": "counter_fact"
         },
         {
             "0": {
@@ -9993,18 +9963,17 @@
     ],
     [
         {
-            "experiment_name": "info_flow",
             "model_arch": "mamba1",
             "model_size": "130M",
-            "prompt_filteration": {
-                "AnyExistingPromptFilteration": {
-                    "dataset_name": "counter_fact"
-                }
-            },
+            "experiment_name": "info_flow",
             "window_size": 15,
             "source": "subject",
             "feature_category": "FAST_DECAY",
             "target": "last"
+        },
+        {
+            "filteration": {},
+            "dataset_name": "counter_fact"
         },
         {
             "0": {
@@ -10431,18 +10400,17 @@
     ],
     [
         {
-            "experiment_name": "info_flow",
             "model_arch": "mamba1",
             "model_size": "130M",
-            "prompt_filteration": {
-                "AnyExistingPromptFilteration": {
-                    "dataset_name": "counter_fact"
-                }
-            },
+            "experiment_name": "info_flow",
             "window_size": 15,
             "source": "subject",
             "feature_category": "SLOW_DECAY",
             "target": "last"
+        },
+        {
+            "filteration": {},
+            "dataset_name": "counter_fact"
         },
         {
             "0": {
@@ -10869,18 +10837,17 @@
     ],
     [
         {
-            "experiment_name": "info_flow",
             "model_arch": "mamba2",
             "model_size": "130M",
-            "prompt_filteration": {
-                "AnyExistingPromptFilteration": {
-                    "dataset_name": "counter_fact"
-                }
-            },
+            "experiment_name": "info_flow",
             "window_size": 15,
             "source": "context",
             "feature_category": "ALL",
             "target": "relation"
+        },
+        {
+            "filteration": {},
+            "dataset_name": "counter_fact"
         },
         {
             "0": {
@@ -11307,18 +11274,17 @@
     ],
     [
         {
-            "experiment_name": "info_flow",
             "model_arch": "mamba2",
             "model_size": "130M",
-            "prompt_filteration": {
-                "AnyExistingPromptFilteration": {
-                    "dataset_name": "counter_fact"
-                }
-            },
+            "experiment_name": "info_flow",
             "window_size": 15,
             "source": "context",
             "feature_category": "ALL",
             "target": "subject"
+        },
+        {
+            "filteration": {},
+            "dataset_name": "counter_fact"
         },
         {
             "0": {
@@ -11745,18 +11711,17 @@
     ],
     [
         {
-            "experiment_name": "info_flow",
             "model_arch": "mamba2",
             "model_size": "130M",
-            "prompt_filteration": {
-                "AnyExistingPromptFilteration": {
-                    "dataset_name": "counter_fact"
-                }
-            },
+            "experiment_name": "info_flow",
             "window_size": 15,
             "source": "first",
             "feature_category": "ALL",
             "target": "last"
+        },
+        {
+            "filteration": {},
+            "dataset_name": "counter_fact"
         },
         {
             "0": {
@@ -12183,18 +12148,17 @@
     ],
     [
         {
-            "experiment_name": "info_flow",
             "model_arch": "mamba2",
             "model_size": "130M",
-            "prompt_filteration": {
-                "AnyExistingPromptFilteration": {
-                    "dataset_name": "counter_fact"
-                }
-            },
+            "experiment_name": "info_flow",
             "window_size": 15,
             "source": "last",
             "feature_category": "ALL",
             "target": "last"
+        },
+        {
+            "filteration": {},
+            "dataset_name": "counter_fact"
         },
         {
             "0": {
@@ -12621,18 +12585,17 @@
     ],
     [
         {
-            "experiment_name": "info_flow",
             "model_arch": "mamba2",
             "model_size": "130M",
-            "prompt_filteration": {
-                "AnyExistingPromptFilteration": {
-                    "dataset_name": "counter_fact"
-                }
-            },
+            "experiment_name": "info_flow",
             "window_size": 15,
             "source": "relation",
             "feature_category": "ALL",
             "target": "last"
+        },
+        {
+            "filteration": {},
+            "dataset_name": "counter_fact"
         },
         {
             "0": {
@@ -13059,18 +13022,17 @@
     ],
     [
         {
-            "experiment_name": "info_flow",
             "model_arch": "mamba2",
             "model_size": "130M",
-            "prompt_filteration": {
-                "AnyExistingPromptFilteration": {
-                    "dataset_name": "counter_fact"
-                }
-            },
+            "experiment_name": "info_flow",
             "window_size": 15,
             "source": "relation",
             "feature_category": "ALL",
             "target": "relation"
+        },
+        {
+            "filteration": {},
+            "dataset_name": "counter_fact"
         },
         {
             "0": {
@@ -13497,18 +13459,17 @@
     ],
     [
         {
-            "experiment_name": "info_flow",
             "model_arch": "mamba2",
             "model_size": "130M",
-            "prompt_filteration": {
-                "AnyExistingPromptFilteration": {
-                    "dataset_name": "counter_fact"
-                }
-            },
+            "experiment_name": "info_flow",
             "window_size": 15,
             "source": "subject",
             "feature_category": "ALL",
             "target": "last"
+        },
+        {
+            "filteration": {},
+            "dataset_name": "counter_fact"
         },
         {
             "0": {
@@ -13935,18 +13896,17 @@
     ],
     [
         {
-            "experiment_name": "info_flow",
             "model_arch": "mamba2",
             "model_size": "130M",
-            "prompt_filteration": {
-                "AnyExistingPromptFilteration": {
-                    "dataset_name": "counter_fact"
-                }
-            },
+            "experiment_name": "info_flow",
             "window_size": 15,
             "source": "subject",
             "feature_category": "ALL",
             "target": "relation"
+        },
+        {
+            "filteration": {},
+            "dataset_name": "counter_fact"
         },
         {
             "0": {
@@ -14373,18 +14333,17 @@
     ],
     [
         {
-            "experiment_name": "info_flow",
             "model_arch": "mamba2",
             "model_size": "130M",
-            "prompt_filteration": {
-                "AnyExistingPromptFilteration": {
-                    "dataset_name": "counter_fact"
-                }
-            },
+            "experiment_name": "info_flow",
             "window_size": 15,
             "source": "subject",
             "feature_category": "ALL",
             "target": "subject"
+        },
+        {
+            "filteration": {},
+            "dataset_name": "counter_fact"
         },
         {
             "0": {
@@ -14811,18 +14770,17 @@
     ],
     [
         {
-            "experiment_name": "info_flow",
             "model_arch": "mamba2",
             "model_size": "130M",
-            "prompt_filteration": {
-                "AnyExistingPromptFilteration": {
-                    "dataset_name": "counter_fact"
-                }
-            },
+            "experiment_name": "info_flow",
             "window_size": 15,
             "source": "subject",
             "feature_category": "FAST_DECAY",
             "target": "last"
+        },
+        {
+            "filteration": {},
+            "dataset_name": "counter_fact"
         },
         {
             "0": {
@@ -15249,18 +15207,17 @@
     ],
     [
         {
-            "experiment_name": "info_flow",
             "model_arch": "mamba2",
             "model_size": "130M",
-            "prompt_filteration": {
-                "AnyExistingPromptFilteration": {
-                    "dataset_name": "counter_fact"
-                }
-            },
+            "experiment_name": "info_flow",
             "window_size": 15,
             "source": "subject",
             "feature_category": "SLOW_DECAY",
             "target": "last"
+        },
+        {
+            "filteration": {},
+            "dataset_name": "counter_fact"
         },
         {
             "0": {

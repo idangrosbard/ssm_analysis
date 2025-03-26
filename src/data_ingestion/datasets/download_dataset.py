@@ -62,11 +62,11 @@ def load_splitted_counter_fact(
     return dataset
 
 
-def get_prompt_ids(dataset_name: DATASETS) -> list[TPromptOriginalIndex]:
+def get_prompt_ids(dataset_name: DATASETS, split: TSplitChoise = ALL_SPLITS_LITERAL) -> list[TPromptOriginalIndex]:
     match dataset_name:
         case DATASETS.COUNTER_FACT:
             dataset = load_splitted_counter_fact(
-                ALL_SPLITS_LITERAL,
+                split,
             )
             return dataset[COLS.ORIGINAL_IDX]
     assert_never(dataset_name)

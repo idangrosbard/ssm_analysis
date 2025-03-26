@@ -93,7 +93,7 @@ def get_test_full_pipeline_config(
             },
             info_flow_window_size=TWindowSize(15),
             heatmap_window_size=TWindowSize(15),
-            heatmap_prompts=SelectivePromptFilteration(DATASETS.COUNTER_FACT, tuple(ORIGINAL_IDS[SPLIT.TRAIN1])),
+            heatmap_prompts=SelectivePromptFilteration(tuple(ORIGINAL_IDS[SPLIT.TRAIN1])),
             with_plotting=with_plotting,
             enforce_no_missing_outputs=True,
             with_generation=True,
@@ -111,6 +111,7 @@ def get_test_full_pipeline_config(
         ),
         metadata_params=MetadataParams(
             code_version=TCodeVersionName(code_version_name),
+            with_slurm=False,
         ),
     )
 
@@ -155,7 +156,9 @@ def run_test_experiment(test_base_path: Path, normalizing_outputs: bool, with_pl
                 model_size=model_size,
                 with_plotting=with_plotting,
             )
-            config.compute_with_dependencies()
+
+            config.compute_dependencies(rec_depth=-1)
+            config.run(with_dependencies=True)
 
         if normalizing_outputs:
             (test_base_path / "serialized_results.json").write_text(

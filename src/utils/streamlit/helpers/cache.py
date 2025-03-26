@@ -24,6 +24,7 @@ class CachedFunction(Generic[P, OutputType]):
         self.cached_func = cached_func
         self.func_name = func.__name__
         self.execution_time: dt.timedelta | None = None
+        self.is_failed = False
         # Register this instance
         self.global_store().add_instance(self.func_name, self)
 
@@ -66,6 +67,8 @@ class CachedFunction(Generic[P, OutputType]):
     @property
     def execution_time_str(self) -> str:
         """Get the execution time as a human-readable string."""
+        if self.is_failed:
+            return "Failed"
         if self.execution_time is None:
             return "Never run"
         return humanize.precisedelta(
@@ -106,16 +109,34 @@ class CachedFunction(Generic[P, OutputType]):
                 instance.clear()
                 st.rerun()
 
+    def call_and_render(self, *args: P.args, **kwargs: P.kwargs) -> OutputType:
+        """
+        This function is used to call the cached function and render the dependencies.
+        It also make sure that even if the function raise, the dependencies will be rendered.
+        """
+        try:
+            self.is_failed = False
+            return self(*args, **kwargs)
+        except Exception as e:
+            self.is_failed = True
+            raise e
+        finally:
+            self.render()
+
 
 class CacheWithDependencies:
     """Class decorator wrapping @st.cache_data with strong typing, dependency tracking, and UI rendering."""
 
-    def __init__(self, *st_args, **st_kwargs):
+    def __init__(self, *st_args, disable_cache: bool = False, **st_kwargs):
         self.st_args = st_args
         self.st_kwargs = st_kwargs
+        self.disable_cache = disable_cache
 
     def __call__(self, func: Callable[P, OutputType]) -> CachedFunction[P, OutputType]:
-        cached_func = st.cache_data(*self.st_args, **self.st_kwargs)(func)
+        if self.disable_cache:
+            cached_func = func
+        else:
+            cached_func = st.cache_data(*self.st_args, **self.st_kwargs)(func)
         return CachedFunction(func, cached_func)
 
 

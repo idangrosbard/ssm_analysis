@@ -1,23 +1,23 @@
 import json
 from dataclasses import asdict
-from typing import Optional
+from typing import cast
 
 import pandas as pd
 
-from src.analysis.experiment_results.data_requirements import DataReq
-from src.analysis.experiment_results.results_bank import (
-    EvaluateModelRecord,
-    HeatmapRecord,
-    InfoFlowRecord,
-    ResultRecord,
-)
-from src.analysis.prompt_filterations import AllPromptFilteration, AnyExistingPromptFilteration
-from src.core.names import COLS, DATASETS, DataReqCols
+from src.analysis.prompt_filterations import AllPromptFilteration
+from src.core.names import COLS, DATASETS, EXPERIMENT_NAMES, DataReqCols
 from src.core.types import MODEL_ARCH_AND_SIZE, TCodeVersionName
-from src.data_ingestion.data_defs import DataReqs, FulfilledReqs, ResultBank
-from src.experiments.infrastructure.base_config import BasePromptFilteration, BaseRunner, InputParams, MetadataParams
+from src.data_ingestion.data_defs import ResultBank
+from src.experiments.infrastructure.base_config import (
+    BasePromptFilteration,
+    BaseRunner,
+    BaseVariantParams,
+    InputParams,
+    MetadataParams,
+)
 from src.experiments.runners.evaluate_model import EvaluateModelConfig, EvaluateModelParams
-from src.utils.types_utils import str_enum_values
+from src.experiments.runners.heatmap import HeatmapConfig, HeatmapParams
+from src.experiments.runners.info_flow import InfoFlowConfig, InfoFlowParams
 
 
 def get_model_evaluations(
@@ -42,73 +42,55 @@ def get_model_evaluations(
     }
 
 
-IDataFulfilled = dict[DataReq, Optional[ResultRecord]]
+def init_variant_params_from_values(dict_values: dict) -> BaseVariantParams:
+    experiment_name = cast(EXPERIMENT_NAMES, dict_values.pop(DataReqCols.experiment_name))
+    match experiment_name:
+        case EXPERIMENT_NAMES.EVALUATE_MODEL:
+            return EvaluateModelParams(**dict_values)
+        case EXPERIMENT_NAMES.INFO_FLOW:
+            return InfoFlowParams(**dict_values)
+        case EXPERIMENT_NAMES.HEATMAP:
+            return HeatmapParams(**dict_values)
+        case _:
+            raise ValueError(f"Unsupported experiment name: {experiment_name}")
 
 
-def choose_latest_data_fulfilled(
-    data_reqs_options: FulfilledReqs,
-) -> IDataFulfilled:
-    return {
-        data_req: max(options, key=lambda x: x.path) if options else None
-        for data_req, options in data_reqs_options._raw.items()
-    }
-
-
-def get_data_fullfment_options(data_reqs: DataReqs, result_bank: ResultBank) -> FulfilledReqs:
-    data_reqs_options: FulfilledReqs = FulfilledReqs({data_req: [] for data_req in data_reqs.to_rows()})
-    for result in result_bank.to_rows():
-        data_req = result_record_to_data_req(result)
-        if data_req in data_reqs_options._raw:
-            data_reqs_options._raw[data_req].append(result)
-    return data_reqs_options
-
-
-def result_record_to_data_req(
-    result_record: ResultRecord, prompt_filteration: Optional[BasePromptFilteration] = None
-) -> DataReq:
-    if prompt_filteration is None:
-        prompt_filteration = AnyExistingPromptFilteration(DATASETS.COUNTER_FACT)
-    if isinstance(result_record, InfoFlowRecord):
-        target = result_record.target
-        feature_category = result_record.feature_category
-        source = result_record.source
-        window_size = result_record.window_size
-    elif isinstance(result_record, HeatmapRecord):
-        target = None
-        feature_category = None
-        source = None
-        window_size = result_record.window_size
-    elif isinstance(result_record, EvaluateModelRecord):
-        target = None
-        feature_category = None
-        source = None
-        window_size = None
-    else:
-        raise ValueError(f"Unknown result record type: {type(result_record)}")
-
-    return DataReq(
-        experiment_name=result_record.experiment_name,
-        model_arch=result_record.model_arch,
-        model_size=result_record.model_size,
-        window_size=window_size,
-        source=source,
-        feature_category=feature_category,
-        target=target,
-        prompt_filteration=prompt_filteration,
-    ).validate()
-
-
-def result_record_to_config(result_record: ResultRecord, prompt_filteration: BasePromptFilteration) -> BaseRunner:
-    data_req = result_record_to_data_req(result_record)
-    return data_req.get_config(result_record.code_version)
+def init_runner_from_params(
+    variant_params: BaseVariantParams,
+    input_params: InputParams,
+    metadata_params: MetadataParams,
+) -> BaseRunner:
+    match variant_params:
+        case EvaluateModelParams():
+            return EvaluateModelConfig(
+                variant_params=variant_params,
+                input_params=input_params,
+                metadata_params=metadata_params,
+            )
+        case InfoFlowParams():
+            return InfoFlowConfig(
+                variant_params=variant_params,
+                input_params=input_params,
+                metadata_params=metadata_params,
+            )
+        case HeatmapParams():
+            return HeatmapConfig(
+                variant_params=variant_params,
+                input_params=input_params,
+                metadata_params=metadata_params,
+            )
+        case _:
+            raise ValueError(f"Unsupported variant params: {variant_params}")
 
 
 def serialize_result_bank(result_bank: ResultBank) -> str:
     def rec_serialize_dependencies(item):
-        if isinstance(item, ResultRecord):
-            data_req = result_record_to_data_req(item)
-            config = data_req.get_config(item.code_version)
-            return [rec_serialize_dependencies(data_req._asdict()), rec_serialize_dependencies(config.get_outputs())]
+        if isinstance(item, BaseRunner):
+            return [
+                rec_serialize_dependencies(asdict(item.variant_params)),
+                rec_serialize_dependencies(asdict(item.input_params)),
+                rec_serialize_dependencies(item.get_outputs()),
+            ]
         if isinstance(item, dict):
             res = {}
             for k, v in item.items():
@@ -126,8 +108,8 @@ def serialize_result_bank(result_bank: ResultBank) -> str:
             return item
 
     def sort_key(item):
-        assert len(item) == 2
+        assert len(item) == 3
         item = item[0]
-        return tuple([item[col] for col in str_enum_values(DataReqCols) if col != DataReqCols.prompt_filteration])
+        return tuple([item[col] for col in DataReqCols.get_cols_by_experiment_name(item[DataReqCols.experiment_name])])
 
     return json.dumps(sorted(rec_serialize_dependencies(result_bank.to_rows()), key=sort_key), indent=4)

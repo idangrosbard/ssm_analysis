@@ -9,7 +9,7 @@ The combined result is saved as a CSV file
 """
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import cast
 
@@ -30,8 +30,9 @@ from src.data_ingestion.helpers.logits_utils import (
 from src.experiments.infrastructure.base_config import BaseRunner, BaseVariantParams
 
 
-@dataclass
+@dataclass(frozen=True)
 class EvaluateModelParams(BaseVariantParams):
+    experiment_name: EXPERIMENT_NAMES = field(init=False, default=EXPERIMENT_NAMES.EVALUATE_MODEL)
     drop_subject: bool = False
     drop_subj_last_token: bool = False
     with_3_dots: bool = False
@@ -45,13 +46,13 @@ class EvaluateModelConfig(BaseRunner[EvaluateModelParams]):
 
     variant_params: EvaluateModelParams
 
-    @property
-    def experiment_name(self) -> EXPERIMENT_NAMES:
-        return EXPERIMENT_NAMES.EVALUATE_MODEL
+    @staticmethod
+    def _get_variant_params():
+        return EvaluateModelParams
 
-    @property
-    def variant_output_keys(self):
-        return super().variant_output_keys
+    @classmethod
+    def get_variant_output_keys(cls):
+        return super().get_variant_output_keys()
 
     @property
     def output_result_path(self) -> Path:
@@ -76,10 +77,10 @@ class EvaluateModelConfig(BaseRunner[EvaluateModelParams]):
 
         return cast(
             TPromptData,
-            df.set_index(COLS.ORIGINAL_IDX).loc[self.prompt_ids],
+            df.set_index(COLS.ORIGINAL_IDX).loc[self.input_params.filteration.get_prompt_ids()],
         )
 
-    def compute(self) -> None:
+    def _compute_impl(self) -> None:
         run(self)
 
     def is_computed(self) -> bool:
