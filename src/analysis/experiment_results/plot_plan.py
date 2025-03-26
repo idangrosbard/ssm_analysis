@@ -29,8 +29,8 @@ from src.core.types import (
     TWindowSize,
 )
 from src.data_ingestion.data_defs import DataReqiermentCollection, DataReqs, ResultBank
-from src.experiments.runners.heatmap import HeatmapConfig
-from src.experiments.runners.info_flow import InfoFlowConfig
+from src.experiments.runners.heatmap import HeatmapRunner
+from src.experiments.runners.info_flow import InfoFlowRunner
 from src.utils.types_utils import str_enum_values
 
 _T = TypeVar("_T")
@@ -101,7 +101,7 @@ class SourceHPD(HyperParamDefinition[TokenType]):
     def get_result_bank_options(self, result_bank):
         sources = set()
         for result in result_bank.to_rows():
-            if isinstance(result, InfoFlowConfig):
+            if isinstance(result, InfoFlowRunner):
                 sources.add(result.variant_params.source)
         return list(sources)
 
@@ -116,7 +116,7 @@ class TargetHPD(HyperParamDefinition[TokenType]):
     def get_result_bank_options(self, result_bank):
         targets = set()
         for result in result_bank.to_rows():
-            if isinstance(result, InfoFlowConfig):
+            if isinstance(result, InfoFlowRunner):
                 targets.add(result.variant_params.target)
         return list(targets)
 
@@ -134,7 +134,7 @@ class FeatureCategoryHPD(HyperParamDefinition[FeatureCategory]):
     def get_result_bank_options(self, result_bank):
         features = set()
         for result in result_bank.to_rows():
-            if isinstance(result, InfoFlowConfig):
+            if isinstance(result, InfoFlowRunner):
                 features.add(result.variant_params.feature_category)
         return list(features)
 
@@ -152,7 +152,7 @@ class WindowSizeHPD(HyperParamDefinition[TWindowSize]):
     def get_result_bank_options(self, result_bank):
         window_sizes = set()
         for result in result_bank.to_rows():
-            if isinstance(result, InfoFlowConfig) or isinstance(result, HeatmapConfig):
+            if isinstance(result, InfoFlowRunner) or isinstance(result, HeatmapRunner):
                 window_sizes.add(result.variant_params.window_size)
         return list(window_sizes)
 
@@ -170,7 +170,7 @@ class PromptFilterationHPD(HyperParamDefinition[TPromptOriginalIndex]):
     def get_result_bank_options(self, result_bank: ResultBank) -> Sequence[TPromptOriginalIndex]:
         prompts: set[TPromptOriginalIndex] = set()
         for result in result_bank.to_rows():
-            if isinstance(result, HeatmapConfig):
+            if isinstance(result, HeatmapRunner):
                 prompts.update(set(result.input_params.filteration.get_prompt_ids()))
         return sorted(prompts)
 

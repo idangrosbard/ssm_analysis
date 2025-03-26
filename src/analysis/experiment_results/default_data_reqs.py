@@ -1,4 +1,7 @@
-from src.analysis.prompt_filterations import AllPromptFilteration, Correctness, ModelCorrectPromptFilteration
+from src.analysis.prompt_filterations import (
+    AllPromptFilteration,
+    get_all_correct_prompt_filteration,
+)
 from src.core.consts import (
     GRAPHS_ORDER,
     MODEL_SIZE_CAT,
@@ -24,6 +27,10 @@ MODEL_CORRECT_MODEL_CODE_VERSION = TCodeVersionName("v1")
 
 def get_default_data_reqs() -> DataReqiermentCollection:
     data_reqs = DataReqiermentCollection()
+    all_correct_prompt_filteration = get_all_correct_prompt_filteration(
+        model_arch_and_sizes=list(GRAPHS_ORDER.keys()),
+        code_version=MODEL_CORRECT_MODEL_CODE_VERSION,
+    )
 
     for model_arch_and_size in GRAPHS_ORDER:
         if is_mamba_arch(model_arch_and_size.arch):
@@ -50,6 +57,7 @@ def get_default_data_reqs() -> DataReqiermentCollection:
                     ),
                 )
 
+    return data_reqs
     # region 1. Figure 1 Knockout information flow to the **last** token.
     """
     Figure 1: Knockout information flow to the **last** token.
@@ -83,13 +91,7 @@ def get_default_data_reqs() -> DataReqiermentCollection:
                     feature_category=FeatureCategory.ALL,
                     target=TokenType.last,
                 ),
-                ModelCorrectPromptFilteration(
-                    DATASETS.COUNTER_FACT,
-                    model_arch=model_arch_and_size.arch,
-                    model_size=model_arch_and_size.size,
-                    correctness=Correctness.correct,
-                    code_version=MODEL_CORRECT_MODEL_CODE_VERSION,
-                ),
+                all_correct_prompt_filteration,
             )
 
     # endregion
@@ -127,13 +129,7 @@ def get_default_data_reqs() -> DataReqiermentCollection:
                         feature_category=feature_category,
                         target=TokenType.last,
                     ),
-                    ModelCorrectPromptFilteration(
-                        DATASETS.COUNTER_FACT,
-                        model_arch=model_arch_and_size.arch,
-                        model_size=model_arch_and_size.size,
-                        correctness=Correctness.correct,
-                        code_version=MODEL_CORRECT_MODEL_CODE_VERSION,
-                    ),
+                    all_correct_prompt_filteration,
                 )
 
     # endregion
@@ -167,13 +163,7 @@ def get_default_data_reqs() -> DataReqiermentCollection:
                         feature_category=feature_category,
                         target=TokenType.last,
                     ),
-                    ModelCorrectPromptFilteration(
-                        DATASETS.COUNTER_FACT,
-                        model_arch=model_arch_and_size.arch,
-                        model_size=model_arch_and_size.size,
-                        correctness=Correctness.correct,
-                        code_version=MODEL_CORRECT_MODEL_CODE_VERSION,
-                    ),
+                    all_correct_prompt_filteration,
                 )
 
     # endregion
@@ -206,13 +196,7 @@ def get_default_data_reqs() -> DataReqiermentCollection:
                     feature_category=FeatureCategory.ALL,
                     target=TokenType.subject,
                 ),
-                ModelCorrectPromptFilteration(
-                    DATASETS.COUNTER_FACT,
-                    model_arch=model_arch_and_size.arch,
-                    model_size=model_arch_and_size.size,
-                    correctness=Correctness.correct,
-                    code_version=MODEL_CORRECT_MODEL_CODE_VERSION,
-                ),
+                all_correct_prompt_filteration,
             )
 
     # endregion
@@ -252,13 +236,7 @@ def get_default_data_reqs() -> DataReqiermentCollection:
                         feature_category=feature_category,
                         target=TokenType.last,
                     ),
-                    ModelCorrectPromptFilteration(
-                        DATASETS.COUNTER_FACT,
-                        model_arch=model_arch_and_size.arch,
-                        model_size=model_arch_and_size.size,
-                        correctness=Correctness.correct,
-                        code_version=MODEL_CORRECT_MODEL_CODE_VERSION,
-                    ),
+                    all_correct_prompt_filteration,
                 )
 
     # endregion
@@ -281,13 +259,7 @@ def get_default_data_reqs() -> DataReqiermentCollection:
                             feature_category=feature_category,
                             target=TokenType.last,
                         ),
-                        ModelCorrectPromptFilteration(
-                            DATASETS.COUNTER_FACT,
-                            model_arch=model_arch_and_size.arch,
-                            model_size=model_arch_and_size.size,
-                            correctness=Correctness.correct,
-                            code_version=MODEL_CORRECT_MODEL_CODE_VERSION,
-                        ),
+                        all_correct_prompt_filteration,
                     )
 
     # region 6. Figure 6 Heatmaps.
@@ -333,13 +305,7 @@ def get_default_data_reqs() -> DataReqiermentCollection:
                             feature_category=FeatureCategory.ALL,
                             target=TokenType.last,
                         ),
-                        ModelCorrectPromptFilteration(
-                            DATASETS.COUNTER_FACT,
-                            model_arch=model_arch_and_size.arch,
-                            model_size=model_arch_and_size.size,
-                            correctness=Correctness.correct,
-                            code_version=MODEL_CORRECT_MODEL_CODE_VERSION,
-                        ),
+                        all_correct_prompt_filteration,
                     )
     # endregion
 
@@ -374,13 +340,7 @@ def get_default_data_reqs() -> DataReqiermentCollection:
                         feature_category=FeatureCategory.ALL,
                         target=TokenType.last,
                     ),
-                    ModelCorrectPromptFilteration(
-                        DATASETS.COUNTER_FACT,
-                        model_arch=model_arch_and_size.arch,
-                        model_size=model_arch_and_size.size,
-                        correctness=Correctness.correct,
-                        code_version=MODEL_CORRECT_MODEL_CODE_VERSION,
-                    ),
+                    all_correct_prompt_filteration,
                 )
 
     # endregion

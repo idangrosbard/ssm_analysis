@@ -12,12 +12,12 @@ from src.core.types import TCodeVersionName, TInfoFlowOutput, TLayerIndex, TProm
 from src.data_ingestion.data_defs import ResultBank
 from src.experiments.infrastructure.base_config import MetadataParams
 from src.experiments.runners.evaluate_model import EvaluateModelConfig
-from src.experiments.runners.heatmap import HeatmapConfig
+from src.experiments.runners.heatmap import HeatmapRunner
 from src.experiments.runners.info_flow import (
-    InfoFlowConfig,
     InfoFlowFileContent,
     InfoFlowMetadata,
     InfoFlowPromptLayerValue,
+    InfoFlowRunner,
 )
 from src.utils.infra.slurm import submit_cpu_job
 from src.utils.streamlit.helpers.component import StreamlitComponent
@@ -52,7 +52,7 @@ def prev_format_to_new_format(prev_data: TInfoFlowOutput) -> InfoFlowFileContent
     )
 
 
-def migrate_info_flow(tasks: list[tuple[Path, InfoFlowConfig]]):
+def migrate_info_flow(tasks: list[tuple[Path, InfoFlowRunner]]):
     for source_path, new_config in tqdm(tasks):
         print(f"Migrating {source_path} to {new_config.output_file.path}")
         prev_data = read_prev_info_flow_file(source_path)
@@ -78,7 +78,7 @@ class MigrateResults(StreamlitComponent):
         st.write(len(rows))
 
         prev_path = PATHS.PROJECT_DIR
-        tasks_to_run: list[tuple[Path, InfoFlowConfig]] = []
+        tasks_to_run: list[tuple[Path, InfoFlowRunner]] = []
 
         try:
             if self.is_test_results:
@@ -94,16 +94,16 @@ class MigrateResults(StreamlitComponent):
                 if isinstance(new_config, EvaluateModelConfig):
                     assert isinstance(new_config, EvaluateModelConfig)
                     new_path = new_config.output_result_path
-                elif isinstance(new_config, InfoFlowConfig):
-                    assert isinstance(new_config, InfoFlowConfig)
+                elif isinstance(new_config, InfoFlowRunner):
+                    assert isinstance(new_config, InfoFlowRunner)
                     new_path = new_config.output_file.path
-                elif isinstance(new_config, HeatmapConfig):
-                    assert isinstance(new_config, HeatmapConfig)
+                elif isinstance(new_config, HeatmapRunner):
+                    assert isinstance(new_config, HeatmapRunner)
                     new_path = new_config.output_hdf5_path.path
                 else:
                     raise ValueError(f"Unknown config type: {type(new_config)}")
 
-                assert isinstance(new_config, InfoFlowConfig)
+                assert isinstance(new_config, InfoFlowRunner)
 
                 if new_path.exists():
                     continue

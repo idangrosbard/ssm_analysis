@@ -327,4 +327,7 @@ class BaseRunner(ABC, Generic[_TVariantParams]):
         latest_job = self.get_latest_slurm_job()
         if latest_job is None:
             return SlurmStatus.NOT_SUBMITTED
-        return SlurmStatus[latest_job.state]
+        try:
+            return SlurmStatus[latest_job.state]
+        except KeyError:
+            return cast(SlurmStatus, latest_job.state)

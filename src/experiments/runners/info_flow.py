@@ -111,7 +111,7 @@ class JSONInfoFlowFile:
 
     @property
     def statistics_path(self) -> Path:
-        return self.path.with_suffix(".json.stats")
+        return self.path.with_suffix(".stats.json")
 
     def create_new(self, layers_amount: int) -> None:
         self.save(
@@ -273,7 +273,7 @@ class InfoFlowDependencies(TypedDict):
 
 
 @dataclass
-class InfoFlowConfig(BaseRunner[InfoFlowParams]):
+class InfoFlowRunner(BaseRunner[InfoFlowParams]):
     """Configuration for information flow analysis."""
 
     variant_params: InfoFlowParams
@@ -376,7 +376,7 @@ def forward_eval(
     }
 
 
-def run(args: InfoFlowConfig):
+def run(args: InfoFlowRunner):
     print(args)
     args.create_experiment_dir()
 
@@ -396,11 +396,12 @@ def run(args: InfoFlowConfig):
     missing_prompt_layer_values = args.output_file.get_missing_prompt_layer_values(
         prompt_idx_subset=args.input_params.filteration.get_prompt_ids()
     )
-    content = args.output_file.load()
 
     if not missing_prompt_layer_values:
         print("All outputs already exist")
         return
+
+    content = args.output_file.load()
 
     data = args.get_runner_dependencies()["evaluate_model"].get_prompt_data()
 
@@ -432,11 +433,11 @@ def run(args: InfoFlowConfig):
                 )
             except Exception as e:
                 if "Test failure" in str(e):
-                    # Test failure is expected, so we raise the error
+                    # For test: Test failure is expected, so we raise the error
                     raise e
                 print(f" Error evaluating {prompt_id = }: {e}")
                 content[InfoFlowJSONFileCols.metadata][InfoFlowJSONMetadataCols.banned_prompts][prompt_id] = str(e)
-                continue
+                break
 
             current_time = time.time()
             if current_time - last_save_time >= SAVE_INTERVAL:

@@ -19,7 +19,6 @@ import pandas as pd
 import streamlit as st
 from st_aggrid import AgGridReturn
 
-from src.app.app_consts import GLOBAL_APP_CONSTS
 from src.app.app_utils import reverse_format_path_for_display
 from src.app.components.info_flow import InfoFlowAnalysisComponent
 from src.app.components.result_bank import SelectionMode, ShowResultsBank
@@ -37,7 +36,7 @@ from src.core.types import (
 )
 from src.data_ingestion.helpers.logits_utils import Prompt
 from src.experiments.infrastructure.setup_models import get_tokenizer
-from src.experiments.runners.info_flow import InfoFlowConfig
+from src.experiments.runners.info_flow import InfoFlowRunner
 from src.utils.streamlit.helpers.component import StreamlitPage
 from src.utils.types_utils import (
     first_dict_value,
@@ -180,7 +179,7 @@ class InfoFlowAnalysisPage(StreamlitPage):
             selection_mode=SelectionMode.MULTIPLE,  # Changed to MULTIPLE
             height=300,
             filters={
-                ResultBankParamNames.code_version: [GLOBAL_APP_CONSTS.DEFAULT_CODE_VERSION],
+                # ResultBankParamNames.code_version: [GLOBAL_APP_CONSTS.DEFAULT_CODE_VERSION],
                 ResultBankParamNames.model_size: [
                     model_arch_and_size.size
                     for model_arch_and_size, size_cat in GRAPHS_ORDER.items()
@@ -226,7 +225,7 @@ class InfoFlowAnalysisPage(StreamlitPage):
             model_evaluations_list.append(model_evaluations)
 
             # Load info flow results
-            info_flow_results = InfoFlowConfig.load_output(reverse_format_path_for_display(path))
+            info_flow_results = InfoFlowRunner.load_output(reverse_format_path_for_display(path))
 
             chosen_info_flow_results_list.append(info_flow_results)
             metadata_list.append(result_dict)

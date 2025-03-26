@@ -31,7 +31,7 @@ class DataRequirementsPage(StreamlitPage):
         # Display requirements
         data_reqs_to_run = RequirementsDisplay(
             df,
-            height=1000,
+            height=400,
             selection_mode=SelectionMode.MULTIPLE,
             hide_columns=[],
         ).render()
@@ -41,9 +41,8 @@ class DataRequirementsPage(StreamlitPage):
             load_latest_fulfilled_reqs.render()
 
         if data_reqs_to_run is not None:
-            with st.sidebar:
-                # Handle requirement execution
-                RequirementExecution(data_reqs_to_run).render()
+            # Handle requirement execution
+            RequirementExecution(data_reqs_to_run).render()
 
 
 if __name__ == "__main__":

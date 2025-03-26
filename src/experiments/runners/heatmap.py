@@ -83,7 +83,7 @@ HeatmapExperimentOutput = dict[TPromptOriginalIndex, IHeatmap]
 
 
 @dataclass
-class HeatmapConfig(BaseRunner[HeatmapParams]):
+class HeatmapRunner(BaseRunner[HeatmapParams]):
     """Configuration for heatmap generation."""
 
     variant_params: HeatmapParams
@@ -147,7 +147,7 @@ class HeatmapConfig(BaseRunner[HeatmapParams]):
         )
 
 
-def plot(args: HeatmapConfig, plot_name: HEATMAP_PLOT_FUNCS):
+def plot(args: HeatmapRunner, plot_name: HEATMAP_PLOT_FUNCS):
     data = args.get_runner_dependencies()["evaluate_model"].get_prompt_data()
     tokenizer = args.variant_params.get_tokenizer
     model_id = args.variant_params.model_id
@@ -175,7 +175,7 @@ def plot(args: HeatmapConfig, plot_name: HEATMAP_PLOT_FUNCS):
         plt.close(fig)
 
 
-def run(args: HeatmapConfig):
+def run(args: HeatmapRunner):
     print(args)
     data = args.get_runner_dependencies()["evaluate_model"].get_prompt_data()
     remaining_idx = args.get_remaining_prompt_original_indices()

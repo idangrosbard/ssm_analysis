@@ -9,8 +9,8 @@ from src.experiments.infrastructure.base_config import (
     MetadataParams,
 )
 from src.experiments.runners.evaluate_model import EvaluateModelConfig, EvaluateModelParams
-from src.experiments.runners.heatmap import HeatmapConfig, HeatmapParams
-from src.experiments.runners.info_flow import InfoFlowConfig, InfoFlowParams
+from src.experiments.runners.heatmap import HeatmapParams, HeatmapRunner
+from src.experiments.runners.info_flow import InfoFlowParams, InfoFlowRunner
 
 
 def test_experiments_configs():
@@ -30,7 +30,7 @@ def test_experiments_configs():
         input_params=InputParams(filteration=prompt_filteration),
         metadata_params=metadata_params,
     )
-    heatmap_config = HeatmapConfig(
+    heatmap_config = HeatmapRunner(
         variant_params=HeatmapParams(
             **asdict(variant_params),
             window_size=window_size,
@@ -38,7 +38,7 @@ def test_experiments_configs():
         input_params=InputParams(filteration=prompt_filteration),
         metadata_params=metadata_params,
     )
-    info_flow_config = InfoFlowConfig(
+    info_flow_config = InfoFlowRunner(
         variant_params=InfoFlowParams(
             **asdict(variant_params),
             window_size=window_size,

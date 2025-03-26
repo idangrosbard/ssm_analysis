@@ -16,8 +16,8 @@ from src.experiments.infrastructure.base_config import (
     MetadataParams,
 )
 from src.experiments.runners.evaluate_model import EvaluateModelConfig, EvaluateModelParams
-from src.experiments.runners.heatmap import HeatmapConfig, HeatmapParams
-from src.experiments.runners.info_flow import InfoFlowConfig, InfoFlowParams
+from src.experiments.runners.heatmap import HeatmapParams, HeatmapRunner
+from src.experiments.runners.info_flow import InfoFlowParams, InfoFlowRunner
 
 
 def get_model_evaluations(
@@ -68,13 +68,13 @@ def init_runner_from_params(
                 metadata_params=metadata_params,
             )
         case InfoFlowParams():
-            return InfoFlowConfig(
+            return InfoFlowRunner(
                 variant_params=variant_params,
                 input_params=input_params,
                 metadata_params=metadata_params,
             )
         case HeatmapParams():
-            return HeatmapConfig(
+            return HeatmapRunner(
                 variant_params=variant_params,
                 input_params=input_params,
                 metadata_params=metadata_params,

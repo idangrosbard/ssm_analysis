@@ -9,7 +9,7 @@ from src.app.components.inputs import choose_heatmap_parms
 from src.core.consts import GRAPHS_ORDER
 from src.core.types import MODEL_SIZE_CAT, TPromptOriginalIndex
 from src.experiments.infrastructure.base_config import InputParams, MetadataParams
-from src.experiments.runners.heatmap import HeatmapConfig, HeatmapParams
+from src.experiments.runners.heatmap import HeatmapParams, HeatmapRunner
 from src.utils.streamlit.components.extended_streamlit_pydantic import pydantic_input
 from src.utils.streamlit.helpers.component import StreamlitComponent
 
@@ -36,7 +36,7 @@ class HeatmapPlotGenerationComponent(StreamlitComponent):
         progress_bar = st.progress(0, text="Plotting...")
         for i, model_arch_and_size in enumerate(GLOBAL_APP_CONSTS.MODELS_COMBINATIONS):
             model_arch, model_size = model_arch_and_size
-            config = HeatmapConfig(
+            config = HeatmapRunner(
                 variant_params=HeatmapParams(
                     model_arch=model_arch,
                     model_size=model_size,

@@ -23,7 +23,8 @@ from src.core.names import HeatmapCols, SlurmStatus, SummarizedDataFulfilledReqs
 from src.core.types import MODEL_ARCH_AND_SIZE, TCodeVersionName, TPromptOriginalIndex, TWindowSize
 from src.data_ingestion.data_defs import DataReqs, SummarizedDataFulfilledReqs
 from src.experiments.infrastructure.base_config import InputParams, MetadataParams
-from src.experiments.runners.heatmap import HeatmapConfig, HeatmapParams
+from src.experiments.runners.heatmap import HeatmapParams, HeatmapRunner
+from src.experiments.runners.info_flow import InfoFlowRunner
 from src.utils.streamlit.components.aagrid import SelectionMode, base_grid_builder, set_aagrid_apply_default_filters
 from src.utils.streamlit.helpers.component import StreamlitComponent
 from src.utils.types_utils import select_indexes_from_list
@@ -76,7 +77,6 @@ class RequirementsDisplay(StreamlitComponent):
         if grid_response["selected_data"] is None or len(grid_response["selected_data"]) == 0:
             st.warning("No requirements selected")
             return None
-        st.write(f"Selected {len(grid_response['selected_data'])} requirements")
         return DataReqs(
             dict(
                 select_indexes_from_list(
@@ -88,81 +88,131 @@ class RequirementsDisplay(StreamlitComponent):
 
 
 class RequirementExecution(StreamlitComponent):
-    def __init__(self, data_reqs_to_run: DataReqs):
+    def __init__(self, data_reqs_to_run: DataReqs, key: str = "requirement_execution"):
         self.data_reqs_to_run = data_reqs_to_run
+        self.key = key
 
     def render(self):
         # Add SLURM configuration in sidebar
         selected_count = len(self.data_reqs_to_run.to_rows())
 
-        with st.expander(f"Run {selected_count} Filtered Requirements"):
-            with_slurm = True
-            if selected_count == 1:
-                with_slurm = st.checkbox("Run with SLURM", value=False)
-            # Show count of selected requirements
+        with_slurm = True
+        if selected_count == 1:
+            with_slurm = st.checkbox("Run with SLURM", value=False)
+        # Show count of selected requirements
 
-            # SLURM configuration
-            col1, col2 = st.columns(2)
+        # SLURM configuration
+        col1, col2 = st.columns(2)
 
-            with col1:
-                AppSessionKeys.code_version.create_input_widget()
+        with col1:
+            AppSessionKeys.code_version.create_input_widget()
 
-            with col2:
-                if with_slurm:
-                    select_gpu_type()
+        with col2:
+            if with_slurm:
+                select_gpu_type()
 
-            # Run button
-            if selected_count > 0 and st.button(f"🚀 Run {selected_count} Selected Requirements"):
-                st.info(f"Preparing to run {selected_count} requirements...")
+        table_data = []
+        for req, filteration in self.data_reqs_to_run.to_rows():
+            config = init_runner_from_params(
+                req,
+                InputParams(filteration=filteration),
+                MetadataParams(code_version=AppSessionKeys.code_version.value),
+            )
+            requested_prompts = set(filteration.get_prompt_ids())
 
-                success_count = 0
-                failed_count = 0
+            if isinstance(config, HeatmapRunner):
+                computed_prompts = set(config.get_remaining_prompt_original_indices())
+                banned_prompts = 0
+            elif isinstance(config, InfoFlowRunner):
+                computed_prompts = config.output_file.get_computed_prompt_idx()
+                banned_prompts = len(config.output_file.get_banned_prompt_indices())
+            else:
+                raise ValueError(f"Unsupported config type: {type(config)}")
 
-                progress_bar = st.progress(0)
-                status_text = st.empty()
+            table_data.append(
+                {
+                    "Model": req.model_arch_and_size.model_name,
+                    "Requested Prompts": len(requested_prompts),
+                    "Computed Prompts": len(computed_prompts),
+                    "Missing Prompts": len(requested_prompts - computed_prompts),
+                    "Banned Prompts": banned_prompts,
+                    "Status": config.get_slurm_status(),
+                    "GPU": AppSessionKeys.get_selected_gpu(req.model_arch_and_size),
+                }
+            )
+        df, grid_builder = base_grid_builder(
+            pd.DataFrame(table_data), selection_mode=SelectionMode.DISABLED, hide_columns=[]
+        )
+        grid_options = grid_builder.build()
+        set_aagrid_apply_default_filters(
+            grid_builder,
+            {SummarizedDataFulfilledReqsCols.AvailableOptions: ["0"]},
+        )
+        # Display the table
+        AgGrid(
+            df,
+            gridOptions=grid_options,
+            height=cast(int, 400),  # allow None
+            fit_columns_on_grid_load=True,
+            floatingFilter=True,
+            key=self.key,
+            update_mode=GridUpdateMode.SELECTION_CHANGED,
+            data_return_mode=DataReturnMode.FILTERED,
+            allow_unsafe_jscode=True,
+        )
 
-                # Get all rows from filtered_df that match selected requirements
-                last_error = None
-                for i, (req, filteration) in enumerate(self.data_reqs_to_run.to_rows()):
-                    try:
-                        # Get config and set running parameters
-                        config = init_runner_from_params(
-                            req,
-                            InputParams(filteration=filteration),
-                            MetadataParams(code_version=AppSessionKeys.code_version.value),
+        # Run button
+        if selected_count > 0 and st.button(f"🚀 Run {selected_count} Selected Requirements"):
+            st.info(f"Preparing to run {selected_count} requirements...")
+
+            success_count = 0
+            failed_count = 0
+
+            progress_bar = st.progress(0)
+            status_text = st.empty()
+
+            # Get all rows from filtered_df that match selected requirements
+            last_error = None
+            for i, (req, filteration) in enumerate(self.data_reqs_to_run.to_rows()):
+                try:
+                    # Get config and set running parameters
+                    config = init_runner_from_params(
+                        req,
+                        InputParams(filteration=filteration),
+                        MetadataParams(code_version=AppSessionKeys.code_version.value),
+                    )
+                    if with_slurm:
+                        config.set_running_params(
+                            with_slurm=True,
+                            slurm_gpu_type=AppSessionKeys.get_selected_gpu(req.model_arch_and_size),
                         )
-                        if with_slurm:
-                            config.set_running_params(
-                                with_slurm=True,
-                                slurm_gpu_type=AppSessionKeys.get_selected_gpu(req.model_arch_and_size),
-                            )
 
-                        # Run the configuration
-                        config.run(with_dependencies=False)
-                        success_count += 1
+                    # Run the configuration
+                    config.run(with_dependencies=False)
+                    success_count += 1
 
-                    except Exception as e:
-                        st.error(f"Failed to run requirement: {str(json.dumps(asdict(req), indent=4))}")
-                        st.exception(e)
-                        failed_count += 1
-                        last_error = e
-                        console.print(
-                            rich.traceback.Traceback.from_exception(
-                                exc_type=type(e), exc_value=e, traceback=e.__traceback__
-                            )
+                except Exception as e:
+                    st.error(f"Failed to run requirement: {str(json.dumps(asdict(req), indent=4))}")
+                    st.exception(e)
+                    failed_count += 1
+                    last_error = e
+                    console.print(
+                        rich.traceback.Traceback.from_exception(
+                            exc_type=type(e), exc_value=e, traceback=e.__traceback__
                         )
-
-                    # Update progress
-                    progress = (i + 1) / selected_count
-                    progress_bar.progress(progress)
-                    status_text.text(
-                        f"Processed: {i + 1}/{selected_count} | Success: {success_count} | Failed: {failed_count}"
                     )
 
-                if success_count > 0:
-                    st.success(f"Successfully submitted {success_count} requirements to run")
-                if failed_count > 0:
-                    raise Exception(f"Failed to submit {failed_count} requirements") from last_error
+                # Update progress
+                progress = (i + 1) / selected_count
+                progress_bar.progress(progress)
+                status_text.text(
+                    f"Processed: {i + 1}/{selected_count} | Success: {success_count} | Failed: {failed_count}"
+                )
+
+            if success_count > 0:
+                st.success(f"Successfully submitted {success_count} requirements to run")
+            if failed_count > 0:
+                raise Exception(f"Failed to submit {failed_count} requirements") from last_error
 
 
 def get_models_remaining_prompts(
@@ -170,11 +220,11 @@ def get_models_remaining_prompts(
     window_size: TWindowSize,
     code_version: TCodeVersionName,
     prompt_original_indices: list[TPromptOriginalIndex],
-) -> dict[MODEL_ARCH_AND_SIZE, HeatmapConfig]:
+) -> dict[MODEL_ARCH_AND_SIZE, HeatmapRunner]:
     """Get the remaining prompts for each model."""
     res = {}
     for model_arch, model_size in model_combinations:
-        config = HeatmapConfig(
+        config = HeatmapRunner(
             variant_params=HeatmapParams(
                 model_arch=model_arch,
                 model_size=model_size,

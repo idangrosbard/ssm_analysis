@@ -48,7 +48,7 @@ def merge_model_evaluations_streamlit_rendered(code_version: TCodeVersionName) -
     )
 
 
-@CacheWithDependencies()
+@CacheWithDependencies(disable_cache=False)
 def load_results_bank() -> ResultBank:
     return get_experiment_results_bank()
 
@@ -66,12 +66,13 @@ def load_latest_fulfilled_reqs():
 
 
 # Data Requirements hooks
-@CacheWithDependencies()
+@CacheWithDependencies(disable_cache=False)
 def load_fulfilled_reqs_df() -> SummarizedDataFulfilledReqs:
     """Load the data requirements options and overrides to dispaly the fulfilled requirements"""
     results_bank = load_results_bank()
     options = DataReqs(get_default_data_reqs().data_reqs).to_fulfilled_reqs(results_bank)
 
+    pass
     return SummarizedDataFulfilledReqs(options)
 
 

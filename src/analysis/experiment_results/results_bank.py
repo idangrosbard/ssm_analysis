@@ -14,8 +14,8 @@ from src.core.types import (
 from src.data_ingestion.data_defs import ResultBank
 from src.experiments.infrastructure.base_config import BaseRunner, BaseVariantParams, InputParams, MetadataParams
 from src.experiments.runners.evaluate_model import EvaluateModelConfig, EvaluateModelParams
-from src.experiments.runners.heatmap import HeatmapConfig, HeatmapParams
-from src.experiments.runners.info_flow import InfoFlowConfig, InfoFlowParams
+from src.experiments.runners.heatmap import HeatmapParams, HeatmapRunner
+from src.experiments.runners.info_flow import InfoFlowParams, InfoFlowRunner
 from src.utils.infra.output_path import OutputPath
 
 
@@ -103,7 +103,7 @@ class EvaluateModelValuesResolver(ValueResolver):
 class HeatmapValuesResolver(ValueResolver):
     @classmethod
     def get_experiment_runner_cls(cls) -> Type[BaseRunner]:
-        return HeatmapConfig
+        return HeatmapRunner
 
     @classmethod
     def process_values(cls, values: dict[str, Any]) -> dict[str, Any]:
@@ -115,14 +115,14 @@ class HeatmapValuesResolver(ValueResolver):
         return HeatmapParams
 
     @classmethod
-    def is_valid_record(cls, runner: HeatmapConfig) -> bool:
+    def is_valid_record(cls, runner: HeatmapRunner) -> bool:
         return runner.output_hdf5_path.path.exists()
 
 
 class InfoFlowValuesResolver(ValueResolver):
     @classmethod
     def get_experiment_runner_cls(cls):
-        return InfoFlowConfig
+        return InfoFlowRunner
 
     @classmethod
     def get_experiment_variant_params_cls(cls) -> Type[BaseVariantParams]:
@@ -134,7 +134,7 @@ class InfoFlowValuesResolver(ValueResolver):
         return values
 
     @classmethod
-    def is_valid_record(cls, runner: InfoFlowConfig) -> bool:
+    def is_valid_record(cls, runner: InfoFlowRunner) -> bool:
         return runner.output_file.path.exists()
 
 

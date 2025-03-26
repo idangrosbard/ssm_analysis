@@ -29,8 +29,8 @@ from src.core.types import MODEL_ARCH_AND_SIZE, TInfoFlowOutput, TPromptData
 from src.data_ingestion.data_defs import DataReqs, FulfilledReqs, PlotPlans, ResultBank
 from src.data_ingestion.helpers.logits_utils import decode_tokens, get_prompt_row_index
 from src.experiments.infrastructure.setup_models import get_tokenizer
-from src.experiments.runners.heatmap import HeatmapConfig
-from src.experiments.runners.info_flow import InfoFlowConfig
+from src.experiments.runners.heatmap import HeatmapRunner
+from src.experiments.runners.info_flow import InfoFlowRunner
 from src.utils.streamlit.helpers.component import StreamlitComponent
 
 
@@ -393,7 +393,7 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
                 configs = list(fulfilled_reqs.get_config().values())
                 assert len(configs) == 1
                 config = configs[-1]
-                assert isinstance(config, HeatmapConfig)
+                assert isinstance(config, HeatmapRunner)
                 prompt_idx = config.get_remaining_prompt_original_indices()
                 assert len(prompt_idx) == 1
                 prompt_id = prompt_idx[0]
@@ -458,7 +458,7 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
             ]
         )
         for config in configs:
-            assert isinstance(config, InfoFlowConfig)
+            assert isinstance(config, InfoFlowRunner)
 
             data.append(
                 {

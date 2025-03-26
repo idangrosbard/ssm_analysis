@@ -38,15 +38,6 @@ class DataReqs(DataObject):
         for runner in result_bank.to_rows():
             if runner.variant_params in self._raw:
                 prompt_filterations = self._raw[runner.variant_params]
-                # if isinstance(runner, InfoFlowConfig):
-                #     if (
-                #         len(
-                #             set(prompt_filterations.get_prompt_ids())
-                #             - set(runner.output_file.get_computed_prompt_idx(include_banned=True))
-                #         )
-                #         == 0
-                #     ):
-                #         data_reqs_options[runner.variant_params].append(runner)
 
                 if runner.init_from_runner(
                     runner,
@@ -109,8 +100,9 @@ class ResultBank(DataObject):
 
         results_data = []
         for result in self.to_rows():
-            result_dict = {param: getattr(result, param, None) for param in ResultBankParamNames}
+            result_dict: dict = {param: getattr(result.variant_params, param, None) for param in ResultBankParamNames}
             result_dict[ResultBankParamNames.path] = format_path_for_display(result_dict[ResultBankParamNames.path])
+            result_dict[ResultBankParamNames.code_version] = result.metadata_params.code_version
             results_data.append(result_dict)
         return ExperimentDisplayResults(results_data)
 

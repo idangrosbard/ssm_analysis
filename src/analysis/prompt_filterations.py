@@ -6,6 +6,7 @@ from src.core.names import COLS, DATASETS
 from src.core.types import (
     ALL_SPLITS_LITERAL,
     MODEL_ARCH,
+    MODEL_ARCH_AND_SIZE,
     TCodeVersionName,
     TModelSize,
     TPromptOriginalIndex,
@@ -60,14 +61,16 @@ class SelectivePromptFilteration(BasePromptFilteration):
 
 @dataclass(frozen=True)
 class IntersectionPromptFilteration(BasePromptFilteration):
-    prompt_filterations: set[BasePromptFilteration]
+    prompt_filterations: tuple[BasePromptFilteration, ...]
+    base_prompt_filteration: BasePromptFilteration
 
-    def get_prompt_ids(self) -> list[TPromptOriginalIndex]:
-        prompt_ids = super().get_prompt_ids()
+    @lru_cache(maxsize=1)
+    def get_prompt_ids(self) -> list[TPromptOriginalIndex]:  # type: ignore
+        prompt_ids = set(self.base_prompt_filteration.get_prompt_ids())
 
         for prompt_filteration in self.prompt_filterations:
-            prompt_ids = [prompt_id for prompt_id in prompt_ids if prompt_id in prompt_filteration.get_prompt_ids()]
-        return prompt_ids
+            prompt_ids = prompt_ids.intersection(set(prompt_filteration.get_prompt_ids()))
+        return list(prompt_ids)
 
     def get_dependencies(self) -> TDependencies:
         dependencies = {}
@@ -78,7 +81,7 @@ class IntersectionPromptFilteration(BasePromptFilteration):
 
 @dataclass(frozen=True)
 class UnionPromptFilteration(BasePromptFilteration):
-    prompt_filterations: set[BasePromptFilteration] = field(default_factory=set)
+    prompt_filterations: tuple[BasePromptFilteration, ...] = field(default_factory=tuple)
 
     def get_prompt_ids(self) -> list[TPromptOriginalIndex]:
         prompt_ids = set()
@@ -94,10 +97,12 @@ class UnionPromptFilteration(BasePromptFilteration):
 
     def add_prompt_filteration(self, prompt_filteration: BasePromptFilteration):
         if isinstance(prompt_filteration, UnionPromptFilteration):
-            return UnionPromptFilteration(self.prompt_filterations.union(prompt_filteration.prompt_filterations))
+            return UnionPromptFilteration(
+                tuple(set(self.prompt_filterations).union(prompt_filteration.prompt_filterations))
+            )
         elif isinstance(prompt_filteration, AnyExistingCompletePromptFilteration):
             return self
-        return UnionPromptFilteration(self.prompt_filterations.union({prompt_filteration}))
+        return UnionPromptFilteration(tuple(set(self.prompt_filterations).union({prompt_filteration})))
 
 
 class Correctness(StrEnum):
@@ -141,3 +146,23 @@ class ModelCorrectPromptFilteration(BasePromptFilteration):
                 ),
             ),
         }
+
+
+def get_all_correct_prompt_filteration(
+    model_arch_and_sizes: list[MODEL_ARCH_AND_SIZE],
+    code_version: TCodeVersionName,
+    dataset_name: DATASETS = DATASETS.COUNTER_FACT,
+):
+    return IntersectionPromptFilteration(
+        tuple(
+            ModelCorrectPromptFilteration(
+                dataset_name=dataset_name,
+                model_arch=model_arch_and_size.arch,
+                model_size=model_arch_and_size.size,
+                correctness=Correctness.correct,
+                code_version=code_version,
+            )
+            for model_arch_and_size in model_arch_and_sizes
+        ),
+        base_prompt_filteration=AllPromptFilteration(dataset_name=dataset_name),
+    )

@@ -27,14 +27,14 @@ from src.experiments.infrastructure.base_config import (
     BaseVariantParams,
     InputParams,
 )
-from src.experiments.runners.heatmap import HEATMAP_PLOT_FUNCS, HeatmapConfig, HeatmapParams
-from src.experiments.runners.info_flow import InfoFlowConfig, InfoFlowParams
+from src.experiments.runners.heatmap import HEATMAP_PLOT_FUNCS, HeatmapParams, HeatmapRunner
+from src.experiments.runners.info_flow import InfoFlowParams, InfoFlowRunner
 from src.utils.types_utils import first_dict_value
 
 
 class FullPipelineDependencies(TypedDict):
-    heatmap: HeatmapConfig
-    info_flow: dict[TokenType, dict[tuple[TokenType, FeatureCategory], InfoFlowConfig]]
+    heatmap: HeatmapRunner
+    info_flow: dict[TokenType, dict[tuple[TokenType, FeatureCategory], InfoFlowRunner]]
 
 
 @dataclass(frozen=True)
@@ -84,11 +84,11 @@ class FullPipelineConfig(BaseRunner):
         main_local(self)
 
     def get_runner_dependencies(self) -> FullPipelineDependencies:  # type: ignore
-        info_flow_deps: dict[TokenType, dict[tuple[TokenType, FeatureCategory], InfoFlowConfig]] = {}
+        info_flow_deps: dict[TokenType, dict[tuple[TokenType, FeatureCategory], InfoFlowRunner]] = {}
         for target_token, source in self.variant_params.knockout_map.items():
             info_flow_deps[target_token] = {}
             for source_token, feature_category in source:
-                config = InfoFlowConfig.init_from_runner(
+                config = InfoFlowRunner.init_from_runner(
                     runner=self,
                     variant_params=InfoFlowParams(
                         model_arch=self.variant_params.model_arch,
@@ -103,7 +103,7 @@ class FullPipelineConfig(BaseRunner):
                     info_flow_deps[target_token][(source_token, feature_category)] = config
 
         return FullPipelineDependencies(
-            heatmap=HeatmapConfig.init_from_runner(
+            heatmap=HeatmapRunner.init_from_runner(
                 runner=self,
                 variant_params=HeatmapParams(
                     model_arch=self.variant_params.model_arch,
