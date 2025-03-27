@@ -161,7 +161,7 @@ class InfoFlowAnalysisPage(StreamlitPage):
             # Create a combined model evaluations dataframe
             InfoFlowAnalysisComponent(
                 result_bank,
-            ).render()
+            ).profile_render()
 
 
 if __name__ == "__main__":

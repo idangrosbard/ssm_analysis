@@ -213,7 +213,7 @@ class RequirementExecution(StreamlitComponent):
                     )
 
                 # Update progress
-                progress = (i + 1) / selected_count
+                progress = max((i + 1) / selected_count, 1)
                 progress_bar.progress(progress)
                 status_text.text(
                     f"Processed: {i + 1}/{selected_count} | Success: {success_count} | Failed: {failed_count}"
@@ -322,7 +322,7 @@ class HeatmapGenerationComponent(StreamlitComponent):
                             continue
 
                         # Set running parameters
-                        heatmap_config.set_running_params(
+                        heatmap_config = heatmap_config.set_running_params(
                             with_slurm=True,
                             slurm_gpu_type=AppSessionKeys.get_selected_gpu(
                                 heatmap_config.variant_params.model_arch_and_size

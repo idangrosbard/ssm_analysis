@@ -2,7 +2,7 @@ import contextlib
 import json
 from dataclasses import asdict
 from enum import StrEnum
-from typing import Any, Callable, ContextManager, Type, TypeVar, cast
+from typing import Any, Callable, ContextManager, Optional, Type, TypeVar, cast
 
 import pyrallis
 
@@ -56,6 +56,10 @@ def first_dict_value(d: dict[Any, _T]) -> _T:
 
 def first_dict_key(d: dict[Any, _T]) -> Any:
     return next(iter(d.keys()))
+
+
+def ommit_none(d: dict[Any, Optional[Any]]) -> dict[Any, Any]:
+    return {k: v for k, v in d.items() if v is not None}
 
 
 def conditional_context_manager(use_ctx: bool, ctx: ContextManager[None]) -> ContextManager[None]:

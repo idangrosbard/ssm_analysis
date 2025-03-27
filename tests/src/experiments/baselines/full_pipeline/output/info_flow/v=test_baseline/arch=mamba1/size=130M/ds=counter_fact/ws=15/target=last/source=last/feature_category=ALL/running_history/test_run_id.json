@@ -6,7 +6,8 @@
         "window_size": 15,
         "source": "last",
         "feature_category": "ALL",
-        "target": "last"
+        "target": "last",
+        "subset_layers": null
     },
     "input_params": {
         "filteration": {

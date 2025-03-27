@@ -2,6 +2,8 @@ from enum import StrEnum
 
 import submitit
 
+from src.utils.types_utils import ommit_none
+
 """
 | GPU                       | Speed (TFLOPS) | Memory (GB) |
 |---------------------------|----------------|-------------|
@@ -93,9 +95,6 @@ def submit_job(
     slurm_partition = partition_account["partition"]
     slurm_account = partition_account["account"]
     slurm_nodelist = slurm_nodelist or partition_account.get("nodelist", slurm_nodelist)
-
-    def ommit_none(d):
-        return {k: v for k, v in d.items() if v is not None}
 
     # Setup the executor
     executor = submitit.AutoExecutor(folder=log_folder)

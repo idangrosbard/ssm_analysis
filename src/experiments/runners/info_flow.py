@@ -281,7 +281,7 @@ class InfoFlowDependencies(TypedDict):
     evaluate_model: EvaluateModelConfig
 
 
-@dataclass
+@dataclass(frozen=True)
 class InfoFlowRunner(BaseRunner[InfoFlowParams]):
     """Configuration for information flow analysis."""
 

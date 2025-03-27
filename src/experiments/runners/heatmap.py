@@ -82,7 +82,7 @@ class HDF5HeatmapFile:
 HeatmapExperimentOutput = dict[TPromptOriginalIndex, IHeatmap]
 
 
-@dataclass
+@dataclass(frozen=True)
 class HeatmapRunner(BaseRunner[HeatmapParams]):
     """Configuration for heatmap generation."""
 

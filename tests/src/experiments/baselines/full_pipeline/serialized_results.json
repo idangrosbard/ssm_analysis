@@ -2463,7 +2463,8 @@
             "window_size": 15,
             "source": "context",
             "feature_category": "ALL",
-            "target": "relation"
+            "target": "relation",
+            "subset_layers": null
         },
         {
             "filteration": {},
@@ -2860,7 +2861,8 @@
             "window_size": 15,
             "source": "context",
             "feature_category": "ALL",
-            "target": "subject"
+            "target": "subject",
+            "subset_layers": null
         },
         {
             "filteration": {},
@@ -3257,7 +3259,8 @@
             "window_size": 15,
             "source": "first",
             "feature_category": "ALL",
-            "target": "last"
+            "target": "last",
+            "subset_layers": null
         },
         {
             "filteration": {},
@@ -3654,7 +3657,8 @@
             "window_size": 15,
             "source": "last",
             "feature_category": "ALL",
-            "target": "last"
+            "target": "last",
+            "subset_layers": null
         },
         {
             "filteration": {},
@@ -4051,7 +4055,8 @@
             "window_size": 15,
             "source": "relation",
             "feature_category": "ALL",
-            "target": "last"
+            "target": "last",
+            "subset_layers": null
         },
         {
             "filteration": {},
@@ -4448,7 +4453,8 @@
             "window_size": 15,
             "source": "relation",
             "feature_category": "ALL",
-            "target": "relation"
+            "target": "relation",
+            "subset_layers": null
         },
         {
             "filteration": {},
@@ -4845,7 +4851,8 @@
             "window_size": 15,
             "source": "subject",
             "feature_category": "ALL",
-            "target": "last"
+            "target": "last",
+            "subset_layers": null
         },
         {
             "filteration": {},
@@ -5242,7 +5249,8 @@
             "window_size": 15,
             "source": "subject",
             "feature_category": "ALL",
-            "target": "relation"
+            "target": "relation",
+            "subset_layers": null
         },
         {
             "filteration": {},
@@ -5639,7 +5647,8 @@
             "window_size": 15,
             "source": "subject",
             "feature_category": "ALL",
-            "target": "subject"
+            "target": "subject",
+            "subset_layers": null
         },
         {
             "filteration": {},
@@ -6036,7 +6045,8 @@
             "window_size": 15,
             "source": "context",
             "feature_category": "ALL",
-            "target": "relation"
+            "target": "relation",
+            "subset_layers": null
         },
         {
             "filteration": {},
@@ -6473,7 +6483,8 @@
             "window_size": 15,
             "source": "context",
             "feature_category": "ALL",
-            "target": "subject"
+            "target": "subject",
+            "subset_layers": null
         },
         {
             "filteration": {},
@@ -6910,7 +6921,8 @@
             "window_size": 15,
             "source": "first",
             "feature_category": "ALL",
-            "target": "last"
+            "target": "last",
+            "subset_layers": null
         },
         {
             "filteration": {},
@@ -7347,7 +7359,8 @@
             "window_size": 15,
             "source": "last",
             "feature_category": "ALL",
-            "target": "last"
+            "target": "last",
+            "subset_layers": null
         },
         {
             "filteration": {},
@@ -7784,7 +7797,8 @@
             "window_size": 15,
             "source": "relation",
             "feature_category": "ALL",
-            "target": "last"
+            "target": "last",
+            "subset_layers": null
         },
         {
             "filteration": {},
@@ -8221,7 +8235,8 @@
             "window_size": 15,
             "source": "relation",
             "feature_category": "ALL",
-            "target": "relation"
+            "target": "relation",
+            "subset_layers": null
         },
         {
             "filteration": {},
@@ -8658,7 +8673,8 @@
             "window_size": 15,
             "source": "subject",
             "feature_category": "ALL",
-            "target": "last"
+            "target": "last",
+            "subset_layers": null
         },
         {
             "filteration": {},
@@ -9095,7 +9111,8 @@
             "window_size": 15,
             "source": "subject",
             "feature_category": "ALL",
-            "target": "relation"
+            "target": "relation",
+            "subset_layers": null
         },
         {
             "filteration": {},
@@ -9532,7 +9549,8 @@
             "window_size": 15,
             "source": "subject",
             "feature_category": "ALL",
-            "target": "subject"
+            "target": "subject",
+            "subset_layers": null
         },
         {
             "filteration": {},
@@ -9969,7 +9987,8 @@
             "window_size": 15,
             "source": "subject",
             "feature_category": "FAST_DECAY",
-            "target": "last"
+            "target": "last",
+            "subset_layers": null
         },
         {
             "filteration": {},
@@ -10406,7 +10425,8 @@
             "window_size": 15,
             "source": "subject",
             "feature_category": "SLOW_DECAY",
-            "target": "last"
+            "target": "last",
+            "subset_layers": null
         },
         {
             "filteration": {},
@@ -10843,7 +10863,8 @@
             "window_size": 15,
             "source": "context",
             "feature_category": "ALL",
-            "target": "relation"
+            "target": "relation",
+            "subset_layers": null
         },
         {
             "filteration": {},
@@ -11280,7 +11301,8 @@
             "window_size": 15,
             "source": "context",
             "feature_category": "ALL",
-            "target": "subject"
+            "target": "subject",
+            "subset_layers": null
         },
         {
             "filteration": {},
@@ -11717,7 +11739,8 @@
             "window_size": 15,
             "source": "first",
             "feature_category": "ALL",
-            "target": "last"
+            "target": "last",
+            "subset_layers": null
         },
         {
             "filteration": {},
@@ -12154,7 +12177,8 @@
             "window_size": 15,
             "source": "last",
             "feature_category": "ALL",
-            "target": "last"
+            "target": "last",
+            "subset_layers": null
         },
         {
             "filteration": {},
@@ -12591,7 +12615,8 @@
             "window_size": 15,
             "source": "relation",
             "feature_category": "ALL",
-            "target": "last"
+            "target": "last",
+            "subset_layers": null
         },
         {
             "filteration": {},
@@ -13028,7 +13053,8 @@
             "window_size": 15,
             "source": "relation",
             "feature_category": "ALL",
-            "target": "relation"
+            "target": "relation",
+            "subset_layers": null
         },
         {
             "filteration": {},
@@ -13465,7 +13491,8 @@
             "window_size": 15,
             "source": "subject",
             "feature_category": "ALL",
-            "target": "last"
+            "target": "last",
+            "subset_layers": null
         },
         {
             "filteration": {},
@@ -13902,7 +13929,8 @@
             "window_size": 15,
             "source": "subject",
             "feature_category": "ALL",
-            "target": "relation"
+            "target": "relation",
+            "subset_layers": null
         },
         {
             "filteration": {},
@@ -14339,7 +14367,8 @@
             "window_size": 15,
             "source": "subject",
             "feature_category": "ALL",
-            "target": "subject"
+            "target": "subject",
+            "subset_layers": null
         },
         {
             "filteration": {},
@@ -14776,7 +14805,8 @@
             "window_size": 15,
             "source": "subject",
             "feature_category": "FAST_DECAY",
-            "target": "last"
+            "target": "last",
+            "subset_layers": null
         },
         {
             "filteration": {},
@@ -15213,7 +15243,8 @@
             "window_size": 15,
             "source": "subject",
             "feature_category": "SLOW_DECAY",
-            "target": "last"
+            "target": "last",
+            "subset_layers": null
         },
         {
             "filteration": {},

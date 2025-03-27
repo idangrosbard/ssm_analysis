@@ -51,7 +51,7 @@ class FullPipelineParam(BaseVariantParams):
     with_generation: bool = True
 
 
-@dataclass
+@dataclass(frozen=True)
 class FullPipelineConfig(BaseRunner):
     """Configuration for the full experiment pipeline."""
 

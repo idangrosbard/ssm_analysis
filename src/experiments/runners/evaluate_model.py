@@ -15,6 +15,7 @@ from typing import cast
 
 import pandas as pd
 import torch
+from cachetools import TTLCache, cached
 from tqdm import tqdm
 
 from src.core.consts import COUNTER_FACT_2_KNOWN1000_COL_CONV
@@ -40,7 +41,7 @@ class EvaluateModelParams(BaseVariantParams):
     top_k_tokens: int = 5
 
 
-@dataclass
+@dataclass(frozen=True)
 class EvaluateModelConfig(BaseRunner[EvaluateModelParams]):
     """Configuration for model evaluation."""
 
@@ -73,6 +74,7 @@ class EvaluateModelConfig(BaseRunner[EvaluateModelParams]):
 
         return df
 
+    @cached(TTLCache(maxsize=1, ttl=60))
     def get_prompt_data(self) -> TPromptData:
         df = self.get_outputs()
 

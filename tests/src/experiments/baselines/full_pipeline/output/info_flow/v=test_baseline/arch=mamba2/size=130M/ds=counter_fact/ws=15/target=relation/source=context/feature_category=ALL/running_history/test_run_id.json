@@ -6,7 +6,8 @@
         "window_size": 15,
         "source": "context",
         "feature_category": "ALL",
-        "target": "relation"
+        "target": "relation",
+        "subset_layers": null
     },
     "input_params": {
         "filteration": {

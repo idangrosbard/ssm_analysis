@@ -3,6 +3,7 @@ from dataclasses import asdict, dataclass, field, replace
 from pathlib import Path
 from typing import Any, Generic, Mapping, Optional, Type, TypeVar, Union, assert_never, cast, final
 
+from cachetools import TTLCache, cached
 from submitit.slurm.slurm import SlurmJob
 
 from src.core.consts import (
@@ -30,13 +31,25 @@ from src.utils.infra.experiment_helper import create_run_id
 from src.utils.infra.git import get_git_commit_hash
 from src.utils.infra.output_path import OutputKey, combine_output_keys
 from src.utils.infra.slurm import SLURM_GPU_TYPE, submit_job
-from src.utils.types_utils import json_dumps_dataclass, str_enum_values
+from src.utils.types_utils import json_dumps_dataclass, ommit_none, str_enum_values
 
 TDependencies = Mapping[str, Union["BaseRunner", "TDependencies"]]
 
 
 @dataclass(frozen=True)
-class BasePromptFilteration(ABC):
+class BaseParams(ABC):
+    def modify(
+        self,
+        **kwargs,
+    ):
+        return replace(self, **kwargs)
+
+    def modify_ommit_none(self, **kwargs) -> "BaseParams":
+        return self.modify(**ommit_none(kwargs))
+
+
+@dataclass(frozen=True)
+class BasePromptFilteration(BaseParams, ABC):
     """Filteration of prompts to run the experiment on."""
 
     @abstractmethod
@@ -49,7 +62,7 @@ class BasePromptFilteration(ABC):
 
 
 @dataclass(frozen=True)
-class BaseVariantParams(ABC):
+class BaseVariantParams(BaseParams, ABC):
     model_arch: MODEL_ARCH
     model_size: TModelSize
     experiment_name: EXPERIMENT_NAMES = field(init=False)
@@ -69,21 +82,15 @@ class BaseVariantParams(ABC):
     def get_tokenizer(self) -> TTokenizer:
         return get_tokenizer(self.model_arch, self.model_size)
 
-    def modify(
-        self,
-        **kwargs,
-    ):
-        return replace(self, **kwargs)
 
-
-@dataclass
-class InputParams:
+@dataclass(frozen=True)
+class InputParams(BaseParams):
     filteration: BasePromptFilteration
     dataset_name: DATASETS = DATASETS.COUNTER_FACT
 
 
-@dataclass
-class MetadataParams:
+@dataclass(frozen=True)
+class MetadataParams(BaseParams):
     code_version: TCodeVersionName
     requested_batch_size: TBatchSize = TBatchSize(1)  # Adjust based on GPU memory
     with_slurm: bool = False
@@ -97,8 +104,8 @@ class MetadataParams:
 _TVariantParams = TypeVar("_TVariantParams", bound=BaseVariantParams)
 
 
-@dataclass
-class BaseRunner(ABC, Generic[_TVariantParams]):
+@dataclass(frozen=True)
+class BaseRunner(BaseParams, ABC, Generic[_TVariantParams]):
     """Base configuration class with common parameters across all scripts."""
 
     variant_params: _TVariantParams
@@ -126,18 +133,6 @@ class BaseRunner(ABC, Generic[_TVariantParams]):
             variant_params=variant_params,
             input_params=input_params or runner.input_params,
             metadata_params=metadata_params or runner.metadata_params,
-        )
-
-    def modify(
-        self,
-        variant_params: Optional[_TVariantParams] = None,
-        input_params: Optional[InputParams] = None,
-        metadata_params: Optional[MetadataParams] = None,
-    ):
-        return self.__class__(
-            variant_params=variant_params or self.variant_params,
-            input_params=input_params or self.input_params,
-            metadata_params=metadata_params or self.metadata_params,
         )
 
     @property
@@ -217,10 +212,13 @@ class BaseRunner(ABC, Generic[_TVariantParams]):
         slurm_gpu_type: SLURM_GPU_TYPE,
         slurm_gpus_per_node: Optional[int] = None,
     ):
-        self.metadata_params.with_slurm = with_slurm
-        self.metadata_params.slurm_gpu_type = slurm_gpu_type
-        if slurm_gpus_per_node is not None:
-            self.metadata_params.slurm_gpus_per_node = slurm_gpus_per_node
+        return self.modify(
+            metadata_params=self.metadata_params.modify(
+                with_slurm=with_slurm,
+                slurm_gpu_type=slurm_gpu_type,
+                slurm_gpus_per_node=slurm_gpus_per_node,
+            ),
+        )
 
     def should_skip_task(self) -> bool:
         return False
@@ -341,6 +339,7 @@ class BaseRunner(ABC, Generic[_TVariantParams]):
             return None
         return SlurmJob(submission_file_path[0], job_id=job_path.stem)
 
+    @cached(TTLCache(maxsize=1, ttl=60))
     def get_slurm_status(self) -> SlurmStatus | str:
         latest_job = self.get_latest_slurm_job()
         if latest_job is None:
