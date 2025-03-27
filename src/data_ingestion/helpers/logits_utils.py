@@ -116,24 +116,24 @@ class Prompt:
     def true_id(self, tokenizer, device: TDevice) -> torch.Tensor:
         return tokenizer(self.true_word, return_tensors="pt", padding=True).input_ids.to(device=device)
 
-    def input_ids(self, tokenizer, device) -> torch.Tensor:
+    def input_ids(self, tokenizer: TTokenizer, device: TDevice) -> torch.Tensor:
         return tokenizer(self.prompt, return_tensors="pt", padding=True).input_ids.to(device=device)
 
     def get_column(self, column: COLS.COUNTER_FACT) -> Any:
         return self.prompt_row[column]
 
-    def last_index(self, tokenizer, device: TDevice) -> int:
+    def last_index(self, tokenizer: TTokenizer, device: TDevice) -> int:
         input_ids = self.input_ids(tokenizer, device)
         return input_ids.shape[1] - 1
 
-    def is_relation_last_token(self, tokenizer, device: TDevice = "cpu") -> bool:
+    def is_relation_last_token(self, tokenizer: TTokenizer, device: TDevice = "cpu") -> bool:
         input_ids = self.input_ids(tokenizer, device)
 
         last_idx = input_ids.shape[1] - 1
 
         return last_idx in self.get_knockout_idx(tokenizer, TokenType.relation, device)
 
-    def get_knockout_idx(self, tokenizer, knockout: TokenType, device: TDevice) -> list[int]:
+    def get_knockout_idx(self, tokenizer: TTokenizer, knockout: TokenType, device: TDevice) -> list[int]:
         input_ids = self.input_ids(tokenizer, device)
         last_idx = input_ids.shape[1] - 1
         tok_start, tok_end = find_token_range(tokenizer, input_ids[0], self.subject)

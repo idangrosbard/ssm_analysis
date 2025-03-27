@@ -1,19 +1,19 @@
-from typing import Optional
+from typing import TypeVar
 
-from st_aggrid import AgGrid, AgGridReturn, DataReturnMode, GridUpdateMode
+from st_aggrid import AgGrid, DataReturnMode, GridUpdateMode
 
-from src.core.names import EXPERIMENT_NAMES, ResultBankParamNames
+from src.core.names import ResultBankParamNames
 from src.data_ingestion.data_defs import ResultBank
-from src.data_ingestion.helpers.dataframe import validate_one_selected_row_dataframe
 from src.utils.streamlit.components.aagrid import SelectionMode, base_grid_builder, set_aagrid_apply_default_filters
 from src.utils.streamlit.helpers.component import StreamlitComponent
 
+T_RESULT_BANK_TYPE = TypeVar("T_RESULT_BANK_TYPE", bound="ResultBank")
 
-class ShowResultsBank(StreamlitComponent):
+
+class ShowResultsBank(StreamlitComponent[T_RESULT_BANK_TYPE]):
     def __init__(
         self,
-        results_bank: ResultBank,
-        filter_experiment_name: Optional[EXPERIMENT_NAMES] = None,
+        results_bank: T_RESULT_BANK_TYPE,
         selection_mode: SelectionMode = SelectionMode.DISABLED,
         height: int = 1000,
         key: str = "results_bank",
@@ -22,21 +22,16 @@ class ShowResultsBank(StreamlitComponent):
     ):
         super().__init__()
         self.results_bank = results_bank
-        self.filter_experiment_name = filter_experiment_name
         self.selection_mode = selection_mode
         self.height = height
         self.key = key
         self.filters = filters
-        self.hide_columns = hide_columns
+        self.hide_columns = [self.results_bank.KEY] + hide_columns
 
-    def _get_df(self):
-        df = self.results_bank.to_experiment_results().to_df()
-        if self.filter_experiment_name is not None:
-            df = df[df[ResultBankParamNames.experiment_name] == self.filter_experiment_name]
-        return df
-
-    def render(self) -> AgGridReturn:
-        df, grid_builder = base_grid_builder(self._get_df(), self.selection_mode, self.hide_columns)
+    def render(self) -> T_RESULT_BANK_TYPE:
+        df, grid_builder = base_grid_builder(
+            self.results_bank.to_experiment_results_df(), self.selection_mode, self.hide_columns
+        )
         set_aagrid_apply_default_filters(
             grid_builder,
             self.filters,
@@ -59,8 +54,5 @@ class ShowResultsBank(StreamlitComponent):
             data_return_mode=DataReturnMode.FILTERED,
             allow_unsafe_jscode=True,
         )
-        return grid_response
 
-    def render_validate_single_selection(self):
-        grid_results = self.render()
-        return validate_one_selected_row_dataframe(grid_results.selected_data)
+        return self.results_bank.from_experiment_results_df(grid_response.selected_data)

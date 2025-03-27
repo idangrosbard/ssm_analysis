@@ -1,5 +1,6 @@
 from src.analysis.prompt_filterations import (
     AllPromptFilteration,
+    UnionPromptFilteration,
     get_all_correct_prompt_filteration,
 )
 from src.core.consts import (
@@ -31,6 +32,58 @@ def get_default_data_reqs() -> DataReqiermentCollection:
         model_arch_and_sizes=list(GRAPHS_ORDER.keys()),
         code_version=MODEL_CORRECT_MODEL_CODE_VERSION,
     )
+
+    default_prompt_filteration = UnionPromptFilteration(
+        (
+            AllPromptFilteration(DATASETS.COUNTER_FACT, split=(SPLIT.TRAIN1,)),
+            all_correct_prompt_filteration,
+        )
+    )
+
+    for model_arch_and_size in GRAPHS_ORDER:
+        if is_mamba_arch(model_arch_and_size.arch):
+            for target, source, feature_category in [
+                (TokenType.last, TokenType.last, FeatureCategory.ALL),
+                (TokenType.last, TokenType.first, FeatureCategory.ALL),
+                (TokenType.last, TokenType.subject, FeatureCategory.ALL),
+                (TokenType.last, TokenType.relation, FeatureCategory.ALL),
+                (TokenType.last, TokenType.relation_minus_last, FeatureCategory.ALL),
+            ]:
+                for ws in ALL_WINDOW_SIZES:
+                    data_reqs.add_data_req(
+                        InfoFlowParams(
+                            model_arch=model_arch_and_size.arch,
+                            model_size=model_arch_and_size.size,
+                            window_size=ws,
+                            source=source,
+                            feature_category=feature_category,
+                            target=target,
+                        ),
+                        AllPromptFilteration(
+                            DATASETS.COUNTER_FACT,
+                            split=(SPLIT.TRAIN1,),
+                        ),
+                    )
+            for target, source, feature_category in [
+                (TokenType.last, TokenType.subject, FeatureCategory.SLOW_DECAY),
+                (TokenType.last, TokenType.subject, FeatureCategory.FAST_DECAY),
+                (TokenType.last, TokenType.relation, FeatureCategory.SLOW_DECAY),
+                (TokenType.last, TokenType.relation, FeatureCategory.FAST_DECAY),
+                (TokenType.last, TokenType.relation_minus_last, FeatureCategory.SLOW_DECAY),
+                (TokenType.last, TokenType.relation_minus_last, FeatureCategory.FAST_DECAY),
+            ]:
+                data_reqs.add_data_req(
+                    InfoFlowParams(
+                        model_arch=model_arch_and_size.arch,
+                        model_size=model_arch_and_size.size,
+                        window_size=STANDARD_WINDOW_SIZE_FOR_INFO_FLOW,
+                        source=source,
+                        feature_category=feature_category,
+                        target=target,
+                    ),
+                    default_prompt_filteration,
+                )
+    return data_reqs
 
     for model_arch_and_size in GRAPHS_ORDER:
         if is_mamba_arch(model_arch_and_size.arch):

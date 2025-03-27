@@ -26,6 +26,8 @@ def init_str_enum_from_value(cls: Type[_T_STR_ENUM], value: str) -> _T_STR_ENUM:
 
 
 _T = TypeVar("_T")
+_K = TypeVar("_K")
+_V = TypeVar("_V")
 
 
 def select_indexes_from_list(lst: list[_T], indexes: list[int]) -> list[_T]:
@@ -34,6 +36,18 @@ def select_indexes_from_list(lst: list[_T], indexes: list[int]) -> list[_T]:
 
 def get_list_indexes_of_set_values(lst: list[_T], values: set[_T]) -> list[int]:
     return [i for i, v in enumerate(lst) if v in values]
+
+
+def subset_dict_by_keys(d: dict[_K, _V], keys: list[_K]) -> dict[_K, _V]:
+    return {k: v for k, v in d.items() if k in keys}
+
+
+def get_dict_keys_by_condition(d: dict[_K, _V], condition: Callable[[_K, _V], bool]) -> list[_K]:
+    return [k for k, v in d.items() if condition(k, v)]
+
+
+def subset_dict_by_condition(d: dict[_K, _V], condition: Callable[[_K, _V], bool]) -> dict[_K, _V]:
+    return subset_dict_by_keys(d, get_dict_keys_by_condition(d, condition))
 
 
 def first_dict_value(d: dict[Any, _T]) -> _T:

@@ -12,34 +12,23 @@
 # - Current implementation follows the outline structure correctly
 """
 
-import random
-from typing import Any, Dict, List, cast
-
-import pandas as pd
 import streamlit as st
-from st_aggrid import AgGridReturn
 
-from src.app.app_utils import reverse_format_path_for_display
 from src.app.components.info_flow import InfoFlowAnalysisComponent
 from src.app.components.result_bank import SelectionMode, ShowResultsBank
-from src.app.data_store import load_model_evaluations, load_results_bank
+from src.app.data_store import load_prompts, load_results_bank
 from src.app.texts import INFO_FLOW_ANALYSIS_TEXTS
 from src.core.consts import GRAPHS_ORDER
-from src.core.names import COLS, EXPERIMENT_NAMES, ResultBankParamNames
+from src.core.names import COLS, ResultBankParamNames
 from src.core.types import (
-    MODEL_ARCH_AND_SIZE,
     MODEL_SIZE_CAT,
-    TInfoFlowOutput,
     TInfoFlowWindowValue,
     TLayerIndex,
     TPromptOriginalIndex,
 )
-from src.data_ingestion.helpers.logits_utils import Prompt
-from src.experiments.infrastructure.setup_models import get_tokenizer
-from src.experiments.runners.info_flow import InfoFlowRunner
+from src.data_ingestion.data_defs import InfoFlowResults, Prompts
 from src.utils.streamlit.helpers.component import StreamlitPage
 from src.utils.types_utils import (
-    first_dict_value,
     get_list_indexes_of_set_values,
     select_indexes_from_list,
 )
@@ -59,75 +48,38 @@ def select_indexes_from_window_values(
     }
 
 
-def find_common_indices(
-    info_flow_results_list: List[TInfoFlowOutput],
-) -> list[TPromptOriginalIndex]:
-    """Find the intersection of original_idx across all info flow results."""
-    if not info_flow_results_list:
-        return []
-
-    # Get the set of original indices from the first window of each info flow result
-    all_indices_sets = []
-    for info_flow_results in info_flow_results_list:
-        if not info_flow_results:
-            continue
-        first_window = first_dict_value(info_flow_results)
-        indices = set(first_window[COLS.ORIGINAL_IDX])
-        all_indices_sets.append(indices)
-
-    common_indices = all_indices_sets[0]
-    for indices in all_indices_sets[1:]:
-        common_indices &= indices
-
-    return list(common_indices)
-
-
 class SubsetInfoFlowResults:
     def __init__(
         self,
-        info_flow_results_list: list[TInfoFlowOutput],
-        first_model_evaluations: pd.DataFrame,
-        metadata_list: list[Dict[str, Any]],
+        info_flow_results: InfoFlowResults,
     ):
-        self.info_flow_results_list = info_flow_results_list
-        self.first_model_evaluations = first_model_evaluations
-        self.metadata_list = metadata_list
+        self.info_flow_results = info_flow_results
 
     def render(
         self,
-    ) -> tuple[list[TPromptOriginalIndex], tuple[TLayerIndex, TLayerIndex]]:
-        if not self.info_flow_results_list:
-            return [], (0, 0)
+    ) -> tuple[Prompts, tuple[TLayerIndex, TLayerIndex]]:
+        prompts = load_prompts().filter_by_prompt_ids(list(self.info_flow_results.get_common_indices()))
+
+        if prompts.empty:
+            return prompts, (0, 0)
 
         sample_results = st.checkbox(INFO_FLOW_ANALYSIS_TEXTS.sample_results, value=True)
         filter_relation_last_token = st.checkbox("Filter relation last token", value=False)
 
         # Find common indices across all info flow results
-        common_indices = find_common_indices([info_flow for info_flow in self.info_flow_results_list])
-        max_layer = max(len(info_flow) for info_flow in self.info_flow_results_list) - 1
-        min_layer = 0
+        max_layer = self.info_flow_results.max_layer()
+        min_layer = self.info_flow_results.min_layer()
 
-        if len(common_indices) == 0:
+        if prompts.empty:
             st.warning(INFO_FLOW_ANALYSIS_TEXTS.no_common_indices)
             st.stop()
 
         # Filter by relation last token if needed
         if filter_relation_last_token:
             # Get model arch and size from first result
-            first_metadata = self.metadata_list[0]
-            tokenizer = get_tokenizer(
-                model_arch=first_metadata[ResultBankParamNames.model_arch],
-                model_size=first_metadata[ResultBankParamNames.model_size],
-            )
-            prompts = [Prompt(self.first_model_evaluations.loc[idx]) for idx in common_indices]
-            filtered_indices = []
-            # Only keep indices where all models agree it's a relation last token
-            for idx, prompt in zip(common_indices, prompts):
-                if not prompt.is_relation_last_token(tokenizer):
-                    filtered_indices.append(idx)
-            common_indices = filtered_indices
+            prompts = prompts.filter_by_condition(lambda k, v: v.as_prompt().is_relation_last_token(prompts._tokenizer))
 
-            if len(common_indices) == 0:
+            if prompts.empty:
                 st.warning("No prompts found with relation last token")
                 st.stop()
 
@@ -135,13 +87,12 @@ class SubsetInfoFlowResults:
             # Get the maximum number of layers across all info flow results
 
             # Calculate the number of common indices
-            common_indices_count = len(common_indices)
 
             sample_results_count = st.slider(
                 INFO_FLOW_ANALYSIS_TEXTS.sample_results_count,
-                value=min(50, common_indices_count),
-                min_value=min(50, common_indices_count),
-                max_value=common_indices_count,
+                value=min(50, prompts.size),
+                min_value=min(50, prompts.size),
+                max_value=prompts.size,
                 step=50,
             )
 
@@ -162,20 +113,19 @@ class SubsetInfoFlowResults:
             )
 
             # Sample from common indices
-            random.seed(seed)
-            sampled_indices = random.sample(range(len(common_indices)), sample_results_count)
-            return select_indexes_from_list(common_indices, sampled_indices), layers_range
+            sampled_indices = prompts.sample(sample_results_count, seed)
+            return sampled_indices, layers_range
 
         # If not sampling, return the original info flow results
-        return common_indices, (min_layer, max_layer)
+        return prompts, (min_layer, max_layer)
 
 
 class InfoFlowAnalysisPage(StreamlitPage):
     def render(self):
-        results_bank = load_results_bank.call_and_render()
-        result_bank: AgGridReturn = ShowResultsBank(
+        results_bank = load_results_bank.call_and_render().to_info_flow_results()
+
+        result_bank = ShowResultsBank(
             results_bank,
-            filter_experiment_name=EXPERIMENT_NAMES.INFO_FLOW,
             selection_mode=SelectionMode.MULTIPLE,  # Changed to MULTIPLE
             height=300,
             filters={
@@ -193,63 +143,24 @@ class InfoFlowAnalysisPage(StreamlitPage):
             key="info_flow_results_bank",
         ).render()
 
-        selected_info_flow_results = result_bank.selected_rows
-
-        if selected_info_flow_results is None or len(selected_info_flow_results) == 0:
+        if result_bank.is_empty():
             st.warning(INFO_FLOW_ANALYSIS_TEXTS.no_requirements)
             return
 
         # Display requirements table and get selection
         st.subheader("Selected Info Flow Requirements")
 
-        # Process each selected info flow result
-        chosen_info_flow_results_list = []
-        metadata_list = []
-        model_evaluations_list = []
-
-        for _, selected_result in selected_info_flow_results.iterrows():
-            # Cast selected_result to Dict[str, Any] to avoid type errors
-            result_dict = cast(Dict[str, Any], dict(selected_result))
-            path = result_dict.pop(ResultBankParamNames.path)
-            # Convert to proper types
-
-            model_arch_and_size = MODEL_ARCH_AND_SIZE(
-                result_dict[ResultBankParamNames.model_arch],
-                result_dict[ResultBankParamNames.model_size],
-            )
-
-            # Get model evaluations if not already loaded
-            model_evaluations = load_model_evaluations(
-                result_dict[ResultBankParamNames.code_version], model_arch_and_size
-            )
-            model_evaluations_list.append(model_evaluations)
-
-            # Load info flow results
-            info_flow_results = InfoFlowRunner.load_output(reverse_format_path_for_display(path))
-
-            chosen_info_flow_results_list.append(info_flow_results)
-            metadata_list.append(result_dict)
-
         with st.sidebar:
-            chosen_prompt_ids, layers_range = SubsetInfoFlowResults(
-                chosen_info_flow_results_list, model_evaluations_list[0], metadata_list
-            ).render()
+            chosen_prompts, layers_range = SubsetInfoFlowResults(result_bank).render()
 
-        if chosen_prompt_ids:
+        result_bank = result_bank.subset_layers(layers_range).subset_prompts(chosen_prompts.original_idx)
+
+        if chosen_prompts:
             # Combine model evaluations for all selected info flows
 
             # Create a combined model evaluations dataframe
             InfoFlowAnalysisComponent(
-                [
-                    {
-                        k: select_indexes_from_window_values(v, chosen_prompt_ids)
-                        for k, v in info_flow.items()
-                        if layers_range[0] <= k <= layers_range[1]
-                    }
-                    for info_flow in chosen_info_flow_results_list
-                ],
-                metadata_list=metadata_list,
-                model_evaluations=[df.loc[chosen_prompt_ids] for df in model_evaluations_list],
+                result_bank,
             ).render()
 
 

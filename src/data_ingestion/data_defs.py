@@ -1,16 +1,32 @@
+import functools
 import json
+import random
 from collections import defaultdict
+from dataclasses import asdict
 from pathlib import Path
-from typing import TYPE_CHECKING, Type
+from typing import TYPE_CHECKING, Callable, Generic, Optional, Type, TypeVar, cast
 
 import pandas as pd
 
-from src.analysis.prompt_filterations import UnionPromptFilteration
+from src.analysis.prompt_filterations import SelectivePromptFilteration, UnionPromptFilteration
 from src.core.consts import PATHS
-from src.core.names import HeatmapCols, ModelCombinationCols, ResultBankParamNames, SummarizedDataFulfilledReqsCols
-from src.core.types import MODEL_ARCH_AND_SIZE, TPlotID
+from src.core.names import (
+    EXPERIMENT_NAMES,
+    HeatmapCols,
+    ModelCombinationCols,
+    ResultBankParamNames,
+    SummarizedDataFulfilledReqsCols,
+)
+from src.core.types import MODEL_ARCH_AND_SIZE, TPlotID, TPromptOriginalIndex, TTokenizer
+from src.data_ingestion.helpers.logits_utils import Prompt
 from src.experiments.infrastructure.base_config import BasePromptFilteration, BaseRunner, BaseVariantParams, InputParams
+from src.experiments.runners.info_flow import InfoFlowRunner, TWindowLayerStartIndex
 from src.utils.infra.data_object import DataObject
+from src.utils.types_utils import (
+    get_dict_keys_by_condition,
+    select_indexes_from_list,
+    subset_dict_by_keys,
+)
 
 if TYPE_CHECKING:
     from src.analysis.experiment_results.model_prompt_combination import ModelCombination
@@ -54,6 +70,9 @@ class DataReqs(DataObject):
     def from_data_reqs_collection(cls, data_reqs: DataReqiermentCollection) -> "DataReqs":
         return cls(data_reqs.data_reqs)
 
+    def size(self) -> int:
+        return len(self._raw)
+
 
 class FulfilledReqs(DataObject):
     def __init__(
@@ -78,33 +97,6 @@ class FulfilledReqs(DataObject):
 
     def to_rows(self):
         return list(self._raw.items())
-
-
-class ExperimentDisplayResults(DataObject):
-    def __init__(self, results_data: list[BaseRunner]):
-        self._raw = results_data
-
-    def to_df(self) -> pd.DataFrame:
-        return pd.DataFrame(self._raw)
-
-
-class ResultBank(DataObject):
-    def __init__(self, result_bank: list[BaseRunner]):
-        self._raw = result_bank
-
-    def to_rows(self) -> list[BaseRunner]:
-        return self._raw
-
-    def to_experiment_results(self) -> ExperimentDisplayResults:
-        from src.app.app_utils import format_path_for_display
-
-        results_data = []
-        for result in self.to_rows():
-            result_dict: dict = {param: getattr(result.variant_params, param, None) for param in ResultBankParamNames}
-            result_dict[ResultBankParamNames.path] = format_path_for_display(result_dict[ResultBankParamNames.path])
-            result_dict[ResultBankParamNames.code_version] = result.metadata_params.code_version
-            results_data.append(result_dict)
-        return ExperimentDisplayResults(results_data)
 
 
 class SummarizedDataFulfilledReqs(DataObject):
@@ -235,3 +227,139 @@ class ModelCombinationsPrompts(DataObject):
                     table_row[model_name] = "-"
             table_data.append(table_row)
         return pd.DataFrame(table_data)
+
+
+T_RUNNER_TYPE = TypeVar("T_RUNNER_TYPE", bound=BaseRunner)
+
+
+class ResultBank(DataObject, Generic[T_RUNNER_TYPE]):
+    KEY = "key"
+
+    def __init__(self, result_bank: list[T_RUNNER_TYPE]):
+        self._raw = result_bank
+
+    def to_rows(self) -> list[T_RUNNER_TYPE]:
+        return self._raw
+
+    def to_experiment_results_df(self) -> pd.DataFrame:
+        results_data = []
+        for i, result in enumerate(self.to_rows()):
+            result_dict: dict = {param: getattr(result.variant_params, param, None) for param in ResultBankParamNames}
+            result_dict[ResultBankParamNames.path] = str(result.variation_relative_path)
+            result_dict[ResultBankParamNames.code_version] = result.metadata_params.code_version
+            result_dict[ResultBank.KEY] = i
+            results_data.append(result_dict)
+        return pd.DataFrame(results_data)
+
+    def from_experiment_results_df(self, experiment_results_df: Optional[pd.DataFrame]):
+        if experiment_results_df is None:
+            return self.__class__([])
+        return self.__class__(select_indexes_from_list(self.to_rows(), experiment_results_df[ResultBank.KEY].tolist()))
+
+    def to_info_flow_results(self) -> "InfoFlowResults":
+        results = [
+            result for result in self.to_rows() if result.variant_params.experiment_name == EXPERIMENT_NAMES.INFO_FLOW
+        ]
+        return InfoFlowResults(cast(list[InfoFlowRunner], results))
+
+    def is_empty(self) -> bool:
+        return len(self.to_rows()) == 0
+
+    def get_common_and_different_params(self) -> tuple[dict, list[dict]]:
+        if self.is_empty():
+            return {}, []
+
+        common_params = {}
+        different_params_list = []
+
+        all_keys = set()
+        for result in self.to_rows():
+            all_keys.update(asdict(result.variant_params).keys())
+
+        for key in all_keys:
+            values = [getattr(result.variant_params, key, None) for result in self.to_rows()]
+            unique_values = set(values)
+
+            if len(unique_values) == 1:
+                common_params[key] = next(iter(unique_values))
+            else:
+                for i, result in enumerate(self.to_rows()):
+                    if i >= len(different_params_list):
+                        different_params_list.append({})
+                    variant_params = asdict(result.variant_params)
+                    if key in variant_params:
+                        different_params_list[i][key] = variant_params[key]
+
+        return common_params, different_params_list
+
+
+class InfoFlowResults(ResultBank[InfoFlowRunner]):
+    def to_rows(self) -> list[InfoFlowRunner]:
+        return self._raw
+
+    def get_common_indices(self) -> set[TPromptOriginalIndex]:
+        existing_ids_list = [info_flow.output_file.get_computed_prompt_idx() for info_flow in self.to_rows()]
+        return functools.reduce(lambda x, y: x.intersection(y), existing_ids_list)
+
+    def max_layer(self) -> int:
+        return max(info_flow.output_file.get_statistics().layers_amount for info_flow in self.to_rows()) - 1
+
+    def min_layer(self) -> int:
+        return 0
+
+    @property
+    def size(self) -> int:
+        return len(self.to_rows())
+
+    def subset_layers(self, layer_idx_subset: TWindowLayerStartIndex) -> "InfoFlowResults":
+        return InfoFlowResults(
+            [
+                info_flow.modify(variant_params=info_flow.variant_params.modify(subset_layers=layer_idx_subset))
+                for info_flow in self.to_rows()
+            ]
+        )
+
+    def subset_prompts(self, prompt_ids: list[TPromptOriginalIndex]) -> "InfoFlowResults":
+        return InfoFlowResults(
+            [
+                info_flow.modify(input_params=InputParams(filteration=SelectivePromptFilteration(tuple(prompt_ids))))
+                for info_flow in self.to_rows()
+            ]
+        )
+
+
+class PromptNew(DataObject):
+    def __init__(self, prompt: dict):
+        self._prompt = prompt
+
+    def as_prompt(self) -> Prompt:
+        return Prompt(self._prompt)  # type: ignore
+
+
+class Prompts(DataObject):
+    def __init__(self, df: dict[TPromptOriginalIndex, PromptNew], tokenizer: TTokenizer):
+        self._raw = df
+        self._tokenizer = tokenizer
+
+    def filter_by_prompt_ids(self, prompt_ids: list[TPromptOriginalIndex]):
+        return Prompts(subset_dict_by_keys(self._raw, prompt_ids), self._tokenizer)
+
+    def filter_by_condition(self, condition: Callable[[TPromptOriginalIndex, PromptNew], bool]):
+        return self.filter_by_prompt_ids(get_dict_keys_by_condition(self._raw, condition))
+
+    @property
+    def empty(self) -> bool:
+        return len(self._raw) == 0
+
+    @property
+    def size(self) -> int:
+        return len(self._raw)
+
+    @property
+    def original_idx(self) -> list[TPromptOriginalIndex]:
+        return list(self._raw.keys())
+
+    def sample(self, sample_size: int, seed: int) -> "Prompts":
+        random.seed(seed)
+        sampled_indices = random.choices(list(self._raw.keys()), k=sample_size)
+        return self.filter_by_prompt_ids(sampled_indices)

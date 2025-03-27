@@ -129,6 +129,11 @@ class RequirementExecution(StreamlitComponent):
             else:
                 raise ValueError(f"Unsupported config type: {type(config)}")
 
+            status = config.get_slurm_status()
+
+            if isinstance(status, SlurmStatus) and status.scheduled():
+                selected_count -= 1
+
             table_data.append(
                 {
                     "Model": req.model_arch_and_size.model_name,
@@ -136,7 +141,7 @@ class RequirementExecution(StreamlitComponent):
                     "Computed Prompts": len(computed_prompts),
                     "Missing Prompts": len(requested_prompts - computed_prompts),
                     "Banned Prompts": banned_prompts,
-                    "Status": config.get_slurm_status(),
+                    "Status": status,
                     "GPU": AppSessionKeys.get_selected_gpu(req.model_arch_and_size),
                 }
             )
@@ -173,7 +178,8 @@ class RequirementExecution(StreamlitComponent):
 
             # Get all rows from filtered_df that match selected requirements
             last_error = None
-            for i, (req, filteration) in enumerate(self.data_reqs_to_run.to_rows()):
+            i = 0
+            for req, filteration in self.data_reqs_to_run.to_rows():
                 try:
                     # Get config and set running parameters
                     config = init_runner_from_params(
@@ -187,8 +193,12 @@ class RequirementExecution(StreamlitComponent):
                             slurm_gpu_type=AppSessionKeys.get_selected_gpu(req.model_arch_and_size),
                         )
 
+                    status = config.get_slurm_status()
+                    if isinstance(status, SlurmStatus) and status.scheduled():
+                        continue
                     # Run the configuration
                     config.run(with_dependencies=False)
+                    i += 1
                     success_count += 1
 
                 except Exception as e:

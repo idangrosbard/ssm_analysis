@@ -70,6 +70,7 @@ class EvaluateModelConfig(BaseRunner[EvaluateModelParams]):
 
             if known1000_col in df.columns:
                 df = df.drop(columns=[known1000_col])
+
         return df
 
     def get_prompt_data(self) -> TPromptData:

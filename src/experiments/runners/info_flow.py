@@ -48,6 +48,8 @@ from src.utils.infra.output_path import OutputKey
 SAVE_INTERVAL = 600  # 10 minutes
 PRINT_INTERVAL = 100
 
+TWindowLayerStartIndex = tuple[TLayerIndex, ...]
+
 
 class InfoFlowJSONFileCols:
     data: Literal["data"] = "data"
@@ -127,6 +129,11 @@ class JSONInfoFlowFile:
 
     @cached(TTLCache(maxsize=1, ttl=60))
     def load(self) -> InfoFlowFileContent:
+        if not self.path.exists():
+            return InfoFlowFileContent(
+                metadata=InfoFlowMetadata(layers_amount=0, banned_prompts={}),
+                data={},
+            )
         raw_json = json.load(self.path.open("r"))
         return InfoFlowFileContent(
             metadata=InfoFlowMetadata(
@@ -152,7 +159,7 @@ class JSONInfoFlowFile:
     def load_to_info_flow_output(
         self,
         prompt_idx_subset: Optional[list[TPromptOriginalIndex]] = None,
-        layer_idx_subset: Optional[list[TLayerIndex]] = None,
+        layer_idx_subset: Optional[TWindowLayerStartIndex] = None,
     ) -> TInfoFlowOutput:
         content = self.load()
         info_flow_data = content[InfoFlowJSONFileCols.data]
@@ -172,7 +179,7 @@ class JSONInfoFlowFile:
         layer_idx: list[TLayerIndex] = (
             list(range(content[InfoFlowJSONFileCols.metadata][InfoFlowJSONMetadataCols.layers_amount]))
             if layer_idx_subset is None
-            else layer_idx_subset
+            else list(layer_idx_subset)
         )
 
         return {
@@ -215,6 +222,7 @@ class JSONInfoFlowFile:
             layers_amount=layers_amount,
         )
 
+        self.statistics_path.parent.mkdir(parents=True, exist_ok=True)
         self.statistics_path.write_text(res.to_json())
         return self.get_statistics()
 
@@ -222,7 +230,7 @@ class JSONInfoFlowFile:
         return set(self.get_statistics().banned_prompt_ids)
 
     def get_computed_prompt_idx(
-        self, layer_idx_subset: Optional[list[TLayerIndex]] = None, include_banned: bool = False
+        self, layer_idx_subset: Optional[TWindowLayerStartIndex] = None, include_banned: bool = False
     ) -> set[TPromptOriginalIndex]:
         statistics = self.get_statistics()
         ids = statistics.complete_prompt_ids
@@ -242,7 +250,7 @@ class JSONInfoFlowFile:
     def get_missing_prompt_layer_values(
         self,
         prompt_idx_subset: list[TPromptOriginalIndex],
-        layer_idx_subset: Optional[list[TLayerIndex]] = None,
+        layer_idx_subset: Optional[TWindowLayerStartIndex],
     ) -> dict[TPromptOriginalIndex, list[TLayerIndex]]:
         statistics = self.get_statistics()
         complete_prompt_ids = self.get_computed_prompt_idx(layer_idx_subset=layer_idx_subset, include_banned=True)
@@ -266,6 +274,7 @@ class InfoFlowParams(BaseVariantParams):
     source: TokenType
     feature_category: FeatureCategory
     target: TokenType
+    subset_layers: Optional[TWindowLayerStartIndex] = None
 
 
 class InfoFlowDependencies(TypedDict):
@@ -326,7 +335,8 @@ class InfoFlowRunner(BaseRunner[InfoFlowParams]):
         return (
             len(
                 self.output_file.get_missing_prompt_layer_values(
-                    prompt_idx_subset=self.input_params.filteration.get_prompt_ids()
+                    prompt_idx_subset=self.input_params.filteration.get_prompt_ids(),
+                    layer_idx_subset=self.variant_params.subset_layers,
                 )
             )
             == 0
@@ -394,7 +404,8 @@ def run(args: InfoFlowRunner):
         args.output_file.create_new(layers_amount)
 
     missing_prompt_layer_values = args.output_file.get_missing_prompt_layer_values(
-        prompt_idx_subset=args.input_params.filteration.get_prompt_ids()
+        prompt_idx_subset=args.input_params.filteration.get_prompt_ids(),
+        layer_idx_subset=args.variant_params.subset_layers,
     )
 
     if not missing_prompt_layer_values:

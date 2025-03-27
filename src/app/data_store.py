@@ -14,9 +14,25 @@ from src.analysis.experiment_results.results_bank import (
 from src.app.app_consts import (
     GLOBAL_APP_CONSTS,
 )
-from src.core.types import MODEL_ARCH_AND_SIZE, TCodeVersionName, TPromptOriginalIndex
-from src.data_ingestion.data_defs import DataReqs, ModelCombinationsPrompts, ResultBank, SummarizedDataFulfilledReqs
+from src.core.consts import GRAPHS_ORDER
+from src.core.names import COLS, DATASETS
+from src.core.types import (
+    MODEL_ARCH_AND_SIZE,
+    TCodeVersionName,
+    TPromptOriginalIndex,
+)
+from src.data_ingestion.data_defs import (
+    DataReqs,
+    ModelCombinationsPrompts,
+    PromptNew,
+    Prompts,
+    ResultBank,
+    SummarizedDataFulfilledReqs,
+)
+from src.data_ingestion.datasets.download_dataset import get_row_data
+from src.experiments.infrastructure.setup_models import get_tokenizer
 from src.utils.streamlit.helpers.cache import CacheWithDependencies
+from src.utils.types_utils import first_dict_key
 
 
 @CacheWithDependencies()
@@ -56,6 +72,25 @@ def load_results_bank() -> ResultBank:
 @CacheWithDependencies()
 def load_test_results_bank() -> ResultBank:
     return get_experiment_results_bank(results_base_paths=(RESULTS_BASE_PATH.TEST,))
+
+
+@CacheWithDependencies()
+def get_tokenizerults_bank() -> ResultBank:
+    return get_experiment_results_bank(results_base_paths=(RESULTS_BASE_PATH.TEST,))
+
+
+@CacheWithDependencies()
+def load_prompts(
+    model_arch_and_size: MODEL_ARCH_AND_SIZE = first_dict_key(GRAPHS_ORDER),
+    dataset: DATASETS = DATASETS.COUNTER_FACT,
+) -> Prompts:
+    # TODO: support all type of tokenizers
+    df = get_row_data(dataset)
+
+    return Prompts(
+        {TPromptOriginalIndex(int(row[COLS.ORIGINAL_IDX])): PromptNew(dict(row)) for _, row in df.iterrows()},
+        get_tokenizer(model_arch_and_size.arch, model_arch_and_size.size),
+    )
 
 
 @CacheWithDependencies()

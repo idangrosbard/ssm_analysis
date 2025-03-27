@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Dict, Iterable, List, Optional, Tuple, assert_never
+from typing import Dict, Iterable, List, Optional, Tuple, assert_never, cast
 
 import torch
 import torch.nn.functional as F
@@ -40,7 +40,7 @@ class ModelInterface(ABC):
         if tokenizer is not None:
             self.tokenizer = tokenizer
 
-        self.device = self.model.device
+        self.device: TDevice = cast(TDevice, self.model.device)
 
     def setup(self, layers: Optional[Iterable[TLayerIndex]] = None):
         self.model.eval()

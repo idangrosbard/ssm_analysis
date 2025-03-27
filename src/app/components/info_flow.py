@@ -1,4 +1,4 @@
-from typing import Dict, List, Literal, Tuple, cast
+from typing import Literal, cast
 
 import numpy as np
 import pandas as pd
@@ -16,68 +16,27 @@ from src.core.consts import (
     TOKEN_TYPE_LINE_STYLES,
     format_params_for_title,
 )
-from src.core.names import COLS, ResultBankParamNames
-from src.core.types import TInfoFlowOutput
+from src.core.names import COLS
+from src.data_ingestion.data_defs import InfoFlowResults
 from src.utils.streamlit.helpers.component import StreamlitComponent
 
 
 class InfoFlowAnalysisComponent(StreamlitComponent):
     def __init__(
         self,
-        info_flow_outputs: list[TInfoFlowOutput],
-        metadata_list: list[dict],
-        model_evaluations: list[pd.DataFrame],
+        info_flow_results: InfoFlowResults,
     ):
-        self.info_flow_outputs = info_flow_outputs
-        self.model_evaluations = model_evaluations
-        self.metadata_list = metadata_list
+        self.info_flow_results = info_flow_results
         self.metric_options = {"Accuracy": "acc", "Probability Difference": "diff"}
-
-    def _get_common_and_different_params(self) -> Tuple[Dict, List[Dict]]:
-        """
-        Identify common and different parameters across all info flow outputs.
-        Returns a tuple of (common_params, different_params_list)
-        """
-        if not self.info_flow_outputs:
-            return {}, []
-
-        # Extract all metadata
-
-        # Find common parameters
-        common_params = {}
-        different_params_list = []
-
-        # Get all parameter keys
-        all_keys = set()
-        for metadata in self.metadata_list:
-            all_keys.update(metadata.keys())
-
-        # Check each parameter
-        for key in all_keys:
-            values = [metadata.get(key) for metadata in self.metadata_list if key in metadata]
-            unique_values = set(values)
-
-            if len(unique_values) == 1:
-                # All values are the same
-                common_params[key] = next(iter(unique_values))
-            else:
-                # Values differ
-                for i, metadata in enumerate(self.metadata_list):
-                    if i >= len(different_params_list):
-                        different_params_list.append({})
-                    if key in metadata:
-                        different_params_list[i][key] = metadata[key]
-
-        return common_params, different_params_list
 
     def render_probability_distribution(self):
         """Render info flow over time analysis with confidence intervals using Plotly."""
-        if not self.info_flow_outputs:
+        if not self.info_flow_results:
             st.warning("No info flow data available")
             return
 
         # Get common and different parameters
-        common_params, different_params_list = self._get_common_and_different_params()
+        common_params, different_params_list = self.info_flow_results.get_common_and_different_params()
 
         # Create title based on common parameters
         title = format_params_for_title(common_params)
@@ -101,27 +60,29 @@ class InfoFlowAnalysisComponent(StreamlitComponent):
 
         # Prepare data for confidence plots
         targets_window_outputs = []
+        base_probs = []
         colors = []
         line_styles = []
         legend_labels = [format_params_for_title(diff_params) for diff_params in different_params_list]
         if not legend_labels:
             legend_labels = ["Flow"]
 
-        for i, info_flow in enumerate(self.info_flow_outputs):
+        for i, info_flow in enumerate(self.info_flow_results.to_rows()):
             # Create a unique source identifier for each info flow
-            targets_window_outputs.append(info_flow)
-            token_type = (
-                self.metadata_list[i][ResultBankParamNames.target],
-                self.metadata_list[i][ResultBankParamNames.feature_category],
+            targets_window_outputs.append(info_flow.get_outputs())
+            base_probs.append(
+                info_flow.get_runner_dependencies()["evaluate_model"].get_prompt_data()[
+                    COLS.EVALUATE_MODEL.TARGET_PROBS
+                ]
             )
 
             # Assign a custom color
             colors.append(
                 TOKEN_TYPE_COLORS.get(
-                    token_type[0], px.colors.qualitative.Plotly[i % len(px.colors.qualitative.Plotly)]
+                    info_flow.variant_params.source, px.colors.qualitative.Plotly[i % len(px.colors.qualitative.Plotly)]
                 )
             )
-            line_styles.append(TOKEN_TYPE_LINE_STYLES.get(token_type[0], "-"))
+            line_styles.append(TOKEN_TYPE_LINE_STYLES.get(info_flow.variant_params.feature_category, "-"))
 
         # Find the maximum layer range across all info flows
 
@@ -149,7 +110,7 @@ class InfoFlowAnalysisComponent(StreamlitComponent):
         # Create a combined table with statistics for all metrics
         stats_data = []
 
-        for i, info_flow in enumerate(self.info_flow_outputs):
+        for i, info_flow in enumerate(targets_window_outputs):
             # Extract hit data for accuracy
             hit_data = {}
             for window_idx, window_data in info_flow.items():
@@ -158,12 +119,8 @@ class InfoFlowAnalysisComponent(StreamlitComponent):
 
             # Extract probability data
             true_probs = {}
-            base_probs = {}
             for window_idx, window_data in info_flow.items():
                 true_probs[window_idx] = window_data[COLS.INFO_FLOW.TRUE_PROBS.value]
-                # Use diffs as a proxy for base_probs if available
-                base_probs[window_idx] = self.model_evaluations[i][COLS.EVALUATE_MODEL.TARGET_PROBS]
-
             true_probs_df = pd.DataFrame(true_probs)
             base_probs_df = pd.DataFrame(base_probs).reset_index(drop=True)
             prob_diffs = true_probs_df - base_probs_df
@@ -196,12 +153,12 @@ class InfoFlowAnalysisComponent(StreamlitComponent):
 
     def render_info_flow_over_time(self):
         """Render info flow over time analysis."""
-        if not self.info_flow_outputs:
+        if not self.info_flow_results:
             st.warning("No info flow data available")
             return
 
         # Get common and different parameters
-        common_params, different_params_list = self._get_common_and_different_params()
+        common_params, different_params_list = self.info_flow_results.get_common_and_different_params()
 
         # Create title based on common parameters
         title = format_params_for_title(common_params)
@@ -227,13 +184,13 @@ class InfoFlowAnalysisComponent(StreamlitComponent):
         for i, col in enumerate(cols):
             with col:
                 st.subheader(INFO_FLOW_ANALYSIS_TEXTS.col_to_axis_name(i))
-                if len(self.info_flow_outputs) == 1:
+                if self.info_flow_results.size == 1:
                     selected_info_flow_indices.append(0)
                 else:
                     selected_info_flow_indices.append(
                         st.selectbox(
                             INFO_FLOW_ANALYSIS_TEXTS.select_flow,
-                            options=range(len(self.info_flow_outputs)),
+                            options=range(self.info_flow_results.size),
                             key=f"info_flow_output_{i}",
                             format_func=lambda i: legend_labels[i],
                         )
@@ -267,7 +224,7 @@ class InfoFlowAnalysisComponent(StreamlitComponent):
         info_flows = []
 
         for idx in selected_info_flow_indices:
-            info_flow = self.info_flow_outputs[idx]
+            info_flow = self.info_flow_results.to_rows()[idx].get_outputs()
             info_flows.append(info_flow)
             all_window_indices.update(info_flow.keys())
 
@@ -275,7 +232,10 @@ class InfoFlowAnalysisComponent(StreamlitComponent):
         all_window_indices = sorted(all_window_indices)
         hover_data = [
             "<br>".join([f"<b>{col}:</b> {row[col]}" for col in hover_columns])
-            for _, row in self.model_evaluations[selected_info_flow_indices[0]].iterrows()
+            for _, row in self.info_flow_results.to_rows()[selected_info_flow_indices[0]]
+            .get_runner_dependencies()["evaluate_model"]
+            .get_prompt_data()
+            .iterrows()
         ]
         if not all_window_indices:
             st.warning("No window indices found in the selected info flows")
@@ -284,7 +244,7 @@ class InfoFlowAnalysisComponent(StreamlitComponent):
         # Prepare data for each axis
         axes_data = []
         for flow_idx, axis_name in zip(selected_info_flow_indices, selected_metrics):
-            info_flow = self.info_flow_outputs[flow_idx]
+            info_flow = self.info_flow_results.to_rows()[flow_idx].get_outputs()
             axis_column = axes_options[axis_name]
 
             # Prepare data for this axis
@@ -303,7 +263,11 @@ class InfoFlowAnalysisComponent(StreamlitComponent):
                     case COLS.INFO_FLOW.DIFFS | COLS.INFO_FLOW.TRUE_PROBS:
                         values = window_data[axis_column]
                     case COLS.EVALUATE_MODEL.TARGET_PROBS:
-                        values: DataFrame = self.model_evaluations[flow_idx][axis_column]
+                        values: DataFrame = (
+                            self.info_flow_results.to_rows()[flow_idx]
+                            .get_runner_dependencies()["evaluate_model"]
+                            .get_prompt_data()[axis_column]
+                        )
                     case _:
                         raise ValueError(f"Unknown axis column: {axis_column}")
 

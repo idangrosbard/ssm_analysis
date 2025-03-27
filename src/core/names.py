@@ -216,6 +216,9 @@ class SlurmStatus(StrEnum):
     FAILED = "FAILED"
     CANCELLED = "CANCELLED"
 
+    def scheduled(self) -> bool:
+        return self in [self.PENDING, self.RUNNING]
+
 
 class RunningHistoryCols(StrEnum):
     run_id = "run_id"

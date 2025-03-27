@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, replace
 from pathlib import Path
 from typing import Any, Generic, Mapping, Optional, Type, TypeVar, Union, assert_never, cast, final
 
@@ -69,6 +69,12 @@ class BaseVariantParams(ABC):
     def get_tokenizer(self) -> TTokenizer:
         return get_tokenizer(self.model_arch, self.model_size)
 
+    def modify(
+        self,
+        **kwargs,
+    ):
+        return replace(self, **kwargs)
+
 
 @dataclass
 class InputParams:
@@ -120,6 +126,18 @@ class BaseRunner(ABC, Generic[_TVariantParams]):
             variant_params=variant_params,
             input_params=input_params or runner.input_params,
             metadata_params=metadata_params or runner.metadata_params,
+        )
+
+    def modify(
+        self,
+        variant_params: Optional[_TVariantParams] = None,
+        input_params: Optional[InputParams] = None,
+        metadata_params: Optional[MetadataParams] = None,
+    ):
+        return self.__class__(
+            variant_params=variant_params or self.variant_params,
+            input_params=input_params or self.input_params,
+            metadata_params=metadata_params or self.metadata_params,
         )
 
     @property
@@ -323,11 +341,11 @@ class BaseRunner(ABC, Generic[_TVariantParams]):
             return None
         return SlurmJob(submission_file_path[0], job_id=job_path.stem)
 
-    def get_slurm_status(self) -> SlurmStatus:
+    def get_slurm_status(self) -> SlurmStatus | str:
         latest_job = self.get_latest_slurm_job()
         if latest_job is None:
             return SlurmStatus.NOT_SUBMITTED
         try:
             return SlurmStatus[latest_job.state]
         except KeyError:
-            return cast(SlurmStatus, latest_job.state)
+            return latest_job.state

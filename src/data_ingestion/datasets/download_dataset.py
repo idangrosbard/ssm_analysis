@@ -13,7 +13,7 @@ from datasets import (
 
 from src.core.consts import COUNTER_FACT_2_KNOWN1000_COL_CONV, DATASETS_IDS, PATHS
 from src.core.names import COLS, DATASETS
-from src.core.types import ALL_SPLITS_LITERAL, SPLIT, TPromptOriginalIndex, TSplitChoise
+from src.core.types import ALL_SPLITS_LITERAL, SPLIT, TPromptData, TPromptOriginalIndex, TSplitChoise
 from src.data_ingestion.datasets.splitting import split_dataset
 
 
@@ -80,3 +80,8 @@ def get_row_data(dataset_name: DATASETS) -> pd.DataFrame:
             )
             return pd.DataFrame(cast(dict, dataset))
     assert_never(dataset_name)
+
+
+def get_indexed_raw_data(dataset_name: DATASETS) -> TPromptData:
+    df = get_row_data(dataset_name)
+    return TPromptData(df.set_index(COLS.ORIGINAL_IDX))
