@@ -511,7 +511,7 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
 
         missing_reqs = [
             req
-            for summary, req in zip(summarized_fulfilled_reqs.to_rows(), reqs)
+            for summary, req in zip(summarized_fulfilled_reqs, reqs)
             if summary[SummarizedDataFulfilledReqsCols.AvailableOptions] == 0
         ]
 

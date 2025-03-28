@@ -1,5 +1,6 @@
 import contextlib
 import json
+from collections import defaultdict
 from dataclasses import asdict
 from enum import StrEnum
 from typing import Any, Callable, ContextManager, Optional, Type, TypeVar, cast
@@ -62,6 +63,16 @@ def ommit_none(d: dict[Any, Optional[Any]]) -> dict[Any, Any]:
     return {k: v for k, v in d.items() if v is not None}
 
 
+def ommit_unique_values(dict_list: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    unique_values = defaultdict(set)
+    for d in dict_list:
+        for k, v in d.items():
+            if v is not None and not isinstance(v, (list, tuple, set)):
+                unique_values[k].add(v)
+
+    return [{k: v for k, v in d.items() if v not in unique_values[k]} for d in dict_list]
+
+
 def conditional_context_manager(use_ctx: bool, ctx: ContextManager[None]) -> ContextManager[None]:
     """
     Returns the given context manager if use_ctx is True, otherwise returns a dummy context.
@@ -105,3 +116,7 @@ def json_dumps_dataclass(obj: Any, **kwargs) -> str:
         raise TypeError(f"Type {type(obj)} not serializable")
 
     return json.dumps(obj, default=dataclass_json_encoder, **kwargs)
+
+
+def format_dict(d: dict[Any, Any], sep: str = " | ") -> str:
+    return sep.join([f"{k}: {v}" for k, v in d.items()])

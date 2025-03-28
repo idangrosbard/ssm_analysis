@@ -19,7 +19,7 @@ from src.app.components.result_bank import SelectionMode, ShowResultsBank
 from src.app.data_store import load_prompts, load_results_bank
 from src.app.texts import INFO_FLOW_ANALYSIS_TEXTS
 from src.core.consts import GRAPHS_ORDER
-from src.core.names import COLS, ResultBankParamNames
+from src.core.names import COLS, InfoFlowCols, ResultBankParamNames
 from src.core.types import (
     MODEL_SIZE_CAT,
     TInfoFlowWindowValue,
@@ -39,11 +39,9 @@ def select_indexes_from_window_values(
 ) -> TInfoFlowWindowValue:
     indexes = get_list_indexes_of_set_values(window_values[COLS.ORIGINAL_IDX], set(prompt_ids))
     return {
-        COLS.INFO_FLOW.HIT.value: select_indexes_from_list(window_values[COLS.INFO_FLOW.HIT.value], indexes),
-        COLS.INFO_FLOW.TRUE_PROBS.value: select_indexes_from_list(
-            window_values[COLS.INFO_FLOW.TRUE_PROBS.value], indexes
-        ),
-        COLS.INFO_FLOW.DIFFS.value: select_indexes_from_list(window_values[COLS.INFO_FLOW.DIFFS.value], indexes),
+        InfoFlowCols.hit: select_indexes_from_list(window_values[InfoFlowCols.hit], indexes),
+        InfoFlowCols.true_probs: select_indexes_from_list(window_values[InfoFlowCols.true_probs], indexes),
+        InfoFlowCols.diffs: select_indexes_from_list(window_values[InfoFlowCols.diffs], indexes),
         COLS.ORIGINAL_IDX: prompt_ids,
     }
 
@@ -161,7 +159,7 @@ class InfoFlowAnalysisPage(StreamlitPage):
             # Create a combined model evaluations dataframe
             InfoFlowAnalysisComponent(
                 result_bank,
-            ).profile_render()
+            ).render()
 
 
 if __name__ == "__main__":

@@ -3,9 +3,6 @@ from dataclasses import asdict, dataclass, field, replace
 from pathlib import Path
 from typing import Any, Generic, Mapping, Optional, Type, TypeVar, Union, assert_never, cast, final
 
-from cachetools import TTLCache, cached
-from submitit.slurm.slurm import SlurmJob
-
 from src.core.consts import (
     BASE_OUTPUT_KEYS,
     MODEL_SIZES_PER_ARCH_TO_MODEL_ID,
@@ -13,7 +10,7 @@ from src.core.consts import (
     PathsConfig,
     RunnerPaths,
 )
-from src.core.names import BASE_CONFIG_HP_COLS, EXPERIMENT_NAMES, RunningHistoryCols, SlurmStatus
+from src.core.names import BASE_CONFIG_HP_COLS, EXPERIMENT_NAMES, RunningHistoryCols
 from src.core.types import (
     MODEL_ARCH,
     MODEL_ARCH_AND_SIZE,
@@ -31,6 +28,7 @@ from src.utils.infra.experiment_helper import create_run_id
 from src.utils.infra.git import get_git_commit_hash
 from src.utils.infra.output_path import OutputKey, combine_output_keys
 from src.utils.infra.slurm import SLURM_GPU_TYPE, submit_job
+from src.utils.infra.slurm_job_folder import ExperimentHistorySlurmJobsFolder
 from src.utils.types_utils import json_dumps_dataclass, ommit_none, str_enum_values
 
 TDependencies = Mapping[str, Union["BaseRunner", "TDependencies"]]
@@ -206,20 +204,6 @@ class BaseRunner(BaseParams, ABC, Generic[_TVariantParams]):
     def job_name(self) -> str:
         return self.combine_output_keys(sep="_")
 
-    def set_running_params(
-        self,
-        with_slurm: bool,
-        slurm_gpu_type: SLURM_GPU_TYPE,
-        slurm_gpus_per_node: Optional[int] = None,
-    ):
-        return self.modify(
-            metadata_params=self.metadata_params.modify(
-                with_slurm=with_slurm,
-                slurm_gpu_type=slurm_gpu_type,
-                slurm_gpus_per_node=slurm_gpus_per_node,
-            ),
-        )
-
     def should_skip_task(self) -> bool:
         return False
 
@@ -325,26 +309,6 @@ class BaseRunner(BaseParams, ABC, Generic[_TVariantParams]):
 
             print(f"{job}: {self.job_name}")
 
-    def get_latest_slurm_job(self) -> Optional[SlurmJob]:
-        slurm_logs_path = self.variation_paths.slurm_logs_path
-        if not slurm_logs_path.exists():
-            return None
-
-        job_paths = list(slurm_logs_path.glob("*"))
-        if not job_paths:
-            return None
-        job_path = max(job_paths, key=lambda x: int(x.stem))
-        submission_file_path = list(job_path.glob("*_submission.sh"))
-        if len(submission_file_path) != 1:
-            return None
-        return SlurmJob(submission_file_path[0], job_id=job_path.stem)
-
-    @cached(TTLCache(maxsize=1, ttl=60))
-    def get_slurm_status(self) -> SlurmStatus | str:
-        latest_job = self.get_latest_slurm_job()
-        if latest_job is None:
-            return SlurmStatus.NOT_SUBMITTED
-        try:
-            return SlurmStatus[latest_job.state]
-        except KeyError:
-            return latest_job.state
+    @property
+    def slurm_job_folder(self) -> ExperimentHistorySlurmJobsFolder:
+        return ExperimentHistorySlurmJobsFolder(self.variation_paths.slurm_logs_path)

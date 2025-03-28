@@ -63,6 +63,7 @@ def base_grid_builder(
     selection_mode: SelectionMode,
     hide_columns: list[str],
     fit_strategy: FIT_STRATEGY = FIT_STRATEGY.FIT_CELL_CONTENTS,
+    hide_unique_values: bool = False,
 ) -> tuple[pd.DataFrame, GridOptionsBuilder]:
     # if the first column is hidden, we need to reorder the columns
     if selection_mode != SelectionMode.DISABLED and df.columns[0] in hide_columns:

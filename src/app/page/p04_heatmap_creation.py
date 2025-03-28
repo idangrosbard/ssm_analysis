@@ -73,7 +73,7 @@ class HeatmapCreationPage(StreamlitPage):
         )
 
         if selected_combination_row is not None:
-            combination_row = model_combinations_prompts.to_rows()[selected_combination_row]
+            combination_row = model_combinations_prompts[selected_combination_row]
             if tab == HEATMAP_TEXTS.TAB_SELECT_COMBINATION:
                 PromptSelectionComponent(
                     combination_row, representative_model_evaluations, model_combinations_prompts

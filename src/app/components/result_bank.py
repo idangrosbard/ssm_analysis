@@ -1,11 +1,17 @@
+from dataclasses import asdict
+from pathlib import Path
 from typing import TypeVar
 
+import streamlit as st
 from st_aggrid import AgGrid, DataReturnMode, GridUpdateMode
+from streamlit_modal import Modal
 
 from src.core.names import ResultBankParamNames
 from src.data_ingestion.data_defs import ResultBank
+from src.experiments.infrastructure.base_config import BaseRunner
 from src.utils.streamlit.components.aagrid import SelectionMode, base_grid_builder, set_aagrid_apply_default_filters
 from src.utils.streamlit.helpers.component import StreamlitComponent
+from src.utils.streamlit.helpers.session_keys import SessionKey
 
 T_RESULT_BANK_TYPE = TypeVar("T_RESULT_BANK_TYPE", bound="ResultBank")
 
@@ -56,3 +62,85 @@ class ShowResultsBank(StreamlitComponent[T_RESULT_BANK_TYPE]):
         )
 
         return self.results_bank.from_experiment_results_df(grid_response.selected_data)
+
+
+modal = Modal(key="job_output_modal", title="Job Output", max_width=1000)
+
+
+class ShowRunnerStatus(StreamlitComponent):
+    def __init__(self, runner: BaseRunner):
+        super().__init__()
+        self.runner = runner
+
+    def render(self):
+        st.code(self.runner.variation_paths.variation_base_path, wrap_lines=True)
+        st.expander(expanded=False, label="Params").write(asdict(self.runner))
+        # Computation status
+
+        all_slurm_jobs = self.runner.slurm_job_folder.get_all_slurm_jobs()
+        all_slurm_jobs = sorted(all_slurm_jobs, key=lambda x: -int(x.job_id))
+        sk_file_path = SessionKey[Path](f"job_output_path_{self.runner.experiment_name}", None, allow_none=True)
+
+        if modal.is_open():
+            with modal.container():
+                text = sk_file_path.value.read_text().split("\n")[::-1]
+                st.code(sk_file_path.value, wrap_lines=True)
+                st.code("\n".join(text))
+
+        with st.expander(expanded=False, label=f"{len(all_slurm_jobs)} Slurm Runs"):
+            for slurm_job in all_slurm_jobs:
+                st.markdown(f"**Job ID:** {slurm_job.job_id} - **Status:** {slurm_job.get_slurm_status()}")
+
+                cols = st.columns(2)
+                with cols[0]:
+                    if st.button("Show Job Output", key=f"show_job_output_{slurm_job.job_id}"):
+                        sk_file_path.value = slurm_job.slurm_job_output_path
+                        modal.open()
+
+                with cols[1]:
+                    if st.button("Show Job Error", key=f"show_job_error_{slurm_job.job_id}"):
+                        sk_file_path.value = slurm_job.slurm_job_error_path
+                        modal.open()
+
+        # Show uncomputed dependencies if any
+        if not self.runner.dependencies_are_computed():
+            with st.expander("**Uncomputed Dependencies** ❌"):
+                uncomputed = self.runner.uncomputed_dependencies()
+
+                def render_dependencies(deps, level=0):
+                    for key, dep in deps.items():
+                        indent = "&nbsp;" * (4 * level)
+                        if isinstance(dep, BaseRunner):
+                            st.markdown(
+                                f"{indent}• {key}: {dep.experiment_name} ({dep.variant_params.model_arch_and_size})",
+                                unsafe_allow_html=True,
+                            )
+                        else:
+                            st.markdown(f"{indent}• {key}:", unsafe_allow_html=True)
+                            render_dependencies(dep, level + 1)
+
+                render_dependencies(uncomputed)
+
+                if st.button("Compute Dependencies"):
+                    with st.spinner("Computing..."):
+                        try:
+                            self.runner.compute_dependencies(1)
+                            st.success("Computation completed or submitted!")
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Error during computation: {e}")
+
+        # # Add a button to compute if not computed yet
+        # if not self.runner.is_computed():
+        #     cols = st.columns([1, 2])
+        #     with cols[0]:
+        #         st.markdown("**Computed:** ❌")
+        #     with cols[1]:
+        #         if st.button("Compute Runner"):
+        #             with st.spinner("Computing..."):
+        #                 try:
+        #                     self.runner.run(with_dependencies=False)
+        #                     st.success("Computation completed or submitted!")
+        #                     st.rerun()
+        #                 except Exception as e:
+        #                     st.error(f"Error during computation: {e}")

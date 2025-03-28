@@ -61,8 +61,8 @@ class PlotPlanSelector(StreamlitComponent[None]):
             self.selected_plot_id_sk.value = self.new_plot_id
 
         # Group plans by appendix/main
-        main_plans = [p for p in self.plot_plans.to_rows() if not p.is_appendix]
-        appendix_plans = [p for p in self.plot_plans.to_rows() if p.is_appendix]
+        main_plans = [p for p in self.plot_plans.values() if not p.is_appendix]
+        appendix_plans = [p for p in self.plot_plans.values() if p.is_appendix]
 
         # Create menu items
         menu_items: List[Union[str, dict, sac.MenuItem]] = []

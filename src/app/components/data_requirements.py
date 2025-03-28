@@ -18,7 +18,7 @@ from src.app.app_consts import (
     DataReqConsts,
 )
 from src.app.components.inputs import select_gpu_type, select_window_size
-from src.app.texts import HEATMAP_TEXTS
+from src.app.components.result_bank import ShowRunnerStatus
 from src.core.names import HeatmapCols, SlurmStatus, SummarizedDataFulfilledReqsCols
 from src.core.types import MODEL_ARCH_AND_SIZE, TCodeVersionName, TPromptOriginalIndex, TWindowSize
 from src.data_ingestion.data_defs import DataReqs, SummarizedDataFulfilledReqs
@@ -27,7 +27,7 @@ from src.experiments.runners.heatmap import HeatmapParams, HeatmapRunner
 from src.experiments.runners.info_flow import InfoFlowRunner
 from src.utils.streamlit.components.aagrid import SelectionMode, base_grid_builder, set_aagrid_apply_default_filters
 from src.utils.streamlit.helpers.component import StreamlitComponent
-from src.utils.types_utils import select_indexes_from_list
+from src.utils.types_utils import ommit_none, select_indexes_from_list
 
 console = Console()
 
@@ -94,135 +94,168 @@ class RequirementExecution(StreamlitComponent):
 
     def render(self):
         # Add SLURM configuration in sidebar
-        selected_count = len(self.data_reqs_to_run.to_rows())
-
-        with_slurm = True
-        if selected_count == 1:
+        if len(self.data_reqs_to_run) == 1:
             with_slurm = st.checkbox("Run with SLURM", value=False)
+        else:
+            with_slurm = True
+
         # Show count of selected requirements
 
         # SLURM configuration
-        col1, col2 = st.columns(2)
+        param_cols = st.columns(4, vertical_alignment="center")
+        status_cols = st.columns([3, 2])
 
-        with col1:
+        with param_cols[0]:
             AppSessionKeys.code_version.create_input_widget()
 
-        with col2:
+        with param_cols[1]:
             if with_slurm:
                 select_gpu_type()
+        with param_cols[2]:
+            skip_scheduled = st.checkbox("Skip scheduled jobs", value=True)
 
         table_data = []
-        for req, filteration in self.data_reqs_to_run.to_rows():
+        configs = []
+        configs_to_run = []
+        for req, filteration in self.data_reqs_to_run.items():
             config = init_runner_from_params(
                 req,
                 InputParams(filteration=filteration),
-                MetadataParams(code_version=AppSessionKeys.code_version.value),
+                MetadataParams(
+                    code_version=AppSessionKeys.code_version.value,
+                    with_slurm=with_slurm,
+                    slurm_gpu_type=AppSessionKeys.get_selected_gpu(req.model_arch_and_size),
+                ),
             )
+            configs.append(config)
             requested_prompts = set(filteration.get_prompt_ids())
 
             if isinstance(config, HeatmapRunner):
-                computed_prompts = set(config.get_remaining_prompt_original_indices())
-                banned_prompts = 0
+                remaining_prompts = set(config.get_remaining_prompt_original_indices())
+                computed_prompts = requested_prompts - remaining_prompts
+                banned_prompts = None
             elif isinstance(config, InfoFlowRunner):
                 computed_prompts = config.output_file.get_computed_prompt_idx()
                 banned_prompts = len(config.output_file.get_banned_prompt_indices())
+                remaining_prompts = requested_prompts - computed_prompts
             else:
                 raise ValueError(f"Unsupported config type: {type(config)}")
 
-            status = config.get_slurm_status()
-
-            if isinstance(status, SlurmStatus) and status.scheduled():
-                selected_count -= 1
+            status = None
+            if skip_scheduled:
+                status = config.slurm_job_folder.get_latest_slurm_job_status()
+                if not isinstance(status, SlurmStatus) or not status.scheduled():
+                    configs_to_run.append(config)
+            else:
+                configs_to_run.append(config)
 
             table_data.append(
-                {
-                    "Model": req.model_arch_and_size.model_name,
-                    "Requested Prompts": len(requested_prompts),
-                    "Computed Prompts": len(computed_prompts),
-                    "Missing Prompts": len(requested_prompts - computed_prompts),
-                    "Banned Prompts": banned_prompts,
-                    "Status": status,
-                    "GPU": AppSessionKeys.get_selected_gpu(req.model_arch_and_size),
-                }
+                ommit_none(
+                    {
+                        "Experiment": req.experiment_name,
+                        "Model": req.model_arch_and_size.model_name,
+                        "Status": status,
+                        "Requested Prompts": len(requested_prompts),
+                        "Computed Prompts": len(computed_prompts),
+                        "Missing Prompts": len(requested_prompts - computed_prompts),
+                        "Banned Prompts": banned_prompts,
+                        "GPU": AppSessionKeys.get_selected_gpu(req.model_arch_and_size),
+                    }
+                )
             )
+
+        df = pd.DataFrame(table_data)
+        singlar_columns = list(df.columns[df.nunique() == 1])
+        if len(df) == 1:
+            singlar_columns = singlar_columns[2:]
         df, grid_builder = base_grid_builder(
-            pd.DataFrame(table_data), selection_mode=SelectionMode.DISABLED, hide_columns=[]
+            df,
+            selection_mode=SelectionMode.SINGLE,
+            hide_columns=singlar_columns,
         )
         grid_options = grid_builder.build()
         set_aagrid_apply_default_filters(
             grid_builder,
             {SummarizedDataFulfilledReqsCols.AvailableOptions: ["0"]},
         )
-        # Display the table
-        AgGrid(
-            df,
-            gridOptions=grid_options,
-            height=cast(int, 400),  # allow None
-            fit_columns_on_grid_load=True,
-            floatingFilter=True,
-            key=self.key,
-            update_mode=GridUpdateMode.SELECTION_CHANGED,
-            data_return_mode=DataReturnMode.FILTERED,
-            allow_unsafe_jscode=True,
-        )
+        with status_cols[0]:
+            # Display the table
+            if singlar_columns:
+                st.write(" | ".join([f"{col} = {df[col].iloc[0]}" for col in singlar_columns]))
+            grid_response = AgGrid(
+                df,
+                gridOptions=grid_options,
+                height=cast(int, 400),  # allow None
+                fit_columns_on_grid_load=True,
+                floatingFilter=True,
+                key=self.key,
+                update_mode=GridUpdateMode.SELECTION_CHANGED,
+                data_return_mode=DataReturnMode.FILTERED,
+                allow_unsafe_jscode=True,
+            )
+        selected_rows = grid_response["selected_data"]
+        if selected_rows is not None and len(selected_rows) > 0:
+            with status_cols[1]:
+                ShowRunnerStatus(configs[int(grid_response.selected_rows_id[0])]).render()
 
         # Run button
-        if selected_count > 0 and st.button(f"🚀 Run {selected_count} Selected Requirements"):
-            st.info(f"Preparing to run {selected_count} requirements...")
+        total_to_run = len(configs_to_run)
+        if total_to_run > 0 and param_cols[3].button(f"🚀 Run {total_to_run} Selected Requirements"):
+            with status_cols[0]:
+                st.info(f"Preparing to run {total_to_run} requirements...")
 
-            success_count = 0
-            failed_count = 0
+                success_count = 0
+                failed_count = 0
+                skipped_count = 0
+                progress_bar = st.progress(0)
+                status_text = st.empty()
 
-            progress_bar = st.progress(0)
-            status_text = st.empty()
+                # Get all rows from filtered_df that match selected requirements
+                last_error = None
+                new_scheduled = 0
+                for config in configs_to_run:
+                    try:
+                        # Get config and set running parameters
+                        if skip_scheduled:
+                            status = config.slurm_job_folder.get_latest_slurm_job_status()
+                            if isinstance(status, SlurmStatus) and status.scheduled():
+                                skipped_count += 1
+                                continue
+                        # Run the configuration
+                        config.run(with_dependencies=False)
+                        new_scheduled += 1
+                        success_count += 1
 
-            # Get all rows from filtered_df that match selected requirements
-            last_error = None
-            i = 0
-            for req, filteration in self.data_reqs_to_run.to_rows():
-                try:
-                    # Get config and set running parameters
-                    config = init_runner_from_params(
-                        req,
-                        InputParams(filteration=filteration),
-                        MetadataParams(code_version=AppSessionKeys.code_version.value),
-                    )
-                    if with_slurm:
-                        config.set_running_params(
-                            with_slurm=True,
-                            slurm_gpu_type=AppSessionKeys.get_selected_gpu(req.model_arch_and_size),
+                    except Exception as e:
+                        st.error(
+                            f"Failed to run requirement: {str(json.dumps(asdict(config.variation_params), indent=4))}"
+                        )
+                        st.exception(e)
+                        failed_count += 1
+                        last_error = e
+                        console.print(
+                            rich.traceback.Traceback.from_exception(
+                                exc_type=type(e), exc_value=e, traceback=e.__traceback__
+                            )
                         )
 
-                    status = config.get_slurm_status()
-                    if isinstance(status, SlurmStatus) and status.scheduled():
-                        continue
-                    # Run the configuration
-                    config.run(with_dependencies=False)
-                    i += 1
-                    success_count += 1
-
-                except Exception as e:
-                    st.error(f"Failed to run requirement: {str(json.dumps(asdict(req), indent=4))}")
-                    st.exception(e)
-                    failed_count += 1
-                    last_error = e
-                    console.print(
-                        rich.traceback.Traceback.from_exception(
-                            exc_type=type(e), exc_value=e, traceback=e.__traceback__
+                    # Update progress
+                    progress_bar.progress(min((new_scheduled + failed_count) / total_to_run, 1))
+                    status_text.text(
+                        " | ".join(
+                            [
+                                f"Processed: {new_scheduled}/{total_to_run}",
+                                f"Success: {success_count}",
+                                f"Failed: {failed_count}",
+                                f"Skipped: {skipped_count}",
+                            ]
                         )
                     )
 
-                # Update progress
-                progress = max((i + 1) / selected_count, 1)
-                progress_bar.progress(progress)
-                status_text.text(
-                    f"Processed: {i + 1}/{selected_count} | Success: {success_count} | Failed: {failed_count}"
-                )
-
-            if success_count > 0:
-                st.success(f"Successfully submitted {success_count} requirements to run")
-            if failed_count > 0:
-                raise Exception(f"Failed to submit {failed_count} requirements") from last_error
+                if success_count > 0:
+                    st.success(f"Successfully submitted {success_count} requirements to run")
+                if failed_count > 0:
+                    raise Exception(f"Failed to submit {failed_count} requirements") from last_error
 
 
 def get_models_remaining_prompts(
@@ -261,91 +294,19 @@ class HeatmapGenerationComponent(StreamlitComponent):
     def render(self):
         # Show count of selected prompts
         # SLURM configuration
-        col1, col2, col3 = st.columns(3)
+        select_window_size()
 
-        with col1:
-            select_window_size()
-        with col2:
-            AppSessionKeys.code_version.create_input_widget()
-        with col3:
-            select_gpu_type()
+        prompt_original_indices = [TPromptOriginalIndex(int(x)) for x in self.filtered_df[HeatmapCols.SELECTED_PROMPT]]
 
-        test_existing_prompts = st.checkbox("Test existing prompts", value=False)
-
-        if test_existing_prompts:
-            prompt_original_indices = [
-                TPromptOriginalIndex(int(x)) for x in self.filtered_df[HeatmapCols.SELECTED_PROMPT]
-            ]
-            with st.spinner("Calculating remaining prompts to run...", show_time=True):
-                models_remaining_prompts = get_models_remaining_prompts(
-                    GLOBAL_APP_CONSTS.MODELS_COMBINATIONS,
-                    AppSessionKeys.window_size.value,
-                    AppSessionKeys.code_version.value,
-                    prompt_original_indices,
-                )
-
-            table_data = []
-            for model_arch_and_size, heatmap_config in models_remaining_prompts.items():
-                model_name = model_arch_and_size.model_name
-                table_data.append(
-                    {
-                        "Model": model_name,
-                        "Prompt Count": len(heatmap_config.get_remaining_prompt_original_indices()),
-                        "Status": heatmap_config.get_slurm_status(),
-                        "GPU": AppSessionKeys.get_selected_gpu(model_arch_and_size),
-                    }
-                )
-            st.table(table_data)
-
-            skip_running = st.checkbox("Skip running", value=True)
-            # Run button
-            if models_remaining_prompts and st.button(
-                HEATMAP_TEXTS.run_selected_prompts(len(models_remaining_prompts))
-            ):
-                success_count = 0
-                failed_count = 0
-                progress_bar = st.progress(0)
-                status_text = st.empty()
-                # Get all rows from filtered_df that match selected prompts
-                last_error = None
-                for i, heatmap_config in enumerate(models_remaining_prompts.values()):
-                    try:
-                        if skip_running and heatmap_config.get_slurm_status() in [
-                            SlurmStatus.RUNNING,
-                            SlurmStatus.PENDING,
-                        ]:
-                            st.warning(
-                                HEATMAP_TEXTS.skipping_running(
-                                    heatmap_config.variant_params.model_arch, heatmap_config.variant_params.model_size
-                                )
-                            )
-                            continue
-
-                        # Set running parameters
-                        heatmap_config = heatmap_config.set_running_params(
-                            with_slurm=True,
-                            slurm_gpu_type=AppSessionKeys.get_selected_gpu(
-                                heatmap_config.variant_params.model_arch_and_size
-                            ),
-                        )
-
-                        # Submit job
-                        heatmap_config.run(with_dependencies=False)
-                        success_count += 1
-
-                    except Exception as e:
-                        st.exception(e)
-                        last_error = e
-                        st.error(HEATMAP_TEXTS.submit_failed(heatmap_config.get_remaining_prompt_original_indices(), e))
-                        failed_count += 1
-
-                    # Update progress
-                    progress = (i + 1) / len(models_remaining_prompts)
-                    progress_bar.progress(progress)
-                    status_text.text(HEATMAP_TEXTS.processing_status(i + 1, len(models_remaining_prompts)))
-
-                # Show final status
-                if success_count > 0:
-                    st.success(HEATMAP_TEXTS.success_status(success_count))
-                if failed_count > 0:
-                    raise Exception(HEATMAP_TEXTS.error_status(failed_count)) from last_error
+        RequirementExecution(
+            DataReqs(
+                {
+                    HeatmapParams(
+                        model_arch=model_arch,
+                        model_size=model_size,
+                        window_size=AppSessionKeys.window_size.value,
+                    ): SelectivePromptFilteration(prompt_ids=tuple(prompt_original_indices))
+                    for model_arch, model_size in GLOBAL_APP_CONSTS.MODELS_COMBINATIONS
+                }
+            )
+        ).render()

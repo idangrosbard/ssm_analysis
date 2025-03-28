@@ -16,7 +16,6 @@ from src.analysis.prompt_filterations import (
 )
 from src.core.consts import is_mamba_arch
 from src.core.names import (
-    COLS,
     DATASETS,
     EXPERIMENT_NAMES,
     INFO_FLOW_HP_COLS,
@@ -186,7 +185,7 @@ class JSONInfoFlowFile:
             layer_id: TInfoFlowWindowValue(
                 hit=[info_flow_data[prompt_idx][layer_id][InfoFlowCols.hit] for prompt_idx in prompt_idx],
                 true_probs=[info_flow_data[prompt_idx][layer_id][InfoFlowCols.true_probs] for prompt_idx in prompt_idx],
-                diffs=[info_flow_data[prompt_idx][layer_id][COLS.INFO_FLOW.DIFFS.value] for prompt_idx in prompt_idx],
+                diffs=[info_flow_data[prompt_idx][layer_id][InfoFlowCols.diffs] for prompt_idx in prompt_idx],
                 original_idx=prompt_idx,
             )
             for layer_id in layer_idx

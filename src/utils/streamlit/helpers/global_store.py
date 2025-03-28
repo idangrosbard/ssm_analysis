@@ -52,8 +52,10 @@ class StreamlitUtilsGlobalStore:
     def reset_instance_deps(self, func_name: str):
         self._cache_dependencies[func_name] = set()
 
-    def get_instance(self, func_name: str) -> Optional[CachedFunction]:
+    def get_instance(self, func_name: Optional[str] = None) -> Optional[CachedFunction]:
         """Get instance by function name, falling back to module search if needed."""
+        if func_name is None:
+            return None
         return self._instances.get(func_name)
 
     def rebuild_instances(self):

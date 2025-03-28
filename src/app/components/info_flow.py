@@ -16,7 +16,7 @@ from src.core.consts import (
     TOKEN_TYPE_LINE_STYLES,
     format_params_for_title,
 )
-from src.core.names import COLS
+from src.core.names import COLS, InfoFlowCols
 from src.data_ingestion.data_defs import InfoFlowResults
 from src.utils.streamlit.helpers.component import StreamlitComponent
 
@@ -67,7 +67,7 @@ class InfoFlowAnalysisComponent(StreamlitComponent):
         if not legend_labels:
             legend_labels = ["Flow"]
 
-        for i, info_flow in enumerate(self.info_flow_results.to_rows()):
+        for i, info_flow in enumerate(self.info_flow_results):
             # Create a unique source identifier for each info flow
             targets_window_outputs.append(info_flow.get_outputs())
             base_probs.append(
@@ -120,7 +120,7 @@ class InfoFlowAnalysisComponent(StreamlitComponent):
             # Extract probability data
             true_probs = {}
             for window_idx, window_data in info_flow.items():
-                true_probs[window_idx] = window_data[COLS.INFO_FLOW.TRUE_PROBS.value]
+                true_probs[window_idx] = window_data[InfoFlowCols.true_probs]
             true_probs_df = pd.DataFrame(true_probs)
             base_probs_df = pd.DataFrame(base_probs).reset_index(drop=True)
             prob_diffs = true_probs_df - base_probs_df
@@ -224,7 +224,7 @@ class InfoFlowAnalysisComponent(StreamlitComponent):
         info_flows = []
 
         for idx in selected_info_flow_indices:
-            info_flow = self.info_flow_results.to_rows()[idx].get_outputs()
+            info_flow = self.info_flow_results[idx].get_outputs()
             info_flows.append(info_flow)
             all_window_indices.update(info_flow.keys())
 
@@ -232,7 +232,7 @@ class InfoFlowAnalysisComponent(StreamlitComponent):
         all_window_indices = sorted(all_window_indices)
         hover_data = [
             "<br>".join([f"<b>{col}:</b> {row[col]}" for col in hover_columns])
-            for _, row in self.info_flow_results.to_rows()[selected_info_flow_indices[0]]
+            for _, row in self.info_flow_results[selected_info_flow_indices[0]]
             .get_runner_dependencies()["evaluate_model"]
             .get_prompt_data()
             .iterrows()
@@ -244,7 +244,7 @@ class InfoFlowAnalysisComponent(StreamlitComponent):
         # Prepare data for each axis
         axes_data = []
         for flow_idx, axis_name in zip(selected_info_flow_indices, selected_metrics):
-            info_flow = self.info_flow_results.to_rows()[flow_idx].get_outputs()
+            info_flow = self.info_flow_results[flow_idx].get_outputs()
             axis_column = axes_options[axis_name]
 
             # Prepare data for this axis
@@ -257,14 +257,14 @@ class InfoFlowAnalysisComponent(StreamlitComponent):
                     continue
 
                 window_data = info_flow[window_idx]
-                accuracy_by_window[window_idx] = np.mean(window_data[COLS.INFO_FLOW.HIT])
-                hit_per_window[window_idx] = window_data[COLS.INFO_FLOW.HIT]
+                accuracy_by_window[window_idx] = np.mean(window_data[InfoFlowCols.hit])
+                hit_per_window[window_idx] = window_data[InfoFlowCols.hit]
                 match axis_column:
-                    case COLS.INFO_FLOW.DIFFS | COLS.INFO_FLOW.TRUE_PROBS:
+                    case InfoFlowCols.diffs | InfoFlowCols.true_probs:
                         values = window_data[axis_column]
                     case COLS.EVALUATE_MODEL.TARGET_PROBS:
                         values: DataFrame = (
-                            self.info_flow_results.to_rows()[flow_idx]
+                            self.info_flow_results[flow_idx]
                             .get_runner_dependencies()["evaluate_model"]
                             .get_prompt_data()[axis_column]
                         )

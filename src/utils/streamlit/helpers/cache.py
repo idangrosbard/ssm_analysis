@@ -7,6 +7,7 @@ import streamlit as st
 import streamlit_antd_components as sac
 
 from src.utils.streamlit.helpers.component import OutputType
+from src.utils.streamlit.helpers.session_keys import SessionKey
 
 P = ParamSpec("P")
 
@@ -19,14 +20,19 @@ class CachedFunction(Generic[P, OutputType]):
 
         return _get_global_store()
 
-    def __init__(self, func: Callable[P, OutputType], cached_func: Callable[P, OutputType]):
+    def __init__(self, func: Callable[P, OutputType], cached_func: Callable[P, OutputType], is_disabled: bool = False):
         self.func = func
         self.cached_func = cached_func
         self.func_name = func.__name__
         self.execution_time: dt.timedelta | None = None
         self.is_failed = False
+        self.is_disabled = is_disabled
         # Register this instance
         self.global_store().add_instance(self.func_name, self)
+
+    @property
+    def selection_sk(self) -> SessionKey[Optional[str]]:
+        return SessionKey(f"{self.func_name}_selected", default_value=None, allow_none=True)
 
     def __call__(self, *args: P.args, **kwargs: P.kwargs) -> OutputType:
         """Call the cached function and track dependencies."""
@@ -35,7 +41,8 @@ class CachedFunction(Generic[P, OutputType]):
 
         start_time = dt.datetime.now()
         with st.spinner(f"Running {self.func.__name__}...", show_time=True):
-            result = self.cached_func(*args, **kwargs)
+            func = self.func if self.is_disabled else self.cached_func
+            result = func(*args, **kwargs)
         end_time = dt.datetime.now()
         execution_time = end_time - start_time
 
@@ -69,6 +76,8 @@ class CachedFunction(Generic[P, OutputType]):
         """Get the execution time as a human-readable string."""
         if self.is_failed:
             return "Failed"
+        if self.is_disabled:
+            return "Disabled"
         if self.execution_time is None:
             return "Never run"
         return humanize.precisedelta(
@@ -96,18 +105,22 @@ class CachedFunction(Generic[P, OutputType]):
                 for dep_name, dep_upstream_deps in deps.items()
             ]
 
-        selected_item = sac.tree(
-            items=recursively_build_items({self.func_name: upstream_deps}),
-            label="Clear Dependencies",
-            size="lg",
-            open_all=True,
-            key=f"upstream_dependencies_tree_{self.func_name}",
-        )
-
-        if selected_item and isinstance(selected_item, str) and (instance := store.get_instance(selected_item)):
-            if st.button(f"Clear Cache for {selected_item}"):
-                instance.clear()
-                st.rerun()
+        cols = st.columns([5, 2])
+        with cols[1]:
+            if instance := store.get_instance(self.selection_sk.value):
+                if st.button(f"Clear Cache for {self.selection_sk.value}"):
+                    instance.clear()
+                    st.rerun()
+        with cols[0]:
+            sac.tree(
+                items=recursively_build_items({self.func_name: upstream_deps}),
+                label="Clear Dependencies",
+                size="lg",
+                open_all=True,
+                checkbox_strict=True,
+                on_change=lambda: print("hi"),
+                key=self.selection_sk.key_for_component,
+            )
 
     def call_and_render(self, *args: P.args, **kwargs: P.kwargs) -> OutputType:
         """
@@ -133,11 +146,8 @@ class CacheWithDependencies:
         self.disable_cache = disable_cache
 
     def __call__(self, func: Callable[P, OutputType]) -> CachedFunction[P, OutputType]:
-        if self.disable_cache:
-            cached_func = func
-        else:
-            cached_func = st.cache_data(*self.st_args, **self.st_kwargs)(func)
-        return CachedFunction(func, cached_func)
+        cached_func = st.cache_data(*self.st_args, **self.st_kwargs)(func)
+        return CachedFunction(func, cached_func, is_disabled=self.disable_cache)
 
 
 _current_function = contextvars.ContextVar[Optional[CachedFunction]]("current_function", default=None)

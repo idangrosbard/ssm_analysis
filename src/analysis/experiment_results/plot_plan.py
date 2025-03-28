@@ -64,7 +64,7 @@ class ModelArchAndSizeHPD(HyperParamDefinition[MODEL_ARCH_AND_SIZE]):
         return list(
             [
                 MODEL_ARCH_AND_SIZE(result.variant_params.model_arch, result.variant_params.model_size)
-                for result in result_bank.to_rows()
+                for result in result_bank
             ]
         )
 
@@ -77,7 +77,7 @@ class ModelArchAndSizeHPD(HyperParamDefinition[MODEL_ARCH_AND_SIZE]):
 
 class ModelArchHPD(HyperParamDefinition[MODEL_ARCH]):
     def get_result_bank_options(self, result_bank: ResultBank):
-        return list(set([result.variant_params.model_arch for result in result_bank.to_rows()]))
+        return list(set([result.variant_params.model_arch for result in result_bank]))
 
     def get_static_options(self):
         return str_enum_values(MODEL_ARCH)
@@ -88,7 +88,7 @@ class ModelArchHPD(HyperParamDefinition[MODEL_ARCH]):
 
 class ModelSizeHPD(HyperParamDefinition[TModelSize]):
     def get_result_bank_options(self, result_bank: ResultBank):
-        return list(set([result.variant_params.model_size for result in result_bank.to_rows()]))
+        return list(set([result.variant_params.model_size for result in result_bank]))
 
     def get_static_options(self):
         return list({size: size for _, size in GRAPHS_ORDER.keys()}.keys())
@@ -100,7 +100,7 @@ class ModelSizeHPD(HyperParamDefinition[TModelSize]):
 class SourceHPD(HyperParamDefinition[TokenType]):
     def get_result_bank_options(self, result_bank):
         sources = set()
-        for result in result_bank.to_rows():
+        for result in result_bank:
             if isinstance(result, InfoFlowRunner):
                 sources.add(result.variant_params.source)
         return list(sources)
@@ -115,7 +115,7 @@ class SourceHPD(HyperParamDefinition[TokenType]):
 class TargetHPD(HyperParamDefinition[TokenType]):
     def get_result_bank_options(self, result_bank):
         targets = set()
-        for result in result_bank.to_rows():
+        for result in result_bank:
             if isinstance(result, InfoFlowRunner):
                 targets.add(result.variant_params.target)
         return list(targets)
@@ -133,7 +133,7 @@ class TargetHPD(HyperParamDefinition[TokenType]):
 class FeatureCategoryHPD(HyperParamDefinition[FeatureCategory]):
     def get_result_bank_options(self, result_bank):
         features = set()
-        for result in result_bank.to_rows():
+        for result in result_bank:
             if isinstance(result, InfoFlowRunner):
                 features.add(result.variant_params.feature_category)
         return list(features)
@@ -151,7 +151,7 @@ class FeatureCategoryHPD(HyperParamDefinition[FeatureCategory]):
 class WindowSizeHPD(HyperParamDefinition[TWindowSize]):
     def get_result_bank_options(self, result_bank):
         window_sizes = set()
-        for result in result_bank.to_rows():
+        for result in result_bank:
             if isinstance(result, InfoFlowRunner) or isinstance(result, HeatmapRunner):
                 window_sizes.add(result.variant_params.window_size)
         return list(window_sizes)
@@ -169,7 +169,7 @@ class WindowSizeHPD(HyperParamDefinition[TWindowSize]):
 class PromptFilterationHPD(HyperParamDefinition[TPromptOriginalIndex]):
     def get_result_bank_options(self, result_bank: ResultBank) -> Sequence[TPromptOriginalIndex]:
         prompts: set[TPromptOriginalIndex] = set()
-        for result in result_bank.to_rows():
+        for result in result_bank:
             if isinstance(result, HeatmapRunner):
                 prompts.update(set(result.input_params.filteration.get_prompt_ids()))
         return sorted(prompts)
@@ -485,6 +485,6 @@ class PlotPlan:
         data_reqs_per_cell = self.get_data_requirements_per_cell(result_bank)
         data_reqs_collection = DataReqiermentCollection()
         for data_reqs_per_cell in data_reqs_per_cell.values():
-            for data_req, prompt_filteration in data_reqs_per_cell.to_rows():
+            for data_req, prompt_filteration in data_reqs_per_cell.items():
                 data_reqs_collection.add_data_req(data_req, prompt_filteration)
         return DataReqs.from_data_reqs_collection(data_reqs_collection)

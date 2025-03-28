@@ -13,7 +13,7 @@
 import streamlit as st
 
 from src.app.components.data_requirements import RequirementExecution, RequirementsDisplay
-from src.app.data_store import load_fulfilled_reqs_df, load_latest_fulfilled_reqs
+from src.app.data_store import load_fulfilled_reqs_df
 from src.app.texts import DATA_REQUIREMENTS_TEXTS
 from src.utils.streamlit.components.aagrid import SelectionMode
 from src.utils.streamlit.helpers.component import StreamlitPage
@@ -21,12 +21,7 @@ from src.utils.streamlit.helpers.component import StreamlitPage
 
 class DataRequirementsPage(StreamlitPage):
     def render(self):
-        # region Data Loading and Preparation
-        # Load data
         df = load_fulfilled_reqs_df.call_and_render()
-
-        # Filter the data
-        # filtered_df = RequirementsFiltering(df).render()
 
         # Display requirements
         data_reqs_to_run = RequirementsDisplay(
@@ -35,10 +30,6 @@ class DataRequirementsPage(StreamlitPage):
             selection_mode=SelectionMode.MULTIPLE,
             hide_columns=[],
         ).render()
-
-        # Save button for overrides
-        with st.sidebar.expander(DATA_REQUIREMENTS_TEXTS.reset_to_latest):
-            load_latest_fulfilled_reqs.render()
 
         if data_reqs_to_run is not None:
             # Handle requirement execution

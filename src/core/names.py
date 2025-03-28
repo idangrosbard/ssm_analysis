@@ -68,8 +68,8 @@ class EXPERIMENT_NAMES(StrEnum):
 
 class COLS:
     # Preprocessing
-    ORIGINAL_IDX = "original_idx"
-    SPLIT = "split"
+    ORIGINAL_IDX: Literal["original_idx"] = "original_idx"
+    SPLIT: Literal["split"] = "split"
 
     # Counter Fact
     class COUNTER_FACT(StrEnum):
