@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from dataclasses import asdict, dataclass, field, replace
+from functools import lru_cache
 from pathlib import Path
 from typing import Any, Generic, Mapping, Optional, Type, TypeVar, Union, assert_never, cast, final
 
@@ -47,7 +48,7 @@ class BaseParams(ABC):
 
 
 @dataclass(frozen=True)
-class BasePromptFilteration(BaseParams, ABC):
+class BasePromptFilteration(ABC):
     """Filteration of prompts to run the experiment on."""
 
     @abstractmethod
@@ -57,6 +58,22 @@ class BasePromptFilteration(BaseParams, ABC):
     @abstractmethod
     def get_dependencies(self) -> TDependencies:
         pass
+
+    def uncomputed_dependencies(self) -> list["BaseRunner"]:
+        def rec_uncomputed_dependencies(dependencies: TDependencies) -> list["BaseRunner"]:
+            res = []
+            for k, v in dependencies.items():
+                if isinstance(v, BaseRunner):
+                    if not v.is_computed():
+                        res.append(v)
+                else:
+                    res.extend(rec_uncomputed_dependencies(v))
+            return res
+
+        return rec_uncomputed_dependencies(self.get_dependencies())
+
+    def dependencies_are_computed(self) -> bool:
+        return len(self.uncomputed_dependencies()) == 0
 
 
 @dataclass(frozen=True)
@@ -184,6 +201,7 @@ class BaseRunner(BaseParams, ABC, Generic[_TVariantParams]):
 
         return CombineParams()
 
+    @lru_cache(maxsize=None)
     def combine_output_keys(self, sep: str) -> str:
         return combine_output_keys(
             self.shared_param_namespace,
@@ -223,15 +241,15 @@ class BaseRunner(BaseParams, ABC, Generic[_TVariantParams]):
     def get_outputs(self) -> Any:
         pass
 
-    def uncomputed_dependencies(self) -> TDependencies:
-        def rec_uncomputed_dependencies(dependencies: TDependencies) -> TDependencies:
-            res = {}
+    def uncomputed_dependencies(self) -> list["BaseRunner"]:
+        def rec_uncomputed_dependencies(dependencies: TDependencies) -> list["BaseRunner"]:
+            res = []
             for k, v in dependencies.items():
                 if isinstance(v, BaseRunner):
                     if not v.is_computed():
-                        res[k] = v
+                        res.append(v)
                 else:
-                    res[k] = rec_uncomputed_dependencies(v)
+                    res.extend(rec_uncomputed_dependencies(v))
             return res
 
         return rec_uncomputed_dependencies(self.get_runner_dependencies())

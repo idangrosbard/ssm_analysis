@@ -61,7 +61,7 @@ def get_tokenizer_and_model(
                     model.to(device)  # type: ignore
                 else:
                     model = MambaForCausalLM.from_pretrained(model_id, device_map="auto")
-        case MODEL_ARCH.LLAMA2 | MODEL_ARCH.LLAMA3_2:
+        case MODEL_ARCH.LLAMA2 | MODEL_ARCH.LLAMA3_2 | MODEL_ARCH.LLAMA3:
             from transformers import LlamaForCausalLM
 
             if device:

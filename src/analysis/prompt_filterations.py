@@ -75,7 +75,9 @@ class IntersectionPromptFilteration(BasePromptFilteration):
     def get_dependencies(self) -> TDependencies:
         dependencies = {}
         for prompt_filteration in self.prompt_filterations:
-            dependencies.update(prompt_filteration.get_dependencies())
+            deps = prompt_filteration.get_dependencies()
+            if deps:
+                dependencies[prompt_filteration] = deps
         return dependencies
 
 
@@ -92,7 +94,9 @@ class UnionPromptFilteration(BasePromptFilteration):
     def get_dependencies(self) -> TDependencies:
         dependencies = {}
         for prompt_filteration in self.prompt_filterations:
-            dependencies.update(prompt_filteration.get_dependencies())
+            deps = prompt_filteration.get_dependencies()
+            if deps:
+                dependencies[prompt_filteration] = deps
         return dependencies
 
     def add_prompt_filteration(self, prompt_filteration: BasePromptFilteration):
@@ -125,7 +129,7 @@ class ModelCorrectPromptFilteration(BasePromptFilteration):
             case Correctness.correct:
                 df = df[df[COLS.EVALUATE_MODEL.MODEL_CORRECT]]
             case Correctness.top_5_correct:
-                df = df[df[COLS.EVALUATE_MODEL.MODEL_CORRECT]]
+                df = df[df[COLS.EVALUATE_MODEL.TARGET_RANK] <= 5]
             case _:
                 raise NotImplementedError(f"Correctness {self.correctness} not implemented")
 
@@ -146,6 +150,9 @@ class ModelCorrectPromptFilteration(BasePromptFilteration):
                 ),
             ),
         }
+
+    def is_computed(self) -> bool:
+        return self.get_dependencies()["evaluate_model"].is_computed()
 
 
 def get_all_correct_prompt_filteration(

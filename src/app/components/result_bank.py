@@ -83,9 +83,21 @@ class ShowRunnerStatus(StreamlitComponent):
 
         if modal.is_open():
             with modal.container():
-                text = sk_file_path.value.read_text().split("\n")[::-1]
+                lines = sk_file_path.value.read_text().split("\n")
+                if len(lines) > 300:
+                    first_100 = lines[:100]
+                    last_200 = lines[-200:]
+                    skipped_lines = len(lines) - 300
+                    lines = [
+                        *first_100,
+                        f"...Skipped {skipped_lines} lines",
+                        "...",
+                        *last_200,
+                    ]
+
+                lines = lines[::-1]
                 st.code(sk_file_path.value, wrap_lines=True)
-                st.code("\n".join(text))
+                st.code("\n".join(lines))
 
         with st.expander(expanded=False, label=f"{len(all_slurm_jobs)} Slurm Runs"):
             for slurm_job in all_slurm_jobs:

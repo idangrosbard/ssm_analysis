@@ -84,17 +84,15 @@ def get_default_data_reqs() -> DataReqiermentCollection:
                     default_prompt_filteration,
                 )
 
-        for window_size in HEATMAP_WINDOW_SIZE:
-            data_reqs.add_data_req(
-                HeatmapParams(
-                    model_arch=model_arch_and_size.arch,
-                    model_size=model_arch_and_size.size,
-                    window_size=window_size,
-                ),
-                default_prompt_filteration,
-            )
-    return data_reqs
-
+            for window_size in HEATMAP_WINDOW_SIZE:
+                data_reqs.add_data_req(
+                    HeatmapParams(
+                        model_arch=model_arch_and_size.arch,
+                        model_size=model_arch_and_size.size,
+                        window_size=window_size,
+                    ),
+                    default_prompt_filteration,
+                )
     for model_arch_and_size in GRAPHS_ORDER:
         if is_llama(model_arch_and_size.arch):
             print("adding llama")
@@ -121,7 +119,6 @@ def get_default_data_reqs() -> DataReqiermentCollection:
                         ),
                     )
         if is_mamba_arch(model_arch_and_size.arch):
-            print("adding mamba")
             for target, source, feature_category in [
                 (TokenType.last, TokenType.last, FeatureCategory.ALL),
                 (TokenType.last, TokenType.first, FeatureCategory.ALL),

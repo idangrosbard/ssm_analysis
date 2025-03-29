@@ -23,6 +23,7 @@ from src.core.names import HeatmapCols, SlurmStatus, SummarizedDataFulfilledReqs
 from src.core.types import MODEL_ARCH_AND_SIZE, TCodeVersionName, TPromptOriginalIndex, TWindowSize
 from src.data_ingestion.data_defs import DataReqs, SummarizedDataFulfilledReqs
 from src.experiments.infrastructure.base_config import InputParams, MetadataParams
+from src.experiments.runners.evaluate_model import EvaluateModelConfig
 from src.experiments.runners.heatmap import HeatmapParams, HeatmapRunner
 from src.experiments.runners.info_flow import InfoFlowRunner
 from src.utils.streamlit.components.aagrid import SelectionMode, base_grid_builder, set_aagrid_apply_default_filters
@@ -117,7 +118,7 @@ class RequirementExecution(StreamlitComponent):
         table_data = []
         configs = []
         configs_to_run = []
-        for req, filteration in self.data_reqs_to_run.items():
+        for i, (req, filteration) in enumerate(self.data_reqs_to_run.items()):
             config = init_runner_from_params(
                 req,
                 InputParams(filteration=filteration),
@@ -132,6 +133,10 @@ class RequirementExecution(StreamlitComponent):
 
             if isinstance(config, HeatmapRunner):
                 remaining_prompts = set(config.get_remaining_prompt_original_indices())
+                computed_prompts = requested_prompts - remaining_prompts
+                banned_prompts = None
+            elif isinstance(config, EvaluateModelConfig):
+                remaining_prompts = set()
                 computed_prompts = requested_prompts - remaining_prompts
                 banned_prompts = None
             elif isinstance(config, InfoFlowRunner):
@@ -152,6 +157,7 @@ class RequirementExecution(StreamlitComponent):
             table_data.append(
                 ommit_none(
                     {
+                        "#": i,
                         "Experiment": req.experiment_name,
                         "Model": req.model_arch_and_size.model_name,
                         "Status": status,

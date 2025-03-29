@@ -212,7 +212,7 @@ def _get_logits(out, model_arch: MODEL_ARCH):
     match model_arch:
         case MODEL_ARCH.MAMBA2:
             logits, _ = out
-        case MODEL_ARCH.MAMBA1 | MODEL_ARCH.LLAMA2 | MODEL_ARCH.LLAMA3_2 | MODEL_ARCH.GPT2:
+        case MODEL_ARCH.MAMBA1 | MODEL_ARCH.LLAMA2 | MODEL_ARCH.LLAMA3_2 | MODEL_ARCH.GPT2 | MODEL_ARCH.LLAMA3:
             logits = out.logits
         case _:
             assert_never(model_arch)

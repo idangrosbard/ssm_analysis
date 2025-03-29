@@ -19,7 +19,12 @@ from src.core.names import (
 )
 from src.core.types import MODEL_ARCH_AND_SIZE, TPlotID, TPromptOriginalIndex, TTokenizer
 from src.data_ingestion.helpers.logits_utils import Prompt
-from src.experiments.infrastructure.base_config import BasePromptFilteration, BaseRunner, BaseVariantParams, InputParams
+from src.experiments.infrastructure.base_config import (
+    BasePromptFilteration,
+    BaseRunner,
+    BaseVariantParams,
+    InputParams,
+)
 from src.experiments.runners.info_flow import InfoFlowRunner, TWindowLayerStartIndex
 from src.utils.infra.data_object import DataObject, IndexableDataObject, IterableDataObject
 from src.utils.types_utils import (
@@ -39,6 +44,8 @@ class DataReqiermentCollection:
 
     def add_data_req(self, data_req: BaseVariantParams, prompt_filteration: BasePromptFilteration):
         self._data_reqs[data_req] = self._data_reqs[data_req].add_prompt_filteration(prompt_filteration)
+        for dependency in prompt_filteration.uncomputed_dependencies():
+            self.add_data_req(dependency.variant_params, dependency.input_params.filteration)
 
     def to_dict(self) -> dict[BaseVariantParams, BasePromptFilteration]:
         return dict(self._data_reqs)
@@ -48,7 +55,7 @@ class DataReqs(IndexableDataObject[BaseVariantParams, BasePromptFilteration]):
     def __init__(self, data_reqs: dict[BaseVariantParams, BasePromptFilteration]):
         super().__init__(data_reqs)
 
-    def to_fulfilled_reqs(self, result_bank: "ResultBank") -> "FulfilledReqs":
+    def to_fulfilled_reqs(self, result_bank: "ResultBank[BaseRunner]") -> "FulfilledReqs":
         data_reqs_options: dict[BaseVariantParams, list[BaseRunner]] = {
             data_req: [] for data_req, _ in self._items.items()
         }
@@ -57,12 +64,13 @@ class DataReqs(IndexableDataObject[BaseVariantParams, BasePromptFilteration]):
             if runner.variant_params in self._items:
                 prompt_filterations = self._items[runner.variant_params]
 
-                if runner.init_from_runner(
-                    runner,
-                    variant_params=runner.variant_params,
-                    input_params=InputParams(filteration=prompt_filterations),
-                ).is_computed():
-                    data_reqs_options[runner.variant_params].append(runner)
+                if prompt_filterations.dependencies_are_computed():
+                    if runner.init_from_runner(
+                        runner,
+                        variant_params=runner.variant_params,
+                        input_params=InputParams(filteration=prompt_filterations),
+                    ).is_computed():
+                        data_reqs_options[runner.variant_params].append(runner)
 
         return FulfilledReqs(
             {data_req: (self._items[data_req], options) for data_req, options in data_reqs_options.items()}

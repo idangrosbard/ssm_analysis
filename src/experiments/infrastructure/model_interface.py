@@ -386,7 +386,7 @@ def get_model_interface(
             )
         case MODEL_ARCH.GPT2:
             model_interface = GPT2Interface(model_arch_and_size.size, device)
-        case MODEL_ARCH.LLAMA2 | MODEL_ARCH.LLAMA3_2:
+        case MODEL_ARCH.LLAMA2 | MODEL_ARCH.LLAMA3_2 | MODEL_ARCH.LLAMA3:
             model_interface = LlamaInterface(model_arch_and_size.arch, model_arch_and_size.size, device)
         case _:
             assert_never(model_arch_and_size.arch)
