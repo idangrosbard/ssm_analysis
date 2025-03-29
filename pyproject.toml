@@ -104,7 +104,7 @@ exclude = [
 [tool.pyright]
 pythonVersion = "3.12"
 pythonPlatform = "Linux"
-venvPath = "/home/yandex/DL20232024a/nirendy/repos/ADL_2/"
+#venvPath = "/home/yandex/DL20232024a/nirendy/repos/ADL_2/"
 venv = 'venv'
 include = [
     "src",

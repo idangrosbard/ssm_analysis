@@ -14,6 +14,7 @@ from src.core.types import (
     TDevice,
     TGP2Model,
     TLayerIndex,
+    TLlamaModel,
     TMamba1Model,
     TMamba2Model,
     TModelSize,
@@ -21,6 +22,7 @@ from src.core.types import (
 )
 from src.experiments.infrastructure.setup_models import get_tokenizer_and_model
 from src.experiments.knockout.gpt.gpt2 import gpt2_knockout_utils
+from src.experiments.knockout.llama.interfere_hook import InterfereHook
 from src.experiments.knockout.mamba.mamba1.helpers.ssm_interfere import SSMInterfereHook
 
 
@@ -170,6 +172,76 @@ class Mamba1Interface(ModelInterface):
         return len(self.model.backbone.layers)
 
 
+class LlamaInterface(ModelInterface):
+    model: TLlamaModel
+
+    def __init__(
+        self,
+        model_arch: MODEL_ARCH,
+        model_size: TModelSize,
+        device: Optional[TDevice] = None,
+        tokenizer: Optional[TTokenizer] = None,
+    ):
+        super().__init__(model_arch, model_size, device, tokenizer)
+
+        self.hooks: list[InterfereHook] = []
+        self.handles: list[torch.utils.hooks.RemovableHandle] = []
+        self.knockout_mode = KnockoutMode.ZERO_ATTENTION
+        self.feature_masks = {}
+
+    def setup(self, layers: Optional[Iterable[TLayerIndex]] = None):
+        super().setup(layers)
+
+        for handle in self.handles:
+            handle.remove()
+
+        # Assert that no hooks are left
+        for m in self.model.modules():
+            assert len(list(m._forward_hooks.items())) == 0
+
+        self.handles = []
+        self.hooks = []
+
+        if layers is not None:
+            # set up hooks
+            for i in range(len(self.model.layers)):
+                if i in layers:
+                    # "mixer of interest" - moi
+                    moi = self.model.layers[i].self_attn
+
+                    self.hooks.append(InterfereHook(i, self.knockout_mode))
+
+                    self.handles.append(moi.register_forward_hook(self.hooks[-1]))
+
+    def generate_logits(
+        self,
+        input_ids: Tensor,
+        num_to_masks: Optional[Dict[int, List[Tuple[int, int]]]] = None,
+        feature_category: FeatureCategory = FeatureCategory.ALL,
+    ) -> torch.Tensor:
+        if num_to_masks is not None:
+            source_indices = []
+            target_indices = []
+
+            for layer, hook in zip(num_to_masks, self.hooks):
+                source_indices = [num_to_masks[layer][i][1] for i in range(len(num_to_masks[layer]))]
+                target_indices = [num_to_masks[layer][i][0] for i in range(len(num_to_masks[layer]))]
+
+                hook.knockout_indices = source_indices
+                hook.affected_outputs = target_indices
+
+        with torch.no_grad():
+            out = self.model(input_ids)
+
+        logits = out.logits
+        probs = F.softmax(logits, dim=-1)
+
+        return probs[:, -1, :].detach().cpu().numpy()  # type: ignore
+
+    def n_layers(self) -> int:
+        return len(self.model.layers)
+
+
 class Mamba2Interface(ModelInterface):
     model: TMamba2Model
 
@@ -315,7 +387,7 @@ def get_model_interface(
         case MODEL_ARCH.GPT2:
             model_interface = GPT2Interface(model_arch_and_size.size, device)
         case MODEL_ARCH.LLAMA2 | MODEL_ARCH.LLAMA3_2:
-            raise NotImplementedError("LLama models are not supported yet")
+            model_interface = LlamaInterface(model_arch_and_size.arch, model_arch_and_size.size, device)
         case _:
             assert_never(model_arch_and_size.arch)
 
