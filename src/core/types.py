@@ -9,6 +9,7 @@ from torch import Tensor
 if TYPE_CHECKING:
     from transformers import (
         GPT2LMHeadModel,
+        LlamaForCausalLM,
         MambaForCausalLM,
         PreTrainedModel,
         PreTrainedTokenizer,
@@ -19,14 +20,16 @@ if TYPE_CHECKING:
 
     TTokenizer: TypeAlias = Union[PreTrainedTokenizer, PreTrainedTokenizerFast]
     TMamba1Model: TypeAlias = MambaForCausalLM
+    TLlamaModel: TypeAlias = LlamaForCausalLM
     TGP2Model: TypeAlias = GPT2LMHeadModel
     TMamba2Model: TypeAlias = minimal_mamba2.Mamba2LMHeadModel
-    TModel: TypeAlias = Union[TMamba1Model, TGP2Model, TMamba2Model, PreTrainedModel]
+    TModel: TypeAlias = Union[TMamba1Model, TGP2Model, TMamba2Model, PreTrainedModel, TLlamaModel]
 else:
     TTokenizer = ...
     TMamba1Model = ...
     TGP2Model = ...
     TMamba2Model = ...
+    TLlamaModel = ...
     TModel = ...
 
 
@@ -49,6 +52,7 @@ class MODEL_ARCH(StrEnum):
     MAMBA2 = "mamba2"
     GPT2 = "gpt2"
     LLAMA2 = "llama2"
+    LLAMA3 = "llama3"
     LLAMA3_2 = "llama3.2"
 
     @property
@@ -64,6 +68,8 @@ class MODEL_ARCH(StrEnum):
                 return "Llama3.2"
             case MODEL_ARCH.GPT2:
                 return "GPT2"
+            case MODEL_ARCH.LLAMA3:
+                return "Llama3"
         assert_never(self.value)
 
 

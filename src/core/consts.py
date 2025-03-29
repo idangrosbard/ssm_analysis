@@ -162,6 +162,10 @@ MODEL_SIZES_PER_ARCH_TO_MODEL_ID: dict[MODEL_ARCH, dict[TModelSize, TModelID]] =
     },
     MODEL_ARCH.LLAMA2: {
         TModelSize("7B"): TModelID("meta-llama/Llama-2-7b-hf"),
+        TModelSize("13B"): TModelID("meta-llama/Llama-2-13b-hf"),
+    },
+    MODEL_ARCH.LLAMA3: {
+        TModelSize("8B"): TModelID("meta-llama/Meta-Llama-3-8B"),
     },
     MODEL_ARCH.LLAMA3_2: {
         TModelSize("1B"): TModelID("meta-llama/Llama-3.2-1B"),
@@ -190,6 +194,11 @@ GRAPHS_ORDER: dict[MODEL_ARCH_AND_SIZE, MODEL_SIZE_CAT] = {
     MODEL_ARCH_AND_SIZE(MODEL_ARCH.MAMBA1, TModelSize("7B")): MODEL_SIZE_CAT.HUGE,
     MODEL_ARCH_AND_SIZE(MODEL_ARCH.MAMBA1, TModelSize("7B-falcon")): MODEL_SIZE_CAT.HUGE,
     MODEL_ARCH_AND_SIZE(MODEL_ARCH.MAMBA1, TModelSize("7B-falcon-base")): MODEL_SIZE_CAT.HUGE,
+    MODEL_ARCH_AND_SIZE(MODEL_ARCH.LLAMA2, TModelSize("7B")): MODEL_SIZE_CAT.HUGE,
+    MODEL_ARCH_AND_SIZE(MODEL_ARCH.LLAMA3, TModelSize("8B")): MODEL_SIZE_CAT.HUGE,
+    MODEL_ARCH_AND_SIZE(MODEL_ARCH.LLAMA2, TModelSize("13B")): MODEL_SIZE_CAT.HUGE,
+    MODEL_ARCH_AND_SIZE(MODEL_ARCH.LLAMA3_2, TModelSize("1B")): MODEL_SIZE_CAT.MEDIUM,
+    MODEL_ARCH_AND_SIZE(MODEL_ARCH.LLAMA3_2, TModelSize("3B")): MODEL_SIZE_CAT.LARGE,
     # MODEL_ARCH_AND_SIZE(MODEL_ARCH.MAMBA2, "8B"): MODEL_SIZE_CAT.HUGE,
 }
 
@@ -230,6 +239,10 @@ def model_and_size_to_slurm_gpu_type(
                     raise NotImplementedError(f"No SLURM GPU type for user {ACTIVE_USER}")
         case _:
             assert_never(model_cat_size)
+
+
+def is_llama(model_arch: MODEL_ARCH) -> bool:
+    return model_arch in [MODEL_ARCH.LLAMA2, MODEL_ARCH.LLAMA3, MODEL_ARCH.LLAMA3_2]
 
 
 def is_mamba_arch(model_arch: MODEL_ARCH) -> bool:
