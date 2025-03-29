@@ -22,7 +22,7 @@ from src.core.types import (
 )
 from src.experiments.infrastructure.setup_models import get_tokenizer_and_model
 from src.experiments.knockout.gpt.gpt2 import gpt2_knockout_utils
-from src.experiments.knockout.llama.interfere_hook import InterfereHook
+from src.experiments.knockout.llama.llama_attn import LlamaAttentionKnockout
 from src.experiments.knockout.mamba.mamba1.helpers.ssm_interfere import SSMInterfereHook
 
 
@@ -184,8 +184,8 @@ class LlamaInterface(ModelInterface):
     ):
         super().__init__(model_arch, model_size, device, tokenizer)
 
-        self.hooks: list[InterfereHook] = []
-        self.handles: list[torch.utils.hooks.RemovableHandle] = []
+        self.knockouts: list[LlamaAttentionKnockout] = []
+        self.handles: list[torch.nn.Module] = []
         self.knockout_mode = KnockoutMode.ZERO_ATTENTION
         self.feature_masks = {}
 
@@ -193,14 +193,14 @@ class LlamaInterface(ModelInterface):
         super().setup(layers)
 
         for handle in self.handles:
-            handle.remove()
+            handle.self_attn = handle.self_attn.inner
 
         # Assert that no hooks are left
         for m in self.model.modules():
             assert len(list(m._forward_hooks.items())) == 0
 
         self.handles = []
-        self.hooks = []
+        self.knockouts = []
 
         if layers is not None:
             # set up hooks
@@ -208,10 +208,12 @@ class LlamaInterface(ModelInterface):
                 if i in layers:
                     # "mixer of interest" - moi
                     moi = self.model.model.layers[i].self_attn
+                    knockout = LlamaAttentionKnockout(moi)
+                    knockout.to(next(moi.parameters()).device)
+                    self.model.model.layers[i].self_attn = knockout
 
-                    self.hooks.append(InterfereHook(i, self.knockout_mode))
-
-                    self.handles.append(moi.register_forward_hook(self.hooks[-1]))
+                    self.knockouts.append(knockout)
+                    self.handles.append(self.model.model.layers[i])
 
     def generate_logits(
         self,
@@ -220,15 +222,8 @@ class LlamaInterface(ModelInterface):
         feature_category: FeatureCategory = FeatureCategory.ALL,
     ) -> torch.Tensor:
         if num_to_masks is not None:
-            source_indices = []
-            target_indices = []
-
-            for layer, hook in zip(num_to_masks, self.hooks):
-                source_indices = [num_to_masks[layer][i][1] for i in range(len(num_to_masks[layer]))]
-                target_indices = [num_to_masks[layer][i][0] for i in range(len(num_to_masks[layer]))]
-
-                hook.knockout_indices = source_indices
-                hook.affected_outputs = target_indices
+            for layer, hook in zip(num_to_masks, self.knockouts):
+                hook.knockout_mask = num_to_masks[layer]
 
         with torch.no_grad():
             out = self.model(input_ids)
