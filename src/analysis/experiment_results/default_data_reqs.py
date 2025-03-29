@@ -1,5 +1,4 @@
 from src.analysis.prompt_filterations import (
-    AllPromptFilteration,
     UnionPromptFilteration,
     get_all_correct_prompt_filteration,
 )
@@ -11,9 +10,7 @@ from src.core.consts import (
     is_llama,
     is_mamba_arch,
 )
-from src.core.names import DATASETS
 from src.core.types import (
-    SPLIT,
     FeatureCategory,
     TCodeVersionName,
     TWindowSize,
@@ -38,7 +35,7 @@ def get_default_data_reqs() -> DataReqiermentCollection:
 
     default_prompt_filteration = UnionPromptFilteration(
         (
-            AllPromptFilteration(DATASETS.COUNTER_FACT, split=(SPLIT.TRAIN1,)),
+            # AllPromptFilteration(DATASETS.COUNTER_FACT, split=(SPLIT.TRAIN1,)),
             all_correct_prompt_filteration,
         )
     )
@@ -113,10 +110,7 @@ def get_default_data_reqs() -> DataReqiermentCollection:
                             feature_category=feature_category,
                             target=target,
                         ),
-                        AllPromptFilteration(
-                            DATASETS.COUNTER_FACT,
-                            split=(SPLIT.TRAIN1,),
-                        ),
+                        default_prompt_filteration,
                     )
         if is_mamba_arch(model_arch_and_size.arch):
             for target, source, feature_category in [
@@ -136,10 +130,7 @@ def get_default_data_reqs() -> DataReqiermentCollection:
                             feature_category=feature_category,
                             target=target,
                         ),
-                        AllPromptFilteration(
-                            DATASETS.COUNTER_FACT,
-                            split=(SPLIT.TRAIN1,),
-                        ),
+                        default_prompt_filteration,
                     )
             for target, source, feature_category in [
                 (TokenType.last, TokenType.subject, FeatureCategory.SLOW_DECAY),
@@ -158,10 +149,7 @@ def get_default_data_reqs() -> DataReqiermentCollection:
                         feature_category=feature_category,
                         target=target,
                     ),
-                    AllPromptFilteration(
-                        DATASETS.COUNTER_FACT,
-                        split=(SPLIT.TRAIN1,),
-                    ),
+                    default_prompt_filteration,
                 )
 
     return data_reqs

@@ -442,12 +442,14 @@ def run(args: InfoFlowRunner):
                     device,
                 )
             except Exception as e:
-                if "Test failure" in str(e):
-                    # For test: Test failure is expected, so we raise the error
+                known_errors = []
+                is_known_error = any(known_error in str(e) for known_error in known_errors)
+                if is_known_error:
+                    print(f" Error evaluating {prompt_id = }: {e}")
+                    content[InfoFlowJSONFileCols.metadata][InfoFlowJSONMetadataCols.banned_prompts][prompt_id] = str(e)
+                    break
+                else:
                     raise e
-                print(f" Error evaluating {prompt_id = }: {e}")
-                content[InfoFlowJSONFileCols.metadata][InfoFlowJSONMetadataCols.banned_prompts][prompt_id] = str(e)
-                break
 
             current_time = time.time()
             if current_time - last_save_time >= SAVE_INTERVAL:
