@@ -204,10 +204,10 @@ class LlamaInterface(ModelInterface):
 
         if layers is not None:
             # set up hooks
-            for i in range(len(self.model.layers)):
+            for i in range(len(self.model.model.layers)):
                 if i in layers:
                     # "mixer of interest" - moi
-                    moi = self.model.layers[i].self_attn
+                    moi = self.model.model.layers[i].self_attn
 
                     self.hooks.append(InterfereHook(i, self.knockout_mode))
 
@@ -239,7 +239,7 @@ class LlamaInterface(ModelInterface):
         return probs[:, -1, :].detach().cpu().numpy()  # type: ignore
 
     def n_layers(self) -> int:
-        return len(self.model.layers)
+        return len(self.model.model.layers)
 
 
 class Mamba2Interface(ModelInterface):

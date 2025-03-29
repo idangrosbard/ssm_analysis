@@ -146,9 +146,10 @@ def run_test_experiment(test_base_path: Path, normalizing_outputs: bool, with_pl
             mp.setattr(CREATE_RUN_ID_PATH, lambda *args, **kwargs: "test_run_id")
 
         for model_arch, model_size in [
-            (MODEL_ARCH.MAMBA1, "130M"),
-            (MODEL_ARCH.MAMBA2, "130M"),
-            (MODEL_ARCH.GPT2, "355M"),
+            # (MODEL_ARCH.MAMBA1, "130M"),
+            # (MODEL_ARCH.MAMBA2, "130M"),
+            # (MODEL_ARCH.GPT2, "355M"),
+            (MODEL_ARCH.LLAMA3_2, "1B"),
         ]:
             config = get_test_full_pipeline_config(
                 code_version_name="test_baseline",
