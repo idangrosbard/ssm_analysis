@@ -1,15 +1,14 @@
-from torch import Tensor, nn, LongTensor
+from typing import Iterable, Optional, Tuple
 
+from torch import LongTensor, Tensor, nn
 from transformers.models.llama.modeling_llama import (
     Cache,
     FlashAttentionKwargs,
     LlamaAttention,
     Unpack,
 )
-from typing import Optional, Iterable, Tuple
+
 from src.experiments.knockout.llama.llama_attention_forward import llama_attention_forward
-
-
 
 
 class LlamaAttentionKnockout(nn.Module):

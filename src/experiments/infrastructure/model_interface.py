@@ -22,7 +22,6 @@ from src.core.types import (
 )
 from src.experiments.infrastructure.setup_models import get_tokenizer_and_model
 from src.experiments.knockout.gpt.gpt2 import gpt2_knockout_utils
-from src.experiments.knockout.llama.interfere_hook import InterfereHook
 from src.experiments.knockout.llama.llama_attn import LlamaAttentionKnockout
 from src.experiments.knockout.mamba.mamba1.helpers.ssm_interfere import SSMInterfereHook
 
@@ -223,7 +222,6 @@ class LlamaInterface(ModelInterface):
         feature_category: FeatureCategory = FeatureCategory.ALL,
     ) -> torch.Tensor:
         if num_to_masks is not None:
-
             for layer, hook in zip(num_to_masks, self.knockouts):
                 hook.knockout_mask = num_to_masks[layer]
 
