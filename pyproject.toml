@@ -103,9 +103,11 @@ exclude = [
 
 [tool.pyright]
 pythonVersion = "3.12"
-pythonPlatform = "Linux"
-#venvPath = "/home/yandex/DL20232024a/nirendy/repos/ADL_2/"
-venv = 'venv'
+# Note: Individual users can override these settings locally without changing the repo by:
+# 1. Creating a pyrightconfig.json file in the project root (add it to .gitignore)
+# 2. Adding their specific venvPath there: { "venvPath": "/path/to/your/venv/parent/dir" }
+# venvPath = "."  # This tells Pyright to look for the venv in the current directory
+# venv = 'venv'
 include = [
     "src",
     "tests",

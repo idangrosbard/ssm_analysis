@@ -191,3 +191,4 @@ profile.pyspy
 .history/
 final_plots/*/cache/
 .nfs*
+pyrightconfig.json
