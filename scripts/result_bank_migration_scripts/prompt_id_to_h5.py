@@ -70,10 +70,8 @@ class MigrateResults(StreamlitComponent):
         from tests.src.experiments.test_full_pipeline import TEST_BASE_PATH
 
         run = st.button("Run")
-        rows = self.results_bank.to_rows()
-
-        st.write(len(rows))
-        rows = [row for row in rows if row.experiment_name == EXPERIMENT_NAMES.INFO_FLOW]
+        st.write(len(self.results_bank))
+        rows = [row for row in self.results_bank if row.experiment_name == EXPERIMENT_NAMES.INFO_FLOW]
 
         st.write(len(rows))
 

@@ -41,6 +41,14 @@ known-first-party = []
     "E501", # line too long
     "F841", # Local variable is assigned to but never used
     ]
+"src/experiments/knockout/llama/llama_attention_forward.py" = [
+    "E501", # line too long
+    ]
+    
+"src/experiments/knockout/llama/sdpa_attention.py" = [
+    "E501", # line too long
+    ]
+    
 "notebooks/*.ipynb" = [
     "E501", # line too long
     "E731", # do not assign a lambda to a variable
@@ -111,14 +119,12 @@ pythonVersion = "3.12"
 include = [
     "src",
     "tests",
-    # "scripts",
+    "scripts",
     # "app/**"
 ]
 exclude = [
     "**/__pycache__",
-    "notebooks/**",
     ".history/**",
-    "tests/src/experiments/baselines/full_pipeline/**",
 ]
 ignore = [
     # "src/embeddings",
@@ -134,7 +140,10 @@ ignore = [
     # 'src/experiments/info_flow.py',
     # 'src/experiments/info_flow_plot.py',
     # "notebooks/**"
-    "*.ipynb.py"
+    "*.ipynb.py",
+    "notebooks/**",
+    "tests/src/experiments/baselines/full_pipeline/**",
+    "scripts/**"
 ]
 
 executionEnvironments = [
