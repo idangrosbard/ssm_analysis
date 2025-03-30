@@ -92,7 +92,6 @@ def get_default_data_reqs() -> DataReqiermentCollection:
                 )
     for model_arch_and_size in GRAPHS_ORDER:
         if is_llama(model_arch_and_size.arch):
-            print("adding llama")
             for target, source, feature_category in [
                 (TokenType.last, TokenType.last, FeatureCategory.ALL),
                 (TokenType.last, TokenType.first, FeatureCategory.ALL),

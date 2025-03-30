@@ -112,4 +112,4 @@ def serialize_result_bank(result_bank: ResultBank) -> str:
         item = item[0]
         return tuple([item[col] for col in DataReqCols.get_cols_by_experiment_name(item[DataReqCols.experiment_name])])
 
-    return json.dumps(sorted(rec_serialize_dependencies(result_bank), key=sort_key), indent=4)
+    return json.dumps(sorted(rec_serialize_dependencies([item for item in result_bank]), key=sort_key), indent=4)
