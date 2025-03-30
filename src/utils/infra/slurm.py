@@ -69,7 +69,8 @@ def submit_job(
         SLURM_GPU_TYPE.A6000: {"partition": "killable", "account": "gpu-research"},
         SLURM_GPU_TYPE.L40S: {"partition": "killable", "account": "gpu-research"},
         SLURM_GPU_TYPE.A100: {"partition": "gpu-a100-killable", "account": "gpu-research"},
-        SLURM_GPU_TYPE.H100: {"partition": "gpu-h100-killable", "account": "gpu-research"},
+        # SLURM_GPU_TYPE.H100: {"partition": "gpu-h100-killable", "account": "gpu-research"},
+        SLURM_GPU_TYPE.H100: {"partition": "gpu-ai", "account": "gpu-research"},
         SLURM_GPU_TYPE.TITAN_XP_STUDENTRUN: {
             "partition": "studentrun",
             "account": "gpu-students",

@@ -234,7 +234,7 @@ class RequirementExecution(StreamlitComponent):
 
                     except Exception as e:
                         st.error(
-                            f"Failed to run requirement: {str(json.dumps(asdict(config.variation_params), indent=4))}"
+                            f"Failed to run requirement: {str(json.dumps(asdict(config.variant_params), indent=4))}"
                         )
                         st.exception(e)
                         failed_count += 1
