@@ -11,11 +11,7 @@ from datasets import DatasetDict
 
 from src.analysis.experiment_results.helpers import serialize_result_bank
 from src.analysis.experiment_results.results_bank import get_experiment_results_bank
-from src.analysis.prompt_filterations import (
-    Correctness,
-    ModelCorrectPromptFilteration,
-    SelectivePromptFilteration,
-)
+from src.analysis.prompt_filterations import Correctness, ModelCorrectPromptFilteration, SelectivePromptFilteration
 from src.core.consts import PathsConfig
 from src.core.names import COLS
 from src.core.types import (
@@ -116,6 +112,35 @@ def get_test_full_pipeline_config(
     )
 
 
+def get_test_full_pipeline_config_per_model_arch(
+    code_version_name: str, model_arch: MODEL_ARCH, model_size: str, with_plotting: bool
+):
+    if model_arch in [
+        MODEL_ARCH.MAMBA1,
+        MODEL_ARCH.MAMBA2,
+        MODEL_ARCH.GPT2,
+        MODEL_ARCH.LLAMA3_2,
+    ]:
+        return get_test_full_pipeline_config(code_version_name, model_arch, model_size, with_plotting)
+    elif model_arch in [MODEL_ARCH.QWEN2_5, MODEL_ARCH.QWEN2]:
+        config = get_test_full_pipeline_config(code_version_name, model_arch, model_size, with_plotting)
+        return config.modify(
+            variant_params=config.variant_params.modify(
+                knockout_map={
+                    TokenType.last: [
+                        (TokenType.last, FeatureCategory.ALL),
+                        (TokenType.first, FeatureCategory.ALL),
+                        (TokenType.subject, FeatureCategory.ALL),
+                    ],
+                },
+                info_flow_window_size=TWindowSize(3),
+                heatmap_window_size=TWindowSize(3),
+            )
+        )
+    else:
+        raise ValueError(f"Model architecture {model_arch} is not supported")
+
+
 def clean_and_generate_base_test_data(test_base_path: Path):
     test_paths = PathsConfig(PROJECT_DIR=test_base_path)
 
@@ -150,8 +175,10 @@ def run_test_experiment(test_base_path: Path, normalizing_outputs: bool, with_pl
             (MODEL_ARCH.MAMBA2, "130M"),
             (MODEL_ARCH.GPT2, "355M"),
             (MODEL_ARCH.LLAMA3_2, "1B"),
+            (MODEL_ARCH.QWEN2_5, "1.5B"),
+            (MODEL_ARCH.QWEN2, "1.5B"),
         ]:
-            config = get_test_full_pipeline_config(
+            config = get_test_full_pipeline_config_per_model_arch(
                 code_version_name="test_baseline",
                 model_arch=model_arch,
                 model_size=model_size,

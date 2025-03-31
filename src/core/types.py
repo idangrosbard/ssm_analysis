@@ -6,21 +6,26 @@ import torch
 from jaxtyping import Float
 from torch import Tensor
 
+# TO ADD AN ARCH:
 if TYPE_CHECKING:
     from transformers import (
         GPT2LMHeadModel,
         LlamaForCausalLM,
         MambaForCausalLM,
+        MistralForCausalLM,
         PreTrainedModel,
         PreTrainedTokenizer,
         PreTrainedTokenizerFast,
+        Qwen2ForCausalLM,
     )
 
     import src.experiments.knockout.mamba.mamba2.minimal_mamba2 as minimal_mamba2
 
     TTokenizer: TypeAlias = Union[PreTrainedTokenizer, PreTrainedTokenizerFast]
     TMamba1Model: TypeAlias = MambaForCausalLM
-    TLlamaModel: TypeAlias = LlamaForCausalLM
+    # TO ADD AN ARCH:
+    TLlamaModel: TypeAlias = LlamaForCausalLM | MistralForCausalLM | Qwen2ForCausalLM
+    # TMistralModel: TypeAlias = MistralForCausalLM
     TGP2Model: TypeAlias = GPT2LMHeadModel
     TMamba2Model: TypeAlias = minimal_mamba2.Mamba2LMHeadModel
     TModel: TypeAlias = Union[TMamba1Model, TGP2Model, TMamba2Model, PreTrainedModel, TLlamaModel]
@@ -30,6 +35,7 @@ else:
     TGP2Model = ...
     TMamba2Model = ...
     TLlamaModel = ...
+    # TMistralModel = ...
     TModel = ...
 
 
@@ -48,13 +54,19 @@ TSplitChoise = Union[SPLIT, Sequence[SPLIT], Literal["all"]]
 
 
 class MODEL_ARCH(StrEnum):
+    # TO ADD AN ARCH:
     MAMBA1 = "mamba1"
     MAMBA2 = "mamba2"
     GPT2 = "gpt2"
+    MISTRAL0_1 = "mistral0.1"
+    MISTRAL0_3 = "mistral0.3"
+    QWEN2 = "qwen2"
+    QWEN2_5 = "qwen2.5"
     LLAMA2 = "llama2"
     LLAMA3 = "llama3"
     LLAMA3_2 = "llama3.2"
 
+    # TO ADD AN ARCH:
     @property
     def model_title(self) -> str:
         match self:
@@ -70,6 +82,14 @@ class MODEL_ARCH(StrEnum):
                 return "GPT2"
             case MODEL_ARCH.LLAMA3:
                 return "Llama3"
+            case MODEL_ARCH.MISTRAL0_1:
+                return "Mistral 0.1"
+            case MODEL_ARCH.MISTRAL0_3:
+                return "Mistral 0.3"
+            case MODEL_ARCH.QWEN2:
+                return "Qwen2"
+            case MODEL_ARCH.QWEN2_5:
+                return "Qwen2.5"
         assert_never(self.value)
 
 

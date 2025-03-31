@@ -69,17 +69,26 @@ def find_token_range(
 ) -> tuple[int, int]:
     """Find the tokens corresponding to the given substring in token_array."""
     toks = decode_tokens(tokenizer, token_array)
-    whole_string = "".join(toks)  # type: ignore
+
+    # whole_string = "".join(toks)  # type: ignore
+    # if ' ' not in whole_string:
+    #     whole_string = " ".join(toks)  # type: ignore
+    whole_string = tokenizer.decode(token_array)
+    print(f"whole_string: {whole_string}")
+    print(f"substring: {substring}")
     char_loc = whole_string.index(substring)
     loc = 0
     tok_start, tok_end = None, None
     for i, t in enumerate(toks):
         loc += len(t)
+        loc = len(tokenizer.decode(token_array[:i]))
         if tok_start is None and loc > char_loc:
-            tok_start = i
+            tok_start = i - 1
         if tok_end is None and loc >= char_loc + len(substring):
-            tok_end = i + 1
+            tok_end = i
             break
+    print(loc, char_loc, whole_string, substring, tok_start, tok_end)
+    print(tokenizer.decode(token_array[tok_start:tok_end]))
     assert tok_start is not None and tok_end is not None, "Token range not found"
     return (tok_start, tok_end)
 
@@ -114,7 +123,11 @@ class Prompt:
         return cast(str, self.prompt_row[COLS.COUNTER_FACT.RELATION])
 
     def true_id(self, tokenizer, device: TDevice) -> torch.Tensor:
-        return tokenizer(self.true_word, return_tensors="pt", padding=True).input_ids.to(device=device)
+        toks = tokenizer(self.true_word, return_tensors="pt", padding=True).input_ids.to(device=device)
+        # if toks.shape[1] == 1:
+        return toks
+        # else:
+        # return toks[:, 1:]
 
     def input_ids(self, tokenizer: TTokenizer, device: TDevice) -> torch.Tensor:
         return tokenizer(self.prompt, return_tensors="pt", padding=True).input_ids.to(device=device)
@@ -181,6 +194,8 @@ def get_num_to_masks(
         for src in src_idx:
             for target in target_idx:
                 num_to_masks[layer].append((target, src))
+    # print(knockout_source, knockout_target)
+    # print('num_to_masks init', num_to_masks)
 
     return num_to_masks, first_token
 
@@ -212,7 +227,18 @@ def _get_logits(out, model_arch: MODEL_ARCH):
     match model_arch:
         case MODEL_ARCH.MAMBA2:
             logits, _ = out
-        case MODEL_ARCH.MAMBA1 | MODEL_ARCH.LLAMA2 | MODEL_ARCH.LLAMA3_2 | MODEL_ARCH.GPT2 | MODEL_ARCH.LLAMA3:
+        # TO ADD AN ARCH
+        case (
+            MODEL_ARCH.MAMBA1
+            | MODEL_ARCH.LLAMA2
+            | MODEL_ARCH.LLAMA3_2
+            | MODEL_ARCH.GPT2
+            | MODEL_ARCH.LLAMA3
+            | MODEL_ARCH.MISTRAL0_1
+            | MODEL_ARCH.MISTRAL0_3
+            | MODEL_ARCH.QWEN2
+            | MODEL_ARCH.QWEN2_5
+        ):
             logits = out.logits
         case _:
             assert_never(model_arch)

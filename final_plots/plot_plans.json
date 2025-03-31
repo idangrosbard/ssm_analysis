@@ -1,336 +1,392 @@
 [
-  {
-    "plot_id": "architecture_knockout",
-    "title": "Architecture Knockout Plot",
-    "description": "Relative change in correct-token prediction probability when removing information flow to the last token from various source tokens. \nThe x-axis represents the relative depth of the first layer within the 9-layer attention knockout window, while the y-axis indicates the resulting performance change.",
-    "plot_type": "ARCHITECTURE_KNOCKOUT",
-    "is_appendix": false,
-    "order": 1,
-    "experiment_name": "INFO_FLOW",
-    "rows": null,
-    "cols": "source",
-    "grids": null,
-    "lines": "model_arch_and_size",
-    "rows_options": [],
-    "cols_options": [
-      "subject",
-      "relation",
-      "last",
-      "first"
-    ],
-    "grids_options": [],
-    "lines_options": [
-      {
-        "model_arch": "mamba2",
-        "model_size": "2.7B"
-      },
-      {
-        "model_arch": "mamba1",
-        "model_size": "7B-falcon"
-      },
-      {
-        "model_arch": "mamba1",
-        "model_size": "2.8B"
-      },
-      {
-        "model_arch": "gpt2",
-        "model_size": "1.5B"
-      }
-    ]
-  },
-  {
-    "plot_id": "test",
-    "title": "test",
-    "description": "test",
-    "plot_type": "ARCHITECTURE_KNOCKOUT",
-    "is_appendix": false,
-    "order": 1,
-    "experiment_name": "INFO_FLOW",
-    "rows": "model_arch_and_size",
-    "cols": "source",
-    "grids": "window_size",
-    "lines": null,
-    "rows_options": [
-      {
-        "model_arch": "mamba2",
-        "model_size": "2.7B"
-      },
-      {
-        "model_arch": "mamba1",
-        "model_size": "7B-falcon"
-      },
-      {
-        "model_arch": "mamba1",
-        "model_size": "2.8B"
-      }
-    ],
-    "cols_options": [
-      "subject",
-      "relation",
-      "last",
-      "first"
-    ],
-    "grids_options": [
-      9,
-      15
-    ],
-    "lines_options": []
-  },
-  {
-    "plot_id": "model_size_knockout",
-    "title": "Model Size Knockout Plot",
-    "description": "Comparison of different model sizes within the same architecture family when removing information flow\nto the last token from various source tokens.",
-    "plot_type": "ARCHITECTURE_KNOCKOUT",
-    "is_appendix": false,
-    "order": 2,
-    "experiment_name": "INFO_FLOW",
-    "rows": "target",
-    "cols": "source",
-    "grids": "model_arch",
-    "lines": "model_arch_and_size",
-    "rows_options": [
-      "last"
-    ],
-    "cols_options": [
-      "subject",
-      "relation",
-      "last",
-      "first"
-    ],
-    "grids_options": [
-      "mamba1",
-      "mamba2",
-      "gpt2"
-    ],
-    "lines_options": [
-      {
-        "model_arch": "mamba1",
-        "model_size": "130M"
-      },
-      {
-        "model_arch": "mamba1",
-        "model_size": "1.4B"
-      },
-      {
-        "model_arch": "mamba1",
-        "model_size": "2.8B"
-      },
-      {
-        "model_arch": "mamba2",
-        "model_size": "130M"
-      },
-      {
-        "model_arch": "mamba2",
-        "model_size": "1.3B"
-      },
-      {
-        "model_arch": "mamba2",
-        "model_size": "2.7B"
-      },
-      {
-        "model_arch": "gpt2",
-        "model_size": "355M"
-      },
-      {
-        "model_arch": "gpt2",
-        "model_size": "1.5B"
-      },
-      {
-        "model_arch": "gpt2",
-        "model_size": "774M"
-      }
-    ]
-  },
-  {
-    "plot_id": "window_size_knockout",
-    "title": "Window Size Knockout Plot",
-    "description": "Effect of different window sizes on the information flow from various source tokens to the last token.",
-    "plot_type": "ARCHITECTURE_KNOCKOUT",
-    "is_appendix": false,
-    "order": 3,
-    "experiment_name": "INFO_FLOW",
-    "rows": null,
-    "cols": "source",
-    "grids": "model_arch_and_size",
-    "lines": "window_size",
-    "rows_options": [],
-    "cols_options": [
-      "subject",
-      "relation",
-      "last",
-      "first"
-    ],
-    "grids_options": [
-      {
-        "model_arch": "mamba1",
-        "model_size": "1.4B"
-      },
-      {
-        "model_arch": "mamba1",
-        "model_size": "2.8B"
-      }
-    ],
-    "lines_options": [
-      1,
-      3,
-      5,
-      9,
-      12,
-      15
-    ]
-  },
-  {
-    "plot_id": "feature_knockout",
-    "title": "Relation minus last",
-    "description": "relation minus last",
-    "plot_type": "ARCHITECTURE_KNOCKOUT",
-    "is_appendix": false,
-    "order": 4,
-    "experiment_name": "INFO_FLOW",
-    "rows": "source",
-    "cols": "model_arch_and_size",
-    "grids": null,
-    "lines": "feature_category",
-    "rows_options": [
-      "relation_minus_last"
-    ],
-    "cols_options": [
-      {
-        "model_arch": "mamba1",
-        "model_size": "2.8B"
-      },
-      {
-        "model_arch": "mamba2",
-        "model_size": "2.7B"
-      }
-    ],
-    "grids_options": [],
-    "lines_options": [
-      "SLOW_DECAY",
-      "FAST_DECAY",
-      "ALL"
-    ]
-  },
-  {
-    "plot_id": "heatmap",
-    "title": "Heatmap Plot",
-    "description": "Heatmap visualization of information flow between tokens for specific prompts.",
-    "plot_type": "HEATMAP",
-    "is_appendix": false,
-    "order": 6,
-    "experiment_name": "HEATMAP",
-    "rows": "prompt_idx",
-    "cols": "model_arch_and_size",
-    "grids": "window_size",
-    "lines": null,
-    "rows_options": [
-      2080,
-      9765,
-      9255,
-      6191,
-      7222
-    ],
-    "cols_options": [
-      {
-        "model_arch": "mamba1",
-        "model_size": "2.8B"
-      },
-      {
-        "model_arch": "mamba2",
-        "model_size": "2.7B"
-      },
-      {
-        "model_arch": "gpt2",
-        "model_size": "1.5B"
-      },
-      {
-        "model_arch": "mamba1",
-        "model_size": "7B-falcon"
-      },
-      {
-        "model_arch": "mamba1",
-        "model_size": "7B-falcon-base"
-      },
-      {
-        "model_arch": "mamba1",
-        "model_size": "7B"
-      }
-    ],
-    "grids_options": [
-      9
-    ],
-    "lines_options": []
-  },
-  {
-    "plot_id": "all_to_all",
-    "title": "all -> all",
-    "description": "",
-    "plot_type": "ARCHITECTURE_KNOCKOUT",
-    "is_appendix": false,
-    "order": 10,
-    "experiment_name": "INFO_FLOW",
-    "rows": "source",
-    "cols": "target",
-    "grids": "model_arch_and_size",
-    "lines": "feature_category",
-    "rows_options": [
-      "all"
-    ],
-    "cols_options": [
-      "all"
-    ],
-    "grids_options": [
-      {
-        "model_arch": "mamba1",
-        "model_size": "2.8B"
-      },
-      {
-        "model_arch": "mamba2",
-        "model_size": "2.7B"
-      }
-    ],
-    "lines_options": [
-      "FAST_DECAY",
-      "SLOW_DECAY",
-      "ALL"
-    ]
-  },
-  {
-    "plot_id": "heatmaps_per_sizes",
-    "title": "Heatmaps Per sizes",
-    "description": "Relative change in correct-token probability\nafter knocking out connection from each token to the last\ntoken.",
-    "plot_type": "HEATMAP",
-    "is_appendix": true,
-    "order": 11,
-    "experiment_name": "HEATMAP",
-    "rows": "prompt_idx",
-    "cols": "model_size",
-    "grids": "model_arch",
-    "lines": null,
-    "rows_options": [
-      2080,
-      9765,
-      9255,
-      6191,
-      7222
-    ],
-    "cols_options": [
-      "2.8B",
-      "2.7B",
-      "7B",
-      "1.5B",
-      "130M",
-      "355M",
-      "774M",
-      "1.4B",
-      "1.3B",
-      "7B-falcon",
-      "7B-falcon-base"
-    ],
-    "grids_options": [
-      "mamba1",
-      "mamba2"
-    ],
-    "lines_options": []
-  }
+    {
+        "plot_id": "llama",
+        "title": "llama",
+        "description": "",
+        "plot_type": "ARCHITECTURE_KNOCKOUT",
+        "is_appendix": true,
+        "order": 0,
+        "experiment_name": "INFO_FLOW",
+        "rows": "model_size",
+        "cols": "model_arch",
+        "grids": null,
+        "lines": "source",
+        "rows_options": [
+            "1B",
+            "3B",
+            "8B"
+        ],
+        "cols_options": [
+            "llama3",
+            "llama3.2"
+        ],
+        "grids_options": [],
+        "lines_options": []
+    },
+    {
+        "plot_id": "llama 2",
+        "title": "llama",
+        "description": "",
+        "plot_type": "ARCHITECTURE_KNOCKOUT",
+        "is_appendix": true,
+        "order": 0,
+        "experiment_name": "INFO_FLOW",
+        "rows": "model_size",
+        "cols": "model_arch",
+        "grids": null,
+        "lines": "source",
+        "rows_options": [
+            "1B",
+            "3B",
+            "8B"
+        ],
+        "cols_options": [
+            "llama3",
+            "llama3.2"
+        ],
+        "grids_options": [],
+        "lines_options": [
+            "first",
+            "last",
+            "subject",
+            "relation",
+            "context",
+            "all",
+            "relation_minus_last"
+        ]
+    },
+    {
+        "plot_id": "architecture_knockout",
+        "title": "Architecture Knockout Plot",
+        "description": "Relative change in correct-token prediction probability when removing information flow to the last token from various source tokens. \nThe x-axis represents the relative depth of the first layer within the 9-layer attention knockout window, while the y-axis indicates the resulting performance change.",
+        "plot_type": "ARCHITECTURE_KNOCKOUT",
+        "is_appendix": false,
+        "order": 1,
+        "experiment_name": "INFO_FLOW",
+        "rows": null,
+        "cols": "source",
+        "grids": null,
+        "lines": "model_arch_and_size",
+        "rows_options": [],
+        "cols_options": [
+            "subject",
+            "relation",
+            "last",
+            "first"
+        ],
+        "grids_options": [],
+        "lines_options": [
+            {
+                "model_arch": "mamba2",
+                "model_size": "2.7B"
+            },
+            {
+                "model_arch": "mamba1",
+                "model_size": "7B-falcon"
+            },
+            {
+                "model_arch": "mamba1",
+                "model_size": "2.8B"
+            },
+            {
+                "model_arch": "gpt2",
+                "model_size": "1.5B"
+            }
+        ]
+    },
+    {
+        "plot_id": "test",
+        "title": "test",
+        "description": "test",
+        "plot_type": "ARCHITECTURE_KNOCKOUT",
+        "is_appendix": false,
+        "order": 1,
+        "experiment_name": "INFO_FLOW",
+        "rows": "model_arch_and_size",
+        "cols": "source",
+        "grids": "window_size",
+        "lines": null,
+        "rows_options": [
+            {
+                "model_arch": "mamba2",
+                "model_size": "2.7B"
+            },
+            {
+                "model_arch": "mamba1",
+                "model_size": "7B-falcon"
+            },
+            {
+                "model_arch": "mamba1",
+                "model_size": "2.8B"
+            }
+        ],
+        "cols_options": [
+            "subject",
+            "relation",
+            "last",
+            "first"
+        ],
+        "grids_options": [
+            9,
+            15
+        ],
+        "lines_options": []
+    },
+    {
+        "plot_id": "model_size_knockout",
+        "title": "Model Size Knockout Plot",
+        "description": "Comparison of different model sizes within the same architecture family when removing information flow\nto the last token from various source tokens.",
+        "plot_type": "ARCHITECTURE_KNOCKOUT",
+        "is_appendix": false,
+        "order": 2,
+        "experiment_name": "INFO_FLOW",
+        "rows": "target",
+        "cols": "source",
+        "grids": "model_arch",
+        "lines": "model_arch_and_size",
+        "rows_options": [
+            "last"
+        ],
+        "cols_options": [
+            "subject",
+            "relation",
+            "last",
+            "first"
+        ],
+        "grids_options": [
+            "mamba1",
+            "mamba2",
+            "gpt2"
+        ],
+        "lines_options": [
+            {
+                "model_arch": "mamba1",
+                "model_size": "130M"
+            },
+            {
+                "model_arch": "mamba1",
+                "model_size": "1.4B"
+            },
+            {
+                "model_arch": "mamba1",
+                "model_size": "2.8B"
+            },
+            {
+                "model_arch": "mamba2",
+                "model_size": "130M"
+            },
+            {
+                "model_arch": "mamba2",
+                "model_size": "1.3B"
+            },
+            {
+                "model_arch": "mamba2",
+                "model_size": "2.7B"
+            },
+            {
+                "model_arch": "gpt2",
+                "model_size": "355M"
+            },
+            {
+                "model_arch": "gpt2",
+                "model_size": "1.5B"
+            },
+            {
+                "model_arch": "gpt2",
+                "model_size": "774M"
+            }
+        ]
+    },
+    {
+        "plot_id": "window_size_knockout",
+        "title": "Window Size Knockout Plot",
+        "description": "Effect of different window sizes on the information flow from various source tokens to the last token.",
+        "plot_type": "ARCHITECTURE_KNOCKOUT",
+        "is_appendix": false,
+        "order": 3,
+        "experiment_name": "INFO_FLOW",
+        "rows": null,
+        "cols": "source",
+        "grids": "model_arch_and_size",
+        "lines": "window_size",
+        "rows_options": [],
+        "cols_options": [
+            "subject",
+            "relation",
+            "last",
+            "first"
+        ],
+        "grids_options": [
+            {
+                "model_arch": "mamba1",
+                "model_size": "1.4B"
+            },
+            {
+                "model_arch": "mamba1",
+                "model_size": "2.8B"
+            }
+        ],
+        "lines_options": [
+            1,
+            3,
+            5,
+            9,
+            12,
+            15
+        ]
+    },
+    {
+        "plot_id": "feature_knockout",
+        "title": "Relation minus last",
+        "description": "relation minus last",
+        "plot_type": "ARCHITECTURE_KNOCKOUT",
+        "is_appendix": false,
+        "order": 4,
+        "experiment_name": "INFO_FLOW",
+        "rows": "source",
+        "cols": "model_arch_and_size",
+        "grids": null,
+        "lines": "feature_category",
+        "rows_options": [
+            "relation_minus_last"
+        ],
+        "cols_options": [
+            {
+                "model_arch": "mamba1",
+                "model_size": "2.8B"
+            },
+            {
+                "model_arch": "mamba2",
+                "model_size": "2.7B"
+            }
+        ],
+        "grids_options": [],
+        "lines_options": [
+            "SLOW_DECAY",
+            "FAST_DECAY",
+            "ALL"
+        ]
+    },
+    {
+        "plot_id": "heatmap",
+        "title": "Heatmap Plot",
+        "description": "Heatmap visualization of information flow between tokens for specific prompts.",
+        "plot_type": "HEATMAP",
+        "is_appendix": false,
+        "order": 6,
+        "experiment_name": "HEATMAP",
+        "rows": "prompt_idx",
+        "cols": "model_arch_and_size",
+        "grids": "window_size",
+        "lines": null,
+        "rows_options": [
+            2080,
+            9765,
+            9255,
+            6191,
+            7222
+        ],
+        "cols_options": [
+            {
+                "model_arch": "mamba1",
+                "model_size": "2.8B"
+            },
+            {
+                "model_arch": "mamba2",
+                "model_size": "2.7B"
+            },
+            {
+                "model_arch": "gpt2",
+                "model_size": "1.5B"
+            },
+            {
+                "model_arch": "mamba1",
+                "model_size": "7B-falcon"
+            },
+            {
+                "model_arch": "mamba1",
+                "model_size": "7B-falcon-base"
+            },
+            {
+                "model_arch": "mamba1",
+                "model_size": "7B"
+            }
+        ],
+        "grids_options": [
+            9
+        ],
+        "lines_options": []
+    },
+    {
+        "plot_id": "all_to_all",
+        "title": "all -> all",
+        "description": "",
+        "plot_type": "ARCHITECTURE_KNOCKOUT",
+        "is_appendix": false,
+        "order": 10,
+        "experiment_name": "INFO_FLOW",
+        "rows": "source",
+        "cols": "target",
+        "grids": "model_arch_and_size",
+        "lines": "feature_category",
+        "rows_options": [
+            "all"
+        ],
+        "cols_options": [
+            "all"
+        ],
+        "grids_options": [
+            {
+                "model_arch": "mamba1",
+                "model_size": "2.8B"
+            },
+            {
+                "model_arch": "mamba2",
+                "model_size": "2.7B"
+            }
+        ],
+        "lines_options": [
+            "FAST_DECAY",
+            "SLOW_DECAY",
+            "ALL"
+        ]
+    },
+    {
+        "plot_id": "heatmaps_per_sizes",
+        "title": "Heatmaps Per sizes",
+        "description": "Relative change in correct-token probability\nafter knocking out connection from each token to the last\ntoken.",
+        "plot_type": "HEATMAP",
+        "is_appendix": true,
+        "order": 11,
+        "experiment_name": "HEATMAP",
+        "rows": "prompt_idx",
+        "cols": "model_size",
+        "grids": "model_arch",
+        "lines": null,
+        "rows_options": [
+            2080,
+            9765,
+            9255,
+            6191,
+            7222
+        ],
+        "cols_options": [
+            "2.8B",
+            "2.7B",
+            "7B",
+            "1.5B",
+            "130M",
+            "355M",
+            "774M",
+            "1.4B",
+            "1.3B",
+            "7B-falcon",
+            "7B-falcon-base"
+        ],
+        "grids_options": [
+            "mamba1",
+            "mamba2"
+        ],
+        "lines_options": []
+    }
 ]

@@ -38,12 +38,14 @@ def scaled_dot_product_attention(
 
     attn_weight = query @ key.transpose(-2, -1) * scale_factor
     attn_weight += attn_bias
-
+    # print(attn_weight.shape, knockout_mask)
     # Apply attention knockout according to the knockout mask
     if knockout_mask is not None:
-        for k, q in knockout_mask:
-            attn_weight[:, q, k] = float("-inf")
+        for q, k in knockout_mask:
+            attn_weight[:, :, q, k] = float("-inf")
 
     attn_weight = torch.softmax(attn_weight, dim=-1)
+    # print(attn_weight[0,0])
+
     attn_weight = torch.dropout(attn_weight, dropout_p, train=True)
     return attn_weight @ value

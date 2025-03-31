@@ -69,6 +69,22 @@ def get_tokenizer_and_model(
                 model.to(device)  # type: ignore
             else:
                 model = LlamaForCausalLM.from_pretrained(model_id, device_map="auto")
+        case MODEL_ARCH.MISTRAL0_1 | MODEL_ARCH.MISTRAL0_3:
+            from transformers import MistralForCausalLM
+
+            if device:
+                model = MistralForCausalLM.from_pretrained(model_id)
+                model.to(device)  # type: ignore
+            else:
+                model = MistralForCausalLM.from_pretrained(model_id, device_map="auto")
+        case MODEL_ARCH.QWEN2_5 | MODEL_ARCH.QWEN2:
+            from transformers import Qwen2ForCausalLM
+
+            if device:
+                model = Qwen2ForCausalLM.from_pretrained(model_id)
+                model.to(device)  # type: ignore
+            else:
+                model = Qwen2ForCausalLM.from_pretrained(model_id, device_map="auto")
         case MODEL_ARCH.GPT2:
             from transformers import GPT2LMHeadModel
 

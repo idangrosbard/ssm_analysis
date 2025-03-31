@@ -32,10 +32,10 @@ def llama_attention_forward(
     cos, sin = position_embeddings
     query_states, key_states = apply_rotary_pos_emb(query_states, key_states, cos, sin)
 
-    # if past_key_value is not None:
-    #     # sin and cos are specific to RoPE models; cache_position needed for the static cache
-    #     cache_kwargs = {"sin": sin, "cos": cos, "cache_position": cache_position}
-    #     key_states, value_states = past_key_value.update(key_states, value_states, module.layer_idx, cache_kwargs)
+    if past_key_value is not None:
+        # sin and cos are specific to RoPE models; cache_position needed for the static cache
+        cache_kwargs = {"sin": sin, "cos": cos, "cache_position": cache_position}
+        key_states, value_states = past_key_value.update(key_states, value_states, module.layer_idx, cache_kwargs)
 
     # attention_interface: Callable = eager_attention_forward
     # if module.config._attn_implementation != "eager":
@@ -54,8 +54,10 @@ def llama_attention_forward(
         key_states,
         value_states,
         attention_mask,
-        dropout=0.0 if not module.training else module.attention_dropout,
+        dropout=0.0,
         scaling=module.scaling,
+        is_causal=True,
+        knockout_mask=knockout_mask,
         **kwargs,
     )
 

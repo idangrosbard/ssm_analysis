@@ -127,23 +127,14 @@ exclude = [
     ".history/**",
 ]
 ignore = [
-    # "src/embeddings",
-    # "src/evaluate",
-    # "src/knockout",
-    # "src/metrics",
-    # "src/readout",
-    # "src/weight_analysis",
-    # 'scripts',
-    # "src/models/minimal_*",
-
-    # # TODO: fix these
-    # 'src/experiments/info_flow.py',
-    # 'src/experiments/info_flow_plot.py',
-    # "notebooks/**"
-    "*.ipynb.py",
+    "**/*.ipynb.py",
     "notebooks/**",
     "tests/src/experiments/baselines/full_pipeline/**",
-    "scripts/**"
+    "scripts/**",
+    # TODO: Fix this:
+    "src/experiments/knockout/llama/interfere_hook.py",
+    "src/experiments/knockout/llama/sdpa_attention.py",
+    "src/test_llama_knockout.py",
 ]
 
 executionEnvironments = [

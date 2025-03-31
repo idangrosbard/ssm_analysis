@@ -187,7 +187,6 @@ class LlamaInterface(ModelInterface):
         self.knockouts: list[LlamaAttentionKnockout] = []
         self.handles: list[torch.nn.Module] = []
         self.knockout_mode = KnockoutMode.ZERO_ATTENTION
-        self.feature_masks = {}
 
     def setup(self, layers: Optional[Iterable[TLayerIndex]] = None):
         super().setup(layers)
@@ -198,6 +197,7 @@ class LlamaInterface(ModelInterface):
         # Assert that no hooks are left
         for m in self.model.modules():
             assert len(list(m._forward_hooks.items())) == 0
+            assert not isinstance(m, LlamaAttentionKnockout)
 
         self.handles = []
         self.knockouts = []
@@ -209,6 +209,7 @@ class LlamaInterface(ModelInterface):
                     # "mixer of interest" - moi
                     moi = self.model.model.layers[i].self_attn
                     knockout = LlamaAttentionKnockout(moi)
+                    knockout.eval()
                     knockout.to(next(moi.parameters()).device)
                     self.model.model.layers[i].self_attn = knockout
 
@@ -229,9 +230,11 @@ class LlamaInterface(ModelInterface):
             out = self.model(input_ids)
 
         logits = out.logits
+        # print(logits, logits.max(dim=-1))
         probs = F.softmax(logits, dim=-1)
+        probs = probs[:, -1, :].detach().cpu().numpy()  # type: ignore
 
-        return probs[:, -1, :].detach().cpu().numpy()  # type: ignore
+        return probs  # type: ignore
 
     def n_layers(self) -> int:
         return len(self.model.model.layers)
@@ -381,8 +384,21 @@ def get_model_interface(
             )
         case MODEL_ARCH.GPT2:
             model_interface = GPT2Interface(model_arch_and_size.size, device)
-        case MODEL_ARCH.LLAMA2 | MODEL_ARCH.LLAMA3_2 | MODEL_ARCH.LLAMA3:
+        # TO ADD AN ARCH:
+        case (
+            MODEL_ARCH.LLAMA2
+            | MODEL_ARCH.LLAMA3_2
+            | MODEL_ARCH.LLAMA3
+            | MODEL_ARCH.MISTRAL0_1
+            | MODEL_ARCH.MISTRAL0_3
+            | MODEL_ARCH.QWEN2
+            | MODEL_ARCH.QWEN2_5
+        ):
+            # For LLAMA3, we use the same model interface as LLAMA2
+            # because the architecture is the same.
+            # Same goes for Mistral
             model_interface = LlamaInterface(model_arch_and_size.arch, model_arch_and_size.size, device)
+
         case _:
             assert_never(model_arch_and_size.arch)
 

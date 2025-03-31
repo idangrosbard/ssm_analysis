@@ -148,6 +148,7 @@ class DDP:
     NUM_WORKERS = 0
 
 
+# TO ADD AN ARCH:
 MODEL_SIZES_PER_ARCH_TO_MODEL_ID: dict[MODEL_ARCH, dict[TModelSize, TModelID]] = {
     MODEL_ARCH.MAMBA1: {
         TModelSize("130M"): TModelID("state-spaces/mamba-130M-hf"),
@@ -174,6 +175,24 @@ MODEL_SIZES_PER_ARCH_TO_MODEL_ID: dict[MODEL_ARCH, dict[TModelSize, TModelID]] =
         TModelSize("1B"): TModelID("meta-llama/Llama-3.2-1B"),
         TModelSize("3B"): TModelID("meta-llama/Llama-3.2-3B"),
     },
+    MODEL_ARCH.MISTRAL0_1: {
+        TModelSize("7B"): TModelID("mistralai/Mistral-7B-v0.1"),
+    },
+    MODEL_ARCH.MISTRAL0_3: {
+        TModelSize("7B"): TModelID("mistralai/Mistral-7B-v0.3"),
+    },
+    MODEL_ARCH.QWEN2: {
+        TModelSize("0.5B"): TModelID("Qwen/Qwen2-0.5B"),
+        TModelSize("1.5B"): TModelID("Qwen/Qwen2-1.5B"),
+        TModelSize("7B"): TModelID("Qwen/Qwen2-7B"),
+    },
+    MODEL_ARCH.QWEN2_5: {
+        TModelSize("0.5B"): TModelID("Qwen/Qwen2.5-0.5B"),
+        TModelSize("1.5B"): TModelID("Qwen/Qwen2.5-1.5B"),
+        TModelSize("3B"): TModelID("Qwen/Qwen2.5-3B"),
+        TModelSize("7B"): TModelID("Qwen/Qwen2.5-7B"),
+        TModelSize("14B"): TModelID("Qwen/Qwen2.5-14B"),
+    },
     MODEL_ARCH.GPT2: {
         TModelSize("124M"): TModelID("openai-community/gpt2"),
         TModelSize("355M"): TModelID("openai-community/gpt2-medium"),
@@ -199,8 +218,19 @@ GRAPHS_ORDER: dict[MODEL_ARCH_AND_SIZE, MODEL_SIZE_CAT] = {
     MODEL_ARCH_AND_SIZE(MODEL_ARCH.MAMBA1, TModelSize("7B")): MODEL_SIZE_CAT.HUGE,
     MODEL_ARCH_AND_SIZE(MODEL_ARCH.MAMBA1, TModelSize("7B-falcon")): MODEL_SIZE_CAT.HUGE,
     MODEL_ARCH_AND_SIZE(MODEL_ARCH.MAMBA1, TModelSize("7B-falcon-base")): MODEL_SIZE_CAT.HUGE,
-    MODEL_ARCH_AND_SIZE(MODEL_ARCH.LLAMA2, TModelSize("7B")): MODEL_SIZE_CAT.HUGE,
+    # MODEL_ARCH_AND_SIZE(MODEL_ARCH.LLAMA2, TModelSize("7B")): MODEL_SIZE_CAT.HUGE,
+    # MODEL_ARCH_AND_SIZE(MODEL_ARCH.LLAMA2, TModelSize("13B")): MODEL_SIZE_CAT.HUGE,
+    MODEL_ARCH_AND_SIZE(MODEL_ARCH.MISTRAL0_1, TModelSize("7B")): MODEL_SIZE_CAT.HUGE,
+    MODEL_ARCH_AND_SIZE(MODEL_ARCH.MISTRAL0_3, TModelSize("7B")): MODEL_SIZE_CAT.HUGE,
     MODEL_ARCH_AND_SIZE(MODEL_ARCH.LLAMA3, TModelSize("8B")): MODEL_SIZE_CAT.HUGE,
+    MODEL_ARCH_AND_SIZE(MODEL_ARCH.QWEN2, TModelSize("0.5B")): MODEL_SIZE_CAT.SMALL,
+    MODEL_ARCH_AND_SIZE(MODEL_ARCH.QWEN2, TModelSize("1.5B")): MODEL_SIZE_CAT.MEDIUM,
+    MODEL_ARCH_AND_SIZE(MODEL_ARCH.QWEN2, TModelSize("7B")): MODEL_SIZE_CAT.HUGE,
+    MODEL_ARCH_AND_SIZE(MODEL_ARCH.QWEN2_5, TModelSize("0.5B")): MODEL_SIZE_CAT.SMALL,
+    MODEL_ARCH_AND_SIZE(MODEL_ARCH.QWEN2_5, TModelSize("1.5B")): MODEL_SIZE_CAT.MEDIUM,
+    MODEL_ARCH_AND_SIZE(MODEL_ARCH.QWEN2_5, TModelSize("3B")): MODEL_SIZE_CAT.LARGE,
+    MODEL_ARCH_AND_SIZE(MODEL_ARCH.QWEN2_5, TModelSize("7B")): MODEL_SIZE_CAT.HUGE,
+    # MODEL_ARCH_AND_SIZE(MODEL_ARCH.QWEN2_5, TModelSize("14B")): MODEL_SIZE_CAT.HUGE,
     # MODEL_ARCH_AND_SIZE(MODEL_ARCH.LLAMA2, TModelSize("13B")): MODEL_SIZE_CAT.HUGE,
     # MODEL_ARCH_AND_SIZE(MODEL_ARCH.MAMBA2, "8B"): MODEL_SIZE_CAT.HUGE,
 }
@@ -245,7 +275,15 @@ def model_and_size_to_slurm_gpu_type(
 
 
 def is_llama(model_arch: MODEL_ARCH) -> bool:
-    return model_arch in [MODEL_ARCH.LLAMA2, MODEL_ARCH.LLAMA3, MODEL_ARCH.LLAMA3_2]
+    return model_arch in [
+        MODEL_ARCH.LLAMA2,
+        MODEL_ARCH.LLAMA3,
+        MODEL_ARCH.LLAMA3_2,
+        MODEL_ARCH.MISTRAL0_1,
+        MODEL_ARCH.MISTRAL0_3,
+        MODEL_ARCH.QWEN2,
+        MODEL_ARCH.QWEN2_5,
+    ]
 
 
 def is_mamba_arch(model_arch: MODEL_ARCH) -> bool:

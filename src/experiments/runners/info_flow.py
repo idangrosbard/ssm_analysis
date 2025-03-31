@@ -416,6 +416,7 @@ def run(args: InfoFlowRunner):
     data = args.get_runner_dependencies()["evaluate_model"].get_prompt_data()
 
     last_save_time = time.time()
+    print(len(missing_prompt_layer_values))
     missing_prompt_layer_values = sorted(missing_prompt_layer_values.items())
     for prompt_id, layer_idx in tqdm(
         missing_prompt_layer_values,
@@ -443,9 +444,12 @@ def run(args: InfoFlowRunner):
                 )
             except Exception as e:
                 known_errors = []
+                known_ids = {TPromptOriginalIndex(13190)}
+                is_known_id = prompt_id in known_ids
                 is_known_error = any(known_error in str(e) for known_error in known_errors)
-                if is_known_error:
-                    print(f" Error evaluating {prompt_id = }: {e}")
+                print(f" Error evaluating {prompt_id = }: {e}")
+                if is_known_id or is_known_error:
+                    # print(f" Error evaluating {prompt_id = }: {e}")
                     content[InfoFlowJSONFileCols.metadata][InfoFlowJSONMetadataCols.banned_prompts][prompt_id] = str(e)
                     break
                 else:
