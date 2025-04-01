@@ -7,7 +7,7 @@ setup(
     install_requires=[
         "pyrallis>=0.3.1",
         "submitit>=1.5.2",
-        "torch>=2.4.0",
+        "torch>=2.5.1",
         "numpy>=1.26.4",
         "pandas>=2.2.2",
         "scipy>=1.14.1",
