@@ -7,13 +7,13 @@ from st_aggrid import AgGrid, DataReturnMode, GridUpdateMode
 from streamlit_modal import Modal
 
 from src.core.names import ResultBankParamNames
-from src.data_ingestion.data_defs import ResultBank
-from src.experiments.infrastructure.base_config import BaseRunner
+from src.data_ingestion.data_defs.data_defs import ResultBank
+from src.experiments.infrastructure.base_runner import BaseRunner
 from src.utils.streamlit.components.aagrid import SelectionMode, base_grid_builder, set_aagrid_apply_default_filters
 from src.utils.streamlit.helpers.component import StreamlitComponent
 from src.utils.streamlit.helpers.session_keys import SessionKey
 
-T_RESULT_BANK_TYPE = TypeVar("T_RESULT_BANK_TYPE", bound="ResultBank")
+T_RESULT_BANK_TYPE = TypeVar("T_RESULT_BANK_TYPE", bound=ResultBank)
 
 
 class ShowResultsBank(StreamlitComponent[T_RESULT_BANK_TYPE]):

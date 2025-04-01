@@ -6,11 +6,12 @@ from typing import Any, Dict, Generic, List, NamedTuple, Optional, Sequence, Typ
 
 from src.analysis.experiment_results.helpers import init_variant_params_from_values
 from src.analysis.prompt_filterations import AnyExistingCompletePromptFilteration
-from src.core.consts import GRAPHS_ORDER
+from src.core.consts import ALL_VARIANT_PARAMETERS, GRAPHS_ORDER
 from src.core.names import (
-    EXPERIMENT_NAMES,
-    DataReqCols,
+    VARIANT_PARAM_NAME,
+    BaseVariantParamName,
     ExperimentHyperParams,
+    ExperimentName,
     FinalPlotsPlanOrientation,
     PlotPlanCols,
     PlotPlanOptionCols,
@@ -28,7 +29,7 @@ from src.core.types import (
     TPromptOriginalIndex,
     TWindowSize,
 )
-from src.data_ingestion.data_defs import DataReqiermentCollection, DataReqs, ResultBank
+from src.data_ingestion.data_defs.data_defs import DataReqiermentCollection, DataReqs, ResultBank
 from src.experiments.runners.heatmap import HeatmapRunner
 from src.experiments.runners.info_flow import InfoFlowRunner
 from src.utils.types_utils import str_enum_values
@@ -209,16 +210,16 @@ def get_hyper_param_definition(option: ExperimentHyperParams) -> HyperParamDefin
             raise ValueError(f"Unsupported variation option: {option}")
 
 
-def get_experiment_orientations(experiment_name: EXPERIMENT_NAMES) -> list[FinalPlotsPlanOrientation]:
+def get_experiment_orientations(experiment_name: ExperimentName) -> list[FinalPlotsPlanOrientation]:
     """Get the relevant parameters for a specific experiment type."""
-    if experiment_name == EXPERIMENT_NAMES.INFO_FLOW:
+    if experiment_name == ExperimentName.info_flow:
         return [
             FinalPlotsPlanOrientation.rows,
             FinalPlotsPlanOrientation.cols,
             FinalPlotsPlanOrientation.grids,
             FinalPlotsPlanOrientation.lines,
         ]
-    elif experiment_name == EXPERIMENT_NAMES.HEATMAP:
+    elif experiment_name == ExperimentName.heatmap:
         return [
             FinalPlotsPlanOrientation.rows,
             FinalPlotsPlanOrientation.cols,
@@ -228,7 +229,7 @@ def get_experiment_orientations(experiment_name: EXPERIMENT_NAMES) -> list[Final
         return list(FinalPlotsPlanOrientation)
 
 
-def get_experiment_hyper_param_hyper_param(experiment_name: EXPERIMENT_NAMES) -> list[ExperimentHyperParams]:
+def get_experiment_hyper_param_hyper_param(experiment_name: ExperimentName) -> list[ExperimentHyperParams]:
     """Get the relevant parameters for a specific experiment type."""
     general = [
         ExperimentHyperParams.model_arch_and_size,
@@ -237,15 +238,15 @@ def get_experiment_hyper_param_hyper_param(experiment_name: EXPERIMENT_NAMES) ->
         ExperimentHyperParams.model_size,
     ]
     match experiment_name:
-        case EXPERIMENT_NAMES.INFO_FLOW:
+        case ExperimentName.info_flow:
             general += [
                 ExperimentHyperParams.source,
                 ExperimentHyperParams.target,
                 ExperimentHyperParams.feature_category,
             ]
-        case EXPERIMENT_NAMES.HEATMAP:
+        case ExperimentName.heatmap:
             pass
-        case EXPERIMENT_NAMES.EVALUATE_MODEL | EXPERIMENT_NAMES.FULL_PIPELINE:
+        case ExperimentName.evaluate_model | ExperimentName.full_pipeline:
             raise NotImplementedError(f"Not implemented for {experiment_name}")
         case _:
             assert_never(experiment_name)
@@ -266,7 +267,7 @@ class PlotPlan:
     plot_type: PlotType
     is_appendix: bool
     order: int
-    experiment_name: EXPERIMENT_NAMES
+    experiment_name: ExperimentName
     rows: Optional[ExperimentHyperParams] = None
     cols: Optional[ExperimentHyperParams] = None
     grids: Optional[ExperimentHyperParams] = None
@@ -308,7 +309,7 @@ class PlotPlan:
         if not param_type or not options:
             return options
 
-        serialized = []
+        serialized: list[Any] = []
         for option in options:
             if param_type == ExperimentHyperParams.model_arch_and_size and isinstance(option, MODEL_ARCH_AND_SIZE):
                 serialized.append(
@@ -343,7 +344,7 @@ class PlotPlan:
         # Convert string values back to Enum values
         data_copy = data.copy()
         data_copy[PlotPlanCols.plot_type] = PlotType[data_copy[PlotPlanCols.plot_type]]
-        data_copy[PlotPlanCols.experiment_name] = EXPERIMENT_NAMES[data_copy[PlotPlanCols.experiment_name]]
+        data_copy[PlotPlanCols.experiment_name] = ExperimentName[data_copy[PlotPlanCols.experiment_name]]
 
         # Convert orientation parameters to ExperimentHyperParams
         for orientation in str_enum_values(FinalPlotsPlanOrientation):
@@ -406,7 +407,7 @@ class PlotPlan:
 
     def get_data_requirements_per_cell(self, result_bank: ResultBank) -> dict[Cell, DataReqs]:
         """Generate data requirements for this plot plan based on the result bank."""
-        data_reqs_per_cell = defaultdict(DataReqiermentCollection)
+        data_reqs_per_cell: dict[Cell, DataReqiermentCollection] = defaultdict(DataReqiermentCollection)
         experiment_orientations = get_experiment_orientations(self.experiment_name)
         experiment_hyper_param_defs = get_experiment_hyper_param_hyper_param(self.experiment_name)
 
@@ -456,11 +457,11 @@ class PlotPlan:
                     continue
                 params[ExperimentHyperParams.model_arch_and_size] = model_arch_and_size
 
-            data_req_params: dict[DataReqCols, Any] = {
-                DataReqCols.experiment_name: self.experiment_name,
+            data_req_params: dict[VARIANT_PARAM_NAME, Any] = {
+                BaseVariantParamName.experiment_name: self.experiment_name,
             }
 
-            for col in str_enum_values(DataReqCols):
+            for col in ALL_VARIANT_PARAMETERS:
                 if col in data_req_params:
                     continue
                 if col in params:

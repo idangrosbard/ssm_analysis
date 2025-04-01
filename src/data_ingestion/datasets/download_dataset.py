@@ -12,7 +12,7 @@ from datasets import (
 )
 
 from src.core.consts import COUNTER_FACT_2_KNOWN1000_COL_CONV, DATASETS_IDS, PATHS
-from src.core.names import COLS, DATASETS
+from src.core.names import COLS, DatasetName
 from src.core.types import ALL_SPLITS_LITERAL, SPLIT, TPromptData, TPromptOriginalIndex, TSplitChoise
 from src.data_ingestion.datasets.splitting import split_dataset
 
@@ -22,11 +22,11 @@ def load_splitted_counter_fact(
     add_split_name_column: bool = False,
     align_to_known: bool = False,
 ) -> Dataset:
-    splitted_path = PATHS.dataset_dir(DATASETS.COUNTER_FACT) / "splitted"
+    splitted_path = PATHS.dataset_dir(DatasetName.counter_fact) / "splitted"
 
     if not splitted_path.exists():
         print("Creating splitted dataset")
-        dataset_name = DATASETS_IDS[DATASETS.COUNTER_FACT]
+        dataset_name = DATASETS_IDS[DatasetName.counter_fact]
         num_splits = 5
         split_ratio = 0.1
         seed = 42
@@ -62,9 +62,9 @@ def load_splitted_counter_fact(
     return dataset
 
 
-def get_prompt_ids(dataset_name: DATASETS, split: TSplitChoise = ALL_SPLITS_LITERAL) -> list[TPromptOriginalIndex]:
+def get_prompt_ids(dataset_name: DatasetName, split: TSplitChoise = ALL_SPLITS_LITERAL) -> list[TPromptOriginalIndex]:
     match dataset_name:
-        case DATASETS.COUNTER_FACT:
+        case DatasetName.counter_fact:
             dataset = load_splitted_counter_fact(
                 split,
             )
@@ -72,9 +72,9 @@ def get_prompt_ids(dataset_name: DATASETS, split: TSplitChoise = ALL_SPLITS_LITE
     assert_never(dataset_name)
 
 
-def get_row_data(dataset_name: DATASETS) -> pd.DataFrame:
+def get_row_data(dataset_name: DatasetName) -> pd.DataFrame:
     match dataset_name:
-        case DATASETS.COUNTER_FACT:
+        case DatasetName.counter_fact:
             dataset = load_splitted_counter_fact(
                 ALL_SPLITS_LITERAL,
             )
@@ -82,6 +82,6 @@ def get_row_data(dataset_name: DATASETS) -> pd.DataFrame:
     assert_never(dataset_name)
 
 
-def get_indexed_raw_data(dataset_name: DATASETS) -> TPromptData:
+def get_indexed_raw_data(dataset_name: DatasetName) -> TPromptData:
     df = get_row_data(dataset_name)
     return TPromptData(df.set_index(COLS.ORIGINAL_IDX))

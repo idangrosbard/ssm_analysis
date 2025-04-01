@@ -19,7 +19,7 @@ from cachetools import TTLCache, cached
 from tqdm import tqdm
 
 from src.core.consts import COUNTER_FACT_2_KNOWN1000_COL_CONV
-from src.core.names import COLS, EXPERIMENT_NAMES
+from src.core.names import COLS, ExperimentName
 from src.core.types import MODEL_ARCH, TPromptData
 from src.data_ingestion.datasets.download_dataset import get_row_data
 from src.data_ingestion.helpers.logits_utils import (
@@ -28,12 +28,12 @@ from src.data_ingestion.helpers.logits_utils import (
     logits_to_probs,
     trim_left_and_right_pad,
 )
-from src.experiments.infrastructure.base_config import BaseRunner, BaseVariantParams
+from src.experiments.infrastructure.base_runner import BaseRunner, BaseVariantParams
 
 
 @dataclass(frozen=True)
 class EvaluateModelParams(BaseVariantParams):
-    experiment_name: EXPERIMENT_NAMES = field(init=False, default=EXPERIMENT_NAMES.EVALUATE_MODEL)
+    experiment_name: ExperimentName = field(init=False, default=ExperimentName.evaluate_model)
     drop_subject: bool = False
     drop_subj_last_token: bool = False
     with_3_dots: bool = False
@@ -42,7 +42,7 @@ class EvaluateModelParams(BaseVariantParams):
 
 
 @dataclass(frozen=True)
-class EvaluateModelConfig(BaseRunner[EvaluateModelParams]):
+class EvaluateModelRunner(BaseRunner[EvaluateModelParams]):
     """Configuration for model evaluation."""
 
     variant_params: EvaluateModelParams
@@ -93,7 +93,7 @@ class EvaluateModelConfig(BaseRunner[EvaluateModelParams]):
         return self.input_params.filteration.get_dependencies()
 
 
-def run(args: EvaluateModelConfig):
+def run(args: EvaluateModelRunner):
     print(args)
     if args.output_result_path.exists() and not args.metadata_params.overwrite_existing_outputs:
         print(f"Output file {args.output_result_path} already exists")

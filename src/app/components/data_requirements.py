@@ -21,9 +21,9 @@ from src.app.components.inputs import select_gpu_type, select_window_size
 from src.app.components.result_bank import ShowRunnerStatus
 from src.core.names import HeatmapCols, SlurmStatus, SummarizedDataFulfilledReqsCols
 from src.core.types import MODEL_ARCH_AND_SIZE, TCodeVersionName, TPromptOriginalIndex, TWindowSize
-from src.data_ingestion.data_defs import DataReqs, SummarizedDataFulfilledReqs
-from src.experiments.infrastructure.base_config import InputParams, MetadataParams
-from src.experiments.runners.evaluate_model import EvaluateModelConfig
+from src.data_ingestion.data_defs.data_defs import DataReqs, SummarizedDataFulfilledReqs
+from src.experiments.infrastructure.base_runner import InputParams, MetadataParams
+from src.experiments.runners.evaluate_model import EvaluateModelRunner
 from src.experiments.runners.heatmap import HeatmapParams, HeatmapRunner
 from src.experiments.runners.info_flow import InfoFlowRunner
 from src.utils.streamlit.components.aagrid import SelectionMode, base_grid_builder, set_aagrid_apply_default_filters
@@ -135,7 +135,7 @@ class RequirementExecution(StreamlitComponent):
                 remaining_prompts = set(config.get_remaining_prompt_original_indices())
                 computed_prompts = requested_prompts - remaining_prompts
                 banned_prompts = None
-            elif isinstance(config, EvaluateModelConfig):
+            elif isinstance(config, EvaluateModelRunner):
                 remaining_prompts = set()
                 computed_prompts = requested_prompts - remaining_prompts
                 banned_prompts = None

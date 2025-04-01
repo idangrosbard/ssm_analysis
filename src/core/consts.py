@@ -2,9 +2,18 @@ import os
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
-from typing import assert_never
+from typing import Sequence, assert_never
 
-from src.core.names import COLS, DATASETS, EXPERIMENT_NAMES, ResultBankParamNames
+from src.core.names import (
+    COLS,
+    VARIANT_PARAM_NAME,
+    BaseVariantParamName,
+    DatasetName,
+    ExperimentName,
+    InfoFlowVariantParam,
+    ResultBankParamNames,
+    WindowedVariantParam,
+)
 from src.core.types import (
     MODEL_ARCH,
     MODEL_ARCH_AND_SIZE,
@@ -19,8 +28,11 @@ from src.core.types import (
 )
 from src.utils.infra.output_path import OutputKey
 from src.utils.infra.slurm import SLURM_GPU_TYPE
+from src.utils.types_utils import str_enum_values
 
 prev_umask = os.umask(0o002)  # Set umask to 0o002
+
+
 # print(f"Previous umask: {prev_umask:03o}")
 
 
@@ -56,7 +68,7 @@ class PathsConfig:
     def PREPROCESSED_DATA_DIR(self) -> Path:
         return self.DATA_DIR / "preprocessed"
 
-    def dataset_dir(self, dataset_name: DATASETS) -> Path:
+    def dataset_dir(self, dataset_name: DatasetName) -> Path:
         return self.PREPROCESSED_DATA_DIR / dataset_name
 
     @property
@@ -201,7 +213,6 @@ MODEL_SIZES_PER_ARCH_TO_MODEL_ID: dict[MODEL_ARCH, dict[TModelSize, TModelID]] =
     },
 }
 
-
 GRAPHS_ORDER: dict[MODEL_ARCH_AND_SIZE, MODEL_SIZE_CAT] = {
     # MODEL_ARCH_AND_SIZE(MODEL_ARCH.GPT2, "124M"): MODEL_SIZE_CAT.SMALL,
     MODEL_ARCH_AND_SIZE(MODEL_ARCH.MAMBA1, TModelSize("130M")): MODEL_SIZE_CAT.SMALL,
@@ -294,12 +305,11 @@ def is_falcon(model_size: str) -> bool:
     return "falcon" in model_size
 
 
-DATASETS_IDS: dict[DATASETS, TDatasetID] = {DATASETS.COUNTER_FACT: TDatasetID("NeelNanda/counterfact-tracing")}  # type: ignore
+DATASETS_IDS: dict[DatasetName, TDatasetID] = {DatasetName.counter_fact: TDatasetID("NeelNanda/counterfact-tracing")}  # type: ignore
 
 COUNTER_FACT_2_KNOWN1000_COL_CONV = {
     COLS.COUNTER_FACT.TARGET_TRUE: "attribute",
 }
-
 
 TOKEN_TYPE_COLORS: dict[TokenType, str] = {
     TokenType.first: "#0000FF",  # blue
@@ -369,6 +379,13 @@ class BASE_OUTPUT_KEYS:
     MODEL_ARCH = OutputKey[MODEL_ARCH]("model_arch", key_display_name="arch=")
     MODEL_SIZE = OutputKey[TModelSize]("model_size", key_display_name="size=")
     CODE_VERSION = OutputKey[TCodeVersionName]("code_version", key_display_name="v=")
-    EXPERIMENT_NAME = OutputKey[EXPERIMENT_NAMES]("experiment_name", key_display_name="")
-    DATASET_NAME = OutputKey[DATASETS]("dataset_name", key_display_name="ds=")
+    EXPERIMENT_NAME = OutputKey[ExperimentName]("experiment_name", key_display_name="")
+    DATASET_NAME = OutputKey[DatasetName]("dataset_name", key_display_name="ds=")
     WINDOW_SIZE = OutputKey[TWindowSize]("window_size", key_display_name="ws=")
+
+
+ALL_VARIANT_PARAMETERS: Sequence[VARIANT_PARAM_NAME] = (
+    str_enum_values(BaseVariantParamName)
+    + str_enum_values(WindowedVariantParam)
+    + str_enum_values(InfoFlowVariantParam)
+)

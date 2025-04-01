@@ -16,10 +16,10 @@ from src.analysis.prompt_filterations import (
 )
 from src.core.consts import is_mamba_arch
 from src.core.names import (
-    DATASETS,
-    EXPERIMENT_NAMES,
-    INFO_FLOW_HP_COLS,
-    InfoFlowCols,
+    DatasetName,
+    ExperimentName,
+    InfoFlowMetricName,
+    InfoFlowVariantParam,
 )
 from src.core.types import (
     MODEL_ARCH,
@@ -34,13 +34,13 @@ from src.core.types import (
     TWindowSize,
 )
 from src.data_ingestion.helpers.logits_utils import Prompt, get_num_to_masks, get_prompt_row_index
-from src.experiments.infrastructure.base_config import (
+from src.experiments.infrastructure.base_runner import (
     BASE_OUTPUT_KEYS,
     BaseRunner,
     BaseVariantParams,
 )
 from src.experiments.infrastructure.model_interface import ModelInterface
-from src.experiments.runners.evaluate_model import EvaluateModelConfig, EvaluateModelParams
+from src.experiments.runners.evaluate_model import EvaluateModelParams, EvaluateModelRunner
 from src.utils.infra.output_path import OutputKey
 
 # Time in seconds between intermediate saves
@@ -171,7 +171,7 @@ class JSONInfoFlowFile:
         # TODO: remove this after commiting tests results
         prompt_idx = [
             prompt_id
-            for prompt_id in AllPromptFilteration(DATASETS.COUNTER_FACT).get_prompt_ids()
+            for prompt_id in AllPromptFilteration(DatasetName.counter_fact).get_prompt_ids()
             if prompt_id in prompt_idx
         ]
 
@@ -183,9 +183,11 @@ class JSONInfoFlowFile:
 
         return {
             layer_id: TInfoFlowWindowValue(
-                hit=[info_flow_data[prompt_idx][layer_id][InfoFlowCols.hit] for prompt_idx in prompt_idx],
-                true_probs=[info_flow_data[prompt_idx][layer_id][InfoFlowCols.true_probs] for prompt_idx in prompt_idx],
-                diffs=[info_flow_data[prompt_idx][layer_id][InfoFlowCols.diffs] for prompt_idx in prompt_idx],
+                hit=[info_flow_data[prompt_idx][layer_id][InfoFlowMetricName.hit] for prompt_idx in prompt_idx],
+                true_probs=[
+                    info_flow_data[prompt_idx][layer_id][InfoFlowMetricName.true_probs] for prompt_idx in prompt_idx
+                ],
+                diffs=[info_flow_data[prompt_idx][layer_id][InfoFlowMetricName.diffs] for prompt_idx in prompt_idx],
                 original_idx=prompt_idx,
             )
             for layer_id in layer_idx
@@ -268,7 +270,7 @@ class JSONInfoFlowFile:
 
 @dataclass(frozen=True)
 class InfoFlowParams(BaseVariantParams):
-    experiment_name: EXPERIMENT_NAMES = field(init=False, default=EXPERIMENT_NAMES.INFO_FLOW)
+    experiment_name: ExperimentName = field(init=False, default=ExperimentName.info_flow)
     window_size: TWindowSize
     source: TokenType
     feature_category: FeatureCategory
@@ -277,7 +279,7 @@ class InfoFlowParams(BaseVariantParams):
 
 
 class InfoFlowDependencies(TypedDict):
-    evaluate_model: EvaluateModelConfig
+    evaluate_model: EvaluateModelRunner
 
 
 @dataclass(frozen=True)
@@ -301,9 +303,9 @@ class InfoFlowRunner(BaseRunner[InfoFlowParams]):
     def get_variant_output_keys(cls):
         return super().get_variant_output_keys() + [
             BASE_OUTPUT_KEYS.WINDOW_SIZE,
-            OutputKey[TokenType](INFO_FLOW_HP_COLS.target),
-            OutputKey[TokenType](INFO_FLOW_HP_COLS.source),
-            OutputKey[FeatureCategory](INFO_FLOW_HP_COLS.feature_category),
+            OutputKey[TokenType](InfoFlowVariantParam.target),
+            OutputKey[TokenType](InfoFlowVariantParam.source),
+            OutputKey[FeatureCategory](InfoFlowVariantParam.feature_category),
         ]
 
     @property
@@ -343,7 +345,7 @@ class InfoFlowRunner(BaseRunner[InfoFlowParams]):
 
     def get_runner_dependencies(self) -> InfoFlowDependencies:  # type: ignore
         return InfoFlowDependencies(
-            evaluate_model=EvaluateModelConfig.init_from_runner(
+            evaluate_model=EvaluateModelRunner.init_from_runner(
                 self,
                 variant_params=EvaluateModelParams(
                     model_arch=self.variant_params.model_arch,
@@ -377,11 +379,11 @@ def forward_eval(
     true_prob = next_token_probs[0, true_id[:, 0]]
     torch.cuda.empty_cache()
     return {
-        InfoFlowCols.hit: bool(true_prob == max_prob),
-        InfoFlowCols.diffs: float(((true_prob - base_prob) / base_prob) * 100.0),
+        InfoFlowMetricName.hit: bool(true_prob == max_prob),
+        InfoFlowMetricName.diffs: float(((true_prob - base_prob) / base_prob) * 100.0),
         # InfoFlowCols.first: first_token,
         # InfoFlowCols.diff_unnorm: true_prob - base_prob,
-        InfoFlowCols.true_probs: float(true_prob),
+        InfoFlowMetricName.true_probs: float(true_prob),
     }
 
 

@@ -25,9 +25,9 @@ from src.core.types import (
     TPromptOriginalIndex,
     TWindowSize,
 )
-from src.data_ingestion.datasets.download_dataset import DATASETS, load_splitted_counter_fact
-from src.experiments.infrastructure.base_config import InputParams, MetadataParams
-from src.experiments.runners.full_pipeline import FullPipelineConfig, FullPipelineParam
+from src.data_ingestion.datasets.download_dataset import DatasetName, load_splitted_counter_fact
+from src.experiments.infrastructure.base_runner import InputParams, MetadataParams
+from src.experiments.runners.full_pipeline import FullPipelineParams, FullPipelineRunner
 
 HEATMAP_SIZE = 5
 BASELINES_DIR = Path(__file__).parent / "baselines"
@@ -63,9 +63,9 @@ CREATE_RUN_ID_PATH = "src.experiments.infrastructure.base_config.create_run_id"
 
 def get_test_full_pipeline_config(
     code_version_name: str, model_arch: MODEL_ARCH, model_size: str, with_plotting: bool
-) -> FullPipelineConfig:
-    return FullPipelineConfig(
-        variant_params=FullPipelineParam(
+) -> FullPipelineRunner:
+    return FullPipelineRunner(
+        variant_params=FullPipelineParams(
             model_arch=model_arch,
             model_size=TModelSize(model_size),
             knockout_map={
@@ -96,9 +96,9 @@ def get_test_full_pipeline_config(
         ),
         # prompt_filteration=AllPromptFilteration(DATASETS.COUNTER_FACT),
         input_params=InputParams(
-            dataset_name=DATASETS.COUNTER_FACT,
+            dataset_name=DatasetName.counter_fact,
             filteration=ModelCorrectPromptFilteration(
-                dataset_name=DATASETS.COUNTER_FACT,
+                dataset_name=DatasetName.counter_fact,
                 model_arch=model_arch,
                 model_size=TModelSize(model_size),
                 correctness=Correctness.correct,
@@ -159,7 +159,7 @@ def clean_and_generate_base_test_data(test_base_path: Path):
     }
 
     # save dataset to disk
-    DatasetDict(dataset).save_to_disk(test_paths.dataset_dir(DATASETS.COUNTER_FACT) / "splitted")
+    DatasetDict(dataset).save_to_disk(test_paths.dataset_dir(DatasetName.counter_fact) / "splitted")
 
 
 def run_test_experiment(test_base_path: Path, normalizing_outputs: bool, with_plotting: bool):

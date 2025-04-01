@@ -23,14 +23,14 @@ from src.analysis.experiment_results.plot_plan import (
 from src.app.components.data_requirements import RequirementExecution, RequirementsDisplay
 from src.app.texts import FINAL_PLOTS_TEXTS
 from src.core.names import (
-    EXPERIMENT_NAMES,
     ExperimentHyperParams,
+    ExperimentName,
     FinalPlotsPlanOrientation,
     PlotPlanCols,
     PlotPlanOptionCols,
 )
 from src.core.types import TPlotID
-from src.data_ingestion.data_defs import DataReqs, PlotPlans, ResultBank
+from src.data_ingestion.data_defs.data_defs import DataReqs, PlotPlans, ResultBank
 from src.utils.streamlit.components.aagrid import SelectionMode
 from src.utils.streamlit.helpers.component import StreamlitComponent
 from src.utils.streamlit.helpers.session_keys import SessionKey
@@ -141,7 +141,7 @@ class PlotPlanDetails(StreamlitComponent[None]):
 
         configuration_data: List[SummaryRow] = []
         for orientation in str_enum_values(FinalPlotsPlanOrientation):
-            if orientation == FinalPlotsPlanOrientation.lines and plan.experiment_name != EXPERIMENT_NAMES.INFO_FLOW:
+            if orientation == FinalPlotsPlanOrientation.lines and plan.experiment_name != ExperimentName.info_flow:
                 continue
             param = plan._get_param_type(orientation)
             if param:
@@ -187,7 +187,7 @@ class PlotPlanDetails(StreamlitComponent[None]):
                                 max(len(summary[FinalPlotsPlanOrientation.lines]), 1)
                             ),
                         }
-                        if plan.experiment_name == EXPERIMENT_NAMES.INFO_FLOW
+                        if plan.experiment_name == ExperimentName.info_flow
                         else {}
                     ),
                 },
@@ -225,7 +225,7 @@ class PlotPlanEditor(StreamlitComponent[Optional[PlotPlan]]):
         self,
         param_type: FinalPlotsPlanOrientation,
         existing_plan: Optional[PlotPlan],
-        experiment_name: EXPERIMENT_NAMES,
+        experiment_name: ExperimentName,
         param_value: Optional[ExperimentHyperParams],
     ) -> Tuple[List[Any], bool]:
         """Display a multi-select for parameter options."""
@@ -318,10 +318,10 @@ class PlotPlanEditor(StreamlitComponent[Optional[PlotPlan]]):
             with col2:
                 experiment_input = st.selectbox(
                     "Experiment",
-                    options=[exp.name for exp in EXPERIMENT_NAMES],
+                    options=[exp.name for exp in ExperimentName],
                     index=0
                     if self.is_new
-                    else list(EXPERIMENT_NAMES).index(existing_plan.experiment_name)
+                    else list(ExperimentName).index(existing_plan.experiment_name)
                     if existing_plan
                     else 0,
                     help="Experiment type for the plot",
@@ -341,7 +341,7 @@ class PlotPlanEditor(StreamlitComponent[Optional[PlotPlan]]):
             hyperparams = [hp.name for hp in ExperimentHyperParams]
 
             # Get experiment-specific parameters
-            experiment_name = EXPERIMENT_NAMES[experiment_input]
+            experiment_name = ExperimentName[experiment_input]
             relevant_params = get_experiment_orientations(experiment_name)
 
             # Parameter selection
@@ -390,7 +390,7 @@ class PlotPlanEditor(StreamlitComponent[Optional[PlotPlan]]):
                     param_value = None if grids_input == "None" else ExperimentHyperParams[grids_input]
                     param_values["grids"] = param_value
 
-                elif param_type == FinalPlotsPlanOrientation.lines and experiment_name == EXPERIMENT_NAMES.INFO_FLOW:
+                elif param_type == FinalPlotsPlanOrientation.lines and experiment_name == ExperimentName.info_flow:
                     lines_input = st.selectbox(
                         "Lines",
                         options=["None"] + hyperparams,
@@ -443,7 +443,7 @@ class PlotPlanEditor(StreamlitComponent[Optional[PlotPlan]]):
 
                 st.markdown(f"**Total plots:** {total_plots}")
                 st.markdown(f"**Grid structure:** {rows_count} rows × {cols_count} columns × {grids_count} grids")
-                if experiment_name == EXPERIMENT_NAMES.INFO_FLOW:
+                if experiment_name == ExperimentName.info_flow:
                     st.markdown(f"**Lines per plot:** {lines_count}")
 
         if submit_button:
@@ -454,7 +454,7 @@ class PlotPlanEditor(StreamlitComponent[Optional[PlotPlan]]):
 
             # Convert inputs to appropriate types
             plot_type = PlotType[plot_type_input]
-            experiment_name = EXPERIMENT_NAMES[experiment_input]
+            experiment_name = ExperimentName[experiment_input]
 
             # Create the plot plan
             plot_plan = PlotPlan(
@@ -468,7 +468,7 @@ class PlotPlanEditor(StreamlitComponent[Optional[PlotPlan]]):
                 rows=param_values.get("rows"),
                 cols=param_values.get("cols"),
                 grids=param_values.get("grids"),
-                lines=param_values.get("lines") if experiment_name == EXPERIMENT_NAMES.INFO_FLOW else None,
+                lines=param_values.get("lines") if experiment_name == ExperimentName.info_flow else None,
             )
 
             # Set options for each parameter

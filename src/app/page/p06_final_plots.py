@@ -24,7 +24,7 @@ from src.app.components.plot_plans import (
 from src.app.data_store import load_results_bank
 from src.app.texts import FINAL_PLOTS_TEXTS
 from src.core.types import TPlotID
-from src.data_ingestion.data_defs import PlotPlans
+from src.data_ingestion.data_defs.data_defs import PlotPlans
 from src.utils.streamlit.helpers.component import StreamlitComponent, StreamlitPage
 from src.utils.streamlit.helpers.session_keys import SessionKeyDescriptor, SessionKeysBase
 

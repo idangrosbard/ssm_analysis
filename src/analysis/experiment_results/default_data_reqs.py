@@ -15,7 +15,7 @@ from src.core.types import (
     TCodeVersionName,
     TWindowSize,
 )
-from src.data_ingestion.data_defs import DataReqiermentCollection
+from src.data_ingestion.data_defs.data_defs import DataReqiermentCollection
 from src.experiments.runners.heatmap import HeatmapParams
 from src.experiments.runners.info_flow import InfoFlowParams
 

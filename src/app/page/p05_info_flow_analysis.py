@@ -19,14 +19,14 @@ from src.app.components.result_bank import SelectionMode, ShowResultsBank
 from src.app.data_store import load_prompts, load_results_bank
 from src.app.texts import INFO_FLOW_ANALYSIS_TEXTS
 from src.core.consts import GRAPHS_ORDER
-from src.core.names import COLS, InfoFlowCols, ResultBankParamNames
+from src.core.names import COLS, InfoFlowMetricName, ResultBankParamNames
 from src.core.types import (
     MODEL_SIZE_CAT,
     TInfoFlowWindowValue,
     TLayerIndex,
     TPromptOriginalIndex,
 )
-from src.data_ingestion.data_defs import InfoFlowResults, Prompts
+from src.data_ingestion.data_defs.data_defs import InfoFlowResults, Prompts
 from src.utils.streamlit.helpers.component import StreamlitPage
 from src.utils.types_utils import (
     get_list_indexes_of_set_values,
@@ -39,9 +39,9 @@ def select_indexes_from_window_values(
 ) -> TInfoFlowWindowValue:
     indexes = get_list_indexes_of_set_values(window_values[COLS.ORIGINAL_IDX], set(prompt_ids))
     return {
-        InfoFlowCols.hit: select_indexes_from_list(window_values[InfoFlowCols.hit], indexes),
-        InfoFlowCols.true_probs: select_indexes_from_list(window_values[InfoFlowCols.true_probs], indexes),
-        InfoFlowCols.diffs: select_indexes_from_list(window_values[InfoFlowCols.diffs], indexes),
+        InfoFlowMetricName.hit: select_indexes_from_list(window_values[InfoFlowMetricName.hit], indexes),
+        InfoFlowMetricName.true_probs: select_indexes_from_list(window_values[InfoFlowMetricName.true_probs], indexes),
+        InfoFlowMetricName.diffs: select_indexes_from_list(window_values[InfoFlowMetricName.diffs], indexes),
         COLS.ORIGINAL_IDX: prompt_ids,
     }
 

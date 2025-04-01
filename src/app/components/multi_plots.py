@@ -8,7 +8,7 @@ from src.app.app_consts import GLOBAL_APP_CONSTS, AppSessionKeys
 from src.app.components.inputs import choose_heatmap_parms
 from src.core.consts import GRAPHS_ORDER
 from src.core.types import MODEL_SIZE_CAT, TPromptOriginalIndex
-from src.experiments.infrastructure.base_config import InputParams, MetadataParams
+from src.experiments.infrastructure.base_runner import InputParams, MetadataParams
 from src.experiments.runners.heatmap import HeatmapParams, HeatmapRunner
 from src.utils.streamlit.components.extended_streamlit_pydantic import pydantic_input
 from src.utils.streamlit.helpers.component import StreamlitComponent

@@ -1,69 +1,72 @@
 from enum import StrEnum
-from typing import Literal, cast
+from typing import Literal, Sequence, Union, cast
 
-from src.utils.types_utils import class_values, literal_guard
-
-
-class DATASETS(StrEnum):
-    COUNTER_FACT = "counter_fact"
+from src.utils.types_utils import literal_guard, str_enum_values
 
 
-class BASE_CONFIG_HP_COLS(StrEnum):
-    experiment_name = "experiment_name"
-    model_arch = "model_arch"
-    model_size = "model_size"
-    code_version = "code_version"
+class ToClassifyNames(StrEnum):
     dataset_name = "dataset_name"
+    code_version = "code_version"
     prompt_filteration = "prompt_filteration"
 
 
-class WINDOW_SIZE_HP_COLS(StrEnum):
+class DatasetName(StrEnum):
+    counter_fact = "counter_fact"
+
+
+class RunnerParamName(StrEnum):
+    variant_params = "variant_params"
+    input_params = "input_params"
+    metadata_params = "metadata_params"
+
+
+class BaseVariantParamName(StrEnum):
+    experiment_name = "experiment_name"
+    model_arch = "model_arch"
+    model_size = "model_size"
+
+
+class WindowedVariantParam(StrEnum):
     window_size = "window_size"
 
 
-class INFO_FLOW_HP_COLS(StrEnum):
-    window_size = WINDOW_SIZE_HP_COLS.window_size
+class EvaluateVariantParam(StrEnum):
+    pass
+
+
+class InfoFlowVariantParam(StrEnum):
     source = "source"
     feature_category = "feature_category"
     target = "target"
 
 
-class HEATMAP_HP_COLS(StrEnum):
-    window_size = WINDOW_SIZE_HP_COLS.window_size
+class HeatmapVariantParam(StrEnum):
+    pass
 
 
-class EXPERIMENT_NAMES(StrEnum):
-    EVALUATE_MODEL = "evaluate_model"
-    INFO_FLOW = "info_flow"
-    HEATMAP = "heatmap"
-    FULL_PIPELINE = "full_pipeline"
+VARIANT_PARAM_NAME = Union[
+    BaseVariantParamName, WindowedVariantParam, EvaluateVariantParam, InfoFlowVariantParam, HeatmapVariantParam
+]
+
+
+class ExperimentName(StrEnum):
+    evaluate_model = "evaluate_model"
+    info_flow = "info_flow"
+    heatmap = "heatmap"
+    full_pipeline = "full_pipeline"
 
     @staticmethod
-    def get_hp_cols(col: "EXPERIMENT_NAMES") -> list[str]:
-        base_cols = list(BASE_CONFIG_HP_COLS)
-        match col:
-            case EXPERIMENT_NAMES.INFO_FLOW:
-                return base_cols + class_values(INFO_FLOW_HP_COLS)
-            case EXPERIMENT_NAMES.HEATMAP:
-                return base_cols + class_values(HEATMAP_HP_COLS)
-            case EXPERIMENT_NAMES.EVALUATE_MODEL:
-                return cast(list[str], base_cols)
+    def get_variant_cols(experiment_name: "ExperimentName") -> Sequence[VARIANT_PARAM_NAME]:
+        base_cols: list[VARIANT_PARAM_NAME] = str_enum_values(BaseVariantParamName)
+        match experiment_name:
+            case ExperimentName.info_flow:
+                return base_cols + str_enum_values(WindowedVariantParam) + str_enum_values(InfoFlowVariantParam)
+            case ExperimentName.heatmap:
+                return base_cols + str_enum_values(WindowedVariantParam) + str_enum_values(HeatmapVariantParam)
+            case ExperimentName.evaluate_model:
+                return base_cols + str_enum_values(EvaluateVariantParam)
             case _:
-                raise ValueError(f"Experiment name {col} is not implemented")
-
-    @classmethod
-    def get_experiment_name_by_str(cls, name: str) -> "EXPERIMENT_NAMES":
-        match name:
-            case "evaluate":
-                return cls.EVALUATE_MODEL
-            case "info_flow":
-                return cls.INFO_FLOW
-            case "heatmap":
-                return cls.HEATMAP
-            case "full_pipeline":
-                return cls.FULL_PIPELINE
-            case _:
-                raise ValueError(f"Experiment name {name} is not implemented")
+                raise ValueError(f"Experiment name {experiment_name} is not implemented")
 
 
 class COLS:
@@ -102,26 +105,21 @@ class COLS:
         DIFFS = "diffs"
 
 
-class InfoFlowCols:
+class InfoFlowMetricName:
     hit: Literal["hit"] = literal_guard(COLS.INFO_FLOW.HIT, "hit")
     diffs: Literal["diffs"] = literal_guard(COLS.INFO_FLOW.DIFFS, "diffs")
     true_probs: Literal["true_probs"] = literal_guard(COLS.INFO_FLOW.TRUE_PROBS, "true_probs")
 
 
 class DataReqCols(StrEnum):
-    experiment_name = BASE_CONFIG_HP_COLS.experiment_name
-    model_arch = BASE_CONFIG_HP_COLS.model_arch
-    model_size = BASE_CONFIG_HP_COLS.model_size
+    experiment_name = BaseVariantParamName.experiment_name
+    model_arch = BaseVariantParamName.model_arch
+    model_size = BaseVariantParamName.model_size
     # prompt_filteration = BASE_CONFIG_HP_COLS.prompt_filteration
-    window_size = WINDOW_SIZE_HP_COLS.window_size
-    source = INFO_FLOW_HP_COLS.source
-    feature_category = INFO_FLOW_HP_COLS.feature_category
-    target = INFO_FLOW_HP_COLS.target
-
-    @classmethod
-    def get_cols_by_experiment_name(cls, experiment_name: EXPERIMENT_NAMES) -> list[str]:
-        this_cols = set(class_values(cls))
-        return [col for col in experiment_name.get_hp_cols(experiment_name) if col in this_cols]
+    window_size = WindowedVariantParam.window_size
+    source = InfoFlowVariantParam.source
+    feature_category = InfoFlowVariantParam.feature_category
+    target = InfoFlowVariantParam.target
 
 
 class ResultBankParamNames(StrEnum):
@@ -132,7 +130,7 @@ class ResultBankParamNames(StrEnum):
     source = DataReqCols.source
     feature_category = DataReqCols.feature_category
     target = DataReqCols.target
-    code_version = BASE_CONFIG_HP_COLS.code_version
+    code_version = ToClassifyNames.code_version
     path = "path"
 
 

@@ -26,7 +26,7 @@ from src.app.texts import FINAL_PLOTS_TEXTS
 from src.core.consts import MODEL_SIZES_PER_ARCH_TO_MODEL_ID, TOKEN_TYPE_COLORS, TOKEN_TYPE_LINE_STYLES
 from src.core.names import SummarizedDataFulfilledReqsCols
 from src.core.types import MODEL_ARCH_AND_SIZE, TInfoFlowOutput, TPromptData
-from src.data_ingestion.data_defs import DataReqs, FulfilledReqs, PlotPlans, ResultBank
+from src.data_ingestion.data_defs.data_defs import DataReqs, FulfilledReqs, PlotPlans, ResultBank
 from src.data_ingestion.helpers.logits_utils import decode_tokens, get_prompt_row_index
 from src.experiments.infrastructure.setup_models import get_tokenizer
 from src.experiments.runners.heatmap import HeatmapRunner

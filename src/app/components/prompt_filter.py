@@ -17,7 +17,7 @@ from src.app.data_store import get_merged_evaluations
 from src.app.texts import HEATMAP_TEXTS
 from src.core.names import COLS, HeatmapCols
 from src.core.types import TPromptOriginalIndex
-from src.data_ingestion.data_defs import ModelCombinationsPrompts
+from src.data_ingestion.data_defs.data_defs import ModelCombinationsPrompts
 from src.data_ingestion.helpers.dataframe import (
     index_to_row_position,
     validate_one_selected_row_dataframe,

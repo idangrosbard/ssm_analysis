@@ -5,17 +5,17 @@ from typing import cast
 import pandas as pd
 
 from src.analysis.prompt_filterations import AllPromptFilteration
-from src.core.names import COLS, DATASETS, EXPERIMENT_NAMES, DataReqCols
+from src.core.names import COLS, DataReqCols, DatasetName, ExperimentName
 from src.core.types import MODEL_ARCH_AND_SIZE, TCodeVersionName
-from src.data_ingestion.data_defs import ResultBank
-from src.experiments.infrastructure.base_config import (
+from src.data_ingestion.data_defs.data_defs import ResultBank
+from src.experiments.infrastructure.base_runner import (
     BasePromptFilteration,
     BaseRunner,
     BaseVariantParams,
     InputParams,
     MetadataParams,
 )
-from src.experiments.runners.evaluate_model import EvaluateModelConfig, EvaluateModelParams
+from src.experiments.runners.evaluate_model import EvaluateModelParams, EvaluateModelRunner
 from src.experiments.runners.heatmap import HeatmapParams, HeatmapRunner
 from src.experiments.runners.info_flow import InfoFlowParams, InfoFlowRunner
 
@@ -24,13 +24,13 @@ def get_model_evaluations(
     code_version: TCodeVersionName, model_arch_and_sizes: list[MODEL_ARCH_AND_SIZE]
 ) -> dict[MODEL_ARCH_AND_SIZE, pd.DataFrame]:
     return {
-        model_arch_and_size: EvaluateModelConfig(
+        model_arch_and_size: EvaluateModelRunner(
             variant_params=EvaluateModelParams(
                 model_arch=model_arch_and_size[0],
                 model_size=model_arch_and_size[1],
             ),
             input_params=InputParams(
-                filteration=AllPromptFilteration(dataset_name=DATASETS.COUNTER_FACT),
+                filteration=AllPromptFilteration(dataset_name=DatasetName.counter_fact),
             ),
             metadata_params=MetadataParams(
                 code_version=code_version,
@@ -43,13 +43,13 @@ def get_model_evaluations(
 
 
 def init_variant_params_from_values(dict_values: dict) -> BaseVariantParams:
-    experiment_name = cast(EXPERIMENT_NAMES, dict_values.pop(DataReqCols.experiment_name))
+    experiment_name = cast(ExperimentName, dict_values.pop(DataReqCols.experiment_name))
     match experiment_name:
-        case EXPERIMENT_NAMES.EVALUATE_MODEL:
+        case ExperimentName.evaluate_model:
             return EvaluateModelParams(**dict_values)
-        case EXPERIMENT_NAMES.INFO_FLOW:
+        case ExperimentName.info_flow:
             return InfoFlowParams(**dict_values)
-        case EXPERIMENT_NAMES.HEATMAP:
+        case ExperimentName.heatmap:
             return HeatmapParams(**dict_values)
         case _:
             raise ValueError(f"Unsupported experiment name: {experiment_name}")
@@ -62,7 +62,7 @@ def init_runner_from_params(
 ) -> BaseRunner:
     match variant_params:
         case EvaluateModelParams():
-            return EvaluateModelConfig(
+            return EvaluateModelRunner(
                 variant_params=variant_params,
                 input_params=input_params,
                 metadata_params=metadata_params,
@@ -110,6 +110,6 @@ def serialize_result_bank(result_bank: ResultBank) -> str:
     def sort_key(item):
         assert len(item) == 3
         item = item[0]
-        return tuple([item[col] for col in DataReqCols.get_cols_by_experiment_name(item[DataReqCols.experiment_name])])
+        return tuple([item[col] for col in ExperimentName.get_variant_cols(item[DataReqCols.experiment_name])])
 
     return json.dumps(sorted(rec_serialize_dependencies([item for item in result_bank]), key=sort_key), indent=4)

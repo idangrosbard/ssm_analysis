@@ -11,7 +11,7 @@ from src.core.consts import (
     PathsConfig,
     RunnerPaths,
 )
-from src.core.names import BASE_CONFIG_HP_COLS, EXPERIMENT_NAMES, RunningHistoryCols
+from src.core.names import BaseVariantParamName, ExperimentName, RunningHistoryCols, ToClassifyNames
 from src.core.types import (
     MODEL_ARCH,
     MODEL_ARCH_AND_SIZE,
@@ -22,7 +22,7 @@ from src.core.types import (
     TPromptOriginalIndex,
     TTokenizer,
 )
-from src.data_ingestion.datasets.download_dataset import DATASETS
+from src.data_ingestion.datasets.download_dataset import DatasetName
 from src.experiments.infrastructure.model_interface import ModelInterface, get_model_interface
 from src.experiments.infrastructure.setup_models import get_tokenizer
 from src.utils.infra.experiment_helper import create_run_id
@@ -80,7 +80,7 @@ class BasePromptFilteration(ABC):
 class BaseVariantParams(BaseParams, ABC):
     model_arch: MODEL_ARCH
     model_size: TModelSize
-    experiment_name: EXPERIMENT_NAMES = field(init=False)
+    experiment_name: ExperimentName = field(init=False)
 
     @property
     def model_arch_and_size(self) -> MODEL_ARCH_AND_SIZE:
@@ -101,7 +101,7 @@ class BaseVariantParams(BaseParams, ABC):
 @dataclass(frozen=True)
 class InputParams(BaseParams):
     filteration: BasePromptFilteration
-    dataset_name: DATASETS = DATASETS.COUNTER_FACT
+    dataset_name: DatasetName = DatasetName.counter_fact
 
 
 @dataclass(frozen=True)
@@ -128,7 +128,7 @@ class BaseRunner(BaseParams, ABC, Generic[_TVariantParams]):
     metadata_params: MetadataParams
 
     @property
-    def experiment_name(self) -> EXPERIMENT_NAMES:
+    def experiment_name(self) -> ExperimentName:
         return self.variant_params.experiment_name
 
     @staticmethod
@@ -179,20 +179,20 @@ class BaseRunner(BaseParams, ABC, Generic[_TVariantParams]):
         class CombineParams:
             @classmethod
             def __getattr__(cls, item: str) -> Any:
-                if item in str_enum_values(BASE_CONFIG_HP_COLS):
-                    item = cast(BASE_CONFIG_HP_COLS, item)
+                if item == ToClassifyNames.prompt_filteration:
+                    return self.input_params.filteration
+                elif item == ToClassifyNames.dataset_name:
+                    return self.input_params.dataset_name
+                elif item == ToClassifyNames.code_version:
+                    return self.metadata_params.code_version
+                if item in str_enum_values(BaseVariantParamName):
+                    item = cast(BaseVariantParamName, item)
                     match item:
-                        case BASE_CONFIG_HP_COLS.experiment_name:
+                        case BaseVariantParamName.experiment_name:
                             return self.experiment_name
-                        case BASE_CONFIG_HP_COLS.code_version:
-                            return self.metadata_params.code_version
-                        case BASE_CONFIG_HP_COLS.dataset_name:
-                            return self.input_params.dataset_name
-                        case BASE_CONFIG_HP_COLS.prompt_filteration:
-                            return self.input_params.filteration
-                        case BASE_CONFIG_HP_COLS.model_arch:
+                        case BaseVariantParamName.model_arch:
                             return self.variant_params.model_arch
-                        case BASE_CONFIG_HP_COLS.model_size:
+                        case BaseVariantParamName.model_size:
                             return self.variant_params.model_size
                         case _:
                             assert_never(item)

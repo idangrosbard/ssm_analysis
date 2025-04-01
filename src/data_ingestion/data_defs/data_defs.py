@@ -11,7 +11,7 @@ import pandas as pd
 from src.analysis.prompt_filterations import SelectivePromptFilteration, UnionPromptFilteration
 from src.core.consts import PATHS
 from src.core.names import (
-    EXPERIMENT_NAMES,
+    ExperimentName,
     HeatmapCols,
     ModelCombinationCols,
     ResultBankParamNames,
@@ -19,7 +19,7 @@ from src.core.names import (
 )
 from src.core.types import MODEL_ARCH_AND_SIZE, TPlotID, TPromptOriginalIndex, TTokenizer
 from src.data_ingestion.helpers.logits_utils import Prompt
-from src.experiments.infrastructure.base_config import (
+from src.experiments.infrastructure.base_runner import (
     BasePromptFilteration,
     BaseRunner,
     BaseVariantParams,
@@ -252,7 +252,7 @@ class ResultBank(IterableDataObject[T_RUNNER_TYPE]):
         return self.__class__(select_indexes_from_list(self._items, experiment_results_df[ResultBank.KEY].tolist()))
 
     def to_info_flow_results(self) -> "InfoFlowResults":
-        results = [result for result in self if result.variant_params.experiment_name == EXPERIMENT_NAMES.INFO_FLOW]
+        results = [result for result in self if result.variant_params.experiment_name == ExperimentName.info_flow]
         return InfoFlowResults(cast(list[InfoFlowRunner], results))
 
     def is_empty(self) -> bool:

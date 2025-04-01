@@ -23,7 +23,7 @@ import torch
 from tqdm import tqdm
 
 from src.analysis.plots.heatmaps import simple_diff_fixed
-from src.core.names import EXPERIMENT_NAMES
+from src.core.names import ExperimentName
 from src.core.types import (
     FeatureCategory,
     IHeatmap,
@@ -32,12 +32,12 @@ from src.core.types import (
     TWindowSize,
 )
 from src.data_ingestion.helpers.logits_utils import Prompt, decode_tokens, get_prompt_row_index
-from src.experiments.infrastructure.base_config import (
+from src.experiments.infrastructure.base_runner import (
     BASE_OUTPUT_KEYS,
     BaseRunner,
     BaseVariantParams,
 )
-from src.experiments.runners.evaluate_model import EvaluateModelConfig, EvaluateModelParams
+from src.experiments.runners.evaluate_model import EvaluateModelParams, EvaluateModelRunner
 
 
 class HEATMAP_PLOT_FUNCS(StrEnum):
@@ -51,12 +51,12 @@ plot_suffix_to_function: dict[HEATMAP_PLOT_FUNCS, Callable] = {
 
 @dataclass(frozen=True)
 class HeatmapParams(BaseVariantParams):
-    experiment_name: EXPERIMENT_NAMES = field(init=False, default=EXPERIMENT_NAMES.HEATMAP)
+    experiment_name: ExperimentName = field(init=False, default=ExperimentName.heatmap)
     window_size: TWindowSize
 
 
 class HeatmapDependencies(TypedDict):
-    evaluate_model: EvaluateModelConfig
+    evaluate_model: EvaluateModelRunner
 
 
 @dataclass
@@ -137,7 +137,7 @@ class HeatmapRunner(BaseRunner[HeatmapParams]):
 
     def get_runner_dependencies(self) -> HeatmapDependencies:  # type: ignore
         return HeatmapDependencies(
-            evaluate_model=EvaluateModelConfig.init_from_runner(
+            evaluate_model=EvaluateModelRunner.init_from_runner(
                 self,
                 variant_params=EvaluateModelParams(
                     model_arch=self.variant_params.model_arch,

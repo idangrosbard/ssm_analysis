@@ -19,14 +19,9 @@ import matplotlib.pyplot as plt
 
 from src.analysis.plots.info_flow_confidence import create_confidence_plot
 from src.core.consts import TOKEN_TYPE_COLORS, TOKEN_TYPE_LINE_STYLES
-from src.core.names import EXPERIMENT_NAMES, INFO_FLOW_HP_COLS
+from src.core.names import ExperimentName, InfoFlowVariantParam
 from src.core.types import FeatureCategory, TokenType, TWindowSize
-from src.experiments.infrastructure.base_config import (
-    BasePromptFilteration,
-    BaseRunner,
-    BaseVariantParams,
-    InputParams,
-)
+from src.experiments.infrastructure.base_runner import BasePromptFilteration, BaseRunner, BaseVariantParams, InputParams
 from src.experiments.runners.heatmap import HEATMAP_PLOT_FUNCS, HeatmapParams, HeatmapRunner
 from src.experiments.runners.info_flow import InfoFlowParams, InfoFlowRunner
 from src.utils.types_utils import first_dict_value
@@ -38,8 +33,8 @@ class FullPipelineDependencies(TypedDict):
 
 
 @dataclass(frozen=True)
-class FullPipelineParam(BaseVariantParams):
-    experiment_name: EXPERIMENT_NAMES = field(init=False, default=EXPERIMENT_NAMES.FULL_PIPELINE)
+class FullPipelineParams(BaseVariantParams):
+    experiment_name: ExperimentName = field(init=False, default=ExperimentName.full_pipeline)
     knockout_map: dict[TokenType, list[tuple[TokenType, FeatureCategory]]]
     info_flow_window_size: TWindowSize
 
@@ -52,14 +47,14 @@ class FullPipelineParam(BaseVariantParams):
 
 
 @dataclass(frozen=True)
-class FullPipelineConfig(BaseRunner):
+class FullPipelineRunner(BaseRunner):
     """Configuration for the full experiment pipeline."""
 
-    variant_params: FullPipelineParam
+    variant_params: FullPipelineParams
 
     @staticmethod
     def _get_variant_params():
-        return FullPipelineParam
+        return FullPipelineParams
 
     @classmethod
     def get_variant_output_keys(cls):
@@ -69,7 +64,7 @@ class FullPipelineConfig(BaseRunner):
         info_flow_config = first_dict_value(self.get_runner_dependencies()["info_flow"][target_token])
         path = info_flow_config.variation_paths.plots_path
         print(1, path)
-        while not path.name.startswith(INFO_FLOW_HP_COLS.target):
+        while not path.name.startswith(InfoFlowVariantParam.target):
             path = path.parent
         print(2, path)
         path = path.parent / info_flow_config.variation_paths.plots_path.name / f"target={target_token}{plot_name}.png"
@@ -121,7 +116,7 @@ class FullPipelineConfig(BaseRunner):
         return not self.variant_params.with_plotting
 
 
-def main_local(args: FullPipelineConfig):
+def main_local(args: FullPipelineRunner):
     """Run the full pipeline of experiments."""
     print("Starting Full Pipeline Experiment")
     print(

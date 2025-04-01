@@ -7,13 +7,18 @@ from src.analysis.prompt_filterations import AnyExistingCompletePromptFilteratio
 from src.core.consts import (
     PATHS,
 )
-from src.core.names import BASE_CONFIG_HP_COLS, EXPERIMENT_NAMES, WINDOW_SIZE_HP_COLS, ResultBankParamNames
+from src.core.names import (
+    ExperimentName,
+    ResultBankParamNames,
+    ToClassifyNames,
+    WindowedVariantParam,
+)
 from src.core.types import (
     TCodeVersionName,
 )
-from src.data_ingestion.data_defs import ResultBank
-from src.experiments.infrastructure.base_config import BaseRunner, BaseVariantParams, InputParams, MetadataParams
-from src.experiments.runners.evaluate_model import EvaluateModelConfig, EvaluateModelParams
+from src.data_ingestion.data_defs.data_defs import ResultBank
+from src.experiments.infrastructure.base_runner import BaseRunner, BaseVariantParams, InputParams, MetadataParams
+from src.experiments.runners.evaluate_model import EvaluateModelParams, EvaluateModelRunner
 from src.experiments.runners.heatmap import HeatmapParams, HeatmapRunner
 from src.experiments.runners.info_flow import InfoFlowParams, InfoFlowRunner
 from src.utils.infra.output_path import OutputPath
@@ -46,7 +51,7 @@ class ValueResolver(ABC, Generic[_Runner]):
         pass
 
     @classmethod
-    def get_experiment_name(cls) -> EXPERIMENT_NAMES:
+    def get_experiment_name(cls) -> ExperimentName:
         return cls.get_experiment_runner_cls()._get_variant_params().experiment_name
 
     @classmethod
@@ -67,7 +72,7 @@ class ValueResolver(ABC, Generic[_Runner]):
     ) -> Optional[_Runner]:
         values.pop("_", None)
         code_version = TCodeVersionName(values.pop(ResultBankParamNames.code_version))
-        values.pop(BASE_CONFIG_HP_COLS.dataset_name)
+        values.pop(ToClassifyNames.dataset_name)
         values = cls.process_values(values)
         input_params = InputParams(filteration=AnyExistingCompletePromptFilteration())
         metadata_params = MetadataParams(
@@ -89,14 +94,14 @@ class ValueResolver(ABC, Generic[_Runner]):
 class EvaluateModelValuesResolver(ValueResolver):
     @classmethod
     def get_experiment_runner_cls(cls) -> Type[BaseRunner]:
-        return EvaluateModelConfig
+        return EvaluateModelRunner
 
     @classmethod
     def get_experiment_variant_params_cls(cls) -> Type[BaseVariantParams]:
         return EvaluateModelParams
 
     @classmethod
-    def is_valid_record(cls, runner: EvaluateModelConfig) -> bool:
+    def is_valid_record(cls, runner: EvaluateModelRunner) -> bool:
         return runner.output_result_path.exists()
 
 
@@ -107,7 +112,7 @@ class HeatmapValuesResolver(ValueResolver):
 
     @classmethod
     def process_values(cls, values: dict[str, Any]) -> dict[str, Any]:
-        values[WINDOW_SIZE_HP_COLS.window_size] = int(values[WINDOW_SIZE_HP_COLS.window_size])
+        values[WindowedVariantParam.window_size] = int(values[WindowedVariantParam.window_size])
         return values
 
     @classmethod
@@ -130,7 +135,7 @@ class InfoFlowValuesResolver(ValueResolver):
 
     @classmethod
     def process_values(cls, values: dict[str, Any]) -> dict[str, Any]:
-        values[WINDOW_SIZE_HP_COLS.window_size] = int(values[WINDOW_SIZE_HP_COLS.window_size])
+        values[WindowedVariantParam.window_size] = int(values[WindowedVariantParam.window_size])
         return values
 
     @classmethod

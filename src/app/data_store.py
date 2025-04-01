@@ -15,13 +15,13 @@ from src.app.app_consts import (
     GLOBAL_APP_CONSTS,
 )
 from src.core.consts import GRAPHS_ORDER
-from src.core.names import COLS, DATASETS
+from src.core.names import COLS, DatasetName
 from src.core.types import (
     MODEL_ARCH_AND_SIZE,
     TCodeVersionName,
     TPromptOriginalIndex,
 )
-from src.data_ingestion.data_defs import (
+from src.data_ingestion.data_defs.data_defs import (
     DataReqs,
     ModelCombinationsPrompts,
     PromptNew,
@@ -82,7 +82,7 @@ def get_tokenizerults_bank() -> ResultBank:
 @CacheWithDependencies()
 def load_prompts(
     model_arch_and_size: MODEL_ARCH_AND_SIZE = first_dict_key(GRAPHS_ORDER),
-    dataset: DATASETS = DATASETS.COUNTER_FACT,
+    dataset: DatasetName = DatasetName.counter_fact,
 ) -> Prompts:
     # TODO: support all type of tokenizers
     df = get_row_data(dataset)

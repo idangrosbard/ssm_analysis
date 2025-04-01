@@ -9,12 +9,11 @@ from src.app.texts import (
     INFO_FLOW_ANALYSIS_TEXTS,
     RESULTS_BANK_TEXTS,
 )
-from src.core.consts import GRAPHS_ORDER, model_and_size_to_slurm_gpu_type
-from src.core.names import COLS, DataReqCols, SummarizedDataFulfilledReqsCols
+from src.core.consts import ALL_VARIANT_PARAMETERS, GRAPHS_ORDER, model_and_size_to_slurm_gpu_type
+from src.core.names import COLS, SummarizedDataFulfilledReqsCols
 from src.core.types import MODEL_ARCH_AND_SIZE, TCodeVersionName, TWindowSize
 from src.utils.infra.slurm import SLURM_GPU_TYPE
 from src.utils.streamlit.helpers.session_keys import SessionKeyDescriptor, SessionKeysBase
-from src.utils.types_utils import str_enum_values
 
 # region Global App constants
 
@@ -69,7 +68,7 @@ AppSessionKeys = _AppSessionKeys()
 
 class DataReqConsts:
     # Data Requirements filter columns
-    DATA_REQS_FILTER_COLUMNS = [SummarizedDataFulfilledReqsCols.AvailableOptions, *str_enum_values(DataReqCols)]
+    DATA_REQS_FILTER_COLUMNS = [SummarizedDataFulfilledReqsCols.AvailableOptions, *ALL_VARIANT_PARAMETERS]
 
 
 # endregion

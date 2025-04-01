@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 from functools import lru_cache
 
-from src.core.names import COLS, DATASETS
+from src.core.names import COLS, DatasetName
 from src.core.types import (
     ALL_SPLITS_LITERAL,
     MODEL_ARCH,
@@ -13,13 +13,13 @@ from src.core.types import (
     TSplitChoise,
 )
 from src.data_ingestion.datasets.download_dataset import get_prompt_ids
-from src.experiments.infrastructure.base_config import BasePromptFilteration, InputParams, MetadataParams, TDependencies
-from src.experiments.runners.evaluate_model import EvaluateModelConfig, EvaluateModelParams
+from src.experiments.infrastructure.base_runner import BasePromptFilteration, InputParams, MetadataParams, TDependencies
+from src.experiments.runners.evaluate_model import EvaluateModelParams, EvaluateModelRunner
 
 
 @dataclass(frozen=True)
 class AllPromptFilteration(BasePromptFilteration):
-    dataset_name: DATASETS = DATASETS.COUNTER_FACT
+    dataset_name: DatasetName = DatasetName.counter_fact
     split: TSplitChoise = ALL_SPLITS_LITERAL
 
     @lru_cache(maxsize=1)
@@ -116,7 +116,7 @@ class Correctness(StrEnum):
 
 @dataclass(frozen=True)
 class ModelCorrectPromptFilteration(BasePromptFilteration):
-    dataset_name: DATASETS
+    dataset_name: DatasetName
     model_arch: MODEL_ARCH
     model_size: TModelSize
     correctness: Correctness
@@ -137,7 +137,7 @@ class ModelCorrectPromptFilteration(BasePromptFilteration):
 
     def get_dependencies(self):
         return {
-            "evaluate_model": EvaluateModelConfig(
+            "evaluate_model": EvaluateModelRunner(
                 variant_params=EvaluateModelParams(
                     model_arch=self.model_arch,
                     model_size=self.model_size,
@@ -158,7 +158,7 @@ class ModelCorrectPromptFilteration(BasePromptFilteration):
 def get_all_correct_prompt_filteration(
     model_arch_and_sizes: list[MODEL_ARCH_AND_SIZE],
     code_version: TCodeVersionName,
-    dataset_name: DATASETS = DATASETS.COUNTER_FACT,
+    dataset_name: DatasetName = DatasetName.counter_fact,
 ):
     return IntersectionPromptFilteration(
         tuple(

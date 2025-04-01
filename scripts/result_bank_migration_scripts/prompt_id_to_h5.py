@@ -7,11 +7,11 @@ import streamlit as st
 from tqdm import tqdm
 
 from src.core.consts import PATHS
-from src.core.names import EXPERIMENT_NAMES
+from src.core.names import ExperimentName
 from src.core.types import TCodeVersionName, TInfoFlowOutput, TLayerIndex, TPromptOriginalIndex
-from src.data_ingestion.data_defs import ResultBank
-from src.experiments.infrastructure.base_config import MetadataParams
-from src.experiments.runners.evaluate_model import EvaluateModelConfig
+from src.data_ingestion.data_defs.data_defs import ResultBank
+from src.experiments.infrastructure.base_runner import MetadataParams
+from src.experiments.runners.evaluate_model import EvaluateModelRunner
 from src.experiments.runners.heatmap import HeatmapRunner
 from src.experiments.runners.info_flow import (
     InfoFlowFileContent,
@@ -71,7 +71,7 @@ class MigrateResults(StreamlitComponent):
 
         run = st.button("Run")
         st.write(len(self.results_bank))
-        rows = [row for row in self.results_bank if row.experiment_name == EXPERIMENT_NAMES.INFO_FLOW]
+        rows = [row for row in self.results_bank if row.experiment_name == ExperimentName.info_flow]
 
         st.write(len(rows))
 
@@ -89,8 +89,8 @@ class MigrateResults(StreamlitComponent):
                     metadata_params=MetadataParams(code_version=TCodeVersionName("v2")),
                 )
                 source_path = result_record.path  # type: ignore
-                if isinstance(new_config, EvaluateModelConfig):
-                    assert isinstance(new_config, EvaluateModelConfig)
+                if isinstance(new_config, EvaluateModelRunner):
+                    assert isinstance(new_config, EvaluateModelRunner)
                     new_path = new_config.output_result_path
                 elif isinstance(new_config, InfoFlowRunner):
                     assert isinstance(new_config, InfoFlowRunner)

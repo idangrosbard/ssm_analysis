@@ -1,14 +1,14 @@
 from dataclasses import asdict
 
 from src.analysis.prompt_filterations import AllPromptFilteration
-from src.core.names import DATASETS
+from src.core.names import DatasetName
 from src.core.types import MODEL_ARCH, FeatureCategory, TCodeVersionName, TModelSize, TokenType, TWindowSize
-from src.experiments.infrastructure.base_config import (
+from src.experiments.infrastructure.base_runner import (
     BaseVariantParams,
     InputParams,
     MetadataParams,
 )
-from src.experiments.runners.evaluate_model import EvaluateModelConfig, EvaluateModelParams
+from src.experiments.runners.evaluate_model import EvaluateModelParams, EvaluateModelRunner
 from src.experiments.runners.heatmap import HeatmapParams, HeatmapRunner
 from src.experiments.runners.info_flow import InfoFlowParams, InfoFlowRunner
 
@@ -18,12 +18,12 @@ def test_experiments_configs():
         model_arch=MODEL_ARCH.MAMBA1,
         model_size=TModelSize("130M"),
     )
-    prompt_filteration = AllPromptFilteration(dataset_name=DATASETS.COUNTER_FACT)
+    prompt_filteration = AllPromptFilteration(dataset_name=DatasetName.counter_fact)
     window_size = TWindowSize(10)
     metadata_params = MetadataParams(
         code_version=TCodeVersionName("test"),
     )
-    evaluate_model_config = EvaluateModelConfig(
+    evaluate_model_config = EvaluateModelRunner(
         variant_params=EvaluateModelParams(
             **asdict(variant_params),
         ),

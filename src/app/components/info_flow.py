@@ -16,8 +16,8 @@ from src.core.consts import (
     TOKEN_TYPE_LINE_STYLES,
     format_params_for_title,
 )
-from src.core.names import COLS, InfoFlowCols
-from src.data_ingestion.data_defs import InfoFlowResults
+from src.core.names import COLS, InfoFlowMetricName
+from src.data_ingestion.data_defs.data_defs import InfoFlowResults
 from src.utils.streamlit.helpers.component import StreamlitComponent
 
 
@@ -120,7 +120,7 @@ class InfoFlowAnalysisComponent(StreamlitComponent):
             # Extract probability data
             true_probs = {}
             for window_idx, window_data in info_flow.items():
-                true_probs[window_idx] = window_data[InfoFlowCols.true_probs]
+                true_probs[window_idx] = window_data[InfoFlowMetricName.true_probs]
             true_probs_df = pd.DataFrame(true_probs)
             base_probs_df = pd.DataFrame(base_probs).reset_index(drop=True)
             prob_diffs = true_probs_df - base_probs_df
@@ -257,10 +257,10 @@ class InfoFlowAnalysisComponent(StreamlitComponent):
                     continue
 
                 window_data = info_flow[window_idx]
-                accuracy_by_window[window_idx] = np.mean(window_data[InfoFlowCols.hit])
-                hit_per_window[window_idx] = window_data[InfoFlowCols.hit]
+                accuracy_by_window[window_idx] = np.mean(window_data[InfoFlowMetricName.hit])
+                hit_per_window[window_idx] = window_data[InfoFlowMetricName.hit]
                 match axis_column:
-                    case InfoFlowCols.diffs | InfoFlowCols.true_probs:
+                    case InfoFlowMetricName.diffs | InfoFlowMetricName.true_probs:
                         values = window_data[axis_column]
                     case COLS.EVALUATE_MODEL.TARGET_PROBS:
                         values: DataFrame = (
