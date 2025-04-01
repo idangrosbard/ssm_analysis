@@ -14,7 +14,6 @@ setup(
         "tqdm>=4.66.5",
         "transformers>=4.50.3",
         "datasets>=2.20.0",
-        "causal-conv1d>=1.5.0.post8",
         "pydantic>=2.11.1",
         "pydantic-extra-types>=2.10.3",
         "pygwalker>=0.4.9.14",
@@ -36,6 +35,9 @@ setup(
         "pillow>=10.4.0",
     ],
     extras_require={
+        "optimization": [
+            "causal-conv1d>=1.5.0.post8",
+        ],
         "dev": [
             "pre-commit",
             "ruff>=0.3.0",

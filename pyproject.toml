@@ -134,7 +134,8 @@ ignore = [
     # TODO: Fix this:
     "src/experiments/knockout/llama/interfere_hook.py",
     "src/experiments/knockout/llama/sdpa_attention.py",
-    "src/test_llama_knockout.py",
+    "tests/src/test_llama_knockout.py",
+    "tests/src/test_llama2_tokenizer.py",
 ]
 
 executionEnvironments = [
