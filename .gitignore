@@ -192,3 +192,5 @@ profile.pyspy
 final_plots/*/cache/
 .nfs*
 pyrightconfig.json
+scripts/outputs/
+.DS_Store

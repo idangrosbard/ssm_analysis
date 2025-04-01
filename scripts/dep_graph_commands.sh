@@ -1,19 +1,29 @@
 #!/usr/bin/env sh
 cd ..
 
-pydeps src --noshow --rankdir LR -T svg --only src -o scripts/deps_mxb8_md2.svg --cluster --max-bacon 8 --show-cycles --max-module-depth=2
+OUTPUT_DIR="scripts/outputs/new"
 
-pydeps src --noshow --rankdir LR -T svg --only src -o scripts/deps_mxb2_md2.svg --cluster --max-bacon 2 --show-cycles --max-module-depth=2
+echo "Starting to create dependency graphs..."
+pydeps src --noshow --rankdir LR -T svg --only src -o $OUTPUT_DIR/deps_mxb8_md2.svg --cluster --max-bacon 8 --show-cycles --max-module-depth=2
+echo "Created deps_mxb8_md2.svg"
 
-pydeps src --noshow --rankdir LR -T svg --only src -o scripts/deps_mxb3_nl3.svg --cluster --max-bacon 3 --show-cycles --noise-level 3
+pydeps src --noshow --rankdir LR -T svg --only src -o $OUTPUT_DIR/deps_mxb2_md2.svg --cluster --max-bacon 2 --show-cycles --max-module-depth=2
+echo "Created deps_mxb2_md2.svg"
 
-pydeps src --noshow --rankdir LR -T svg --only src -o scripts/deps_mxb2_sc.svg --cluster --max-bacon 2 --show-cycles
+pydeps src --noshow --rankdir LR -T svg --only src -o $OUTPUT_DIR/deps_mxb3_nl3.svg --cluster --max-bacon 3 --show-cycles --noise-level 3
+echo "Created deps_mxb3_nl3.svg"
 
-pydeps src --noshow --rankdir LR -T svg --only src -o scripts/deps_mxb8_md3.svg --cluster --max-bacon 8 --show-cycles --max-module-depth=3
+pydeps src --noshow --rankdir LR -T svg --only src -o $OUTPUT_DIR/deps_mxb2_sc.svg --cluster --max-bacon 2 --show-cycles
+echo "Created deps_mxb2_sc.svg"
 
-pydeps src --noshow --rankdir LR -T svg --only src -o scripts/deps_mxb4_nl10.svg --cluster --max-bacon 4 --show-cycles --noise-level 10
+pydeps src --noshow --rankdir LR -T svg --only src -o $OUTPUT_DIR/deps_mxb8_md3.svg --cluster --max-bacon 8 --show-cycles --max-module-depth=3
+echo "Created deps_mxb8_md3.svg"
 
-pydeps src --noshow --rankdir LR -T svg --only src -o scripts/deps_mxb3_md3.svg --cluster --max-module-depth=3
+pydeps src --noshow --rankdir LR -T svg --only src -o $OUTPUT_DIR/deps_mxb4_nl10.svg --cluster --max-bacon 4 --show-cycles --noise-level 10
+echo "Created deps_mxb4_nl10.svg"
+
+pydeps src --noshow --rankdir LR -T svg --only src -o $OUTPUT_DIR/deps_mxb3_md3.svg --cluster --max-module-depth=3
+echo "Created deps_mxb3_md3.svg"
 
 
 
