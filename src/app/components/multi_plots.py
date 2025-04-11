@@ -1,8 +1,14 @@
-from pathlib import Path
+from enum import Enum
+from typing import Any, List, Union
 
 import streamlit as st
 
-from src.analysis.plots.image_combiner import ImageGridParams, combine_image_grid
+from src.analysis.plots.image_combiner import (
+    GridOrganizer,
+    ImageGridParams,
+    combine_image_grid,
+    organize_images_to_grid_with_keys,
+)
 from src.analysis.prompt_filterations import SelectivePromptFilteration
 from src.app.app_consts import GLOBAL_APP_CONSTS, AppSessionKeys
 from src.app.components.inputs import choose_heatmap_parms
@@ -12,6 +18,16 @@ from src.experiments.infrastructure.base_runner import InputParams, MetadataPara
 from src.experiments.runners.heatmap import HeatmapParams, HeatmapRunner
 from src.utils.streamlit.components.extended_streamlit_pydantic import pydantic_input
 from src.utils.streamlit.helpers.component import StreamlitComponent
+
+
+def convert_to_enum_if_needed(value: Any, enum_class: type) -> Any:
+    """Convert a string value to an enum if needed."""
+    if isinstance(value, str) and issubclass(enum_class, Enum):
+        try:
+            return enum_class[value]
+        except (KeyError, TypeError):
+            pass
+    return value
 
 
 class HeatmapPlotGenerationComponent(StreamlitComponent):
@@ -24,16 +40,48 @@ class HeatmapPlotGenerationComponent(StreamlitComponent):
         # Apply model filters to get qualifying prompts
         with st.sidebar:
             heatmap_parms = choose_heatmap_parms()
-            image_grid_params = pydantic_input(key="my_form", model=ImageGridParams)
+            image_grid_params_dict = pydantic_input(key="my_form", model=ImageGridParams)
 
-        N = 3
-        M = 4
-        # Create a 3x3 grid where rows are size categories and columns are architectures
-        grid: list[list[Path | None]] = [[None for _ in range(N)] for _ in range(M)]  # 3x3 grid of None values
-        size_cats = [MODEL_SIZE_CAT.SMALL, MODEL_SIZE_CAT.MEDIUM, MODEL_SIZE_CAT.LARGE, MODEL_SIZE_CAT.HUGE]
+            # Create the grid organizer with UI-configurable properties
+            grid_organizer_dict = pydantic_input(key="grid_organizer", model=GridOrganizer)
 
+        # Convert image_grid_params from dict to object if provided
+        image_grid_params = ImageGridParams(**image_grid_params_dict) if image_grid_params_dict else None
+
+        # Create GridOrganizer with default column order for model sizes
+        default_col_order: List[Union[str, int, Enum]] = [
+            MODEL_SIZE_CAT.SMALL,
+            MODEL_SIZE_CAT.MEDIUM,
+            MODEL_SIZE_CAT.LARGE,
+            MODEL_SIZE_CAT.HUGE,
+        ]
+
+        # Create grid organizer with our preferred ordering
+        grid_organizer = GridOrganizer(
+            col_order=default_col_order,
+        )
+
+        # Update the grid organizer with user-configurable properties if provided
+        if grid_organizer_dict:
+            # Update fields from the UI inputs
+            if "row_order" in grid_organizer_dict and grid_organizer_dict["row_order"] is not None:
+                grid_organizer.row_order = grid_organizer_dict["row_order"]
+
+            if "col_order" in grid_organizer_dict and grid_organizer_dict["col_order"] is not None:
+                # Skip UI col_order because it can't handle Enum types properly
+                pass
+
+            if "grid_params" in grid_organizer_dict and grid_organizer_dict["grid_params"] is not None:
+                if isinstance(grid_organizer_dict["grid_params"], dict):
+                    grid_organizer.grid_params = ImageGridParams(**grid_organizer_dict["grid_params"])
+                else:
+                    grid_organizer.grid_params = grid_organizer_dict["grid_params"]
+
+        # Collect plots with their metadata
+        plot_items_with_keys = []
         rows_count = len(GLOBAL_APP_CONSTS.MODELS_COMBINATIONS)
         progress_bar = st.progress(0, text="Plotting...")
+
         for i, model_arch_and_size in enumerate(GLOBAL_APP_CONSTS.MODELS_COMBINATIONS):
             model_arch, model_size = model_arch_and_size
             config = HeatmapRunner(
@@ -68,18 +116,30 @@ class HeatmapPlotGenerationComponent(StreamlitComponent):
             progress = min((i + 1) / rows_count, 1.0)
             progress_bar.progress(progress, text=f"Plotting {i + 1}/{rows_count}")
 
-            # Add plot path to its position in the grid
-            size_cat = GRAPHS_ORDER[model_arch_and_size]
-            if size_cat in size_cats:
-                grid[i // N][i % N] = plots_path
-                i += 1
+            # Extract keys for grid organization
+            row_key = model_arch  # Architecture as row key
+            col_key = GRAPHS_ORDER[model_arch_and_size]  # Size category as column key
+
+            # Add plot path and pre-extracted keys
+            plot_items_with_keys.append((plots_path, row_key, col_key))
+
         progress_bar.empty()
 
-        # Create the combined image
-        if any(any(row) for row in grid):  # Only show if we have any images
-            # Cast grid to list[list[Path]] by filtering out None values
-            non_none_grid = [[p for p in row if p is not None] for row in grid]
-            if image_grid_params is not None:
-                combined_image = combine_image_grid(non_none_grid, ImageGridParams(**image_grid_params))
-                if combined_image is not None:
-                    st.image(combined_image)
+        # Organize the images into a grid
+        if plot_items_with_keys:
+            try:
+                grid = organize_images_to_grid_with_keys(plot_items_with_keys, grid_organizer)
+
+                # Create the combined image
+                if grid and any(any(row) for row in grid):
+                    # Remove None values from grid rows for display
+                    non_none_grid = [[p for p in row if p is not None] for row in grid if any(row)]
+                    if image_grid_params is not None:
+                        combined_image = combine_image_grid(non_none_grid, image_grid_params)
+                        if combined_image is not None:
+                            st.image(combined_image)
+            except Exception as e:
+                st.error(f"Error organizing images: {str(e)}")
+                import traceback
+
+                st.code(traceback.format_exc())

@@ -13,7 +13,7 @@ import functools
 from dataclasses import dataclass, field
 from enum import StrEnum
 from pathlib import Path
-from typing import Callable, TypedDict, cast
+from typing import Callable, Optional, TypedDict, cast
 
 import h5py
 import matplotlib.pyplot as plt
@@ -67,12 +67,17 @@ class HDF5HeatmapFile:
         with h5py.File(self.path, "r") as f:
             return [TPromptOriginalIndex(int(p)) for p in f.keys()]
 
-    def get_prompt_idx_heatmaps(self) -> dict[TPromptOriginalIndex, pd.DataFrame]:
+    def get_prompt_idx_heatmaps(
+        self, prompt_idx: Optional[list[TPromptOriginalIndex]] = None
+    ) -> dict[TPromptOriginalIndex, pd.DataFrame]:
         result = {}
         with h5py.File(self.path, "r") as f:
-            for p in f.keys():
+            if prompt_idx is None:
+                prompt_idx = [TPromptOriginalIndex(int(p)) for p in f.keys()]
+
+            for p in prompt_idx:
                 # Extract dataset as numpy array explicitly before converting to DataFrame
-                dataset = f[p]
+                dataset = f[str(p)]
                 if isinstance(dataset, h5py.Dataset):
                     numpy_array = dataset[:]
                     result[TPromptOriginalIndex(int(p))] = pd.DataFrame(numpy_array)
@@ -116,7 +121,7 @@ class HeatmapRunner(BaseRunner[HeatmapParams]):
         if not self.output_hdf5_path.path.exists():
             return {}
 
-        return self.output_hdf5_path.get_prompt_idx_heatmaps()
+        return self.output_hdf5_path.get_prompt_idx_heatmaps(self.input_params.filteration.get_prompt_ids())
 
     def get_plot_output_path(self, prompt_idx: TPromptOriginalIndex, plot_name: HEATMAP_PLOT_FUNCS) -> Path:
         return self.variation_paths.plots_path / f"idx={prompt_idx}{plot_name}.png"

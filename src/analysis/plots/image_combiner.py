@@ -1,4 +1,6 @@
+from enum import Enum
 from pathlib import Path
+from typing import Any, List, Optional, Tuple, TypeVar, Union
 
 from PIL import Image, ImageDraw, ImageFont
 from pydantic import BaseModel, Field
@@ -22,6 +24,78 @@ class ImageGridParams(BaseModel):
             "gpt-4o": Color((255, 0, 0, 0.5)),
         }
     )
+
+
+T = TypeVar("T")
+R = TypeVar("R")
+
+
+class GridOrganizer(BaseModel):
+    """Organizes images into a grid based on row and column categories.
+
+    This version doesn't use callable fields to avoid Pydantic serialization issues.
+    """
+
+    row_order: Optional[List[Union[str, int, Enum]]] = Field(
+        default=None, description="Custom ordering for rows (optional)"
+    )
+    col_order: Optional[List[Union[str, int, Enum]]] = Field(
+        default=None, description="Custom ordering for columns (optional)"
+    )
+    grid_params: ImageGridParams = Field(
+        default_factory=lambda: ImageGridParams(img_width=-1, img_height=-1), description="Parameters for the grid"
+    )
+
+
+def organize_images_to_grid_with_keys(
+    items_with_keys: List[Tuple[Path, Any, Any]],  # (path, row_key, col_key)
+    organizer: GridOrganizer,
+) -> List[List[Optional[Path]]]:
+    """Organize image paths into a grid based on pre-extracted row and column keys.
+
+    Args:
+        items_with_keys: List of tuples containing (image_path, row_key, col_key)
+        organizer: Configuration for how to organize the grid
+
+    Returns:
+        A 2D grid (list of lists) of image paths organized by row and column categories
+    """
+    # Extract unique row and column keys
+    row_keys = set()
+    col_keys = set()
+
+    for _, row_key, col_key in items_with_keys:
+        row_keys.add(row_key)
+        col_keys.add(col_key)
+
+    # Use provided order or sort naturally
+    if organizer.row_order:
+        sorted_row_keys = [key for key in organizer.row_order if key in row_keys]
+    else:
+        sorted_row_keys = sorted(row_keys)
+
+    if organizer.col_order:
+        sorted_col_keys = [key for key in organizer.col_order if key in col_keys]
+    else:
+        sorted_col_keys = sorted(col_keys)
+
+    # Create mapping from keys to indices
+    row_indices = {key: idx for idx, key in enumerate(sorted_row_keys)}
+    col_indices = {key: idx for idx, key in enumerate(sorted_col_keys)}
+
+    # Initialize empty grid
+    num_rows = len(sorted_row_keys)
+    num_cols = len(sorted_col_keys)
+    grid: List[List[Optional[Path]]] = [[None for _ in range(num_cols)] for _ in range(num_rows)]
+
+    # Place items in the grid
+    for img_path, row_key, col_key in items_with_keys:
+        if row_key in row_indices and col_key in col_indices:
+            row_idx = row_indices[row_key]
+            col_idx = col_indices[col_key]
+            grid[row_idx][col_idx] = img_path
+
+    return grid
 
 
 def combine_image_grid(images: list[list[Path]], params: ImageGridParams):
