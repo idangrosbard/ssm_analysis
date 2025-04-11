@@ -5,9 +5,10 @@ from typing import cast
 import pandas as pd
 
 from src.analysis.prompt_filterations import AllPromptFilteration
-from src.core.names import COLS, DataReqCols, DatasetName, ExperimentName
-from src.core.types import MODEL_ARCH_AND_SIZE, TCodeVersionName
+from src.core.names import DataReqCols, DatasetName, ExperimentName
+from src.core.types import MODEL_ARCH_AND_SIZE, TCodeVersionName, TPromptData
 from src.data_ingestion.data_defs.data_defs import ResultBank
+from src.data_ingestion.datasets.download_dataset import flat_to_indexed_prompt_data
 from src.experiments.infrastructure.base_runner import (
     BasePromptFilteration,
     BaseRunner,
@@ -22,22 +23,22 @@ from src.experiments.runners.info_flow import InfoFlowParams, InfoFlowRunner
 
 def get_model_evaluations(
     code_version: TCodeVersionName, model_arch_and_sizes: list[MODEL_ARCH_AND_SIZE]
-) -> dict[MODEL_ARCH_AND_SIZE, pd.DataFrame]:
+) -> dict[MODEL_ARCH_AND_SIZE, TPromptData]:
     return {
-        model_arch_and_size: EvaluateModelRunner(
-            variant_params=EvaluateModelParams(
-                model_arch=model_arch_and_size[0],
-                model_size=model_arch_and_size[1],
-            ),
-            input_params=InputParams(
-                filteration=AllPromptFilteration(dataset_name=DatasetName.counter_fact),
-            ),
-            metadata_params=MetadataParams(
-                code_version=code_version,
-            ),
+        model_arch_and_size: flat_to_indexed_prompt_data(
+            EvaluateModelRunner(
+                variant_params=EvaluateModelParams(
+                    model_arch=model_arch_and_size[0],
+                    model_size=model_arch_and_size[1],
+                ),
+                input_params=InputParams(
+                    filteration=AllPromptFilteration(dataset_name=DatasetName.counter_fact),
+                ),
+                metadata_params=MetadataParams(
+                    code_version=code_version,
+                ),
+            ).get_outputs()
         )
-        .get_outputs()
-        .set_index(COLS.ORIGINAL_IDX)
         for model_arch_and_size in model_arch_and_sizes
     }
 

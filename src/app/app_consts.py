@@ -7,6 +7,8 @@ from src.app.texts import (
     HEATMAP_TEXTS,
     HOME_TEXTS,
     INFO_FLOW_ANALYSIS_TEXTS,
+    MAMBA_ANALYSIS_TEXTS,
+    PROMPTS_COMPARISON_TEXTS,
     RESULTS_BANK_TEXTS,
 )
 from src.core.consts import ALL_VARIANT_PARAMETERS, GRAPHS_ORDER, model_and_size_to_slurm_gpu_type
@@ -91,6 +93,8 @@ class PAGE_ORDER(Enum):
     HEATMAP = auto()
     INFO_FLOW_ANALYSIS = auto()
     FINAL_PLOTS = auto()
+    PROMPTS_COMPARISON = auto()
+    MAMBA_ANALYSIS = auto()
 
     @property
     def page_details(self) -> tuple[str, str]:
@@ -107,6 +111,10 @@ class PAGE_ORDER(Enum):
                 return (FINAL_PLOTS_TEXTS.title, FINAL_PLOTS_TEXTS.icon)
             case PAGE_ORDER.INFO_FLOW_ANALYSIS:
                 return (INFO_FLOW_ANALYSIS_TEXTS.title, INFO_FLOW_ANALYSIS_TEXTS.icon)
+            case PAGE_ORDER.PROMPTS_COMPARISON:
+                return (PROMPTS_COMPARISON_TEXTS.title, PROMPTS_COMPARISON_TEXTS.icon)
+            case PAGE_ORDER.MAMBA_ANALYSIS:
+                return (MAMBA_ANALYSIS_TEXTS.title, MAMBA_ANALYSIS_TEXTS.icon)
             case _:
                 assert_never(self)
 

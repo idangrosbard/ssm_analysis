@@ -75,7 +75,7 @@ class SubsetInfoFlowResults:
         # Filter by relation last token if needed
         if filter_relation_last_token:
             # Get model arch and size from first result
-            prompts = prompts.filter_by_condition(lambda k, v: v.as_prompt().is_relation_last_token(prompts._tokenizer))
+            prompts = prompts.filter_by_condition(lambda k, v: v.as_prompt().is_relation_last_token())
 
             if prompts.empty:
                 st.warning("No prompts found with relation last token")

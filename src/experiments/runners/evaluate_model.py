@@ -10,18 +10,21 @@ The combined result is saved as a CSV file
 
 import json
 from dataclasses import dataclass, field
+from functools import lru_cache
 from pathlib import Path
 from typing import cast
 
 import pandas as pd
 import torch
-from cachetools import TTLCache, cached
 from tqdm import tqdm
 
 from src.core.consts import COUNTER_FACT_2_KNOWN1000_COL_CONV
 from src.core.names import COLS, ExperimentName
-from src.core.types import MODEL_ARCH, TPromptData
-from src.data_ingestion.datasets.download_dataset import get_row_data
+from src.core.types import MODEL_ARCH, TPromptData, TPromptDataFlat
+from src.data_ingestion.datasets.download_dataset import (
+    flat_to_indexed_prompt_data,
+    get_row_data,
+)
 from src.data_ingestion.helpers.logits_utils import (
     generate_next_tokens,
     get_subj_idx,
@@ -59,7 +62,8 @@ class EvaluateModelRunner(BaseRunner[EvaluateModelParams]):
     def output_result_path(self) -> Path:
         return self.variation_paths.outputs_path / "outputs.csv"
 
-    def get_outputs(self) -> pd.DataFrame:
+    @lru_cache(maxsize=1)
+    def get_outputs(self) -> TPromptDataFlat:  # type: ignore
         df = pd.read_csv(self.output_result_path, index_col=False)
         for (
             counter_fact_col,
@@ -72,15 +76,18 @@ class EvaluateModelRunner(BaseRunner[EvaluateModelParams]):
             if known1000_col in df.columns:
                 df = df.drop(columns=[known1000_col])
 
-        return df
+        return TPromptDataFlat(df)
 
-    @cached(TTLCache(maxsize=1, ttl=60))
+    @lru_cache(maxsize=1)
     def get_prompt_data(self) -> TPromptData:
-        df = self.get_outputs()
+        df = flat_to_indexed_prompt_data(self.get_outputs())
+        from src.analysis.prompt_filterations import AnyExistingCompletePromptFilteration
 
+        if not isinstance(self.input_params.filteration, AnyExistingCompletePromptFilteration):
+            df = df.loc[self.input_params.filteration.get_prompt_ids()]
         return cast(
             TPromptData,
-            df.set_index(COLS.ORIGINAL_IDX).loc[self.input_params.filteration.get_prompt_ids()],
+            df,
         )
 
     def _compute_impl(self) -> None:

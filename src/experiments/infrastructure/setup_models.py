@@ -1,31 +1,43 @@
+import json
 import os
+from functools import lru_cache
+from pathlib import Path
 from typing import Optional, assert_never
 
-from huggingface_hub import login
+from huggingface_hub import hf_hub_download, login
 
 from src.core.consts import MODEL_SIZES_PER_ARCH_TO_MODEL_ID, is_falcon
-from src.core.types import MODEL_ARCH, TDevice, TModel, TModelID, TModelSize, TTokenizer
+from src.core.types import MODEL_ARCH, MODEL_ARCH_AND_SIZE, TDevice, TModel, TModelSize, TTokenizer
 
 
-def _get_tokenizer_id(model_id: str) -> str:
-    if model_id.startswith("state-spaces/"):
+def get_tokenizer_path(model_arch_and_size: MODEL_ARCH_AND_SIZE) -> str:
+    model_arch = model_arch_and_size.arch
+    model_size = model_arch_and_size.size
+
+    if model_arch == MODEL_ARCH.MAMBA2:
         return "EleutherAI/gpt-neox-20b"
-    else:
-        return model_id
+    return MODEL_SIZES_PER_ARCH_TO_MODEL_ID[model_arch][model_size]
 
 
-MODEL_TOKENIZER_CACHE: dict[TModelID, TTokenizer] = {}
+def get_tokenizer_config_from_hub(model_arch_and_size: MODEL_ARCH_AND_SIZE) -> dict:
+    tokenizer_path = get_tokenizer_path(model_arch_and_size)
+
+    filename = "tokenizer_config.json"
+
+    # Download just the tokenizer config
+    path = Path(hf_hub_download(repo_id=tokenizer_path, filename=filename))
+
+    # Load the JSON content
+    return json.loads(path.read_text())
 
 
+@lru_cache(maxsize=None)
 def get_tokenizer(model_arch: MODEL_ARCH, model_size: TModelSize) -> TTokenizer:
     from transformers import AutoTokenizer
 
-    model_id = MODEL_SIZES_PER_ARCH_TO_MODEL_ID[model_arch][model_size]
-    if model_id in MODEL_TOKENIZER_CACHE:
-        return MODEL_TOKENIZER_CACHE[model_id]
-    tokenizer = AutoTokenizer.from_pretrained(_get_tokenizer_id(model_id))
+    tokenizer_path = get_tokenizer_path(MODEL_ARCH_AND_SIZE(model_arch, model_size))
+    tokenizer = AutoTokenizer.from_pretrained(tokenizer_path)
     tokenizer.pad_token = tokenizer.eos_token
-    MODEL_TOKENIZER_CACHE[model_id] = tokenizer
     return tokenizer
 
 

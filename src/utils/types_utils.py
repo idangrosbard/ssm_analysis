@@ -120,3 +120,46 @@ def json_dumps_dataclass(obj: Any, **kwargs) -> str:
 
 def format_dict(d: dict[Any, Any], sep: str = " | ") -> str:
     return sep.join([f"{k}: {v}" for k, v in d.items()])
+
+
+def compare_dicts(dict1, dict2):
+    """
+    Compares two dictionaries and returns a dictionary of differences.
+
+    Args:
+        dict1: The first dictionary.
+        dict2: The second dictionary.
+
+    Returns:
+        A dictionary containing the differences between the dictionaries.
+        The dictionary has the following keys:
+            'only_in_dict1': Keys present only in dict1.
+            'only_in_dict2': Keys present only in dict2.
+            'different_values': Keys with different values in the two dicts.
+    """
+
+    only_in_dict1 = []
+    only_in_dict2 = []
+    different_values = {}
+    is_same = True
+
+    for key, value1 in dict1.items():
+        if key not in dict2:
+            only_in_dict1.append(key)
+            is_same = False
+        else:
+            value2 = dict2[key]
+            if value1 != value2:
+                different_values[key] = (value1, value2)
+                is_same = False
+
+    for key in dict2:
+        if key not in dict1:
+            only_in_dict2.append(key)
+            is_same = False
+
+    return is_same, {
+        "only_in_dict1": only_in_dict1,
+        "only_in_dict2": only_in_dict2,
+        "different_values": different_values,
+    }

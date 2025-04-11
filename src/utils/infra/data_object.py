@@ -1,7 +1,9 @@
 from abc import ABC
+from dataclasses import dataclass
 from typing import Generic, TypeVar
 
 
+@dataclass(frozen=True)
 class DataObject(ABC):
     pass
 
@@ -9,9 +11,12 @@ class DataObject(ABC):
 T_VALUE = TypeVar("T_VALUE")
 
 
+@dataclass(frozen=True)
 class IterableDataObject(DataObject, Generic[T_VALUE]):
-    def __init__(self, items: list[T_VALUE]):
-        self._items = items  # Make it immutable
+    _items: list[T_VALUE]
+
+    def __hash__(self) -> int:
+        return hash(tuple(self._items))
 
     def __iter__(self):
         return iter(self._items)
@@ -26,11 +31,14 @@ class IterableDataObject(DataObject, Generic[T_VALUE]):
 T_KEY = TypeVar("T_KEY")
 
 
+@dataclass(frozen=True)
 class IndexableDataObject(DataObject, Generic[T_KEY, T_VALUE]):
     """Base class for objects that wrap dict-like data"""
 
-    def __init__(self, items: dict[T_KEY, T_VALUE]):
-        self._items = items
+    _items: dict[T_KEY, T_VALUE]
+
+    def __hash__(self) -> int:
+        return hash(tuple(self._items.items()))
 
     def __getitem__(self, index: T_KEY) -> T_VALUE:
         return self._items[index]

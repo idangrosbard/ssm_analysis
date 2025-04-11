@@ -140,13 +140,17 @@ class CachedFunction(Generic[P, OutputType]):
 class CacheWithDependencies:
     """Class decorator wrapping @st.cache_data with strong typing, dependency tracking, and UI rendering."""
 
-    def __init__(self, *st_args, disable_cache: bool = False, **st_kwargs):
+    def __init__(self, *st_args, disable_cache: bool = False, is_resource: bool = False, **st_kwargs):
         self.st_args = st_args
         self.st_kwargs = st_kwargs
         self.disable_cache = disable_cache
+        self.is_resource = is_resource
 
     def __call__(self, func: Callable[P, OutputType]) -> CachedFunction[P, OutputType]:
-        cached_func = st.cache_data(*self.st_args, **self.st_kwargs)(func)
+        if self.is_resource:
+            cached_func = st.cache_resource(*self.st_args, **self.st_kwargs)(func)
+        else:
+            cached_func = st.cache_data(*self.st_args, **self.st_kwargs)(func)
         return CachedFunction(func, cached_func, is_disabled=self.disable_cache)
 
 

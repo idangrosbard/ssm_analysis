@@ -132,6 +132,7 @@ ignore = [
     "tests/src/experiments/baselines/full_pipeline/**",
     "scripts/**",
     # TODO: Fix this:
+    "src/experiments/knockout/**/minimal_*",
     "src/experiments/knockout/llama/interfere_hook.py",
     "src/experiments/knockout/llama/sdpa_attention.py",
     "tests/src/test_llama_knockout.py",

@@ -89,7 +89,7 @@ def filter_combinations(df: pd.DataFrame, model_names: list[str]) -> pd.DataFram
                     "Minimum prompt count",
                     min_value=_min,
                     max_value=_max,
-                    value=HeatmapConsts.MINIMUM_COMBINATIONS_FOR_FILTERING,
+                    value=max(_min, HeatmapConsts.MINIMUM_COMBINATIONS_FOR_FILTERING),
                     step=1,
                 )
                 df = df[df[column] >= user_num_input]

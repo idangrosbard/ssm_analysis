@@ -1,4 +1,4 @@
-from typing import assert_never, cast
+from typing import Callable, TypeVar, assert_never, cast
 
 import pandas as pd
 from datasets import (
@@ -13,7 +13,7 @@ from datasets import (
 
 from src.core.consts import COUNTER_FACT_2_KNOWN1000_COL_CONV, DATASETS_IDS, PATHS
 from src.core.names import COLS, DatasetName
-from src.core.types import ALL_SPLITS_LITERAL, SPLIT, TPromptData, TPromptOriginalIndex, TSplitChoise
+from src.core.types import ALL_SPLITS_LITERAL, SPLIT, TPromptData, TPromptDataFlat, TPromptOriginalIndex, TSplitChoise
 from src.data_ingestion.datasets.splitting import split_dataset
 
 
@@ -72,16 +72,32 @@ def get_prompt_ids(dataset_name: DatasetName, split: TSplitChoise = ALL_SPLITS_L
     assert_never(dataset_name)
 
 
-def get_row_data(dataset_name: DatasetName) -> pd.DataFrame:
+def get_row_data(dataset_name: DatasetName) -> TPromptDataFlat:
     match dataset_name:
         case DatasetName.counter_fact:
             dataset = load_splitted_counter_fact(
                 ALL_SPLITS_LITERAL,
             )
-            return pd.DataFrame(cast(dict, dataset))
+            return TPromptDataFlat(pd.DataFrame(cast(dict, dataset)))
     assert_never(dataset_name)
 
 
 def get_indexed_raw_data(dataset_name: DatasetName) -> TPromptData:
     df = get_row_data(dataset_name)
+    return flat_to_indexed_prompt_data(df)
+
+
+def indexed_to_flat_prompt_data(df: TPromptData) -> TPromptDataFlat:
+    return TPromptDataFlat(df.reset_index())
+
+
+def flat_to_indexed_prompt_data(df: TPromptDataFlat) -> TPromptData:
     return TPromptData(df.set_index(COLS.ORIGINAL_IDX))
+
+
+_T_DF = TypeVar("_T_DF", bound=pd.DataFrame)
+
+
+def df_safe_operation(df: _T_DF, operation: Callable[[_T_DF], pd.DataFrame]) -> _T_DF:
+    # Workaround to ensure type checking, it's on the user to ensure the operation is not changinging the index
+    return cast(_T_DF, operation(df))

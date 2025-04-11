@@ -19,11 +19,9 @@ from src.app.app_consts import (
     AppSessionKeys,
 )
 from src.app.components.data_requirements import HeatmapGenerationComponent
-from src.app.components.inputs import (
-    select_models_and_sizes,
-)
 from src.app.components.multi_plots import HeatmapPlotGenerationComponent
-from src.app.components.prompt_filter import PromptSelectionComponent, ShowModelCombinations
+from src.app.components.prompt_filter import PromptSelectionForCombinationComponent, ShowModelCombinations
+from src.app.components.result_bank import select_model_evaluations
 from src.app.data_store import (
     load_model_combinations_prompts,
     load_model_evaluations_dict,
@@ -39,7 +37,9 @@ class HeatmapCreationPage(StreamlitPage):
         sidebar_expander = st.sidebar.expander("Configuration", expanded=True)
         with sidebar_expander:
             seed = st.number_input("Seed", value=GLOBAL_APP_CONSTS.DEFAULT_SEED, min_value=0, max_value=1000000, step=1)
-            selected_models = select_models_and_sizes(GLOBAL_APP_CONSTS.MODELS_COMBINATIONS)
+
+        with st.expander("Select Models"):
+            selected_model_evaluations = select_model_evaluations(key="heatmap_select_model_evaluations")
 
         with st.spinner(COMMON_TEXTS.LOADING("data"), show_time=True):
             # Get combinations data
@@ -47,7 +47,7 @@ class HeatmapCreationPage(StreamlitPage):
             representative_model_evaluations = next(iter(model_evaluations.values()))
             # Get combinations using selected models
             model_combinations_prompts = load_model_combinations_prompts(
-                AppSessionKeys.code_version.value, selected_models, seed
+                AppSessionKeys.code_version.value, selected_model_evaluations.model_arch_and_sizes, seed
             )
 
         with clear_deps_expander:
@@ -75,8 +75,10 @@ class HeatmapCreationPage(StreamlitPage):
         if selected_combination_row is not None:
             combination_row = model_combinations_prompts[selected_combination_row]
             if tab == HEATMAP_TEXTS.TAB_SELECT_COMBINATION:
-                PromptSelectionComponent(
-                    combination_row, representative_model_evaluations, model_combinations_prompts
+                PromptSelectionForCombinationComponent(
+                    combination_row,
+                    representative_model_evaluations,
+                    model_combinations_prompts,
                 ).render()
             elif tab == HEATMAP_TEXTS.TAB_HEATMAP_PLOTS_GENERATION:
                 prompt_idx = combination_row.chosen_prompt

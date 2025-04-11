@@ -175,7 +175,7 @@ cython_debug/
 data/raw/
 /data/preprocessed/
 /slurm/
-/output*/
+/output*
 /output
 /results/
 .envrc

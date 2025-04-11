@@ -75,6 +75,10 @@ class BasePromptFilteration(ABC):
     def dependencies_are_computed(self) -> bool:
         return len(self.uncomputed_dependencies()) == 0
 
+    @abstractmethod
+    def display_name(self) -> str:
+        pass
+
 
 @dataclass(frozen=True)
 class BaseVariantParams(BaseParams, ABC):

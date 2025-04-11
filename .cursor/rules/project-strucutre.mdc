@@ -1,112 +1,131 @@
 ---
-description: Adherence to project structure
+description: 
 globs: 
+alwaysApply: true
 ---
 # ssm_analysis
 
-this is a repository for the analysis of the SSM data
+This is a repository for the analysis of the SSM data, and we must adhere to it.
+Even tho it's a rule, when we make changes to the file Structure, we want to edit this file too, so we need to treat this as a file.
 
 Project Structure:
 
-- src/
-  - analysis/                                   # Analysis utilities and plotting functions
-    - plots/                                    # Plotting utilities for analysis
-      - image_combiner.py                       # Image combination utilities - combines images into a single image
-      - heatmaps.py                             # Plotting heatmaps
-      - info_flow_confidence.py                 # Plotting confidence intervals for info flow
-    - experiment_results/
-      - results_bank.py                         # Provides a interface for retrieving results from the results bank based on their hyperparameters
-      - data_requirements.py                    # Defines a way to specify data requirements of different hyperparameters, so that we can automatically compute the missing results
-      - plot_plan.py                            # Defines a way to specify a plot plan, that is a result oriented way to define the requirements that need to be met for a plot
-  - app/                                        # Application code and UI components
-    - home.py                                   # Main home page
-    - app_consts.py                             # Application constants
-    - data_store.py                             # Data store for app
-    - texts.py                                  # Application texts
-    - app_utils.py                              # Application utilities
-    - components/                               # Reusable UI components
-      - info_flow.py                            # Implements the UI element that renders and manages information flow visualizations from experiment data.
-      - inputs.py                               # Handles user input collection and validation for experiment configurations.
-      - multi_plots.py                          # Facilitates the display and management of multiple plot panels within the application interface.
-      - plot_customization.py                   # Provides options and controls to customize the appearance and settings of plots.
-      - plot_generation.py                      # Contains logic to dynamically generate plots based on user configurations and data inputs.
-      - plot_plans.py                           # Manages the assembly and organization of plot configurations derived from experimental hyperparameters.
-      - prompt_filter.py                        # Processes and filters user prompts to ensure only valid experiment inputs are used.
-      - requirements.py                         #
-      - result_bank.py                          # Interfaces with the results bank to retrieve and display experimental outcomes within the UI.
-    - pages/                                    # Application pages
-      - p01_results_bank.py                     # Displays a comprehensive view of the experiment results bank.
-      - p02_data_requirements.py                # Presents the data requirements needed to drive experiment visualizations.
-      - p03_info_flow_plots.py                  # Renders interactive plots that depict information flow across experiments.
-      - p04_heatmap_creation.py                 # Guides users through the process of creating heatmaps with configurable parameters.
-      - p05_info_flow_analysis.py               # Provides analysis tools and visualizations specifically for evaluating information flow metrics.
-      - p06_final_plots.py                      # Consolidates and presents the final set of plots for review and interpretation.
-  - core/                                       # Global constants and type definitions
-    - consts.py                                 # Centralizes global configurations, file path setups, environment settings, and model mapping utilities for the entire project.
-    - names.py                                  # Defines standardized naming conventions and enumerations for experiment parameters, data columns, and plot configurations.
-    - data_defs.py                              # Implements data container classes and conversion utilities for managing experiment results, data requirements, and plot plans.
-    - types.py                                  # Provides custom type definitions, aliases, and enumerations to enforce consistent data structures across the project.
-  - data_ingestion/
-    - config.py                                 # Global configurations, file paths, and environment settings
-    - names.py                                  # Standardized naming conventions and enumerations
-    - data_definitions.py                       # Data container classes and conversion utilities
-    - types.py                                  # Custom type definitions and aliases
-  - experiments/
-    - infrastructure/                           # Infrastructure for experiments
-      - base_config.py                          # Base experiment configuration
-      - model_interface.py                      # Generic model interface
-      - setup_models.py                         # Model setup utilities
-    - runners/                                  # Experiment runners
-      - heatmap.py
-      - info_flow.py
-      - evaluate_model.py
-    - knockout/                                 # Implementation of knockout for different models
-      - gpt/
-        - gpt2/
-          - gpt2_knockout_utils.py              # GPT-2 knockout utilities
-      - mamba/
-        - mamba1/
-          - helpers
-            - knockout_scan.py                  # Knockout scanning
-            - ssm_interfere.py                  # SSM interference analysis
-          - falcon_variant.py                   # Falcon variant implementation of Mamba Mixer Knockout
-          - original                            # Original variant implementation of Mamba Mixer Knockout
-        - mamba2/
-          - minimal_mamba2.py                   # Minimal implementation of Mamba2
-  - utils/                                      # General utility functions
-    - infra/                                    # Infrastructure helper utilities
-      - data_object.py                          # Data object utilities
-      - experiment_helper.py                    # Experiment helper functions
-      - output_path.py                          # Output path utilities
-      - seed.py                                 # Random seed utilities
-      - slurm.py                                # Slurm job utilities
-    - streamlit/                                # Streamlit specific utilities and components
-      - components/                             # Streamlit UI components
-        - aagrid.py                             # AAGrid component
-        - dataframe.py                          # Dataframe component
-        - extended_streamlit_pydantic.py        # Extended Pydantic integration
-      - helpers/                                # Helper utilities for Streamlit
-        - cache.py                              # Cache helper (new file)
-        - component.py                          # Component helper (new file)
-        - global_store.py                       # Global store helper (new file)
-        - redirect_output.py                    # Redirect output helper (new file)
-        - session_keys.py                       # Session keys helper (new file)
-        - file_utils.py                         # Functions for file system operations (e.g., remove_dirs_with_only_dirs, fast_relative_to)
-        - logits_utils.py                       # Utilities for handling logits, softmax conversion, top-k extraction, and decoding tokens
-        - test_utils.py                         # Testing helpers, such as running mypy checks on functions and parsing error messages
-        - type_checking.py                      # Wrapper for runtime tensor type checking
-        - typing_helpers.py                     # Helper functions for working with types, enums, and list index utilities
+- [src/](mdc:src/__init__.py)
+  - [analysis/](mdc:src/analysis/__init__.py)                                   # Analysis utilities and plotting functions
+    - [plots/](mdc:src/analysis/plots/__init__.py)                                    # Plotting utilities for analysis
+      - [image_combiner.py](mdc:src/analysis/plots/image_combiner.py)                       # Image combination utilities - combines images into a single image
+      - [heatmaps.py](mdc:src/analysis/plots/heatmaps.py)                             # Plotting heatmaps
+      - [info_flow_confidence.py](mdc:src/analysis/plots/info_flow_confidence.py)                   # Plotting confidence intervals for info flow
+    - [experiment_results/](mdc:src/analysis/experiment_results/__init__.py)
+      - [results_bank.py](mdc:src/analysis/experiment_results/results_bank.py)                         # Provides an interface for retrieving results from the results bank
+      - [plot_plan.py](mdc:src/analysis/experiment_results/plot_plan.py)                            # Defines a way to specify a plot plan for result requirements
+      - [default_data_reqs.py](mdc:src/analysis/experiment_results/default_data_reqs.py)                    # Defines default data requirements for different analysis types
+      - [model_prompt_combination.py](mdc:src/analysis/experiment_results/model_prompt_combination.py)             # Handles model and prompt combinations for experiments
+      - [helpers.py](mdc:src/analysis/experiment_results/helpers.py)                              # Helper functions for experiment results analysis
+    - [prompt_filterations.py](mdc:src/analysis/prompt_filterations.py)                     # Utilities for filtering and processing prompts
+  - [app/](mdc:src/app/__init__.py)                                        # Application code and UI components
+    - [entry_point.py](mdc:src/app/entry_point.py)                            # Application entry point
+    - [app_consts.py](mdc:src/app/app_consts.py)                             # Application constants
+    - [data_store.py](mdc:src/app/data_store.py)                             # Data store for app
+    - [texts.py](mdc:src/app/texts.py)                                  # Application texts
+    - [app_utils.py](mdc:src/app/app_utils.py)                              # Application utilities
+    - [components/](mdc:src/app/components/__init__.py)                               # Reusable UI components
+      - [info_flow.py](mdc:src/app/components/info_flow.py)                             # Implements UI element for information flow visualizations
+      - [inputs.py](mdc:src/app/components/inputs.py)                               # Handles user input collection and validation
+      - [multi_plots.py](mdc:src/app/components/multi_plots.py)                          # Facilitates display of multiple plot panels
+      - [plot_generation.py](mdc:src/app/components/plot_generation.py)                      # Contains logic to dynamically generate plots
+      - [plot_plans.py](mdc:src/app/components/plot_plans.py)                           # Manages plot configurations from experimental parameters
+      - [prompt_filter.py](mdc:src/app/components/prompt_filter.py)                         # Processes and filters user prompts
+      - [result_bank.py](mdc:src/app/components/result_bank.py)                          # Interfaces with results bank to retrieve experimental outcomes
+      - [data_requirements.py](mdc:src/app/components/data_requirements.py)                    # Handles data requirements for plots and analysis
+      - [model_analysis.py](mdc:src/app/components/model_analysis.py)                       # Performs model-specific analysis
+      - [tokenization.py](mdc:src/app/components/tokenization.py)                         # Handles tokenization for language models
+    - [page/](mdc:src/app/page/__init__.py)                                     # Application pages
+      - [p01_home.py](mdc:src/app/page/p01_home.py)                             # Main home page
+      - [p02_results_bank.py](mdc:src/app/page/p02_results_bank.py)                     # Results bank page
+      - [p03_data_requirements.py](mdc:src/app/page/p03_data_requirements.py)                # Data requirements page
+      - [p04_heatmap_creation.py](mdc:src/app/page/p04_heatmap_creation.py)                 # Heatmap creation page
+      - [p05_info_flow_analysis.py](mdc:src/app/page/p05_info_flow_analysis.py)                # Information flow analysis page
+      - [p06_final_plots.py](mdc:src/app/page/p06_final_plots.py)                       # Final plots page
+      - [p07_prompts_comparison.py](mdc:src/app/page/p07_prompts_comparison.py)               # Prompts comparison page
+      - [p08_mamba_analysis.py](mdc:src/app/page/p08_mamba_analysis.py)                   # Mamba-specific analysis page
+  - [core/](mdc:src/core/__init__.py)                                       # Global constants and type definitions
+    - [consts.py](mdc:src/core/consts.py)                                 # Global configurations, file paths, and environment settings
+    - [names.py](mdc:src/core/names.py)                                  # Standardized naming conventions and enumerations
+    - [types.py](mdc:src/core/types.py)                                  # Custom type definitions and aliases
+  - [data_ingestion/](mdc:src/data_ingestion/__init__.py)
+    - [data_defs/](mdc:src/data_ingestion/data_defs/__init__.py)                                # Data definitions
+      - [data_defs.py](mdc:src/data_ingestion/data_defs/data_defs.py)                            # Data container classes and utilities
+    - [datasets/](mdc:src/data_ingestion/datasets/__init__.py)                                 # Dataset handling code
+      - [download_dataset.py](mdc:src/data_ingestion/datasets/download_dataset.py)                     # Download datasets
+      - [splitting.py](mdc:src/data_ingestion/datasets/splitting.py)                            # Splitting data into train, val, test sets
+    - [helpers/](mdc:src/data_ingestion/helpers/__init__.py)                                  # Helper functions for data ingestion
+      - [dataframe.py](mdc:src/data_ingestion/helpers/dataframe.py)                            # DataFrame helper functions
+      - [logits_utils.py](mdc:src/data_ingestion/helpers/logits_utils.py)                         # Logits helper functions
+    - [prompt_filters/](mdc:src/data_ingestion/prompt_filters/__init__.py)                            # Filters for processing prompts
+      - [prompt_filter.py](mdc:src/data_ingestion/prompt_filters/prompt_filter.py)                         # Prompt filters
+  - [experiments/](mdc:src/experiments/__init__.py)
+    - [infrastructure/](mdc:src/experiments/infrastructure/__init__.py)                           # Infrastructure for experiments
+      - [base_runner.py](mdc:src/experiments/infrastructure/base_runner.py)                          # Base runner class
+      - [model_interface.py](mdc:src/experiments/infrastructure/model_interface.py)                      # Generic model interface
+      - [setup_models.py](mdc:src/experiments/infrastructure/setup_models.py)                         # Model setup utilities
+    - [runners/](mdc:src/experiments/runners/__init__.py)                                  # Experiment runners
+      - [evaluate_model.py](mdc:src/experiments/runners/evaluate_model.py)                       # Evaluate model runner
+      - [full_pipeline.py](mdc:src/experiments/runners/full_pipeline.py)                        # Full pipeline runner
+      - [heatmap.py](mdc:src/experiments/runners/heatmap.py)                              # Heatmap runner
+      - [info_flow.py](mdc:src/experiments/runners/info_flow.py)                             # Info flow runner
+    - [knockout/](mdc:src/experiments/knockout/__init__.py)                                 # Implementation of knockout for different models
+      - [gpt/](mdc:src/experiments/knockout/gpt/__init__.py)                                    # GPT model knockout implementations
+        - [gpt2/](mdc:src/experiments/knockout/gpt/gpt2/__init__.py)                                 # GPT2 specific knockout
+          - [gpt2_knockout_utils.py](mdc:src/experiments/knockout/gpt/gpt2/gpt2_knockout_utils.py)              # GPT2 knockout utils
+      - [llama/](mdc:src/experiments/knockout/llama/__init__.py)                                  # LLaMA model knockout implementations
+        - [interfere_hook.py](mdc:src/experiments/knockout/llama/interfere_hook.py)
+        - [llama_attention_forward.py](mdc:src/experiments/knockout/llama/llama_attention_forward.py)
+        - [llama_attn.py](mdc:src/experiments/knockout/llama/llama_attn.py)
+        - [scaled_dot_product_attention.py](mdc:src/experiments/knockout/llama/scaled_dot_product_attention.py)
+        - [sdpa_attention.py](mdc:src/experiments/knockout/llama/sdpa_attention.py)
+      - [mamba/](mdc:src/experiments/knockout/mamba/__init__.py)                                  # Mamba model knockout implementations
+        - [mamba1/](mdc:src/experiments/knockout/mamba/mamba1/__init__.py)                               # Mamba1 specific knockout
+          - [helpers/](mdc:src/experiments/knockout/mamba/mamba1/helpers/__init__.py)                            # Helper functions for Mamba1
+            - [knockout_scan.py](mdc:src/experiments/knockout/mamba/mamba1/helpers/knockout_scan.py)                  # Knockout scanning utilities
+            - [ssm_interfere.py](mdc:src/experiments/knockout/mamba/mamba1/helpers/ssm_interfere.py)                  # SSM interference analysis
+          - [falcon_variant.py](mdc:src/experiments/knockout/mamba/mamba1/falcon_variant.py)                   # Falcon variant implementation
+          - [original_variant.py](mdc:src/experiments/knockout/mamba/mamba1/original_variant.py)                 # Original variant implementation
+        - [mamba2/](mdc:src/experiments/knockout/mamba/mamba2/__init__.py)                               # Mamba2 specific knockout
+          - [minimal_mamba2.py](mdc:src/experiments/knockout/mamba/mamba2/minimal_mamba2.py)
+  - [utils/](mdc:src/utils/__init__.py)                                      # General utility functions
+    - [file_system.py](mdc:src/utils/file_system.py)                             # File system utilities
+    - [type_checking.py](mdc:src/utils/type_checking.py)                          # Runtime type checking utilities
+    - [tests_utils.py](mdc:src/utils/tests_utils.py)                            # Testing utilities
+    - [types_utils.py](mdc:src/utils/types_utils.py)                            # Type utilities
+    - [infra/](mdc:src/utils/infra/__init__.py)                                    # Infrastructure helper utilities
+      - [data_object.py](mdc:src/utils/infra/data_object.py)
+      - [experiment_helper.py](mdc:src/utils/infra/experiment_helper.py)
+      - [git.py](mdc:src/utils/infra/git.py)
+      - [output_path.py](mdc:src/utils/infra/output_path.py)
+      - [seed.py](mdc:src/utils/infra/seed.py)
+      - [slurm.py](mdc:src/utils/infra/slurm.py)
+      - [slurm_job_folder.py](mdc:src/utils/infra/slurm_job_folder.py)
+    - [streamlit/](mdc:src/utils/streamlit/__init__.py)                                # Streamlit specific utilities and components
+      - [components/](mdc:src/utils/streamlit/components/__init__.py)                             # Streamlit UI components
+        - [aagrid.py](mdc:src/utils/streamlit/components/aagrid.py)
+        - [extended_streamlit_pydantic.py](mdc:src/utils/streamlit/components/extended_streamlit_pydantic.py)
+      - [helpers/](mdc:src/utils/streamlit/helpers/__init__.py)                                # Helper utilities for Streamlit
+        - [cache.py](mdc:src/utils/streamlit/helpers/cache.py)
+        - [component.py](mdc:src/utils/streamlit/helpers/component.py)
+        - [global_store.py](mdc:src/utils/streamlit/helpers/global_store.py)
+        - [redirect_output.py](mdc:src/utils/streamlit/helpers/redirect_output.py)
+        - [session_keys.py](mdc:src/utils/streamlit/helpers/session_keys.py)
 
-- scripts/ #
-- notebooks/
+- scripts/                                      # Utility scripts
+- notebooks/                                    # Jupyter notebooks
+- tests/                                        # Test files
+- final_plots/                                   # Final plot outputs
 
 # Non-code files
 
-- data/ # Data storage
-  - raw/ # Original datasets
-  - preprocessed/ # Processed datasets
-
-- output/ # Experiment outputs
-- results/ # Processed results for paper
-- runs/ # Legacy outputs (to be deprecated)
-- slurm/ # Slurm job outputs and logs
+- data/                                         # Data storage
+- output/                                       # Experiment outputs
+- results/                                      # Processed results for paper
+- runs/                                         # Legacy outputs
+- slurm/                                        # Slurm job outputs and logs

@@ -28,7 +28,7 @@ from src.core.types import (
 )
 from src.utils.infra.output_path import OutputKey
 from src.utils.infra.slurm import SLURM_GPU_TYPE
-from src.utils.types_utils import str_enum_values
+from src.utils.types_utils import str_enum_values, subset_dict_by_keys
 
 prev_umask = os.umask(0o002)  # Set umask to 0o002
 
@@ -247,6 +247,30 @@ GRAPHS_ORDER: dict[MODEL_ARCH_AND_SIZE, MODEL_SIZE_CAT] = {
 }
 
 
+ALL_IMPORTANT_MODELS: dict[MODEL_ARCH_AND_SIZE, MODEL_SIZE_CAT] = subset_dict_by_keys(
+    GRAPHS_ORDER,
+    [
+        # MODEL_ARCH_AND_SIZE(MODEL_ARCH.GPT2, TModelSize("774M")),
+        # MODEL_ARCH_AND_SIZE(MODEL_ARCH.LLAMA3_2, TModelSize("1B")),
+        MODEL_ARCH_AND_SIZE(MODEL_ARCH.MAMBA1, TModelSize("1.4B")),
+        MODEL_ARCH_AND_SIZE(MODEL_ARCH.MAMBA2, TModelSize("1.3B")),
+        MODEL_ARCH_AND_SIZE(MODEL_ARCH.GPT2, TModelSize("1.5B")),
+        MODEL_ARCH_AND_SIZE(MODEL_ARCH.MAMBA1, TModelSize("2.8B")),
+        MODEL_ARCH_AND_SIZE(MODEL_ARCH.MAMBA2, TModelSize("2.7B")),
+        MODEL_ARCH_AND_SIZE(MODEL_ARCH.LLAMA3_2, TModelSize("3B")),
+        MODEL_ARCH_AND_SIZE(MODEL_ARCH.MAMBA1, TModelSize("7B")),
+        MODEL_ARCH_AND_SIZE(MODEL_ARCH.MAMBA1, TModelSize("7B-falcon")),
+        MODEL_ARCH_AND_SIZE(MODEL_ARCH.MAMBA1, TModelSize("7B-falcon-base")),
+        MODEL_ARCH_AND_SIZE(MODEL_ARCH.MISTRAL0_1, TModelSize("7B")),
+        MODEL_ARCH_AND_SIZE(MODEL_ARCH.MISTRAL0_3, TModelSize("7B")),
+        MODEL_ARCH_AND_SIZE(MODEL_ARCH.LLAMA3, TModelSize("8B")),
+        MODEL_ARCH_AND_SIZE(MODEL_ARCH.QWEN2, TModelSize("0.5B")),
+        # MODEL_ARCH_AND_SIZE(MODEL_ARCH.QWEN2_5, TModelSize("0.5B")),
+        # MODEL_ARCH_AND_SIZE(MODEL_ARCH.QWEN2_5, TModelSize("7B")),
+    ],
+)
+
+
 def get_model_by_cat_size(cat_size: MODEL_SIZE_CAT) -> list[MODEL_ARCH_AND_SIZE]:
     return [
         model_arch_and_size
@@ -389,3 +413,6 @@ ALL_VARIANT_PARAMETERS: Sequence[VARIANT_PARAM_NAME] = (
     + str_enum_values(WindowedVariantParam)
     + str_enum_values(InfoFlowVariantParam)
 )
+
+DEFAULT_MODEL_CORRECT_MODEL_CODE_VERSION = TCodeVersionName("v1")
+DEFAULT_MODEL_CORRECT_DATASET_NAME = DatasetName.counter_fact

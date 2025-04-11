@@ -13,7 +13,7 @@ from src.core.types import (
     TokenType,
     TPromptData,
     TPromptOriginalIndex,
-    TRowPosition,
+    TTokenIndex,
     TTokenizer,
     TWindow,
 )
@@ -63,10 +63,10 @@ def decode_tokens(tokenizer: TTokenizer, token_array: torch.Tensor) -> Union[lis
 
 
 def find_token_range(
-    tokenizer,
-    token_array,
-    substring,
-) -> tuple[int, int]:
+    tokenizer: TTokenizer,
+    token_array: torch.Tensor,
+    substring: str,
+) -> tuple[TTokenIndex, TTokenIndex]:
     """Find the tokens corresponding to the given substring in token_array."""
     toks = decode_tokens(tokenizer, token_array)
 
@@ -74,8 +74,8 @@ def find_token_range(
     # if ' ' not in whole_string:
     #     whole_string = " ".join(toks)  # type: ignore
     whole_string = tokenizer.decode(token_array)
-    print(f"whole_string: {whole_string}")
-    print(f"substring: {substring}")
+    # print(f"whole_string: {whole_string}")
+    # print(f"substring: {substring}")
     char_loc = whole_string.index(substring)
     loc = 0
     tok_start, tok_end = None, None
@@ -87,8 +87,8 @@ def find_token_range(
         if tok_end is None and loc >= char_loc + len(substring):
             tok_end = i
             break
-    print(loc, char_loc, whole_string, substring, tok_start, tok_end)
-    print(tokenizer.decode(token_array[tok_start:tok_end]))
+    # print(loc, char_loc, whole_string, substring, tok_start, tok_end)
+    # print(tokenizer.decode(token_array[tok_start:tok_end]))
     assert tok_start is not None and tok_end is not None, "Token range not found"
     return (tok_start, tok_end)
 
@@ -122,6 +122,9 @@ class Prompt:
     def relation(self) -> str:
         return cast(str, self.prompt_row[COLS.COUNTER_FACT.RELATION])
 
+    def get_value(self, column: COLS.COUNTER_FACT) -> Any:
+        return cast(Any, self.prompt_row[column])
+
     def true_id(self, tokenizer, device: TDevice) -> torch.Tensor:
         toks = tokenizer(self.true_word, return_tensors="pt", padding=True).input_ids.to(device=device)
         # if toks.shape[1] == 1:
@@ -135,22 +138,19 @@ class Prompt:
     def get_column(self, column: COLS.COUNTER_FACT) -> Any:
         return self.prompt_row[column]
 
-    def last_index(self, tokenizer: TTokenizer, device: TDevice) -> int:
+    def last_index(self, tokenizer: TTokenizer, device: TDevice) -> TTokenIndex:
         input_ids = self.input_ids(tokenizer, device)
         return input_ids.shape[1] - 1
 
-    def is_relation_last_token(self, tokenizer: TTokenizer, device: TDevice = "cpu") -> bool:
-        input_ids = self.input_ids(tokenizer, device)
+    def is_relation_last_token(self) -> bool:
+        relation_suffix = self.get_value(COLS.COUNTER_FACT.RELATION_SUFFIX)
+        return relation_suffix is not None and relation_suffix != ""
 
-        last_idx = input_ids.shape[1] - 1
-
-        return last_idx in self.get_knockout_idx(tokenizer, TokenType.relation, device)
-
-    def get_knockout_idx(self, tokenizer: TTokenizer, knockout: TokenType, device: TDevice) -> list[int]:
+    def get_knockout_idx(self, tokenizer: TTokenizer, knockout: TokenType, device: TDevice) -> list[TTokenIndex]:
         input_ids = self.input_ids(tokenizer, device)
         last_idx = input_ids.shape[1] - 1
-        tok_start, tok_end = find_token_range(tokenizer, input_ids[0], self.subject)
-        subject_tokens = list(range(tok_start, tok_end))
+        subject_token_range = find_token_range(tokenizer, input_ids[0], self.subject)
+        subject_tokens = list(range(*subject_token_range))
 
         if knockout == TokenType.first:
             return [0]
@@ -172,11 +172,11 @@ class Prompt:
 
 def get_num_to_masks(
     prompt: Prompt,
-    tokenizer,
+    tokenizer: TTokenizer,
     window: TWindow,
     knockout_source: TokenType,
     knockout_target: TokenType,
-    device,
+    device: TDevice,
 ) -> tuple[TNum2Mask, bool]:
     input_ids = prompt.input_ids(tokenizer, device)
     num_to_masks = TNum2Mask(defaultdict(list))
@@ -200,10 +200,6 @@ def get_num_to_masks(
     return num_to_masks, first_token
 
 
-def get_prompt_row(data: TPromptData, prompt_idx: TRowPosition) -> Prompt:
-    return Prompt(prompt_row=data.iloc[prompt_idx])  # type: ignore
-
-
 def get_prompt_row_index(data: TPromptData, prompt_idx: TPromptOriginalIndex) -> Prompt:
     return Prompt(prompt_row=data.loc[prompt_idx])  # type: ignore
 
@@ -213,7 +209,7 @@ def get_subj_idx(
     subj: str,
     tokenizer: TTokenizer,
     last: bool = True,
-) -> int:
+) -> TTokenIndex:
     prefix = input.split(subj)[0]
     sent2subj = prefix
     if last:

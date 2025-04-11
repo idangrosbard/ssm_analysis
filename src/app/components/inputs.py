@@ -1,12 +1,41 @@
-from typing import NamedTuple
+from enum import StrEnum
+from typing import NamedTuple, Optional, Type, TypeVar
 
 import streamlit as st
 
 from src.app.app_consts import AppSessionKeys
 from src.app.texts import AppGlobalText
-from src.core.types import MODEL_ARCH_AND_SIZE
+from src.core.types import TokenType
 from src.experiments.runners.heatmap import HEATMAP_PLOT_FUNCS
 from src.utils.infra.slurm import SLURM_GPU_TYPE
+from src.utils.streamlit.helpers.session_keys import SessionKey
+
+T = TypeVar("T", bound=StrEnum)
+
+
+def select_enum(label: str, enum_class: Type[T], session_key: SessionKey[T]):
+    """Display a selection widget for a StrEnum.
+
+    Args:
+        label: The label to display for the widget
+        enum_class: The StrEnum class to select from
+        session_key: The SessionKey to store the selection in
+        default: The default value to select
+    Returns:
+        The selected value(s) from the enum, or None if none is selected
+    """
+    st.selectbox(
+        label,
+        options=enum_class,
+        key=session_key.key_for_component,
+    )
+
+
+def select_token_type(session_key: SessionKey[TokenType], label: Optional[str] = None):
+    """Specialized function for selecting a TokenType"""
+    if label is None:
+        label = session_key.key
+    select_enum(label, TokenType, session_key)
 
 
 def select_gpu_type():
@@ -26,37 +55,6 @@ def select_window_size():
         key=AppSessionKeys.window_size.key_for_component,
         index=options.index(AppSessionKeys.window_size.value),
     )
-
-
-def select_models_and_sizes(
-    available_models: list[MODEL_ARCH_AND_SIZE],
-) -> list[MODEL_ARCH_AND_SIZE]:
-    """Display a multi-select widget for choosing model architectures and sizes.
-
-    Args:
-        available_models: List of (model_arch, model_size) tuples to choose from
-
-    Returns:
-        List of selected (model_arch, model_size) tuples
-    """
-    # Create display names for models
-    model_options = [model_arch_and_size for model_arch_and_size in available_models]
-    model_display_names = [model_arch_and_size.model_name for model_arch_and_size in model_options]
-
-    # Create mapping from display name back to tuple
-    name_to_model: dict[str, MODEL_ARCH_AND_SIZE] = dict(zip(model_display_names, model_options))
-    selected_names = st.pills(
-        "Select Models",
-        options=model_display_names,
-        default=model_display_names,
-        key="model_multiselect",
-        selection_mode="multi",
-    )
-
-    # Convert selected names back to model tuples
-    selected_models = [name_to_model[name] for name in selected_names]
-
-    return selected_models
 
 
 class HeatmapPlotsParams(NamedTuple):

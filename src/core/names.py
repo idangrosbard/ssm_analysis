@@ -105,6 +105,16 @@ class COLS:
         DIFFS = "diffs"
 
 
+class EvaluateModelMetricName(StrEnum):
+    target_probs = COLS.EVALUATE_MODEL.TARGET_PROBS
+    model_top_output_confidence = COLS.EVALUATE_MODEL.MODEL_TOP_OUTPUT_CONFIDENCE
+    model_correct = COLS.EVALUATE_MODEL.MODEL_CORRECT
+    model_output = COLS.EVALUATE_MODEL.MODEL_OUTPUT
+    target_rank = COLS.EVALUATE_MODEL.TARGET_RANK
+    model_top_outputs = COLS.EVALUATE_MODEL.MODEL_TOP_OUTPUTS
+    model_generation = COLS.EVALUATE_MODEL.MODEL_GENERATION
+
+
 class InfoFlowMetricName:
     hit: Literal["hit"] = literal_guard(COLS.INFO_FLOW.HIT, "hit")
     diffs: Literal["diffs"] = literal_guard(COLS.INFO_FLOW.DIFFS, "diffs")

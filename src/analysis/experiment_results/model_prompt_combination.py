@@ -1,10 +1,12 @@
 import json
 import random
+from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Optional
 
 import pandas as pd
+from tqdm import tqdm
 
 from src.analysis.experiment_results.helpers import get_model_evaluations
 from src.core.names import COLS, ModelCombinationCols
@@ -16,7 +18,7 @@ class ModelCombination:
     correct_models: set[MODEL_ARCH_AND_SIZE]
     incorrect_models: set[MODEL_ARCH_AND_SIZE]
     prompts: list[TPromptOriginalIndex]
-    chosen_prompt: Optional[TPromptOriginalIndex]
+    chosen_prompt: TPromptOriginalIndex
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -36,10 +38,8 @@ class ModelCombination:
         )
 
     def choose_prompt_by_seed(self, seed: int) -> "ModelCombination":
-        chosen_prompt = None
-        if self.prompts:
-            random.seed(seed)
-            chosen_prompt = random.choice(self.prompts)
+        random.seed(seed)
+        chosen_prompt = random.choice(self.prompts)
         return ModelCombination(
             correct_models=self.correct_models,
             incorrect_models=self.incorrect_models,
@@ -94,47 +94,41 @@ def get_model_combinations_prompts(
 
     # Create a DataFrame with correctness for each model
     correctness_df = pd.DataFrame(index=sorted(all_prompts))
-    for model_arch_and_size in model_arch_and_sizes:
+    for model_arch_and_size in tqdm(model_arch_and_sizes, desc="Loading model evaluations"):
         model_df = model_evaluations[model_arch_and_size]
         correctness_df[model_arch_and_size] = [
-            model_df.at[idx, COLS.EVALUATE_MODEL.MODEL_CORRECT] if idx in model_df.index else False
-            for idx in correctness_df.index
+            model_df.at[idx, COLS.EVALUATE_MODEL.MODEL_CORRECT] for idx in correctness_df.index
         ]
 
-    # Generate all possible combinations
-    combinations: list[ModelCombination] = []
+    combination_patterns = defaultdict(list)
 
-    # Convert to numpy for faster operations
-    correctness_matrix = correctness_df.values
+    # Iterate over all prompts and group them by correctness pattern
+    for prompt_idx in tqdm(correctness_df.index, desc="Processing prompts"):
+        # Determine which models are correct and incorrect for this prompt
+        correct_models = set()
+        incorrect_models = set()
 
-    # For each possible combination of models being correct/incorrect
-    for i in range(2 ** len(model_arch_and_sizes)):
-        # Convert number to binary to get combination of correct models
-        binary = format(i, f"0{len(model_arch_and_sizes)}b")
+        for model in model_arch_and_sizes:
+            if correctness_df.at[prompt_idx, model]:
+                correct_models.add(model)
+            else:
+                incorrect_models.add(model)
 
-        # Get models that should be correct and incorrect
-        correct_models = [model_arch_and_sizes[j] for j, bit in enumerate(binary) if bit == "1"]
-        incorrect_models = [model_arch_and_sizes[j] for j, bit in enumerate(binary) if bit == "0"]
+        # Create a key that identifies this correctness pattern
+        pattern_key = (frozenset(correct_models), frozenset(incorrect_models))
+        combination_patterns[pattern_key].append(prompt_idx)
 
-        # Find prompts that are correct for all correct_models AND incorrect for all incorrect_models
-        correct_mask = correctness_matrix[:, [j for j, bit in enumerate(binary) if bit == "1"]].all(axis=1)
-        incorrect_mask = ~correctness_matrix[:, [j for j, bit in enumerate(binary) if bit == "0"]].any(axis=1)
-
-        # Combined mask for prompts meeting both conditions
-        mask = correct_mask & incorrect_mask
-        matching_prompts = correctness_df.index[mask].tolist()
-
+    # Generate the ModelCombination objects from the grouped prompts
+    combinations = []
+    for (correct_models, incorrect_models), prompts in tqdm(combination_patterns.items(), desc="Creating combinations"):
         random.seed(seed)
-        if matching_prompts:
-            chosen_prompt = random.choice(matching_prompts)
-        else:
-            chosen_prompt = None
+        chosen_prompt = random.choice(prompts)
 
         combinations.append(
             ModelCombination(
                 correct_models=set(correct_models),
                 incorrect_models=set(incorrect_models),
-                prompts=matching_prompts,
+                prompts=prompts,
                 chosen_prompt=chosen_prompt,
             )
         )
@@ -155,7 +149,7 @@ def derive_subset_model_combinations(
     ] = {}
 
     # First pass: Group by projected patterns and collect prompts
-    for combo in saved_combinations:
+    for combo in tqdm(saved_combinations, desc="Projecting combinations"):
         # Project to subset - O(|S|) per combination
         proj_correct = frozenset(m for m in combo.correct_models if m in requested_set)
         proj_incorrect = frozenset(m for m in combo.incorrect_models if m in requested_set)
@@ -173,21 +167,23 @@ def derive_subset_model_combinations(
 
     # Second pass: Create new combinations
     new_combinations = []
-    for (correct, incorrect), (prompts, chosen_prompts) in pattern_map.items():
+    for (correct, incorrect), (prompts, chosen_prompts) in tqdm(
+        pattern_map.items(), desc="Creating subset combinations"
+    ):
         # Remove duplicate prompts while preserving order
         seen = set()
         unique_prompts = [p for p in prompts if not (p in seen or seen.add(p))]
 
         # Preserve chosen prompt order from original combinations
         chosen_candidates = [p for p in chosen_prompts if p in unique_prompts]
-        chosen_prompt = chosen_candidates[0] if chosen_candidates else None
+        chosen_prompt = chosen_candidates[0]
 
         new_combinations.append(
             ModelCombination(
                 correct_models=set(correct),
                 incorrect_models=set(incorrect),
                 prompts=unique_prompts,
-                chosen_prompt=chosen_prompt or (unique_prompts[0] if unique_prompts else None),
+                chosen_prompt=chosen_prompt,
             )
         )
 

@@ -10,6 +10,8 @@ from src.app.page import (
     p04_heatmap_creation,
     p05_info_flow_analysis,
     p06_final_plots,
+    p07_prompts_comparison,
+    p08_mamba_analysis,
 )
 from src.utils.streamlit.helpers.component import StreamlitPage
 from src.utils.streamlit.helpers.session_keys import mark_finished_global_refresh
@@ -31,6 +33,10 @@ def get_page(page_order: PAGE_ORDER) -> StreamlitPage:
             return p05_info_flow_analysis.InfoFlowAnalysisPage()
         case PAGE_ORDER.FINAL_PLOTS:
             return p06_final_plots.FinalPlotsPage()
+        case PAGE_ORDER.PROMPTS_COMPARISON:
+            return p07_prompts_comparison.PromptsComparisonPage()
+        case PAGE_ORDER.MAMBA_ANALYSIS:
+            return p08_mamba_analysis.MambaAnalysisPage()
         case _:
             assert_never(page_order)
 

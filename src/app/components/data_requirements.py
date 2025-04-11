@@ -147,12 +147,13 @@ class RequirementExecution(StreamlitComponent):
                 raise ValueError(f"Unsupported config type: {type(config)}")
 
             status = None
-            if skip_scheduled:
-                status = config.slurm_job_folder.get_latest_slurm_job_status()
-                if not isinstance(status, SlurmStatus) or not status.scheduled():
+            if remaining_prompts:
+                if skip_scheduled:
+                    status = config.slurm_job_folder.get_latest_slurm_job_status()
+                    if not isinstance(status, SlurmStatus) or not status.scheduled():
+                        configs_to_run.append(config)
+                else:
                     configs_to_run.append(config)
-            else:
-                configs_to_run.append(config)
 
             table_data.append(
                 ommit_none(
@@ -171,13 +172,13 @@ class RequirementExecution(StreamlitComponent):
             )
 
         df = pd.DataFrame(table_data)
-        singlar_columns = list(df.columns[df.nunique() == 1])
+        singular_columns = list(df.columns[df.nunique() == 1])
         if len(df) == 1:
-            singlar_columns = singlar_columns[2:]
+            singular_columns = singular_columns[2:]
         df, grid_builder = base_grid_builder(
             df,
             selection_mode=SelectionMode.SINGLE,
-            hide_columns=singlar_columns,
+            hide_columns=singular_columns,
         )
         grid_options = grid_builder.build()
         set_aagrid_apply_default_filters(
@@ -186,8 +187,8 @@ class RequirementExecution(StreamlitComponent):
         )
         with status_cols[0]:
             # Display the table
-            if singlar_columns:
-                st.write(" | ".join([f"{col} = {df[col].iloc[0]}" for col in singlar_columns]))
+            if singular_columns:
+                st.write(" | ".join([f"{col} = {df[col].iloc[0]}" for col in singular_columns]))
             grid_response = AgGrid(
                 df,
                 gridOptions=grid_options,

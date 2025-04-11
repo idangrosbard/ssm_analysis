@@ -40,6 +40,10 @@ class SessionKey(Generic[TSessionKey]):
         if not self.exists():
             st.session_state[self.key] = value
 
+    def init_default(self):
+        if not self.exists():
+            self.reset_value()
+
     @property
     def key(self) -> str:
         return self._key

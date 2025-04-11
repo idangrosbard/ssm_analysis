@@ -1,8 +1,9 @@
 from abc import ABC, abstractmethod
-from typing import Dict, Iterable, List, Optional, Tuple, assert_never, cast
+from typing import Dict, Iterable, List, Optional, Tuple, Union, assert_never, cast
 
 import torch
 import torch.nn.functional as F
+import transformers.models
 from torch import Tensor
 
 from src.core.consts import is_falcon
@@ -22,8 +23,14 @@ from src.core.types import (
 )
 from src.experiments.infrastructure.setup_models import get_tokenizer_and_model
 from src.experiments.knockout.gpt.gpt2 import gpt2_knockout_utils
-from src.experiments.knockout.llama.llama_attn import LlamaAttentionKnockout
+from src.experiments.knockout.llama.llama_attn import (
+    LlamaAttention,
+    LlamaAttentionKnockout,
+    MistralAttention,
+    Qwen2Attention,
+)
 from src.experiments.knockout.mamba.mamba1.helpers.ssm_interfere import SSMInterfereHook
+from src.experiments.knockout.mamba.mamba2.minimal_mamba2 import Mamba2
 
 
 class ModelInterface(ABC):
@@ -73,7 +80,29 @@ class ModelInterface(ABC):
         pass
 
 
-class Mamba1Interface(ModelInterface):
+class MambaInterface(ModelInterface):
+    model: Union[TMamba1Model, TMamba2Model]
+
+    @property
+    def backbone(self):
+        return self.model.backbone
+
+    @property
+    def layers(self) -> torch.nn.ModuleList:
+        layers = self.backbone.layers
+        assert isinstance(layers, torch.nn.ModuleList)
+        return layers
+
+    @abstractmethod
+    def get_layer_moi(self, layer_i: int) -> torch.nn.Module:
+        # "mixer of interest" - moi
+        pass
+
+    def n_layers(self):
+        return len(self.layers)
+
+
+class Mamba1Interface(MambaInterface):
     model: TMamba1Model
 
     def __init__(
@@ -113,12 +142,23 @@ class Mamba1Interface(ModelInterface):
             # set up hooks
             for i in range(len(self.model.backbone.layers)):
                 if i in layers:
-                    # "mixer of interest" - moi
-                    moi = self.model.backbone.layers[i].mixer
-
                     self.hooks.append(SSMInterfereHook(i, self.knockout_mode, is_falcon=self.is_falcon))
+                    self.handles.append(self.get_layer_moi(i).register_forward_hook(self.hooks[-1]))  # type: ignore
 
-                    self.handles.append(moi.register_forward_hook(self.hooks[-1]))
+    def get_layer_moi(
+        self, layer_i: int
+    ) -> (
+        transformers.models.mamba.modeling_mamba.MambaMixer
+        | transformers.models.falcon_mamba.modeling_falcon_mamba.FalconMambaMixer
+    ):
+        # "mixer of interest" - moi
+        if isinstance(self.model, transformers.models.falcon_mamba.modeling_falcon_mamba.FalconMambaForCausalLM):
+            moi = self.model.backbone.layers[layer_i].mixer
+            assert isinstance(moi, transformers.models.falcon_mamba.modeling_falcon_mamba.FalconMambaMixer)
+        else:
+            moi = self.model.backbone.layers[layer_i].mixer
+            assert isinstance(moi, transformers.models.mamba.modeling_mamba.MambaMixer)
+        return moi
 
     def _get_feature_mask(self, layer: torch.nn.Module, feature_category: FeatureCategory) -> Tensor:
         assert isinstance(layer.A_log, torch.Tensor)
@@ -158,7 +198,7 @@ class Mamba1Interface(ModelInterface):
 
                 hook.knockout_indices = source_indices
                 hook.affected_outputs = target_indices
-                hook.feature_mask = self._get_feature_mask(self.model.backbone.layers[layer].mixer, feature_category)
+                hook.feature_mask = self._get_feature_mask(self.get_layer_moi(layer), feature_category)
 
         with torch.no_grad():
             out = self.model(input_ids)
@@ -167,9 +207,6 @@ class Mamba1Interface(ModelInterface):
         probs = F.softmax(logits, dim=-1)
 
         return probs[:, -1, :].detach().cpu().numpy()  # type: ignore
-
-    def n_layers(self) -> int:
-        return len(self.model.backbone.layers)
 
 
 class LlamaInterface(ModelInterface):
@@ -192,7 +229,7 @@ class LlamaInterface(ModelInterface):
         super().setup(layers)
 
         for handle in self.handles:
-            handle.self_attn = handle.self_attn.inner
+            handle.self_attn = handle.self_attn.inner  # type: ignore
 
         # Assert that no hooks are left
         for m in self.model.modules():
@@ -208,6 +245,11 @@ class LlamaInterface(ModelInterface):
                 if i in layers:
                     # "mixer of interest" - moi
                     moi = self.model.model.layers[i].self_attn
+                    assert (
+                        isinstance(moi, LlamaAttention)
+                        or isinstance(moi, MistralAttention)
+                        or isinstance(moi, Qwen2Attention)
+                    )
                     knockout = LlamaAttentionKnockout(moi)
                     knockout.eval()
                     knockout.to(next(moi.parameters()).device)
@@ -240,7 +282,7 @@ class LlamaInterface(ModelInterface):
         return len(self.model.model.layers)
 
 
-class Mamba2Interface(ModelInterface):
+class Mamba2Interface(MambaInterface):
     model: TMamba2Model
 
     def __init__(
@@ -285,9 +327,9 @@ class Mamba2Interface(ModelInterface):
         feature_masks = {}
         if num_to_masks is not None:
             for layer in num_to_masks:
-                feature_masks[layer] = self._get_feature_mask(
-                    self.model.backbone.layers[layer].mixer, feature_category
-                ).to(self.model.device)
+                feature_masks[layer] = self._get_feature_mask(self.get_layer_moi(layer), feature_category).to(
+                    self.model.device
+                )
 
         with torch.no_grad():
             out = self.model.generate_single(
@@ -303,8 +345,11 @@ class Mamba2Interface(ModelInterface):
 
         return out[-1].detach().cpu().numpy()  # type: ignore
 
-    def n_layers(self) -> int:
-        return len(self.model.backbone.layers)
+    def get_layer_moi(self, layer_i: int) -> Mamba2:
+        # "mixer of interest" - moi
+        moi = self.layers[layer_i].mixer
+        assert isinstance(moi, Mamba2)
+        return moi
 
 
 class GPT2Interface(ModelInterface):

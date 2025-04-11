@@ -117,11 +117,11 @@ class FinalPlotsPage(StreamlitPage):
             if plot_plan:
                 if FinalPlotsSessionKeys.is_new_plot_plan():
                     # Add new plan
-                    plot_plans.add_plan(plot_plan)
+                    plot_plans = plot_plans.add_plan(plot_plan)
                 else:
                     # Update existing plan
-                    plot_plans.remove_plan(FinalPlotsSessionKeys.SELECTED_PLOT_PLAN_ID.value)
-                    plot_plans.add_plan(plot_plan)
+                    plot_plans = plot_plans.remove_plan(FinalPlotsSessionKeys.SELECTED_PLOT_PLAN_ID.value)
+                    plot_plans = plot_plans.add_plan(plot_plan)
 
                 save_plot_plans(plot_plans)
 

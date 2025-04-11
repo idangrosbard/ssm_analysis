@@ -6,6 +6,12 @@ import streamlit as st
 from st_aggrid import GridOptionsBuilder, JsCode
 
 
+def _validate_grid_builder_on_first_data_rendered_not_set(grid_builder: GridOptionsBuilder):
+    assert getattr(grid_builder, "_GridOptionsBuilder__grid_options").get("onFirstDataRendered") is None, (
+        "onFirstDataRendered already set"
+    )
+
+
 def set_aagrid_apply_default_filters(
     grid_builder: GridOptionsBuilder, filter_defaults: dict[str, list], with_st_code: bool = False
 ):
@@ -41,7 +47,7 @@ def set_aagrid_apply_default_filters(
 
     # JavaScript function to set the filter on first render
     onFirstDataRendered = JsCode(code)
-
+    _validate_grid_builder_on_first_data_rendered_not_set(grid_builder)
     # Apply the generated JavaScript code to AG Grid
     grid_builder.configure_grid_options(onFirstDataRendered=onFirstDataRendered.js_code)
 
@@ -63,15 +69,24 @@ def base_grid_builder(
     selection_mode: SelectionMode,
     hide_columns: list[str],
     fit_strategy: FIT_STRATEGY = FIT_STRATEGY.FIT_CELL_CONTENTS,
-    hide_unique_values: bool = False,
+    hide_singular_columns: bool = False,
+    pre_selected_rows: list[str] | None = None,
 ) -> tuple[pd.DataFrame, GridOptionsBuilder]:
+    if hide_singular_columns:
+        hide_columns = hide_columns + list(df.columns[df.nunique() <= 1])
+
     # if the first column is hidden, we need to reorder the columns
     if selection_mode != SelectionMode.DISABLED and df.columns[0] in hide_columns:
         df = df[[*df.columns[1:], df.columns[0]]]
     grid_builder = GridOptionsBuilder.from_dataframe(df)
     grid_builder.configure_pagination(enabled=True, paginationAutoPageSize=False, paginationPageSize=100)
     if selection_mode != SelectionMode.DISABLED:
-        grid_builder.configure_selection(selection_mode=selection_mode, use_checkbox=True, header_checkbox=True)
+        grid_builder.configure_selection(
+            selection_mode=selection_mode,
+            use_checkbox=True,
+            header_checkbox=True,
+            pre_selected_rows=pre_selected_rows,
+        )
     grid_builder.configure_default_column(filter=True, floatingFilter=True)
     grid_builder.configure_side_bar()
     for col in hide_columns:
@@ -108,7 +123,6 @@ def set_pre_selected_rows(grid_builder: GridOptionsBuilder, pre_selected_rows: l
         """
         )
         onFirstDataRendered = JsCode(code)
-        assert getattr(grid_builder, "_GridOptionsBuilder__grid_options").get("onFirstDataRendered") is None, (
-            "onFirstDataRendered already set"
-        )
+        _validate_grid_builder_on_first_data_rendered_not_set(grid_builder)
+
         grid_builder.configure_grid_options(onFirstDataRendered=onFirstDataRendered.js_code)

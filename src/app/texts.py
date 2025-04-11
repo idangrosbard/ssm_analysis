@@ -1,4 +1,14 @@
 # ruff: noqa: E731
+class COMMON_TEXTS:
+    error_details = "Show Error Details"
+    preparing_to_run = "Preparing to run"
+    processing_status = lambda current, total, run_what: f"Processed {current} / {total} {run_what}..."
+    success_status = lambda count, run_what: f"Successfully submitted {count} {run_what}..."
+    error_status = lambda count, run_what: f"Failed to submit {count} {run_what}..."
+    submit_failed = lambda prompt_idx, error, run_what: f"Failed to submit job for {prompt_idx} {run_what}: {error}"
+    LOADING = lambda what: f"Loading {what}..."
+
+
 def show_filter_results_text(filtered_count: int, all_count: int) -> str:
     return f"{filtered_count} / {all_count} ({filtered_count / all_count * 100}%)"
 
@@ -24,7 +34,6 @@ class HEATMAP_TEXTS:
     # Buttons
     show_combination = "Show Combination"
     show_prompts = "Show Prompts"
-    BUT_SAVE_NEW_SELECTION = lambda old, new: f"Save New Selection ~~{old}~~ -> {new}"
 
     # Other
     NO_SELECTED_COMBINATION = "Select a combination to continue"
@@ -123,16 +132,6 @@ class FINAL_PLOTS_TEXTS:
     plot_plan_not_found = lambda id: f"Plot plan with ID {id} not found."
 
 
-class COMMON_TEXTS:
-    error_details = "Show Error Details"
-    preparing_to_run = "Preparing to run"
-    processing_status = lambda current, total, run_what: f"Processed {current} / {total} {run_what}..."
-    success_status = lambda count, run_what: f"Successfully submitted {count} {run_what}..."
-    error_status = lambda count, run_what: f"Failed to submit {count} {run_what}..."
-    submit_failed = lambda prompt_idx, error, run_what: f"Failed to submit job for {prompt_idx} {run_what}: {error}"
-    LOADING = lambda what: f"Loading {what}..."
-
-
 class INFO_FLOW_ANALYSIS_TEXTS:
     title = "Info Flow Analysis"
     icon = str("📊")
@@ -155,3 +154,17 @@ class INFO_FLOW_ANALYSIS_TEXTS:
     no_common_indices = "No common indices found in the selected info flow results."
     x_axis = "X Axis"
     y_axis = "Y Axis"
+
+
+class PROMPTS_COMPARISON_TEXTS:
+    title = "Prompts Comparison"
+    icon = "🔤"
+
+    class TABS:
+        SHOW_METRICS = "Show Metrics"
+        SHOW_TOKENIZATION = "Show Tokenization"
+
+
+class MAMBA_ANALYSIS_TEXTS:
+    title = "Mamba Architecture Analysis"
+    icon = "🐍"

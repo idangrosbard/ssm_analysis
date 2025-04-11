@@ -1,15 +1,20 @@
 from dataclasses import asdict
 from pathlib import Path
-from typing import TypeVar
+from typing import Optional, TypeVar
 
 import streamlit as st
 from st_aggrid import AgGrid, DataReturnMode, GridUpdateMode
 from streamlit_modal import Modal
 
+from src.app.data_store import load_results_bank
 from src.core.names import ResultBankParamNames
-from src.data_ingestion.data_defs.data_defs import ResultBank
+from src.data_ingestion.data_defs.data_defs import EvaluateModelResults, ResultBank
 from src.experiments.infrastructure.base_runner import BaseRunner
-from src.utils.streamlit.components.aagrid import SelectionMode, base_grid_builder, set_aagrid_apply_default_filters
+from src.utils.streamlit.components.aagrid import (
+    SelectionMode,
+    base_grid_builder,
+    set_aagrid_apply_default_filters,
+)
 from src.utils.streamlit.helpers.component import StreamlitComponent
 from src.utils.streamlit.helpers.session_keys import SessionKey
 
@@ -23,8 +28,10 @@ class ShowResultsBank(StreamlitComponent[T_RESULT_BANK_TYPE]):
         selection_mode: SelectionMode = SelectionMode.DISABLED,
         height: int = 1000,
         key: str = "results_bank",
-        filters: dict[str, list] = {},
+        filters: Optional[dict[str, list]] = None,
         hide_columns: list[str] = [],
+        hide_singular_columns: bool = False,
+        pre_select_all_rows: bool = False,
     ):
         super().__init__()
         self.results_bank = results_bank
@@ -33,15 +40,23 @@ class ShowResultsBank(StreamlitComponent[T_RESULT_BANK_TYPE]):
         self.key = key
         self.filters = filters
         self.hide_columns = [self.results_bank.KEY] + hide_columns
+        self.hide_singular_columns = hide_singular_columns
+        self.pre_select_all_rows = pre_select_all_rows
 
     def render(self) -> T_RESULT_BANK_TYPE:
+        df = self.results_bank.to_experiment_results_df()
         df, grid_builder = base_grid_builder(
-            self.results_bank.to_experiment_results_df(), self.selection_mode, self.hide_columns
+            df,
+            self.selection_mode,
+            hide_columns=self.hide_columns,
+            hide_singular_columns=self.hide_singular_columns,
+            pre_selected_rows=(list(map(str, df.index)) if self.pre_select_all_rows else None),
         )
-        set_aagrid_apply_default_filters(
-            grid_builder,
-            self.filters,
-        )
+        if self.filters is not None:
+            set_aagrid_apply_default_filters(
+                grid_builder,
+                self.filters,
+            )
         for col in [ResultBankParamNames.window_size]:
             if col not in self.hide_columns:
                 grid_builder.configure_column(col, type=["textColumn"])
@@ -50,7 +65,7 @@ class ShowResultsBank(StreamlitComponent[T_RESULT_BANK_TYPE]):
 
         # Display the table
         grid_response = AgGrid(
-            df,
+            data=df,
             gridOptions=grid_options,
             height=self.height,
             fit_columns_on_grid_load=True,
@@ -61,7 +76,29 @@ class ShowResultsBank(StreamlitComponent[T_RESULT_BANK_TYPE]):
             allow_unsafe_jscode=True,
         )
 
-        return self.results_bank.from_experiment_results_df(grid_response.selected_data)
+        if grid_response.grid_state is None and self.pre_select_all_rows:
+            return self.results_bank
+
+        return self.results_bank.from_experiment_results_df(grid_response.selected_rows)
+
+
+def select_model_evaluations(
+    base_results: Optional[EvaluateModelResults] = None,
+    key: str = "select_model_evaluations",
+    pre_select_all_rows: bool = True,
+) -> EvaluateModelResults:
+    if base_results is None:
+        base_results = load_results_bank.call_and_render().to_evaluate_model_results()
+    result_bank = ShowResultsBank(
+        base_results,
+        selection_mode=SelectionMode.MULTIPLE,
+        height=300,
+        hide_singular_columns=True,
+        key=key,
+        pre_select_all_rows=pre_select_all_rows,
+    ).render()
+
+    return result_bank
 
 
 modal = Modal(key="job_output_modal", title="Job Output", max_width=1000)

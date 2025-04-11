@@ -11,13 +11,20 @@ from transformers.models.llama.modeling_llama import (
 from transformers.models.mistral.modeling_mistral import (
     MistralAttention,
 )
+from transformers.models.qwen2.modeling_qwen2 import (
+    Qwen2Attention,
+)
 
 # from src.experiments.knockout.llama.llama_attention_forward import llama_attention_forward
+
+T_LLAMA_ATTN = LlamaAttention | MistralAttention | Qwen2Attention
 
 
 class LlamaAttentionKnockout(nn.Module):
     def __init__(
-        self, inner: LlamaAttention | MistralAttention, knockout_mask: Optional[Iterable[tuple[int, int]]] = None
+        self,
+        inner: T_LLAMA_ATTN,
+        knockout_mask: Optional[Iterable[tuple[int, int]]] = None,
     ):
         super().__init__()
         self.inner = inner

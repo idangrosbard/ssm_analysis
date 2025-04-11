@@ -16,11 +16,14 @@ runs/
 notebooks/.ipynb_checkpoints/
 notebooks/tmp_idan.ipynb
 notebooks/tmp.ipynb
+src/analysis/experiment_results/prompt_selections.json
+tests/src/experiments/baselines/*
 
 # Development tools
 .git/
 .vscode/
 .idea/
+.history/
 node_modules/
 
 # Build artifacts

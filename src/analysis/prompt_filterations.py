@@ -1,7 +1,9 @@
 from dataclasses import dataclass, field
 from enum import StrEnum
 from functools import lru_cache
+from typing import Iterable
 
+from src.core.consts import DEFAULT_MODEL_CORRECT_DATASET_NAME, DEFAULT_MODEL_CORRECT_MODEL_CODE_VERSION
 from src.core.names import COLS, DatasetName
 from src.core.types import (
     ALL_SPLITS_LITERAL,
@@ -29,6 +31,9 @@ class AllPromptFilteration(BasePromptFilteration):
     def get_dependencies(self) -> TDependencies:
         return {}
 
+    def display_name(self) -> str:
+        return f"{self.dataset_name} {self.split}"
+
 
 @dataclass(frozen=True)
 class AnyExistingPromptFilteration(BasePromptFilteration):
@@ -38,6 +43,9 @@ class AnyExistingPromptFilteration(BasePromptFilteration):
     def get_dependencies(self) -> TDependencies:
         raise ValueError("Should not be called")
 
+    def display_name(self) -> str:
+        return "Any Existing"
+
 
 @dataclass(frozen=True)
 class AnyExistingCompletePromptFilteration(BasePromptFilteration):
@@ -46,6 +54,9 @@ class AnyExistingCompletePromptFilteration(BasePromptFilteration):
 
     def get_dependencies(self) -> TDependencies:
         raise ValueError("Should not be called")
+
+    def display_name(self) -> str:
+        return "Any Existing (Complete Only)"
 
 
 @dataclass(frozen=True)
@@ -57,6 +68,13 @@ class SelectivePromptFilteration(BasePromptFilteration):
 
     def get_dependencies(self) -> TDependencies:
         return {}
+
+    def display_name(self) -> str:
+        amount = len(self.prompt_ids)
+        if amount > 5:
+            return f"Selective ({amount})"
+        else:
+            return f"Selective ({', '.join(str(prompt_id) for prompt_id in self.prompt_ids)})"
 
 
 @dataclass(frozen=True)
@@ -79,6 +97,9 @@ class IntersectionPromptFilteration(BasePromptFilteration):
             if deps:
                 dependencies[prompt_filteration] = deps
         return dependencies
+
+    def display_name(self) -> str:
+        return "Intersection"
 
 
 @dataclass(frozen=True)
@@ -108,10 +129,14 @@ class UnionPromptFilteration(BasePromptFilteration):
             return self
         return UnionPromptFilteration(tuple(set(self.prompt_filterations).union({prompt_filteration})))
 
+    def display_name(self) -> str:
+        return "Union"
+
 
 class Correctness(StrEnum):
     correct = "correct"
     top_5_correct = "top_5_correct"
+    top_2_to_5_correct = "top_2_to_5_correct"
 
 
 @dataclass(frozen=True)
@@ -130,6 +155,8 @@ class ModelCorrectPromptFilteration(BasePromptFilteration):
                 df = df[df[COLS.EVALUATE_MODEL.MODEL_CORRECT]]
             case Correctness.top_5_correct:
                 df = df[df[COLS.EVALUATE_MODEL.TARGET_RANK] <= 5]
+            case Correctness.top_2_to_5_correct:
+                df = df[(2 <= df[COLS.EVALUATE_MODEL.TARGET_RANK]) & (df[COLS.EVALUATE_MODEL.TARGET_RANK] <= 5)]
             case _:
                 raise NotImplementedError(f"Correctness {self.correctness} not implemented")
 
@@ -154,11 +181,15 @@ class ModelCorrectPromptFilteration(BasePromptFilteration):
     def is_computed(self) -> bool:
         return self.get_dependencies()["evaluate_model"].is_computed()
 
+    def display_name(self) -> str:
+        return f"Model {self.correctness.value} on {self.model_arch} {self.model_size}"
 
-def get_all_correct_prompt_filteration(
-    model_arch_and_sizes: list[MODEL_ARCH_AND_SIZE],
-    code_version: TCodeVersionName,
-    dataset_name: DatasetName = DatasetName.counter_fact,
+
+def get_shared_models_correctness_prompt_filteration(
+    model_arch_and_sizes: Iterable[MODEL_ARCH_AND_SIZE],
+    correctness: Correctness,
+    code_version: TCodeVersionName = DEFAULT_MODEL_CORRECT_MODEL_CODE_VERSION,
+    dataset_name: DatasetName = DEFAULT_MODEL_CORRECT_DATASET_NAME,
 ):
     return IntersectionPromptFilteration(
         tuple(
@@ -166,7 +197,7 @@ def get_all_correct_prompt_filteration(
                 dataset_name=dataset_name,
                 model_arch=model_arch_and_size.arch,
                 model_size=model_arch_and_size.size,
-                correctness=Correctness.correct,
+                correctness=correctness,
                 code_version=code_version,
             )
             for model_arch_and_size in model_arch_and_sizes

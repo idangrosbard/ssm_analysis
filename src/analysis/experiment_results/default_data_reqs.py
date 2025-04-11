@@ -1,6 +1,7 @@
 from src.analysis.prompt_filterations import (
+    Correctness,
     UnionPromptFilteration,
-    get_all_correct_prompt_filteration,
+    get_shared_models_correctness_prompt_filteration,
 )
 from src.core.consts import (
     GRAPHS_ORDER,
@@ -28,9 +29,10 @@ MODEL_CORRECT_MODEL_CODE_VERSION = TCodeVersionName("v1")
 
 def get_default_data_reqs() -> DataReqiermentCollection:
     data_reqs = DataReqiermentCollection()
-    all_correct_prompt_filteration = get_all_correct_prompt_filteration(
+    all_correct_prompt_filteration = get_shared_models_correctness_prompt_filteration(
         model_arch_and_sizes=list(GRAPHS_ORDER.keys()),
         code_version=MODEL_CORRECT_MODEL_CODE_VERSION,
+        correctness=Correctness.correct,
     )
 
     default_prompt_filteration = UnionPromptFilteration(

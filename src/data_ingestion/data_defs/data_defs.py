@@ -2,22 +2,48 @@ import functools
 import json
 import random
 from collections import defaultdict
-from dataclasses import asdict
+from dataclasses import asdict, dataclass, field
+from functools import lru_cache
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Set, Type, TypeVar, Union, cast
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Dict,
+    List,
+    NewType,
+    Optional,
+    Set,
+    Type,
+    TypeVar,
+    Union,
+    cast,
+)
 
 import pandas as pd
+import tqdm
 
-from src.analysis.prompt_filterations import SelectivePromptFilteration, UnionPromptFilteration
+from src.analysis.prompt_filterations import (
+    SelectivePromptFilteration,
+    UnionPromptFilteration,
+)
 from src.core.consts import PATHS
 from src.core.names import (
+    COLS,
+    EvaluateModelMetricName,
     ExperimentName,
     HeatmapCols,
     ModelCombinationCols,
     ResultBankParamNames,
     SummarizedDataFulfilledReqsCols,
 )
-from src.core.types import MODEL_ARCH_AND_SIZE, TPlotID, TPromptOriginalIndex, TTokenizer
+from src.core.types import (
+    MODEL_ARCH_AND_SIZE,
+    TPlotID,
+    TPromptDataFlat,
+    TPromptOriginalIndex,
+    TTokenizer,
+)
 from src.data_ingestion.helpers.logits_utils import Prompt
 from src.experiments.infrastructure.base_runner import (
     BasePromptFilteration,
@@ -25,16 +51,25 @@ from src.experiments.infrastructure.base_runner import (
     BaseVariantParams,
     InputParams,
 )
+from src.experiments.infrastructure.setup_models import get_tokenizer, get_tokenizer_config_from_hub
+from src.experiments.runners.evaluate_model import EvaluateModelRunner
 from src.experiments.runners.info_flow import InfoFlowRunner, TWindowLayerStartIndex
-from src.utils.infra.data_object import DataObject, IndexableDataObject, IterableDataObject
+from src.utils.infra.data_object import (
+    DataObject,
+    IndexableDataObject,
+    IterableDataObject,
+)
 from src.utils.types_utils import (
+    compare_dicts,
     get_dict_keys_by_condition,
     select_indexes_from_list,
     subset_dict_by_keys,
 )
 
 if TYPE_CHECKING:
-    from src.analysis.experiment_results.model_prompt_combination import ModelCombination
+    from src.analysis.experiment_results.model_prompt_combination import (
+        ModelCombination,
+    )
     from src.analysis.experiment_results.plot_plan import PlotPlan
 
 
@@ -94,7 +129,10 @@ class FulfilledReqs(IndexableDataObject[BaseVariantParams, tuple[BasePromptFilte
     def choose_latest_fulfilled(self) -> "FulfilledReqs":
         def get_latest_results() -> Dict[BaseVariantParams, tuple[BasePromptFilteration, List[BaseRunner]]]:
             return {
-                data_req: (filteration, [max(options, key=lambda x: x.metadata_params.code_version)])
+                data_req: (
+                    filteration,
+                    [max(options, key=lambda x: x.metadata_params.code_version)],
+                )
                 for data_req, (filteration, options) in self._items.items()
             }
 
@@ -115,7 +153,11 @@ class SummarizedDataFulfilledReqs(IterableDataObject[dict[str, Any]]):
                 **{
                     param: getattr(req, param, None)
                     for param in ResultBankParamNames
-                    if param not in [ResultBankParamNames.path, ResultBankParamNames.code_version]
+                    if param
+                    not in [
+                        ResultBankParamNames.path,
+                        ResultBankParamNames.code_version,
+                    ]
                 },
                 SummarizedDataFulfilledReqsCols.AvailableOptions: len(opts),
                 SummarizedDataFulfilledReqsCols.Options: opts,
@@ -136,9 +178,6 @@ class SummarizedDataFulfilledReqs(IterableDataObject[dict[str, Any]]):
 
 
 class PlotPlans(IndexableDataObject[TPlotID, "PlotPlan"]):
-    def __init__(self, plot_plans: Dict[TPlotID, "PlotPlan"]):
-        super().__init__(plot_plans)
-
     @staticmethod
     def get_plot_plan_dir(plot_id: TPlotID) -> Path:
         return PATHS.FINAL_PLOTS_DIR / plot_id
@@ -151,19 +190,22 @@ class PlotPlans(IndexableDataObject[TPlotID, "PlotPlan"]):
     def get_cache_dir(cls, plot_id: TPlotID) -> Path:
         return cls.get_plot_plan_dir(plot_id) / "cache"
 
-    def add_plan(self, plan: "PlotPlan") -> None:
+    def add_plan(self, plan: "PlotPlan"):
         if plan.plot_id in self._items:
             raise ValueError(f"Plot plan with title {plan.plot_id} already exists")
-        self._items[plan.plot_id] = plan
-        self.order_plans()
+        new_items = self._items.copy()
+        new_items[plan.plot_id] = plan
+        return self.__class__(new_items).order_plans()
 
-    def order_plans(self) -> None:
-        self._items = dict(sorted(self._items.items(), key=lambda x: x[1].order))
+    def order_plans(self):
+        return self.__class__(dict(sorted(self._items.items(), key=lambda x: x[1].order)))
 
-    def remove_plan(self, plot_id: TPlotID) -> None:
+    def remove_plan(self, plot_id: TPlotID):
         if plot_id not in self._items:
             raise ValueError(f"Plot plan with title {plot_id} does not exist")
-        self._items.pop(plot_id)
+        new_items = self._items.copy()
+        new_items.pop(plot_id)
+        return self.__class__(new_items).order_plans()
 
     def is_plan_exists(self, plot_id: TPlotID) -> bool:
         return plot_id in self._items
@@ -255,10 +297,16 @@ class ResultBank(IterableDataObject[T_RUNNER_TYPE]):
         results = [result for result in self if result.variant_params.experiment_name == ExperimentName.info_flow]
         return InfoFlowResults(cast(list[InfoFlowRunner], results))
 
+    def to_evaluate_model_results(self) -> "EvaluateModelResults":
+        results = [result for result in self if result.variant_params.experiment_name == ExperimentName.evaluate_model]
+        return EvaluateModelResults(cast(list[EvaluateModelRunner], results))
+
     def is_empty(self) -> bool:
         return len(self) == 0
 
-    def get_common_and_different_params(self) -> tuple[Dict[str, Any], List[Dict[str, Any]]]:
+    def get_common_and_different_params(
+        self,
+    ) -> tuple[Dict[str, Any], List[Dict[str, Any]]]:
         if self.is_empty():
             return {}, []
 
@@ -285,6 +333,31 @@ class ResultBank(IterableDataObject[T_RUNNER_TYPE]):
 
         return common_params, different_params_list
 
+    def set_prompt_filteration(self, prompt_filteration: BasePromptFilteration):
+        return self.__class__(
+            [result.modify(input_params=result.input_params.modify(filteration=prompt_filteration)) for result in self]
+        )
+
+    def subset_prompts(self, prompt_ids: list[TPromptOriginalIndex]):
+        return self.set_prompt_filteration(SelectivePromptFilteration(tuple(prompt_ids)))
+
+
+class EvaluateModelResults(ResultBank[EvaluateModelRunner]):
+    @lru_cache(maxsize=4)
+    def get_hit_per_prompt(self, evaluate_model_metric_name: EvaluateModelMetricName) -> pd.DataFrame:
+        hit_per_model: list[pd.Series] = []
+        for result in self:
+            prompt_data = result.get_prompt_data()
+            model_arch_and_size = result.variant_params.model_arch_and_size
+            ser = prompt_data[evaluate_model_metric_name]
+            ser.name = model_arch_and_size
+            hit_per_model.append(ser)
+        return pd.DataFrame(hit_per_model).T
+
+    @property
+    def model_arch_and_sizes(self) -> list[MODEL_ARCH_AND_SIZE]:
+        return [result.variant_params.model_arch_and_size for result in self]
+
 
 class InfoFlowResults(ResultBank[InfoFlowRunner]):
     def get_common_indices(self) -> set[TPromptOriginalIndex]:
@@ -309,13 +382,60 @@ class InfoFlowResults(ResultBank[InfoFlowRunner]):
             ]
         )
 
-    def subset_prompts(self, prompt_ids: list[TPromptOriginalIndex]) -> "InfoFlowResults":
-        return InfoFlowResults(
-            [
-                info_flow.modify(input_params=InputParams(filteration=SelectivePromptFilteration(tuple(prompt_ids))))
-                for info_flow in self
-            ]
-        )
+
+TUniqueTokenizerName = NewType("TUniqueTokenizerName", str)
+
+
+@dataclass(frozen=True)
+class UniqueTokenizerInfo:
+    tokenizer: TTokenizer
+    model_arch_and_sizes: list[MODEL_ARCH_AND_SIZE]
+    raw_config: dict = field(default_factory=dict)
+    _hash: int = field(init=False)
+
+    def __post_init__(self):
+        object.__setattr__(self, "_hash", hash(json.dumps(self.raw_config)))
+
+    def __hash__(self) -> int:
+        return self._hash
+
+    @property
+    def display_name(self) -> TUniqueTokenizerName:
+        return TUniqueTokenizerName(f"{self.tokenizer.__class__.__name__}_{hash(self)}")
+
+
+class Tokenizers(IterableDataObject[UniqueTokenizerInfo]):
+    def __init__(self, tokenizers: list[UniqueTokenizerInfo]):
+        super().__init__(tokenizers)
+
+    @classmethod
+    def from_unique_tokenizers(cls, model_arch_and_sizes: list[MODEL_ARCH_AND_SIZE]):
+        unique_tokenizers: list[UniqueTokenizerInfo] = []
+        configs: list[dict] = []
+
+        for model_arch_and_size in tqdm.tqdm(model_arch_and_sizes, desc="Loading tokenizers"):
+            model_arch = model_arch_and_size.arch
+            model_size = model_arch_and_size.size
+
+            # Determine the actual tokenizer ID that will be used
+            tokenizer_config = get_tokenizer_config_from_hub(model_arch_and_size)
+
+            found_match = False
+            for i, compare_tokenizer_config in enumerate(configs):
+                is_same, _ = compare_dicts(tokenizer_config, compare_tokenizer_config)
+
+                if is_same:
+                    unique_tokenizers[i].model_arch_and_sizes.append(model_arch_and_size)
+                    found_match = True
+                    break
+            if not found_match:
+                current_tokenizer = get_tokenizer(model_arch, model_size)
+                configs.append(tokenizer_config)
+                unique_tokenizers.append(
+                    UniqueTokenizerInfo(current_tokenizer, [model_arch_and_size], tokenizer_config)
+                )
+
+        return cls(unique_tokenizers)
 
 
 class PromptNew(DataObject):
@@ -327,15 +447,18 @@ class PromptNew(DataObject):
 
 
 class Prompts(IndexableDataObject[TPromptOriginalIndex, PromptNew]):
-    def __init__(self, df: Dict[TPromptOriginalIndex, PromptNew], tokenizer: TTokenizer):
+    def __init__(self, df: Dict[TPromptOriginalIndex, PromptNew]):
         super().__init__(df)
-        self._tokenizer = tokenizer
 
     def filter_by_prompt_ids(self, prompt_ids: list[TPromptOriginalIndex]):
-        return Prompts(subset_dict_by_keys(self._items, prompt_ids), self._tokenizer)
+        return Prompts(subset_dict_by_keys(self._items, prompt_ids))
 
     def filter_by_condition(self, condition: Callable[[TPromptOriginalIndex, PromptNew], bool]):
         return self.filter_by_prompt_ids(get_dict_keys_by_condition(self._items, condition))
+
+    @lru_cache(maxsize=5)
+    def filter_by_prompt_filteration(self, prompt_filteration: BasePromptFilteration):
+        return self.filter_by_prompt_ids(prompt_filteration.get_prompt_ids())
 
     @property
     def empty(self) -> bool:
@@ -353,3 +476,32 @@ class Prompts(IndexableDataObject[TPromptOriginalIndex, PromptNew]):
         random.seed(seed)
         sampled_indices = random.choices(list(self._items.keys()), k=sample_size)
         return self.filter_by_prompt_ids(sampled_indices)
+
+    def to_df(self) -> TPromptDataFlat:
+        """Convert prompts to a DataFrame.
+
+        Returns:
+            A DataFrame with all prompt data.
+        """
+        prompt_dicts = []
+        for idx, prompt in self._items.items():
+            prompt_dict = prompt._prompt.copy()
+            prompt_dict[COLS.ORIGINAL_IDX] = idx
+            prompt_dicts.append(prompt_dict)
+        return TPromptDataFlat(pd.DataFrame(prompt_dicts))
+
+    def get_prompt(self, prompt_idx: TPromptOriginalIndex) -> Prompt:
+        """Get a specific prompt by its original index.
+
+        Args:
+            prompt_idx: The prompt original index
+
+        Returns:
+            The Prompt object
+        """
+        return self._items[prompt_idx].as_prompt()
+
+    def to_tokenization_summary_df(self, tokenizers: Tokenizers) -> pd.DataFrame:
+        df = self.to_df()
+
+        return df

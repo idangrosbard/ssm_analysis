@@ -15,8 +15,10 @@ class StreamlitComponent(ABC, Generic[OutputType]):
         from wfork_streamlit_profiler import Profiler
 
         with Profiler():
-            self.render()
-            st.success("Rendering complete, generating profile...")
+            try:
+                self.render()
+            finally:
+                st.success("Rendering complete, generating profile...")
 
 
 class StreamlitPage(StreamlitComponent[None]):

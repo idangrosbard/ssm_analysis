@@ -9,6 +9,7 @@ from torch import Tensor
 # TO ADD AN ARCH:
 if TYPE_CHECKING:
     from transformers import (
+        FalconMambaForCausalLM,
         GPT2LMHeadModel,
         LlamaForCausalLM,
         MambaForCausalLM,
@@ -22,7 +23,7 @@ if TYPE_CHECKING:
     import src.experiments.knockout.mamba.mamba2.minimal_mamba2 as minimal_mamba2
 
     TTokenizer: TypeAlias = Union[PreTrainedTokenizer, PreTrainedTokenizerFast]
-    TMamba1Model: TypeAlias = MambaForCausalLM
+    TMamba1Model: TypeAlias = Union[MambaForCausalLM, FalconMambaForCausalLM]
     # TO ADD AN ARCH:
     TLlamaModel: TypeAlias = LlamaForCausalLM | MistralForCausalLM | Qwen2ForCausalLM
     # TMistralModel: TypeAlias = MistralForCausalLM
@@ -112,10 +113,12 @@ TWindowSize = NewType("TWindowSize", int)
 TWindowStartIndex = NewType("TWindowStartIndex", TLayerIndex)
 TWindow = NewType("TWindow", list[TLayerIndex])
 TPromptData = NewType("TPromptData", pd.DataFrame)
+TPromptDataFlat = NewType("TPromptDataFlat", pd.DataFrame)
 TNum2Mask = NewType("TNum2Mask", dict[TLayerIndex, list[tuple[TTokenIndex, TTokenIndex]]])
 TPromptOriginalIndex = NewType("TPromptOriginalIndex", int)
 TRowPosition = NewType("TRowPosition", int)
 TDevice = Union[torch.device, str]
+TErrorMessage = NewType("TErrorMessage", str)
 
 
 class TokenType(StrEnum):
