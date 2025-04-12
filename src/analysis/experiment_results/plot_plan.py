@@ -2,7 +2,8 @@ from abc import ABC, abstractmethod
 from collections import defaultdict
 from dataclasses import asdict, dataclass, field
 from itertools import product
-from typing import Any, Dict, Generic, List, NamedTuple, Optional, Sequence, TypeVar, assert_never, cast
+from pathlib import Path
+from typing import Any, Dict, Generic, List, Optional, Sequence, TypeVar, assert_never, cast
 
 from src.analysis.experiment_results.helpers import init_variant_params_from_values
 from src.analysis.prompt_filterations import AnyExistingCompletePromptFilteration
@@ -253,10 +254,47 @@ def get_experiment_hyper_param_hyper_param(experiment_name: ExperimentName) -> l
     return general
 
 
-class Cell(NamedTuple):
+@dataclass(frozen=True)
+class Cell:
     grids: Any
     rows: Any
     cols: Any
+
+    @classmethod
+    def from_orientation_combination(cls, orientation_combination: dict[FinalPlotsPlanOrientation, Any]) -> "Cell":
+        """Create a Cell from an orientation combination dictionary."""
+        return cls(
+            grids=orientation_combination.get(FinalPlotsPlanOrientation.grids),
+            rows=orientation_combination.get(FinalPlotsPlanOrientation.rows),
+            cols=orientation_combination.get(FinalPlotsPlanOrientation.cols),
+        )
+
+    def get_display_name(self, field: str, plot_plan: "PlotPlan") -> Optional[str]:
+        """Get the display name for a field value using the plot plan's parameter definition."""
+        value = getattr(self, field)
+        if value is None:
+            return None
+
+        param = plot_plan._get_param_type(FinalPlotsPlanOrientation[field])
+        if param is None:
+            return str(value)
+
+        return get_hyper_param_definition(param).get_display_name(value)
+
+    def get_cache_path(self, plot_plan: "PlotPlan", cache_dir: Path) -> Path:
+        """Generate a unique cache path for this cell."""
+        # Get display names for each field
+        display_names = {
+            field: self.get_display_name(field, plot_plan) or "None" for field in ["grids", "rows", "cols"]
+        }
+
+        # Create a unique identifier for the cell
+        cell_id = f"{display_names['grids']}_{display_names['rows']}_{display_names['cols']}".replace(" ", "_")
+        return cache_dir / f"{cell_id}.png"
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert cell to dictionary for data requirements."""
+        return {FinalPlotsPlanOrientation[field]: getattr(self, field) for field in ["grids", "rows", "cols"]}
 
 
 @dataclass
@@ -469,16 +507,10 @@ class PlotPlan:
                 elif col in experiment_hyper_param_defs:
                     data_req_params[col] = get_hyper_param_definition(ExperimentHyperParams[col]).default_fix_value()
 
-            data_reqs_per_cell[
-                Cell(
-                    **{
-                        FinalPlotsPlanOrientation[orientation]: orientation_combination.get(
-                            FinalPlotsPlanOrientation[orientation]
-                        )
-                        for orientation in Cell._fields
-                    }
-                )
-            ].add_data_req(init_variant_params_from_values(data_req_params), AnyExistingCompletePromptFilteration())
+            cell = Cell.from_orientation_combination(orientation_combination)
+            data_reqs_per_cell[cell].add_data_req(
+                init_variant_params_from_values(data_req_params), AnyExistingCompletePromptFilteration()
+            )
 
         return {cell: DataReqs.from_data_reqs_collection(data_reqs) for cell, data_reqs in data_reqs_per_cell.items()}
 

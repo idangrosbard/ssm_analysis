@@ -41,7 +41,7 @@ class AnyExistingPromptFilteration(BasePromptFilteration):
         raise ValueError("Should not be called")
 
     def get_dependencies(self) -> TDependencies:
-        raise ValueError("Should not be called")
+        return {}
 
     def display_name(self) -> str:
         return "Any Existing"
@@ -53,7 +53,7 @@ class AnyExistingCompletePromptFilteration(BasePromptFilteration):
         raise ValueError("Should not be called")
 
     def get_dependencies(self) -> TDependencies:
-        raise ValueError("Should not be called")
+        return {}
 
     def display_name(self) -> str:
         return "Any Existing (Complete Only)"

@@ -24,6 +24,11 @@ class ImageGridParams(BaseModel):
             "gpt-4o": Color((255, 0, 0, 0.5)),
         }
     )
+    row_labels: Optional[list[str]] = None
+    col_labels: Optional[list[str]] = None
+    label_width: int = 200  # Width for row labels
+    label_height: int = 50  # Height for column labels
+    label_font_size: int = 20
 
 
 T = TypeVar("T")
@@ -99,12 +104,12 @@ def organize_images_to_grid_with_keys(
 
 
 def combine_image_grid(images: list[list[Path]], params: ImageGridParams):
-    """Combine images into a grid layout.
+    """Combine images into a grid layout with optional row and column labels.
 
     Args:
         images: List of lists of image paths. Each inner list represents a row in the grid.
                Each row should have the same number of columns.
-        params: Parameters for grid creation
+        params: Parameters for grid creation including optional row and column labels
 
     Returns:
         Combined image with all input images arranged in a grid
@@ -132,23 +137,55 @@ def combine_image_grid(images: list[list[Path]], params: ImageGridParams):
     num_rows = len(images)
     num_cols = max(len(row) for row in images) if images else 0
 
-    # Calculate canvas dimensions
-    canvas_width = num_cols * (params.img_width + params.padding) - params.padding
-    canvas_height = num_rows * (params.img_height + params.title_height + params.padding) - params.padding
+    # Calculate canvas dimensions including space for labels
+    left_margin = params.label_width if params.row_labels else 0
+    top_margin = params.label_height if params.col_labels else 0
+
+    canvas_width = left_margin + num_cols * (params.img_width + params.padding) - params.padding
+    canvas_height = top_margin + num_rows * (params.img_height + params.title_height + params.padding) - params.padding
 
     # Create blank canvas
     combined_image = Image.new("RGB", (canvas_width, canvas_height), params.background_color)
     draw = ImageDraw.Draw(combined_image)
 
-    # Try to load font for titles
-    font = ImageFont.truetype(FONT_REGULAR, params.font_size)
+    # Try to load fonts
+    title_font = ImageFont.truetype(FONT_REGULAR, params.font_size)
+    label_font = ImageFont.truetype(FONT_BOLD, params.label_font_size)
 
-    # Place images on canvas
+    # Add column labels if provided
+    if params.col_labels:
+        for col_idx, col_label in enumerate(params.col_labels[:num_cols]):
+            x_offset = left_margin + col_idx * (params.img_width + params.padding)
+            # Center the text in the column
+            text_bbox = draw.textbbox((0, 0), col_label, font=label_font)
+            text_width = text_bbox[2] - text_bbox[0]
+            x_text = x_offset + (params.img_width - text_width) // 2
+            draw.text(
+                (x_text, 5),
+                col_label,
+                fill="black",
+                font=label_font,
+            )
+
+    # Place images on canvas and add row labels
     for row_idx, row in enumerate(images):
-        y_offset = row_idx * (params.img_height + params.title_height + params.padding)
+        y_offset = top_margin + row_idx * (params.img_height + params.title_height + params.padding)
+
+        # Add row label if provided
+        if params.row_labels and row_idx < len(params.row_labels):
+            # Center the text vertically in the row
+            text_bbox = draw.textbbox((0, 0), params.row_labels[row_idx], font=label_font)
+            text_height = text_bbox[3] - text_bbox[1]
+            y_text = y_offset + (params.img_height - text_height) // 2
+            draw.text(
+                (5, y_text),
+                params.row_labels[row_idx],
+                fill="black",
+                font=label_font,
+            )
 
         for col_idx, img_path in enumerate(row):
-            x_offset = col_idx * (params.img_width + params.padding)
+            x_offset = left_margin + col_idx * (params.img_width + params.padding)
 
             if img_path is not None:
                 with Image.open(img_path) as img:
@@ -167,7 +204,7 @@ def combine_image_grid(images: list[list[Path]], params: ImageGridParams):
                             (x_offset + 5, y_offset + 5),
                             title,
                             fill="black",
-                            font=font,
+                            font=title_font,
                         )
 
     return combined_image

@@ -19,8 +19,9 @@ import plotly.graph_objects as go
 import streamlit as st
 
 from src.analysis.experiment_results.helpers import get_model_evaluations
-from src.analysis.experiment_results.plot_plan import PlotPlan, PlotType, get_hyper_param_definition
+from src.analysis.experiment_results.plot_plan import Cell, PlotPlan, PlotType, get_hyper_param_definition
 from src.analysis.plots.heatmaps import simple_diff_fixed
+from src.analysis.plots.image_combiner import ImageGridParams, combine_image_grid
 from src.analysis.plots.info_flow_confidence import create_confidence_plot
 from src.app.texts import FINAL_PLOTS_TEXTS
 from src.core.consts import MODEL_SIZES_PER_ARCH_TO_MODEL_ID, TOKEN_TYPE_COLORS, TOKEN_TYPE_LINE_STYLES
@@ -343,6 +344,122 @@ def format_fig(fig: go.Figure, n_cols: int, n_rows: int = 1, style: PlotStyle = 
     return style.apply_to_figure(fig, n_cols, n_rows)
 
 
+@dataclass
+class GridLayout:
+    """Handles the organization and rendering of plots in a grid layout."""
+
+    plot_plan: PlotPlan
+    cells: list[Cell]
+    data_reqs_per_cell: dict[Cell, DataReqs]
+    plot_generator: "PlotGenerator"
+
+    @property
+    def row_values(self) -> list[Any]:
+        """Get unique sorted row values."""
+        return sorted({cell.rows for cell in self.cells})
+
+    @property
+    def col_values(self) -> list[Any]:
+        """Get unique sorted column values."""
+        return sorted({cell.cols for cell in self.cells})
+
+    def get_cell_at(self, row_value: Any, col_value: Any) -> Optional[Cell]:
+        """Get cell at the specified position."""
+        return next((cell for cell in self.cells if cell.rows == row_value and cell.cols == col_value), None)
+
+    def get_labels(self) -> tuple[list[str], list[str]]:
+        """Get row and column labels."""
+        row_labels = []
+        col_labels = []
+
+        # Get row labels
+        for row_value in self.row_values:
+            if row_value is not None:
+                row_cell = next(cell for cell in self.cells if cell.rows == row_value)
+                row_labels.append(row_cell.get_display_name("rows", self.plot_plan))
+
+        # Get column labels
+        for col_value in self.col_values:
+            if col_value is not None:
+                col_cell = next(cell for cell in self.cells if cell.cols == col_value)
+                col_labels.append(col_cell.get_display_name("cols", self.plot_plan))
+
+        return row_labels, col_labels
+
+    def render_combined(self, recreate_plots: bool = False) -> None:
+        """Render all plots combined into a single image."""
+        image_grid: list[list[Optional[Path]]] = []
+        row_labels, col_labels = self.get_labels()
+
+        # Generate all plots and collect their paths
+        for row_value in self.row_values:
+            row_images: list[Optional[Path]] = []
+            for col_value in self.col_values:
+                cell = self.get_cell_at(row_value, col_value)
+                if cell:
+                    img_path = self.plot_generator._plot_cell(
+                        self.data_reqs_per_cell[cell], cell, recreate_plots, show_plot=False
+                    )
+                    row_images.append(img_path)
+                else:
+                    row_images.append(None)
+            image_grid.append(row_images)
+
+        # Create grid params
+        grid_params = ImageGridParams(
+            row_labels=row_labels if row_labels else None,
+            col_labels=col_labels if col_labels else None,
+            img_width=800,  # Default width for plots
+            img_height=600,  # Default height for plots
+        )
+
+        # Filter out None values from image grid
+        filtered_grid = [[path for path in row if path is not None] for row in image_grid]
+        filtered_grid = [row for row in filtered_grid if row]  # Remove empty rows
+
+        # Combine images into a grid
+        if filtered_grid:
+            combined_image = combine_image_grid(filtered_grid, grid_params)
+            if combined_image:
+                st.image(combined_image)
+
+    def render_separate(self, recreate_plots: bool = False) -> None:
+        """Render plots in separate Streamlit columns."""
+        has_row_labels = any(cell.rows is not None for cell in self.cells)
+        has_col_labels = any(cell.cols is not None for cell in self.cells)
+        row_labels, col_labels = self.get_labels()
+
+        # Show column headers if needed
+        if has_col_labels:
+            col_cols = st.columns(([0.2] if has_row_labels else []) + [1] * len(self.col_values))
+            for col_name, col_col in zip(col_labels, col_cols[1:]):
+                with col_col:
+                    st.write(col_name)
+
+        # Create rows
+        for i, row_value in enumerate(self.row_values):
+            cols_cols = st.columns(([0.2] if has_row_labels else []) + [1] * len(self.col_values))
+
+            # Add row label if needed
+            if has_row_labels and cols_cols:
+                with cols_cols[0]:
+                    st.write(f"**{row_labels[i]}**")
+
+            # Add plots
+            for col_value, col_col in zip(self.col_values, cols_cols[1:]):
+                cell = self.get_cell_at(row_value, col_value)
+                if cell:
+                    with col_col:
+                        self.plot_generator._plot_cell(self.data_reqs_per_cell[cell], cell, recreate_plots)
+
+    def render(self, recreate_plots: bool = False, combine_plots: bool = False) -> None:
+        """Render the grid layout."""
+        if combine_plots:
+            self.render_combined(recreate_plots)
+        else:
+            self.render_separate(recreate_plots)
+
+
 class PlotGenerator(StreamlitComponent[Optional[str]]):
     """Component for generating plots based on plot plans."""
 
@@ -366,19 +483,19 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
     def _plot_cell(
         self,
         data_reqs: DataReqs,
-        grid_name: Any,
-        row_name: Any,
-        col_name: Any,
+        cell: Cell,
         recreate: bool = False,
         with_plotly: bool = False,
-    ) -> None:
+        show_plot: bool = True,
+    ) -> Path:
         """Plot a single cell with caching."""
-        cache_path = self._get_cell_cache_path(grid_name, row_name, col_name)
+        cache_path = cell.get_cache_path(self.plot_plan, PlotPlans.get_cache_dir(self.plot_plan.plot_id))
 
         if not recreate and cache_path.exists():
-            # Load and display cached plot
-            st.image(str(cache_path))
-            return
+            # Load and display cached plot if needed
+            if show_plot:
+                st.image(str(cache_path))
+            return cache_path
 
         # Get fulfilled requirements
         fulfilled_reqs = data_reqs.to_fulfilled_reqs(self.result_bank)
@@ -439,11 +556,14 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
                 plt.savefig(str(cache_path), bbox_inches="tight")
                 plt.close(fig)
 
-            # Display the plot
-            if with_plotly:
-                st.plotly_chart(fig, use_container_width=True)
-            else:
-                st.image(str(cache_path))
+            # Display the plot if needed
+            if show_plot:
+                if with_plotly:
+                    st.plotly_chart(fig, use_container_width=True)
+                else:
+                    st.image(str(cache_path))
+
+        return cache_path
 
     def _generate_cell_knockout(self, fulfilled_reqs: FulfilledReqs):
         """Generate knockout plot for a single cell."""
@@ -460,14 +580,30 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
         for config in configs:
             assert isinstance(config, InfoFlowRunner)
 
-            data.append(
-                {
-                    "label": f"{config.variant_params.source} - {config.variant_params.feature_category}",
-                    "color": TOKEN_TYPE_COLORS.get(config.variant_params.source, "#000000"),
-                    "linestyle": TOKEN_TYPE_LINE_STYLES.get(config.variant_params.feature_category, "-"),
-                    "data": config.get_outputs(),
-                }
-            )
+            try:
+                data.append(
+                    {
+                        "label": f"{config.variant_params.source} - {config.variant_params.feature_category}",
+                        "color": TOKEN_TYPE_COLORS.get(config.variant_params.source, "#000000"),
+                        "linestyle": TOKEN_TYPE_LINE_STYLES.get(config.variant_params.feature_category, "-"),
+                        "data": config.get_outputs(),
+                    }
+                )
+            except Exception as e:
+                # TODO: remove
+                print(e)
+                print(config.variant_params)
+                config.output_file.get_statistics.cache_clear()  # type: ignore
+                if config.output_file.statistics_path.exists():
+                    config.output_file.statistics_path.unlink()
+                data.append(
+                    {
+                        "label": f"{config.variant_params.source} - {config.variant_params.feature_category}",
+                        "color": TOKEN_TYPE_COLORS.get(config.variant_params.source, "#000000"),
+                        "linestyle": TOKEN_TYPE_LINE_STYLES.get(config.variant_params.feature_category, "-"),
+                        "data": config.get_outputs(),
+                    }
+                )
         with_fixed_limits = False
         fig = create_confidence_plot(
             lines_metadata=data,
@@ -521,64 +657,36 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
 
         # Generate the plot based on the plot type
         data_reqs_per_cell = self.plot_plan.get_data_requirements_per_cell(self.result_bank)
-        grid_row_col: dict[Optional[str], dict[Optional[str], dict[Optional[str], DataReqs]]] = {}
-        for cell, data_reqs in data_reqs_per_cell.items():
-            grid_row_col.setdefault(cell.grids, {}).setdefault(cell.rows, {}).setdefault(cell.cols, data_reqs)
 
         # Add checkbox for plot recreation
         recreate_plots = st.checkbox("Recreate all plots", value=False)
+        combine_plots = st.checkbox("Combine plots", value=False)
 
-        grids = list(grid_row_col.keys())
+        # Group cells by grid
+        cells_by_grid: dict[Any, list[Cell]] = {}
+        for cell in data_reqs_per_cell:
+            cells_by_grid.setdefault(cell.grids, []).append(cell)
+
         # Create tabs for different plot views
-        if grids[0] is None:
+        if len(cells_by_grid) == 1 and None in cells_by_grid:
             tabs = [st.empty()]
+            grid_names = [None]
         else:
             grid_options = self.plot_plan.grids
             assert grid_options is not None
             grid_param_definition = get_hyper_param_definition(grid_options)
-            tabs = st.tabs([grid_param_definition.get_display_name(option) for option in grids])
+            grid_names = sorted(cells_by_grid.keys())
+            tabs = st.tabs([grid_param_definition.get_display_name(grid) for grid in grid_names])
 
-        for grid_name, tab in zip(grids, tabs):
-            # Grid layout settings
+        # Render each grid
+        for grid_name, tab in zip(grid_names, tabs):
             with tab:
-                rows = list(grid_row_col[grid_name].keys())
-                # Create a grid of plots
-                cols = list(grid_row_col[grid_name][rows[0]].keys())
-
-                is_row_labels = rows[0] is not None
-                is_col_labels = cols[0] is not None
-
-                if is_col_labels:
-                    cols_options = self.plot_plan.cols
-                    assert cols_options is not None
-                    cols_param_definition = get_hyper_param_definition(cols_options)
-                    col_names = [cols_param_definition.get_display_name(option) for option in cols]
-                    # Add an empty column for row labels
-                    col_cols = st.columns(([0.2] if is_row_labels else []) + [1] * len(col_names))
-                    # Skip the first column (row labels) when writing column headers
-                    for col_name, col_col in zip(col_names, col_cols[1:]):
-                        with col_col:
-                            st.write(col_name)
-
-                for i, row_name in enumerate(rows):
-                    row_display_name = row_name
-                    # Create columns for this row, including the label column
-                    cols = grid_row_col[grid_name][row_name].keys()
-                    cols_cols = st.columns(([0.2] if is_col_labels else []) + [1] * len(cols))
-
-                    # Add row label in the first column if applicable
-                    if rows[0] is not None:
-                        with cols_cols[0]:
-                            rows_options = self.plot_plan.rows
-                            assert rows_options is not None
-                            rows_param_definition = get_hyper_param_definition(rows_options)
-                            row_display_name = rows_param_definition.get_display_name(row_name)
-                            st.write(f"**{row_display_name}**")
-
-                    # Add plots in the remaining columns
-                    for col_name, col_col in zip(cols, cols_cols[1:]):
-                        data_reqs = grid_row_col[grid_name][row_name][col_name]
-                        with col_col:
-                            self._plot_cell(data_reqs, grid_name, row_display_name, col_name, recreate_plots)
+                grid_layout = GridLayout(
+                    plot_plan=self.plot_plan,
+                    cells=cells_by_grid[grid_name],
+                    data_reqs_per_cell=data_reqs_per_cell,
+                    plot_generator=self,
+                )
+                grid_layout.render(recreate_plots, combine_plots)
 
         return None

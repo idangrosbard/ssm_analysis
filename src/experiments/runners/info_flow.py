@@ -195,6 +195,8 @@ class JSONInfoFlowFile:
 
     @cached(TTLCache(maxsize=1, ttl=60))
     def get_statistics(self) -> InfoFlowFileStatistics:
+        if (old_path := self.statistics_path.parent / "info_flow.json.stats").exists():
+            old_path.unlink()
         if self.statistics_path.exists():
             try:
                 return InfoFlowFileStatistics.from_json(self.statistics_path.read_text())
