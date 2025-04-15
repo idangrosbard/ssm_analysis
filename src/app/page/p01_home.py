@@ -19,6 +19,8 @@ class HomePage(StreamlitPage):
         AppSessionKeys.code_version.create_input_widget("CodeVersion")
         select_window_size()
 
+        # TreeComponentDemo().render()
+
 
 if __name__ == "home":
     st.set_page_config(page_title=HOME_TEXTS.title, page_icon=HOME_TEXTS.icon, layout="wide")

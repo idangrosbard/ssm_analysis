@@ -4,6 +4,7 @@ from src.analysis.prompt_filterations import (
     get_shared_models_correctness_prompt_filteration,
 )
 from src.core.consts import (
+    ALL_IMPORTANT_MODELS,
     GRAPHS_ORDER,
     MODEL_SIZE_CAT,
     TokenType,
@@ -30,9 +31,9 @@ MODEL_CORRECT_MODEL_CODE_VERSION = TCodeVersionName("v1")
 def get_default_data_reqs() -> DataReqiermentCollection:
     data_reqs = DataReqiermentCollection()
     all_correct_prompt_filteration = get_shared_models_correctness_prompt_filteration(
-        model_arch_and_sizes=list(GRAPHS_ORDER.keys()),
+        model_arch_and_sizes=list(ALL_IMPORTANT_MODELS.keys()),
         code_version=MODEL_CORRECT_MODEL_CODE_VERSION,
-        correctness=Correctness.correct,
+        correctness=Correctness.top_3_correct,
     )
 
     default_prompt_filteration = UnionPromptFilteration(

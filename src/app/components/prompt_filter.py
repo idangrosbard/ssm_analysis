@@ -1,16 +1,23 @@
 from functools import lru_cache
-from typing import Optional, Union, cast
+from typing import Callable, Optional, Union, cast
 
 import pandas as pd
 import streamlit as st
-import streamlit_antd_components as sac
+import streamlit_antd_components_mod as sac
 from annotated_text import annotated_text, annotation
 from pandas import DataFrame
 from st_aggrid import AgGrid, DataReturnMode, GridUpdateMode
 from streamlit.delta_generator import DeltaGenerator
 
 from src.analysis.experiment_results.model_prompt_combination import ModelCombination
-from src.analysis.prompt_filterations import IntersectionPromptFilteration, UnionPromptFilteration
+from src.analysis.prompt_filterations import (
+    AllPromptFilteration,
+    Correctness,
+    IntersectionPromptFilteration,
+    SamplePromptFilteration,
+    UnionPromptFilteration,
+    get_shared_models_correctness_prompt_filteration,
+)
 from src.app.app_consts import GLOBAL_APP_CONSTS, AppSessionKeys
 from src.app.app_utils import (
     filter_combinations,
@@ -19,8 +26,8 @@ from src.app.app_utils import (
 from src.app.data_store import get_merged_evaluations
 from src.app.texts import HEATMAP_TEXTS
 from src.core.names import COLS, HeatmapCols
-from src.core.types import TPromptData, TPromptDataFlat, TPromptOriginalIndex
-from src.data_ingestion.data_defs.data_defs import ModelCombinationsPrompts
+from src.core.types import MODEL_ARCH_AND_SIZE, TPresetID, TPromptData, TPromptDataFlat, TPromptOriginalIndex
+from src.data_ingestion.data_defs.data_defs import ModelCombinationsPrompts, PromptFilterationsPresets
 from src.data_ingestion.datasets.download_dataset import (
     df_safe_operation,
     indexed_to_flat_prompt_data,
@@ -54,6 +61,44 @@ def show_prompt(prompt: Prompt):
             if pd.notna(val := prompt.get_column(col))
         ]
     )
+
+
+class SamplePrompts(StreamlitComponent[BasePromptFilteration]):
+    def __init__(
+        self,
+        prompts_filteration: BasePromptFilteration,
+    ):
+        self.prompts_filteration = prompts_filteration
+
+    def render(
+        self,
+    ):
+        sample_results = st.checkbox("Sample results", value=True)
+
+        prompt_ids = self.prompts_filteration.get_prompt_ids()
+        if sample_results:
+            sample_results_count = st.slider(
+                "Sample results count",
+                value=min(50, len(prompt_ids)),
+                min_value=min(50, len(prompt_ids)),
+                max_value=len(prompt_ids),
+                step=50,
+            )
+
+            seed = st.number_input(
+                "Seed",
+                value=42,
+                min_value=0,
+                max_value=1000000,
+                step=1,
+            )
+
+            return SamplePromptFilteration(
+                base_prompt_filteration=self.prompts_filteration,
+                sample_size=sample_results_count,
+                seed=seed,
+            )
+        return self.prompts_filteration
 
 
 class ShowModelCombinations(StreamlitComponent[tuple[pd.DataFrame, Optional[int]]]):
@@ -201,34 +246,30 @@ class PromptSelectionForCombinationComponent(StreamlitComponent[TPromptOriginalI
         return chosen_prompt_idx
 
 
-class PromptFilterationComponent(StreamlitComponent):
+class ShowPromptFilterationComponent(StreamlitComponent[Optional[BasePromptFilteration]]):
     def __init__(
         self,
-        prompt_filteration_sk: SessionKey[BasePromptFilteration],
-        selected_tree_item_sk: SessionKey[Optional[str]],
+        prompt_filteration: BasePromptFilteration,
+        key: str,
     ):
-        self.prompt_filteration_sk = prompt_filteration_sk
-        self.selected_tree_item_sk = selected_tree_item_sk
+        self.prompt_filteration = prompt_filteration
+        self.selected_tree_item_sk = SessionKey[Optional[str]](key)
 
     def _get_selected_tree_item(self) -> Optional[int]:
         selected_tree_item = self.selected_tree_item_sk.value
-        if selected_tree_item is None:
+        if not selected_tree_item:
             return None
         if isinstance(selected_tree_item, list):
             selected_tree_item = selected_tree_item[0]
-        # assert isinstance(selected_tree_item, str)
         return int(selected_tree_item)
 
     @staticmethod
     @lru_cache(maxsize=5)
     def render_show_tree(prompt_filteration: BasePromptFilteration):
-        # key_to_label: list[str] = []
         key_to_prompt_filteration: list[BasePromptFilteration] = []
 
         def register_label(label: str, prompt_filteration: BasePromptFilteration):
-            # key_to_label.append(label)
             key_to_prompt_filteration.append(prompt_filteration)
-            # return str(len(key_to_label) - 1)
             return label
 
         def recursive_build_items(prompt_filteration: BasePromptFilteration) -> Union[str, dict, sac.TreeItem]:
@@ -251,18 +292,16 @@ class PromptFilterationComponent(StreamlitComponent):
 
         return (
             items,
-            # tuple(key_to_label),
             tuple(key_to_prompt_filteration),
         )
 
-    def render(self):
+    def render(self) -> Optional[BasePromptFilteration]:
         self.selected_tree_item_sk.init_default()
 
         (
             items,
-            #  key_to_label,
             key_to_prompt_filteration,
-        ) = self.render_show_tree(self.prompt_filteration_sk.value)
+        ) = self.render_show_tree(self.prompt_filteration)
 
         selected_item = self._get_selected_tree_item()
         if selected_item is not None and selected_item < len(items):
@@ -270,7 +309,6 @@ class PromptFilterationComponent(StreamlitComponent):
 
         sac.tree(
             items=items,
-            # format_func=lambda item: key_to_label[int(item)],
             label="Prompt Filteration",
             size="lg",
             open_all=True,
@@ -281,4 +319,158 @@ class PromptFilterationComponent(StreamlitComponent):
 
         selected_item = self._get_selected_tree_item()
         if selected_item is not None:
-            st.write(str(key_to_prompt_filteration[int(selected_item)]))
+            selected_filteration = key_to_prompt_filteration[int(selected_item)]
+            st.write(str(selected_filteration))
+            return selected_filteration
+
+        return None
+
+
+def get_default_prompt_filteration() -> dict[TPresetID, Callable[[list[MODEL_ARCH_AND_SIZE]], BasePromptFilteration]]:
+    presets = PromptFilterationsPresets.load()
+
+    default_prompt_filteration: dict[str, Callable[[list[MODEL_ARCH_AND_SIZE]], BasePromptFilteration]] = {
+        "selected_correct": lambda selected_model_arch_and_sizes: get_shared_models_correctness_prompt_filteration(
+            selected_model_arch_and_sizes,
+            correctness=Correctness.correct,
+        ),
+    }
+    for preset_name in presets:
+        default_prompt_filteration[preset_name] = lambda _, preset=preset_name: presets[preset]
+
+    return default_prompt_filteration
+
+
+class FilterPromptsComponent(StreamlitComponent[BasePromptFilteration]):
+    """Component for selecting a prompt filteration with optional sampling.
+
+    This simplified component focuses on:
+    1. Selecting a filteration preset
+    2. Optionally filtering based on available prompts in result bank context
+    3. Applying sampling with configurable parameters
+
+    When base_prompt_filteration is provided (typically AnyExistingPromptFilteration),
+    the component will ensure the resulting filteration is intersected with
+    available prompt IDs from that filteration.
+    """
+
+    def __init__(
+        self,
+        key: str,
+        default_preset: TPresetID = "all",
+        base_prompt_filteration: Optional[BasePromptFilteration] = None,
+    ):
+        """Initialize the component.
+
+        Args:
+            key: Unique key for the component
+            default_preset: Default preset ID to use (used if base_prompt_filteration is None)
+            base_prompt_filteration: Optional base prompt filteration to use instead of a preset.
+                                     Typically an AnyExistingPromptFilteration to limit to available prompts.
+        """
+        self.base_prompt_filteration = base_prompt_filteration
+        unique_key = f"{key}_{hash(base_prompt_filteration)}"
+
+        # Determine initial filteration
+        self.base_prompt_filteration = base_prompt_filteration or AllPromptFilteration()
+
+        # Use base_prompt_filteration as an intersection with the preset
+        preset_filteration = get_default_prompt_filteration()[default_preset]([])
+        initial_filteration = IntersectionPromptFilteration(
+            (preset_filteration,),
+            base_prompt_filteration=self.base_prompt_filteration,
+        )
+
+        self.prompt_filteration_sk = SessionKey[BasePromptFilteration](unique_key, default_value=initial_filteration)
+        self.prompt_filteration_sk.init_default()
+
+    def _ensure_context_intersection(self, filteration: BasePromptFilteration) -> BasePromptFilteration:
+        """Ensure the filteration is intersected with available prompt IDs from context.
+
+        If base_prompt_filteration is provided, creates an intersection between the given
+        filteration and the prompt IDs available from that filteration.
+
+        Args:
+            filteration: The base filteration to intersect
+
+        Returns:
+            BasePromptFilteration: The intersected filteration, or the original if no base_prompt_filteration
+        """
+        if not self.base_prompt_filteration:
+            return filteration
+
+        # Create an intersection with the original filteration
+        return IntersectionPromptFilteration(
+            (filteration, self.base_prompt_filteration), base_prompt_filteration=AllPromptFilteration()
+        )
+
+    def render(self) -> BasePromptFilteration:
+        """Render the component and return the selected prompt filteration."""
+        # Load presets
+        presets = PromptFilterationsPresets.load()
+
+        # Preset selection
+        col1, col2 = st.columns([3, 1])
+        with col1:
+            preset_options = list(presets.keys())
+            selected_preset = st.selectbox(
+                "Select Preset",
+                preset_options,
+                index=preset_options.index("all") if "all" in preset_options else 0,
+                key=f"{self.prompt_filteration_sk.key}_preset_selector",
+            )
+
+        with col2:
+            if st.button("Load Preset", key=f"{self.prompt_filteration_sk.key}_load_btn"):
+                # Get the preset and ensure it's intersected with available prompt IDs from context
+                loaded_preset = presets[selected_preset]
+                self.prompt_filteration_sk.value = self._ensure_context_intersection(loaded_preset)
+                st.success(f"Loaded preset: {selected_preset}")
+
+        # Display current filteration
+        st.subheader("Current Filteration")
+        if self.base_prompt_filteration:
+            available_count = len(self.base_prompt_filteration.get_prompt_ids())
+            st.info(f"Filtering based on available prompts. {available_count} prompt(s) available in context.")
+
+        ShowPromptFilterationComponent(
+            prompt_filteration=self.prompt_filteration_sk.value,
+            key=f"{self.prompt_filteration_sk.key}_current_filteration",
+        ).render()
+
+        # Sample results option
+        st.subheader("Sample Results")
+        sample_results = st.checkbox(
+            "Apply sampling", value=True, key=f"{self.prompt_filteration_sk.key}_sample_checkbox"
+        )
+
+        if sample_results:
+            prompt_ids = self.prompt_filteration_sk.value.get_prompt_ids()
+            col1, col2 = st.columns(2)
+            with col1:
+                sample_results_count = st.slider(
+                    "Sample size",
+                    value=min(50, len(prompt_ids)),
+                    min_value=1,
+                    max_value=len(prompt_ids),
+                    step=10,
+                    key=f"{self.prompt_filteration_sk.key}_sample_size",
+                )
+
+            with col2:
+                seed = st.number_input(
+                    "Random seed",
+                    value=42,
+                    min_value=0,
+                    max_value=1000000,
+                    step=1,
+                    key=f"{self.prompt_filteration_sk.key}_seed",
+                )
+
+            return SamplePromptFilteration(
+                base_prompt_filteration=self.prompt_filteration_sk.value,
+                sample_size=sample_results_count,
+                seed=seed,
+            )
+
+        return self.prompt_filteration_sk.value

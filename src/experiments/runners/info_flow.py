@@ -11,8 +11,6 @@ from tqdm import tqdm
 
 from src.analysis.prompt_filterations import (
     AllPromptFilteration,
-    AnyExistingCompletePromptFilteration,
-    AnyExistingPromptFilteration,
 )
 from src.core.consts import is_mamba_arch
 from src.core.names import (
@@ -195,6 +193,7 @@ class JSONInfoFlowFile:
 
     @cached(TTLCache(maxsize=1, ttl=60))
     def get_statistics(self) -> InfoFlowFileStatistics:
+        # TODO: remove
         if (old_path := self.statistics_path.parent / "info_flow.json.stats").exists():
             old_path.unlink()
         if self.statistics_path.exists():
@@ -319,14 +318,8 @@ class InfoFlowRunner(BaseRunner[InfoFlowParams]):
         return JSONInfoFlowFile(path).load_to_info_flow_output()
 
     def get_outputs(self) -> TInfoFlowOutput:
-        if isinstance(self.input_params.filteration, AnyExistingCompletePromptFilteration):
-            prompt_ids = list(self.output_file.get_computed_prompt_idx())
-        elif isinstance(self.input_params.filteration, AnyExistingPromptFilteration):
-            prompt_ids = None
-        else:
-            prompt_ids = self.input_params.filteration.get_prompt_ids()
         return self.output_file.load_to_info_flow_output(
-            prompt_idx_subset=prompt_ids,
+            prompt_idx_subset=self.input_params.filteration.get_prompt_ids(),
         )
 
     def _compute_impl(self) -> None:
@@ -367,7 +360,7 @@ def forward_eval(
     tokenizer: TTokenizer,
     device,
 ) -> InfoFlowPromptLayerValue:
-    num_to_masks, first_token = get_num_to_masks(prompt, tokenizer, window, knockout_source, knockout_target, device)
+    num_to_masks, _ = get_num_to_masks(prompt, tokenizer, window, knockout_source, knockout_target, device)
 
     next_token_probs = model_interface.generate_logits(
         input_ids=prompt.input_ids(tokenizer, device),

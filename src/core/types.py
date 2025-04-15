@@ -106,6 +106,7 @@ TTokenIndex: TypeAlias = int
 TBatchSize = NewType("TBatchSize", int)
 TModelID = NewType("TModelID", str)
 TPlotID = NewType("TPlotID", str)
+TPresetID = str
 TDatasetID = NewType("TDatasetID", str)
 TCodeVersionName = NewType("TCodeVersionName", str)
 TModelSize = NewType("TModelSize", str)

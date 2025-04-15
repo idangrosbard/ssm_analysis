@@ -8,6 +8,7 @@ from src.app.texts import (
     HOME_TEXTS,
     INFO_FLOW_ANALYSIS_TEXTS,
     MAMBA_ANALYSIS_TEXTS,
+    PROMPT_FILTERATION_PRESETS_TEXTS,
     PROMPTS_COMPARISON_TEXTS,
     RESULTS_BANK_TEXTS,
 )
@@ -95,6 +96,7 @@ class PAGE_ORDER(Enum):
     FINAL_PLOTS = auto()
     PROMPTS_COMPARISON = auto()
     MAMBA_ANALYSIS = auto()
+    PROMPT_FILTERATION_PRESETS = auto()
 
     @property
     def page_details(self) -> tuple[str, str]:
@@ -115,6 +117,8 @@ class PAGE_ORDER(Enum):
                 return (PROMPTS_COMPARISON_TEXTS.title, PROMPTS_COMPARISON_TEXTS.icon)
             case PAGE_ORDER.MAMBA_ANALYSIS:
                 return (MAMBA_ANALYSIS_TEXTS.title, MAMBA_ANALYSIS_TEXTS.icon)
+            case PAGE_ORDER.PROMPT_FILTERATION_PRESETS:
+                return (PROMPT_FILTERATION_PRESETS_TEXTS.title, PROMPT_FILTERATION_PRESETS_TEXTS.icon)
             case _:
                 assert_never(self)
 

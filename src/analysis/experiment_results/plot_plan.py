@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any, Dict, Generic, List, Optional, Sequence, TypeVar, assert_never, cast
 
 from src.analysis.experiment_results.helpers import init_variant_params_from_values
-from src.analysis.prompt_filterations import AnyExistingCompletePromptFilteration
+from src.analysis.prompt_filterations import AnyExistingCompletePromptFilteration, SelectivePromptFilteration
 from src.core.consts import ALL_VARIANT_PARAMETERS, GRAPHS_ORDER
 from src.core.names import (
     VARIANT_PARAM_NAME,
@@ -168,12 +168,12 @@ class WindowSizeHPD(HyperParamDefinition[TWindowSize]):
         return TWindowSize(9)
 
 
-class PromptFilterationHPD(HyperParamDefinition[TPromptOriginalIndex]):
+class PromptIdxHPD(HyperParamDefinition[TPromptOriginalIndex]):
     def get_result_bank_options(self, result_bank: ResultBank) -> Sequence[TPromptOriginalIndex]:
         prompts: set[TPromptOriginalIndex] = set()
         for result in result_bank:
             if isinstance(result, HeatmapRunner):
-                prompts.update(set(result.input_params.filteration.get_prompt_ids()))
+                prompts.update(set(result.output_hdf5_path.get_existing_prompt_idx()))
         return sorted(prompts)
 
     def get_static_options(self):
@@ -206,7 +206,7 @@ def get_hyper_param_definition(option: ExperimentHyperParams) -> HyperParamDefin
         case ExperimentHyperParams.window_size:
             return WindowSizeHPD()
         case ExperimentHyperParams.prompt_idx:
-            return PromptFilterationHPD()
+            return PromptIdxHPD()
         case _:
             raise ValueError(f"Unsupported variation option: {option}")
 
@@ -215,10 +215,10 @@ def get_experiment_orientations(experiment_name: ExperimentName) -> list[FinalPl
     """Get the relevant parameters for a specific experiment type."""
     if experiment_name == ExperimentName.info_flow:
         return [
+            FinalPlotsPlanOrientation.lines,
             FinalPlotsPlanOrientation.rows,
             FinalPlotsPlanOrientation.cols,
             FinalPlotsPlanOrientation.grids,
-            FinalPlotsPlanOrientation.lines,
         ]
     elif experiment_name == ExperimentName.heatmap:
         return [
@@ -275,7 +275,7 @@ class Cell:
         if value is None:
             return None
 
-        param = plot_plan._get_param_type(FinalPlotsPlanOrientation[field])
+        param = plot_plan._get_orientation_value(FinalPlotsPlanOrientation[field])
         if param is None:
             return str(value)
 
@@ -317,7 +317,7 @@ class PlotPlan:
     grids_options: list[Any] = field(default_factory=list)
     lines_options: list[Any] = field(default_factory=list)
 
-    def _get_param_type(self, param_name: FinalPlotsPlanOrientation) -> Optional[ExperimentHyperParams]:
+    def _get_orientation_value(self, param_name: FinalPlotsPlanOrientation) -> Optional[ExperimentHyperParams]:
         return getattr(self, param_name)
 
     def _get_param_options_col(self, param_name: FinalPlotsPlanOrientation) -> list[Any]:
@@ -331,7 +331,7 @@ class PlotPlan:
 
         for orientation in str_enum_values(FinalPlotsPlanOrientation):
             # Convert orientation parameters to strings
-            param = self._get_param_type(orientation)
+            param = self._get_orientation_value(orientation)
             if param:
                 result[orientation] = param.name
 
@@ -397,9 +397,9 @@ class PlotPlan:
         for orientation in str_enum_values(FinalPlotsPlanOrientation):
             options_col = getattr(PlotPlanOptionCols, f"{orientation}_options")
             if options_col in data_copy:
-                param = instance._get_param_type(orientation)
+                param = instance._get_orientation_value(orientation)
                 deserialized_options = instance._deserialize_options(data_copy[options_col], param)
-                instance.set_options_for_param(orientation, deserialized_options)
+                instance.set_options_for_orientation(orientation, deserialized_options)
 
         return instance
 
@@ -417,7 +417,10 @@ class PlotPlan:
             case _:
                 assert_never(param)
 
-    def set_options_for_param(self, param: FinalPlotsPlanOrientation, options: List[Any]) -> None:
+    def set_orientation_value(self, param: FinalPlotsPlanOrientation, value: Optional[ExperimentHyperParams]) -> None:
+        setattr(self, param.value, value)
+
+    def set_options_for_orientation(self, param: FinalPlotsPlanOrientation, options: List[Any]) -> None:
         """Set the selected options for a parameter."""
         match param:
             case FinalPlotsPlanOrientation.rows:
@@ -438,7 +441,7 @@ class PlotPlan:
             orientation: [
                 get_hyper_param_definition(param).get_display_name(option)
                 for option in self.get_options_for_param(orientation)
-                if (param := self._get_param_type(orientation)) is not None
+                if (param := self._get_orientation_value(orientation)) is not None
             ]
             for orientation in str_enum_values(FinalPlotsPlanOrientation)
         }
@@ -450,7 +453,7 @@ class PlotPlan:
         experiment_hyper_param_defs = get_experiment_hyper_param_hyper_param(self.experiment_name)
 
         def get_options_for_orientation(orientation: FinalPlotsPlanOrientation) -> list[Any]:
-            param = self._get_param_type(orientation)
+            param = self._get_orientation_value(orientation)
             if not param:
                 return [None]
 
@@ -470,6 +473,7 @@ class PlotPlan:
 
         # Process each combination
         for combination in combinations:
+            prompt_filterations = AnyExistingCompletePromptFilteration()
             orientation_combination = {
                 orientation: combination[i] for i, orientation in enumerate(experiment_orientations)
             }
@@ -477,7 +481,7 @@ class PlotPlan:
             params: dict["ExperimentHyperParams", Any] = {
                 param: value
                 for orientation, value in orientation_combination.items()
-                if value is not None and (param := self._get_param_type(orientation)) is not None
+                if value is not None and (param := self._get_orientation_value(orientation)) is not None
             }
 
             # Handle the special case of model_arch_and_size
@@ -495,6 +499,11 @@ class PlotPlan:
                     continue
                 params[ExperimentHyperParams.model_arch_and_size] = model_arch_and_size
 
+            if self.experiment_name == ExperimentName.heatmap:
+                prompt_filterations = SelectivePromptFilteration(
+                    prompt_ids=tuple([params[ExperimentHyperParams.prompt_idx]])
+                )
+
             data_req_params: dict[VARIANT_PARAM_NAME, Any] = {
                 BaseVariantParamName.experiment_name: self.experiment_name,
             }
@@ -508,9 +517,7 @@ class PlotPlan:
                     data_req_params[col] = get_hyper_param_definition(ExperimentHyperParams[col]).default_fix_value()
 
             cell = Cell.from_orientation_combination(orientation_combination)
-            data_reqs_per_cell[cell].add_data_req(
-                init_variant_params_from_values(data_req_params), AnyExistingCompletePromptFilteration()
-            )
+            data_reqs_per_cell[cell].add_data_req(init_variant_params_from_values(data_req_params), prompt_filterations)
 
         return {cell: DataReqs.from_data_reqs_collection(data_reqs) for cell, data_reqs in data_reqs_per_cell.items()}
 

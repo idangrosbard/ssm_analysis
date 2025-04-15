@@ -163,7 +163,7 @@ class HeatmapCols:
 
 class PlotType(StrEnum):
     ARCHITECTURE_KNOCKOUT = "ARCHITECTURE_KNOCKOUT"
-    HEATMAP = "heatmap"
+    HEATMAP = "HEATMAP"
 
 
 class FinalPlotsPlanOrientation(StrEnum):
@@ -231,3 +231,15 @@ class SlurmStatus(StrEnum):
 class RunningHistoryCols(StrEnum):
     run_id = "run_id"
     git_commit_hash = "git_commit_hash"
+
+
+class PAGE_ORDER(StrEnum):
+    HOME = "home"
+    RESULTS_BANK = "results_bank"
+    DATA_REQUIREMENTS = "data_requirements"
+    HEATMAP_CREATION = "heatmap_creation"
+    INFO_FLOW_ANALYSIS = "info_flow_analysis"
+    FINAL_PLOTS = "final_plots"
+    PROMPTS_COMPARISON = "prompts_comparison"
+    MAMBA_ANALYSIS = "mamba_analysis"
+    PROMPT_FILTERATION_PRESETS = "prompt_filteration_presets"

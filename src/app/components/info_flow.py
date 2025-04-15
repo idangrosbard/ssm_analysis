@@ -441,7 +441,15 @@ class InfoFlowAnalysisComponent(StreamlitComponent):
 
     def render(self):
         # Display analysis
-        st.subheader("Analysis")
+        st.subheader(
+            " | ".join(
+                [
+                    "Analysis",
+                    f"{len(self.info_flow_results)} info flows",
+                    f"{len(self.info_flow_results[0].input_params.filteration.get_prompt_ids())} prompts",
+                ]
+            )
+        )
 
         plan = {
             INFO_FLOW_ANALYSIS_TEXTS.TAB_PROBABILITY_DISTRIBUTION: self.render_probability_distribution,

@@ -33,6 +33,7 @@ setup(
         "matplotlib>=3.9.2",
         "mypy>=1.11.1",
         "pillow>=10.4.0",
+        "jsonpickle>=4.0.5",
     ],
     extras_require={
         "optimization": [

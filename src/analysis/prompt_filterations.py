@@ -1,7 +1,8 @@
+import random
 from dataclasses import dataclass, field
 from enum import StrEnum
 from functools import lru_cache
-from typing import Iterable
+from typing import Iterable, Optional
 
 from src.core.consts import DEFAULT_MODEL_CORRECT_DATASET_NAME, DEFAULT_MODEL_CORRECT_MODEL_CODE_VERSION
 from src.core.names import COLS, DatasetName
@@ -15,7 +16,13 @@ from src.core.types import (
     TSplitChoise,
 )
 from src.data_ingestion.datasets.download_dataset import get_prompt_ids
-from src.experiments.infrastructure.base_runner import BasePromptFilteration, InputParams, MetadataParams, TDependencies
+from src.experiments.infrastructure.base_runner import (
+    BasePromptFilteration,
+    BaseRunner,
+    InputParams,
+    MetadataParams,
+    TDependencies,
+)
 from src.experiments.runners.evaluate_model import EvaluateModelParams, EvaluateModelRunner
 
 
@@ -36,21 +43,23 @@ class AllPromptFilteration(BasePromptFilteration):
 
 
 @dataclass(frozen=True)
-class AnyExistingPromptFilteration(BasePromptFilteration):
-    def get_prompt_ids(self) -> list[TPromptOriginalIndex]:
-        raise ValueError("Should not be called")
-
-    def get_dependencies(self) -> TDependencies:
-        return {}
-
-    def display_name(self) -> str:
-        return "Any Existing"
-
-
-@dataclass(frozen=True)
 class AnyExistingCompletePromptFilteration(BasePromptFilteration):
+    base_runner: Optional[BaseRunner] = None
+
     def get_prompt_ids(self) -> list[TPromptOriginalIndex]:
-        raise ValueError("Should not be called")
+        if self.base_runner is None:
+            raise ValueError("Base runner is not set")
+        return self.get_current_prompt_ids(self.base_runner)
+
+    def get_current_prompt_ids(self, base_runner: BaseRunner) -> list[TPromptOriginalIndex]:
+        from src.experiments.runners.info_flow import InfoFlowRunner
+
+        if isinstance(base_runner, EvaluateModelRunner):
+            return base_runner.get_outputs()[COLS.ORIGINAL_IDX].tolist()
+        elif isinstance(base_runner, InfoFlowRunner):
+            return list(base_runner.output_file.get_computed_prompt_idx())
+        else:
+            raise NotImplementedError(f"Prompt filteration for {base_runner.__class__.__name__} not implemented")
 
     def get_dependencies(self) -> TDependencies:
         return {}
@@ -133,9 +142,26 @@ class UnionPromptFilteration(BasePromptFilteration):
         return "Union"
 
 
+@dataclass(frozen=True)
+class SamplePromptFilteration(BasePromptFilteration):
+    base_prompt_filteration: BasePromptFilteration
+    sample_size: int
+    seed: int
+
+    def get_prompt_ids(self) -> list[TPromptOriginalIndex]:
+        return random.sample(self.base_prompt_filteration.get_prompt_ids(), self.sample_size)
+
+    def get_dependencies(self) -> TDependencies:
+        return self.base_prompt_filteration.get_dependencies()
+
+    def display_name(self) -> str:
+        return f"Sample ({self.sample_size})"
+
+
 class Correctness(StrEnum):
     correct = "correct"
     top_5_correct = "top_5_correct"
+    top_3_correct = "top_3_correct"
     top_2_to_5_correct = "top_2_to_5_correct"
 
 
@@ -155,6 +181,8 @@ class ModelCorrectPromptFilteration(BasePromptFilteration):
                 df = df[df[COLS.EVALUATE_MODEL.MODEL_CORRECT]]
             case Correctness.top_5_correct:
                 df = df[df[COLS.EVALUATE_MODEL.TARGET_RANK] <= 5]
+            case Correctness.top_3_correct:
+                df = df[df[COLS.EVALUATE_MODEL.TARGET_RANK] <= 3]
             case Correctness.top_2_to_5_correct:
                 df = df[(2 <= df[COLS.EVALUATE_MODEL.TARGET_RANK]) & (df[COLS.EVALUATE_MODEL.TARGET_RANK] <= 5)]
             case _:

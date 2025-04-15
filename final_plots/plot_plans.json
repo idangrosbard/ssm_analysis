@@ -1,61 +1,5 @@
 [
     {
-        "plot_id": "llama",
-        "title": "llama",
-        "description": "",
-        "plot_type": "ARCHITECTURE_KNOCKOUT",
-        "is_appendix": true,
-        "order": 0,
-        "experiment_name": "info_flow",
-        "rows": "model_size",
-        "cols": "model_arch",
-        "grids": null,
-        "lines": "source",
-        "rows_options": [
-            "1B",
-            "3B",
-            "8B"
-        ],
-        "cols_options": [
-            "llama3",
-            "llama3.2"
-        ],
-        "grids_options": [],
-        "lines_options": []
-    },
-    {
-        "plot_id": "llama 2",
-        "title": "llama",
-        "description": "",
-        "plot_type": "ARCHITECTURE_KNOCKOUT",
-        "is_appendix": true,
-        "order": 0,
-        "experiment_name": "info_flow",
-        "rows": "model_size",
-        "cols": "model_arch",
-        "grids": null,
-        "lines": "source",
-        "rows_options": [
-            "1B",
-            "3B",
-            "8B"
-        ],
-        "cols_options": [
-            "llama3",
-            "llama3.2"
-        ],
-        "grids_options": [],
-        "lines_options": [
-            "first",
-            "last",
-            "subject",
-            "relation",
-            "context",
-            "all",
-            "relation_minus_last"
-        ]
-    },
-    {
         "plot_id": "architecture_knockout",
         "title": "Architecture Knockout Plot",
         "description": "Relative change in correct-token prediction probability when removing information flow to the last token from various source tokens. \nThe x-axis represents the relative depth of the first layer within the 9-layer attention knockout window, while the y-axis indicates the resulting performance change.",
@@ -131,6 +75,45 @@
             15
         ],
         "lines_options": []
+    },
+    {
+        "plot_id": "figure1",
+        "title": "Figure 1",
+        "description": "Figure 1 t",
+        "plot_type": "ARCHITECTURE_KNOCKOUT",
+        "is_appendix": false,
+        "order": 1,
+        "experiment_name": "info_flow",
+        "rows": null,
+        "cols": "source",
+        "grids": null,
+        "lines": "model_arch_and_size",
+        "rows_options": [],
+        "cols_options": [
+            "subject",
+            "relation",
+            "last",
+            "first"
+        ],
+        "grids_options": [],
+        "lines_options": [
+            {
+                "model_arch": "mamba1",
+                "model_size": "2.8B"
+            },
+            {
+                "model_arch": "mamba2",
+                "model_size": "2.7B"
+            },
+            {
+                "model_arch": "gpt2",
+                "model_size": "1.5B"
+            },
+            {
+                "model_arch": "mamba1",
+                "model_size": "7B-falcon"
+            }
+        ]
     },
     {
         "plot_id": "model_size_knockout",
@@ -280,11 +263,26 @@
         "grids": "window_size",
         "lines": null,
         "rows_options": [
-            2080,
-            9765,
-            9255,
-            6191,
-            7222
+            17261,
+            4561,
+            17046,
+            17617,
+            20790,
+            16431,
+            21157,
+            4712,
+            4836,
+            4915,
+            4869,
+            15672,
+            13496,
+            14671,
+            17897,
+            15508,
+            18491,
+            20825,
+            18845,
+            21485
         ],
         "cols_options": [
             {
@@ -310,6 +308,54 @@
             {
                 "model_arch": "mamba1",
                 "model_size": "7B"
+            },
+            {
+                "model_arch": "llama3.2",
+                "model_size": "1B"
+            },
+            {
+                "model_arch": "llama3.2",
+                "model_size": "3B"
+            },
+            {
+                "model_arch": "mistral0.1",
+                "model_size": "7B"
+            },
+            {
+                "model_arch": "mistral0.3",
+                "model_size": "7B"
+            },
+            {
+                "model_arch": "llama3",
+                "model_size": "8B"
+            },
+            {
+                "model_arch": "qwen2",
+                "model_size": "0.5B"
+            },
+            {
+                "model_arch": "qwen2",
+                "model_size": "1.5B"
+            },
+            {
+                "model_arch": "qwen2",
+                "model_size": "7B"
+            },
+            {
+                "model_arch": "qwen2.5",
+                "model_size": "0.5B"
+            },
+            {
+                "model_arch": "qwen2.5",
+                "model_size": "7B"
+            },
+            {
+                "model_arch": "qwen2.5",
+                "model_size": "3B"
+            },
+            {
+                "model_arch": "qwen2.5",
+                "model_size": "1.5B"
             }
         ],
         "grids_options": [
@@ -388,5 +434,61 @@
             "mamba2"
         ],
         "lines_options": []
+    },
+    {
+        "plot_id": "llama",
+        "title": "llama",
+        "description": "",
+        "plot_type": "ARCHITECTURE_KNOCKOUT",
+        "is_appendix": true,
+        "order": 100,
+        "experiment_name": "info_flow",
+        "rows": "model_size",
+        "cols": "model_arch",
+        "grids": null,
+        "lines": "source",
+        "rows_options": [
+            "1B",
+            "3B",
+            "8B"
+        ],
+        "cols_options": [
+            "llama3",
+            "llama3.2"
+        ],
+        "grids_options": [],
+        "lines_options": []
+    },
+    {
+        "plot_id": "llama 2",
+        "title": "llama",
+        "description": "",
+        "plot_type": "ARCHITECTURE_KNOCKOUT",
+        "is_appendix": true,
+        "order": 100,
+        "experiment_name": "info_flow",
+        "rows": "model_size",
+        "cols": "model_arch",
+        "grids": null,
+        "lines": "source",
+        "rows_options": [
+            "1B",
+            "3B",
+            "8B"
+        ],
+        "cols_options": [
+            "llama3",
+            "llama3.2"
+        ],
+        "grids_options": [],
+        "lines_options": [
+            "first",
+            "last",
+            "subject",
+            "relation",
+            "context",
+            "all",
+            "relation_minus_last"
+        ]
     }
 ]

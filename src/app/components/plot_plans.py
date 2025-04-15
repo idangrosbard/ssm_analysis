@@ -20,7 +20,6 @@ from src.analysis.experiment_results.plot_plan import (
     get_experiment_orientations,
     get_hyper_param_definition,
 )
-from src.app.components.data_requirements import RequirementExecution, RequirementsDisplay
 from src.app.texts import FINAL_PLOTS_TEXTS
 from src.core.names import (
     ExperimentHyperParams,
@@ -30,8 +29,7 @@ from src.core.names import (
     PlotPlanOptionCols,
 )
 from src.core.types import TPlotID
-from src.data_ingestion.data_defs.data_defs import DataReqs, PlotPlans, ResultBank
-from src.utils.streamlit.components.aagrid import SelectionMode
+from src.data_ingestion.data_defs.data_defs import PlotPlans, ResultBank
 from src.utils.streamlit.helpers.component import StreamlitComponent
 from src.utils.streamlit.helpers.session_keys import SessionKey
 from src.utils.types_utils import str_enum_values
@@ -143,7 +141,7 @@ class PlotPlanDetails(StreamlitComponent[None]):
         for orientation in str_enum_values(FinalPlotsPlanOrientation):
             if orientation == FinalPlotsPlanOrientation.lines and plan.experiment_name != ExperimentName.info_flow:
                 continue
-            param = plan._get_param_type(orientation)
+            param = plan._get_orientation_value(orientation)
             if param:
                 options = plan._get_param_options_col(orientation)
                 variation_option = get_hyper_param_definition(param)
@@ -201,8 +199,11 @@ class PlotPlanEditor(StreamlitComponent[Optional[PlotPlan]]):
     def __init__(self, plot_plans: PlotPlans, result_bank: ResultBank, plan_id: Optional[TPlotID] = None):
         self.plot_plans = plot_plans
         self.plan_id = plan_id
-        self.is_new = plan_id is None
         self.result_bank = result_bank
+
+    @property
+    def is_new(self) -> bool:
+        return self.plan_id is None
 
     def _get_options_for_param(self, param_type: Optional[ExperimentHyperParams]) -> List[Any]:
         """Get available options for a parameter type."""
@@ -271,244 +272,134 @@ class PlotPlanEditor(StreamlitComponent[Optional[PlotPlan]]):
 
     def render(self) -> Optional[PlotPlan]:
         # Get the existing plan if editing
-        existing_plan = None
         if self.plan_id:
             existing_plan = self.plot_plans.get_plan(self.plan_id)
+        else:
+            existing_plan = PlotPlan(
+                plot_id=TPlotID(""),
+                title="",
+                description="",
+                experiment_name=ExperimentName.info_flow,
+                plot_type=PlotType.ARCHITECTURE_KNOCKOUT,
+                is_appendix=False,
+                order=0,
+            )
 
         # Form for editing/creating a plot plan
-        with st.form("plot_plan_editor"):
-            st.subheader("Plot Plan Editor" if self.is_new else "Edit Plot Plan")
-            plot_id = st.text_input(
-                "Plot ID",
-                value="",
-                help="Path where the plot will be saved",
-            )
-            col1, col2 = st.columns([9, 1])
-            with col1:
-                # Basic information
-                title_input = st.text_input(
-                    "Title",
-                    value="" if self.is_new else existing_plan.title if existing_plan else "",
-                    help="Display title for the plot plan",
-                )
-
-            with col2:
-                order_input = st.number_input(
-                    "Order",
-                    value=0 if self.is_new else existing_plan.order if existing_plan else 0,
-                    help="Order of the plot plan",
-                )
-
-            description_input = st.text_area(
-                "Description",
-                value="" if self.is_new else existing_plan.description if existing_plan else "",
-                help="Detailed description of the plot plan",
-            )
-
-            # Plot type and experiment
-            col1, col2 = st.columns(2)
-            with col1:
-                plot_type_input = st.selectbox(
-                    "Plot Type",
-                    options=[pt.name for pt in PlotType],
-                    index=0 if self.is_new else list(PlotType).index(existing_plan.plot_type) if existing_plan else 0,
-                    help="Type of plot to generate",
-                )
-
-            with col2:
-                experiment_input = st.selectbox(
-                    "Experiment",
-                    options=[exp.name for exp in ExperimentName],
-                    index=0
-                    if self.is_new
-                    else list(ExperimentName).index(existing_plan.experiment_name)
-                    if existing_plan
-                    else 0,
-                    help="Experiment type for the plot",
-                )
-
-            # Appendix flag
-            is_appendix_input = st.checkbox(
-                "Include in Appendix",
-                value=False if self.is_new else existing_plan.is_appendix if existing_plan else False,
-                help="Whether this plot should be included in the appendix",
-            )
-
-            # Configuration options
-            st.subheader("Plot Configuration")
-
-            # Get all available hyperparameters
-            hyperparams = [hp.name for hp in ExperimentHyperParams]
-
-            # Get experiment-specific parameters
-            experiment_name = ExperimentName[experiment_input]
-            relevant_params = get_experiment_orientations(experiment_name)
-
-            # Parameter selection
-            param_values = {}
-            for param_type in relevant_params:
-                param_name = param_type.value
-
-                # Select parameter type
-                param_value = None
-                if param_type == FinalPlotsPlanOrientation.rows:
-                    rows_input = st.selectbox(
-                        "Rows",
-                        options=["None"] + hyperparams,
-                        index=0
-                        if self.is_new or not existing_plan or not existing_plan.rows
-                        else hyperparams.index(existing_plan.rows.name) + 1,
-                        help="Parameter to vary across rows",
-                        key=f"select_{param_name}",
+        st.subheader("New Plot Plan" if self.is_new else "Edit Plot Plan")
+        for i, col in enumerate(st.columns([3, 3, 1, 1])):
+            with col:
+                if i == 0:
+                    existing_plan.plot_id = TPlotID(
+                        st.text_input(
+                            "Plot ID",
+                            value=existing_plan.plot_id,
+                            help="Path where the plot will be saved",
+                            disabled=not self.is_new,
+                        )
                     )
-                    param_value = None if rows_input == "None" else ExperimentHyperParams[rows_input]
-                    param_values["rows"] = param_value
-
-                elif param_type == FinalPlotsPlanOrientation.cols:
-                    cols_input = st.selectbox(
-                        "Columns",
-                        options=["None"] + hyperparams,
-                        index=0
-                        if self.is_new or not existing_plan or not existing_plan.cols
-                        else hyperparams.index(existing_plan.cols.name) + 1,
-                        help="Parameter to vary across columns",
-                        key=f"select_{param_name}",
+                elif i == 1:
+                    # Basic information
+                    existing_plan.title = st.text_input(
+                        "Title",
+                        value=existing_plan.title,
+                        help="Display title for the plot plan",
                     )
-                    param_value = None if cols_input == "None" else ExperimentHyperParams[cols_input]
-                    param_values["cols"] = param_value
-
-                elif param_type == FinalPlotsPlanOrientation.grids:
-                    grids_input = st.selectbox(
-                        "Grids",
-                        options=["None"] + hyperparams,
-                        index=0
-                        if self.is_new or not existing_plan or not existing_plan.grids
-                        else hyperparams.index(existing_plan.grids.name) + 1,
-                        help="Parameter to vary across grid plots",
-                        key=f"select_{param_name}",
+                elif i == 2:
+                    existing_plan.order = st.number_input(
+                        "Order",
+                        value=existing_plan.order,
+                        help="Order of the plot plan",
                     )
-                    param_value = None if grids_input == "None" else ExperimentHyperParams[grids_input]
-                    param_values["grids"] = param_value
-
-                elif param_type == FinalPlotsPlanOrientation.lines and experiment_name == ExperimentName.info_flow:
-                    lines_input = st.selectbox(
-                        "Lines",
-                        options=["None"] + hyperparams,
-                        index=0
-                        if self.is_new or not existing_plan or not existing_plan.lines
-                        else hyperparams.index(existing_plan.lines.name) + 1,
-                        help="Parameter to vary across lines in the plot",
-                        key=f"select_{param_name}",
+                elif i == 3:
+                    existing_plan.is_appendix = st.checkbox(
+                        "Appendix",
+                        value=existing_plan.is_appendix,
+                        help="Whether this plot should be included in the appendix",
                     )
-                    param_value = None if lines_input == "None" else ExperimentHyperParams[lines_input]
-                    param_values["lines"] = param_value
 
-            st.subheader("Parameter Options")
+        existing_plan.description = st.text_area(
+            "Description",
+            value=existing_plan.description,
+            help="Detailed description of the plot plan",
+        )
 
-            options_selected = {
-                FinalPlotsPlanOrientation.rows: [],
-                FinalPlotsPlanOrientation.cols: [],
-                FinalPlotsPlanOrientation.grids: [],
-                FinalPlotsPlanOrientation.lines: [],
-            }
+        # Plot type and experiment
+        for i, col in enumerate(st.columns(2)):
+            with col:
+                if i == 0:
+                    existing_plan.experiment_name = ExperimentName(
+                        st.selectbox(
+                            "Experiment",
+                            options=[exp.name for exp in ExperimentName],
+                            index=list(ExperimentName).index(existing_plan.experiment_name),
+                            help="Experiment type for the plot",
+                        )
+                    )
+                elif i == 1:
+                    existing_plan.plot_type = PlotType(
+                        st.selectbox(
+                            "Plot Type",
+                            options=[pt.name for pt in PlotType],
+                            index=list(PlotType).index(existing_plan.plot_type),
+                            help="Type of plot to generate",
+                        )
+                    )
 
-            # Display option selectors for each parameter
-            for param_type in relevant_params:
-                param_value = param_values.get(param_type.value)
-                if param_value:
+        # Get all available hyperparameters
+        hyperparams = [hp.name for hp in ExperimentHyperParams]
+
+        # Get experiment-specific parameters
+        orientations = get_experiment_orientations(existing_plan.experiment_name)
+
+        NONE_STR = "None"
+        # Parameter selection
+        for i, col in enumerate(st.columns(len(orientations))):
+            with col:
+                orientation = orientations[i]
+                param_name = orientation.value
+                current_index = 0
+                if current_value := existing_plan._get_orientation_value(orientation):
+                    current_index = hyperparams.index(current_value.name) + 1
+                _orientation_input = st.selectbox(
+                    orientation.value.capitalize(),
+                    options=[NONE_STR] + hyperparams,
+                    index=current_index,
+                    help="Parameter to vary across rows",
+                    key=f"select_{param_name}",
+                )
+                orientation_input = (
+                    None if _orientation_input == NONE_STR else ExperimentHyperParams[_orientation_input]
+                )
+                existing_plan.set_orientation_value(orientation, orientation_input)
+                if orientation_input:
                     selected_options, has_options = self._display_option_selector(
-                        param_type, existing_plan, experiment_name, param_value
+                        orientation, existing_plan, existing_plan.experiment_name, orientation_input
                     )
                     if has_options:
-                        options_selected[param_type] = selected_options
+                        existing_plan.set_options_for_orientation(orientation, selected_options)
 
-            # Submit button
-            submit_button = st.form_submit_button("Save Plot Plan")
+        # Submit button
+        submit_button = st.button("Save Plot Plan")
 
         # Display option selectors outside the form
         if not submit_button:
-            st.markdown("Select specific options for each parameter to limit the plot scope.")
-
-            # Initialize options
-
             # Display summary
-            if any(options_selected.values()):
+            if any(existing_plan.get_options_for_param(orientation) for orientation in orientations):
                 st.subheader("Plot Summary")
-                rows_count = len(options_selected[FinalPlotsPlanOrientation.rows]) or 1
-                cols_count = len(options_selected[FinalPlotsPlanOrientation.cols]) or 1
-                grids_count = len(options_selected[FinalPlotsPlanOrientation.grids]) or 1
-                lines_count = len(options_selected[FinalPlotsPlanOrientation.lines]) or 1
+                rows_count = len(existing_plan.rows_options) or 1
+                cols_count = len(existing_plan.cols_options) or 1
+                grids_count = len(existing_plan.grids_options) or 1
+                lines_count = len(existing_plan.lines_options) or 1
 
                 total_plots = rows_count * cols_count * grids_count
 
                 st.markdown(f"**Total plots:** {total_plots}")
                 st.markdown(f"**Grid structure:** {rows_count} rows × {cols_count} columns × {grids_count} grids")
-                if experiment_name == ExperimentName.info_flow:
+                if existing_plan.experiment_name == ExperimentName.info_flow:
                     st.markdown(f"**Lines per plot:** {lines_count}")
 
         if submit_button:
-            # Validate inputs
-            if not title_input:
-                st.error("Title is required.")
-                return None
-
-            # Convert inputs to appropriate types
-            plot_type = PlotType[plot_type_input]
-            experiment_name = ExperimentName[experiment_input]
-
-            # Create the plot plan
-            plot_plan = PlotPlan(
-                plot_id=TPlotID(plot_id),
-                title=title_input,
-                description=description_input,
-                plot_type=plot_type,
-                is_appendix=is_appendix_input,
-                order=order_input,
-                experiment_name=experiment_name,
-                rows=param_values.get("rows"),
-                cols=param_values.get("cols"),
-                grids=param_values.get("grids"),
-                lines=param_values.get("lines") if experiment_name == ExperimentName.info_flow else None,
-            )
-
-            # Set options for each parameter
-            for param_type, options in options_selected.items():
-                if options:
-                    plot_plan.set_options_for_param(param_type, options)
-
-            return plot_plan
-
-        return None
-
-
-class PlotPlanRequirements(StreamlitComponent[Optional[DataReqs]]):
-    """Component for displaying and managing data requirements for a plot plan."""
-
-    def __init__(self, plot_plan: PlotPlan, result_bank: ResultBank):
-        self.plot_plan = plot_plan
-        self.result_bank = result_bank
-
-    def render(self) -> Optional[DataReqs]:
-        st.subheader("Data Requirements")
-
-        # Get data requirements for the plot plan
-        data_reqs = self.plot_plan.get_data_requirements(self.result_bank)
-        fulfilled_reqs = data_reqs.to_fulfilled_reqs(self.result_bank).summarize()
-
-        if not data_reqs:
-            st.info("No data requirements found for this plot plan.")
-            return None
-
-        data_reqs_to_run = RequirementsDisplay(
-            fulfilled_reqs,
-            height=400,
-            selection_mode=SelectionMode.MULTIPLE,
-            hide_columns=[],
-            key=f"plot_plan_requirements_{self.plot_plan.title}",
-        ).render()
-
-        # Option to run missing requirements
-        if data_reqs_to_run is not None:
-            RequirementExecution(data_reqs_to_run).render()
+            return existing_plan
 
         return None

@@ -20,6 +20,7 @@ from typing import (
     cast,
 )
 
+import jsonpickle
 import pandas as pd
 import tqdm
 
@@ -40,6 +41,7 @@ from src.core.names import (
 from src.core.types import (
     MODEL_ARCH_AND_SIZE,
     TPlotID,
+    TPresetID,
     TPromptDataFlat,
     TPromptOriginalIndex,
     TTokenizer,
@@ -167,6 +169,9 @@ class SummarizedDataFulfilledReqs(IterableDataObject[dict[str, Any]]):
             raw.append(row)
         super().__init__(raw)
 
+    def amount_missing(self) -> int:
+        return len([sum_req for sum_req in self if sum_req[SummarizedDataFulfilledReqsCols.AvailableOptions] == 0])
+
     def to_data_reqs(self) -> DataReqs:
         data_reqs = DataReqiermentCollection()
         for req, (filteration, _) in self._fulfilled_reqs._items.items():
@@ -231,6 +236,69 @@ class PlotPlans(IndexableDataObject[TPlotID, "PlotPlan"]):
             for plot_plan in json.loads(cls.get_json_path().read_text()):
                 plot_plans._items[TPlotID(plot_plan["plot_id"])] = PlotPlan.from_dict(plot_plan)
         return plot_plans
+
+
+class PromptFilterationsPresets(IndexableDataObject[TPresetID, BasePromptFilteration]):
+    def __init__(self, prompt_filterations: dict[TPresetID, BasePromptFilteration]):
+        super().__init__(prompt_filterations)
+
+    @classmethod
+    def get_json_path(cls) -> Path:
+        return PATHS.FINAL_PLOTS_DIR / "prompt_filterations_presets.json"
+
+    @staticmethod
+    def get_default_presets() -> "PromptFilterationsPresets":
+        from src.analysis.prompt_filterations import (
+            AllPromptFilteration,
+            Correctness,
+            SelectivePromptFilteration,
+            get_shared_models_correctness_prompt_filteration,
+        )
+        from src.core.consts import ALL_IMPORTANT_MODELS, GRAPHS_ORDER
+
+        return PromptFilterationsPresets(
+            {
+                "all": AllPromptFilteration(),
+                "all_correct": get_shared_models_correctness_prompt_filteration(
+                    GRAPHS_ORDER.keys(),
+                    Correctness.correct,
+                ),
+                "all_important_correct": get_shared_models_correctness_prompt_filteration(
+                    ALL_IMPORTANT_MODELS.keys(),
+                    Correctness.correct,
+                ),
+                "all_important_top_2_to_5_correct": get_shared_models_correctness_prompt_filteration(
+                    ALL_IMPORTANT_MODELS.keys(),
+                    Correctness.top_2_to_5_correct,
+                ),
+                "selective": SelectivePromptFilteration(
+                    prompt_ids=tuple(
+                        [
+                            TPromptOriginalIndex(i)
+                            for i in [
+                                *[290, 4350, 6403, 14577],  # correct
+                                *[6274, 9868, 18562, 12930],  # top 2 to 5 correct
+                                *[4734, 4311, 13592, 18117],  # not correct
+                            ]
+                        ]
+                    )
+                ),
+            }
+        )
+
+    def save(self) -> None:
+        self.get_json_path().parent.mkdir(parents=True, exist_ok=True)
+        self.get_json_path().write_text(cast(str, jsonpickle.dumps(self._items, indent=4)))
+
+    @classmethod
+    def load(cls) -> "PromptFilterationsPresets":
+        if not cls.get_json_path().exists():
+            presets = cls.get_default_presets()
+            presets.save()
+            return presets
+
+        presets = cast(dict[TPresetID, BasePromptFilteration], jsonpickle.loads(cls.get_json_path().read_text()))
+        return cls(presets)
 
 
 class ModelCombinationsPrompts(IterableDataObject["ModelCombination"]):
@@ -340,6 +408,9 @@ class ResultBank(IterableDataObject[T_RUNNER_TYPE]):
 
     def subset_prompts(self, prompt_ids: list[TPromptOriginalIndex]):
         return self.set_prompt_filteration(SelectivePromptFilteration(tuple(prompt_ids)))
+
+    def unique_model_arch_and_sizes(self) -> list[MODEL_ARCH_AND_SIZE]:
+        return list(set(result.variant_params.model_arch_and_size for result in self))
 
 
 class EvaluateModelResults(ResultBank[EvaluateModelRunner]):

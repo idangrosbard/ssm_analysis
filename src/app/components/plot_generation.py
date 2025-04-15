@@ -29,6 +29,7 @@ from src.core.names import SummarizedDataFulfilledReqsCols
 from src.core.types import MODEL_ARCH_AND_SIZE, TInfoFlowOutput, TPromptData
 from src.data_ingestion.data_defs.data_defs import DataReqs, FulfilledReqs, PlotPlans, ResultBank
 from src.data_ingestion.helpers.logits_utils import decode_tokens, get_prompt_row_index
+from src.experiments.infrastructure.base_runner import InputParams
 from src.experiments.infrastructure.setup_models import get_tokenizer
 from src.experiments.runners.heatmap import HeatmapRunner
 from src.experiments.runners.info_flow import InfoFlowRunner
@@ -507,27 +508,29 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
                 fig = self._generate_cell_knockout(fulfilled_reqs)
             case PlotType.HEATMAP:
                 fulfilled_reqs = fulfilled_reqs.choose_latest_fulfilled()
-                configs = list(fulfilled_reqs.get_config().values())
-                assert len(configs) == 1
-                config = configs[-1]
-                assert isinstance(config, HeatmapRunner)
-                prompt_idx = config.get_remaining_prompt_original_indices()
+                items = list(fulfilled_reqs.items())
+                assert len(items) == 1
+                filterations, runners = items[0][1]
+                prompt_idx = filterations.get_prompt_ids()
                 assert len(prompt_idx) == 1
+                assert len(runners) == 1
+                runner = runners[0].modify(input_params=InputParams(filteration=filterations))
+                assert isinstance(runner, HeatmapRunner)
                 prompt_id = prompt_idx[0]
                 model_arch_and_size = MODEL_ARCH_AND_SIZE(
-                    config.variant_params.model_arch, config.variant_params.model_size
+                    runner.variant_params.model_arch, runner.variant_params.model_size
                 )
                 data = cast(
                     TPromptData,
-                    get_model_evaluations(config.metadata_params.code_version, [model_arch_and_size])[
+                    get_model_evaluations(runner.metadata_params.code_version, [model_arch_and_size])[
                         model_arch_and_size
                     ],
                 )
-                tokenizer = get_tokenizer(config.variant_params.model_arch, config.variant_params.model_size)
-                model_id = MODEL_SIZES_PER_ARCH_TO_MODEL_ID[config.variant_params.model_arch][
-                    config.variant_params.model_size
+                tokenizer = get_tokenizer(runner.variant_params.model_arch, runner.variant_params.model_size)
+                model_id = MODEL_SIZES_PER_ARCH_TO_MODEL_ID[runner.variant_params.model_arch][
+                    runner.variant_params.model_size
                 ]
-                prob_mat = config.get_outputs()[prompt_id]
+                prob_mat = runner.get_outputs()[prompt_id]
                 prompt = get_prompt_row_index(data, prompt_id)
                 input_ids = prompt.input_ids(tokenizer, "cpu")
                 toks = cast(list[str], decode_tokens(tokenizer, input_ids[0]))
@@ -537,7 +540,7 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
                 fig, _ = simple_diff_fixed(
                     prob_mat=prob_mat,
                     model_id=model_id,
-                    window_size=config.variant_params.window_size,
+                    window_size=runner.variant_params.window_size,
                     last_tok=last_tok,
                     base_prob=prompt.base_prob,
                     true_word=prompt.true_word,
@@ -549,6 +552,7 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
                 assert_never(self.plot_plan.plot_type)
 
         if fig is not None:
+            cache_path.parent.mkdir(parents=True, exist_ok=True)
             if isinstance(fig, go.Figure):
                 fig.write_image(str(cache_path), scale=4)
             else:

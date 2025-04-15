@@ -168,3 +168,8 @@ class PROMPTS_COMPARISON_TEXTS:
 class MAMBA_ANALYSIS_TEXTS:
     title = "Mamba Architecture Analysis"
     icon = "🐍"
+
+
+class PROMPT_FILTERATION_PRESETS_TEXTS:
+    title = "Prompt Filteration Presets"
+    icon = "🔍"

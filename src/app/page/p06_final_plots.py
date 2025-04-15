@@ -13,18 +13,18 @@
 import streamlit as st
 
 from src.analysis.experiment_results.plot_plan import PlotPlan
-from src.app.components.data_requirements import RequirementExecution
+from src.app.components.data_requirements import RequirementExecution, RequirementsDisplay
 from src.app.components.plot_generation import PlotGenerator
 from src.app.components.plot_plans import (
     PlotPlanDetails,
     PlotPlanEditor,
-    PlotPlanRequirements,
     PlotPlanSelector,
 )
 from src.app.data_store import load_results_bank
 from src.app.texts import FINAL_PLOTS_TEXTS
 from src.core.types import TPlotID
-from src.data_ingestion.data_defs.data_defs import PlotPlans
+from src.data_ingestion.data_defs.data_defs import PlotPlans, ResultBank
+from src.utils.streamlit.components.aagrid import SelectionMode
 from src.utils.streamlit.helpers.component import StreamlitComponent, StreamlitPage
 from src.utils.streamlit.helpers.session_keys import SessionKeyDescriptor, SessionKeysBase
 
@@ -89,6 +89,41 @@ class ManagePlotPlans(StreamlitComponent[None]):
                 st.rerun()
 
 
+class PlotPlanRequirements(StreamlitComponent[None]):
+    """Component for displaying and managing data requirements for a plot plan."""
+
+    def __init__(self, plot_plan: PlotPlan, result_bank: ResultBank):
+        self.plot_plan = plot_plan
+        self.result_bank = result_bank
+
+    def render(self):
+        st.subheader("Data Requirements")
+
+        # Get data requirements for the plot plan
+        data_reqs = self.plot_plan.get_data_requirements(self.result_bank)
+        fulfilled_reqs = data_reqs.to_fulfilled_reqs(self.result_bank).summarize()
+
+        if not data_reqs:
+            st.warning("No data requirements found for this plot plan.")
+            return
+
+        with st.expander(
+            f"Data Requirements (Missing: {fulfilled_reqs.amount_missing()})",
+            expanded=fulfilled_reqs.amount_missing() > 0,
+        ):
+            data_reqs_to_run = RequirementsDisplay(
+                fulfilled_reqs,
+                height=400,
+                selection_mode=SelectionMode.MULTIPLE,
+                hide_columns=[],
+                key=f"plot_plan_requirements_{self.plot_plan.title}",
+            ).render()
+
+            # Option to run missing requirements
+            if data_reqs_to_run is not None:
+                RequirementExecution(data_reqs_to_run).render()
+
+
 class FinalPlotsPage(StreamlitPage):
     def render(self):
         # Check if plot plans file exists, if not, create it with default plans
@@ -118,10 +153,6 @@ class FinalPlotsPage(StreamlitPage):
                 if FinalPlotsSessionKeys.is_new_plot_plan():
                     # Add new plan
                     plot_plans = plot_plans.add_plan(plot_plan)
-                else:
-                    # Update existing plan
-                    plot_plans = plot_plans.remove_plan(FinalPlotsSessionKeys.SELECTED_PLOT_PLAN_ID.value)
-                    plot_plans = plot_plans.add_plan(plot_plan)
 
                 save_plot_plans(plot_plans)
 
@@ -133,10 +164,7 @@ class FinalPlotsPage(StreamlitPage):
             PlotPlanDetails(plot_plans, FinalPlotsSessionKeys.SELECTED_PLOT_PLAN_ID.value, result_bank).render()
 
             # Display data requirements
-            missing_reqs = PlotPlanRequirements(selected_plan, result_bank).render()
-            if missing_reqs:
-                # Handle requirement execution
-                RequirementExecution(missing_reqs).render()
+            PlotPlanRequirements(selected_plan, result_bank).render()
 
             # Plot generation button
             st.subheader(FINAL_PLOTS_TEXTS.generate_plot)

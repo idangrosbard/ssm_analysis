@@ -85,7 +85,7 @@ def base_grid_builder(
             selection_mode=selection_mode,
             use_checkbox=True,
             header_checkbox=True,
-            pre_selected_rows=pre_selected_rows,
+            pre_selected_rows=pre_selected_rows or [],
         )
     grid_builder.configure_default_column(filter=True, floatingFilter=True)
     grid_builder.configure_side_bar()
