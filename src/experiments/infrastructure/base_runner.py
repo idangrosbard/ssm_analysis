@@ -70,6 +70,9 @@ class BaseVariantParams(BaseParams, ABC):
     def get_tokenizer(self) -> TTokenizer:
         return get_tokenizer(self.model_arch, self.model_size)
 
+    def should_skip_task(self) -> bool:
+        return False
+
 
 @dataclass(frozen=True)
 class InputParams(BaseParams):
@@ -195,9 +198,6 @@ class BaseRunner(BaseParams, ABC, Generic[_TVariantParams]):
     def job_name(self) -> str:
         return self.combine_output_keys(sep="_")
 
-    def should_skip_task(self) -> bool:
-        return False
-
     @abstractmethod
     def get_runner_dependencies(self) -> TDependencies:
         pass
@@ -264,7 +264,7 @@ class BaseRunner(BaseParams, ABC, Generic[_TVariantParams]):
         rec_compute_with_dependencies(self.get_runner_dependencies())
 
     def run(self, with_dependencies: bool) -> None:
-        if self.should_skip_task():
+        if self.variant_params.should_skip_task():
             return
         if self.is_computed():
             return
@@ -278,7 +278,7 @@ class BaseRunner(BaseParams, ABC, Generic[_TVariantParams]):
             self._compute_impl()
             return
         else:
-            if self.should_skip_task():
+            if self.variant_params.should_skip_task():
                 return
             job = submit_job(
                 self._compute_impl,

@@ -278,6 +278,13 @@ class InfoFlowParams(BaseVariantParams):
     target: TokenType
     subset_layers: Optional[TWindowLayerStartIndex] = None
 
+    @staticmethod
+    def skip_task(model_arch: MODEL_ARCH, feature_category: FeatureCategory) -> bool:
+        return not (is_mamba_arch(model_arch) or feature_category == FeatureCategory.ALL)
+
+    def should_skip_task(self) -> bool:
+        return self.skip_task(self.model_arch, self.feature_category)
+
 
 class InfoFlowDependencies(TypedDict):
     evaluate_model: EvaluateModelRunner
@@ -292,13 +299,6 @@ class InfoFlowRunner(BaseRunner[InfoFlowParams]):
     @staticmethod
     def _get_variant_params():
         return InfoFlowParams
-
-    @staticmethod
-    def skip_task(model_arch: MODEL_ARCH, feature_category: FeatureCategory) -> bool:
-        return not (is_mamba_arch(model_arch) or feature_category == FeatureCategory.ALL)
-
-    def should_skip_task(self) -> bool:
-        return self.skip_task(self.variant_params.model_arch, self.variant_params.feature_category)
 
     @classmethod
     def get_variant_output_keys(cls):

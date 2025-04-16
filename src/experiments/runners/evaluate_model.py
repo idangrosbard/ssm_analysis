@@ -44,6 +44,23 @@ class EvaluateModelParams(BaseVariantParams):
     top_k_tokens: int = 5
 
 
+@lru_cache(maxsize=20)
+def _get_output_path(self: "EvaluateModelRunner") -> TPromptDataFlat:
+    df = pd.read_csv(self.output_result_path, index_col=False)
+    for (
+        counter_fact_col,
+        known1000_col,
+    ) in COUNTER_FACT_2_KNOWN1000_COL_CONV.items():
+        if counter_fact_col not in df.columns:
+            assert known1000_col in df.columns
+            df[counter_fact_col] = df[known1000_col]
+
+        if known1000_col in df.columns:
+            df = df.drop(columns=[known1000_col])
+
+    return TPromptDataFlat(df)
+
+
 @dataclass(frozen=True)
 class EvaluateModelRunner(BaseRunner[EvaluateModelParams]):
     """Configuration for model evaluation."""
@@ -62,21 +79,8 @@ class EvaluateModelRunner(BaseRunner[EvaluateModelParams]):
     def output_result_path(self) -> Path:
         return self.variation_paths.outputs_path / "outputs.csv"
 
-    @lru_cache(maxsize=1)
     def get_outputs(self) -> TPromptDataFlat:  # type: ignore
-        df = pd.read_csv(self.output_result_path, index_col=False)
-        for (
-            counter_fact_col,
-            known1000_col,
-        ) in COUNTER_FACT_2_KNOWN1000_COL_CONV.items():
-            if counter_fact_col not in df.columns:
-                assert known1000_col in df.columns
-                df[counter_fact_col] = df[known1000_col]
-
-            if known1000_col in df.columns:
-                df = df.drop(columns=[known1000_col])
-
-        return TPromptDataFlat(df)
+        return _get_output_path(self)
 
     @lru_cache(maxsize=1)
     def get_prompt_data(self) -> TPromptData:
@@ -93,7 +97,8 @@ class EvaluateModelRunner(BaseRunner[EvaluateModelParams]):
     def _compute_impl(self) -> None:
         run(self)
 
-    def is_computed(self) -> bool:
+    @lru_cache(maxsize=1)
+    def is_computed(self) -> bool:  # type: ignore
         return self.output_result_path.exists()
 
     def get_runner_dependencies(self):

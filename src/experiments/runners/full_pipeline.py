@@ -95,7 +95,7 @@ class FullPipelineRunner(BaseRunner):
                         target=target_token,
                     ),
                 )
-                if not config.should_skip_task():
+                if not config.variant_params.should_skip_task():
                     info_flow_deps[target_token][(source_token, feature_category)] = config
 
         return FullPipelineDependencies(

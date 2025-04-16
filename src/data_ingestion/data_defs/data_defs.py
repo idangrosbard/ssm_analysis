@@ -82,6 +82,8 @@ class DataReqiermentCollection:
         )
 
     def add_data_req(self, data_req: BaseVariantParams, prompt_filteration: BasePromptFilteration):
+        if data_req.should_skip_task():
+            return
         self._data_reqs[data_req] = self._data_reqs[data_req].or_with(prompt_filteration)
         for dependency in prompt_filteration.uncomputed_dependencies():
             self.add_data_req(dependency.variant_params, dependency.input_params.filteration)

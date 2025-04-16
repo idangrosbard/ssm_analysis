@@ -89,21 +89,12 @@ def load_prompts(
     )
 
 
-@CacheWithDependencies()
-def load_latest_fulfilled_reqs():
-    """Load the latest fulfilled requirements"""
-    data_reqs_options = DataReqs(get_default_data_reqs().to_dict()).to_fulfilled_reqs(load_results_bank())
-    return data_reqs_options.choose_latest_fulfilled()
-
-
 # Data Requirements hooks
 @CacheWithDependencies(disable_cache=False)
 def load_fulfilled_reqs_df() -> SummarizedDataFulfilledReqs:
     """Load the data requirements options and overrides to dispaly the fulfilled requirements"""
     results_bank = load_results_bank()
     options = DataReqs(get_default_data_reqs().to_dict()).to_fulfilled_reqs(results_bank)
-
-    pass
     return SummarizedDataFulfilledReqs(options)
 
 
