@@ -7,13 +7,14 @@ from typing import TYPE_CHECKING, Callable, List, Optional
 
 from src.core.types import TPromptOriginalIndex
 from src.utils.streamlit.helpers.hmr import HMRCompatibleMeta
+from src.utils.types_utils import BaseParams
 
 if TYPE_CHECKING:
     from src.experiments.infrastructure.base_runner import BaseRunner, TDependencies
 
 
 @dataclass(frozen=True)
-class BasePromptFilteration(ABC, metaclass=HMRCompatibleMeta):
+class BasePromptFilteration(BaseParams, metaclass=HMRCompatibleMeta):
     """Filteration of prompts to run the experiment on."""
 
     @abstractmethod

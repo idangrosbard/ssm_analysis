@@ -20,8 +20,10 @@ from src.analysis.experiment_results.plot_plan import (
     get_experiment_orientations,
     get_hyper_param_definition,
 )
+from src.app.components.prompt_filter import SelectFilterationComponent
 from src.app.texts import FINAL_PLOTS_TEXTS
 from src.core.names import (
+    BaseVariantParamName,
     ExperimentHyperParams,
     ExperimentName,
     FinalPlotsPlanOrientation,
@@ -283,6 +285,9 @@ class PlotPlanEditor(StreamlitComponent[Optional[PlotPlan]]):
                 plot_type=PlotType.ARCHITECTURE_KNOCKOUT,
                 is_appendix=False,
                 order=0,
+                fixed_values={},
+                cell_plot_config={},
+                combine_plot_config={},
             )
 
         # Form for editing/creating a plot plan
@@ -378,6 +383,30 @@ class PlotPlanEditor(StreamlitComponent[Optional[PlotPlan]]):
                     )
                     if has_options:
                         existing_plan.set_options_for_orientation(orientation, selected_options)
+
+        derived_variant_params = existing_plan.get_derived_variants_params()
+        missing_cols = [
+            col
+            for col in ExperimentName.get_variant_cols(existing_plan.experiment_name)
+            if (col not in [BaseVariantParamName.experiment_name] and col not in derived_variant_params)
+        ]
+
+        for col_name, st_col in zip(missing_cols, st.columns(len(missing_cols))):
+            with st_col:
+                hpd_col = ExperimentHyperParams(col_name)
+                options = get_hyper_param_definition(hpd_col).get_options(self.result_bank)
+                existing_plan.fixed_values[hpd_col] = st.selectbox(
+                    col_name.capitalize(),
+                    options=options,
+                    index=options.index(get_hyper_param_definition(hpd_col).default_fix_value()),
+                    key=f"select_{col_name}",
+                )
+
+        if ExperimentHyperParams.filteration not in derived_variant_params:
+            existing_plan.fixed_values[ExperimentHyperParams.filteration] = SelectFilterationComponent(
+                key=f"select_{ExperimentHyperParams.filteration}",
+                context_model_arch_and_sizes=existing_plan.derive_model_arch_and_sizes_context(),
+            ).render()
 
         # Submit button
         submit_button = st.button("Save Plot Plan")

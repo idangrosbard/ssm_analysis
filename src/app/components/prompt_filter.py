@@ -1,5 +1,6 @@
+from enum import StrEnum
 from functools import lru_cache
-from typing import Callable, Optional, Union, cast
+from typing import Callable, Optional, Union, assert_never, cast
 
 import pandas as pd
 import streamlit as st
@@ -11,7 +12,9 @@ from streamlit.delta_generator import DeltaGenerator
 
 from src.analysis.experiment_results.model_prompt_combination import ModelCombination
 from src.analysis.prompt_filterations import (
+    AnyExistingCompletePromptFilteration,
     Correctness,
+    ModelCorrectPromptFilteration,
     get_shared_models_correctness_prompt_filteration,
 )
 from src.app.app_consts import GLOBAL_APP_CONSTS, AppSessionKeys
@@ -19,8 +22,10 @@ from src.app.app_utils import (
     filter_combinations,
     get_steamlit_dataframe_selected_row,
 )
+from src.app.components.inputs import select_enum
 from src.app.data_store import get_merged_evaluations
 from src.app.texts import HEATMAP_TEXTS
+from src.core.consts import DEFAULT_MODEL_CORRECT_DATASET_NAME, DEFAULT_MODEL_CORRECT_MODEL_CODE_VERSION
 from src.core.names import COLS, HeatmapCols
 from src.core.types import MODEL_ARCH_AND_SIZE, TPresetID, TPromptData, TPromptDataFlat, TPromptOriginalIndex
 from src.data_ingestion.data_defs.data_defs import ModelCombinationsPrompts, PromptFilterationsPresets
@@ -342,6 +347,76 @@ def get_default_prompt_filteration() -> dict[TPresetID, Callable[[list[MODEL_ARC
         default_prompt_filteration[preset_name] = lambda _, preset=preset_name: presets[preset]
 
     return default_prompt_filteration
+
+
+class EnumSelectFilterationContext(StrEnum):
+    current_model_all = "current_model_all"
+    current_model_conditional_any_existing = "current_model_conditional_any_existing"
+    current_model_any_existing = "current_model_any_existing"
+    context_models_intersect = "context_models_intersect"
+
+
+class SelectFilterationComponent(StreamlitComponent[BasePromptFilteration]):
+    def __init__(
+        self,
+        key: str,
+        context_model_arch_and_sizes: list[MODEL_ARCH_AND_SIZE],
+    ):
+        self.key = key
+        self.context_model_arch_and_sizes = context_model_arch_and_sizes
+
+    def render(self) -> BasePromptFilteration:
+        selected_context_sk = SessionKey[EnumSelectFilterationContext](f"{self.key}_select_filteration_context")
+        select_correctness_filteration_sk = SessionKey[Correctness](f"{self.key}_select_correctness_filteration")
+
+        for i, col in enumerate(st.columns(2)):
+            with col:
+                if i == 0:
+                    select_enum(
+                        "Select Filteration Context",
+                        EnumSelectFilterationContext,
+                        session_key=selected_context_sk,
+                    )
+                else:
+                    select_enum(
+                        "Select Correctness Filteration",
+                        Correctness,
+                        session_key=select_correctness_filteration_sk,
+                    )
+
+        selected_context = selected_context_sk.value
+        select_correctness_filteration = select_correctness_filteration_sk.value
+
+        match selected_context:
+            case (
+                EnumSelectFilterationContext.current_model_all
+                | EnumSelectFilterationContext.current_model_conditional_any_existing
+            ):
+                filteration = ModelCorrectPromptFilteration(
+                    dataset_name=DEFAULT_MODEL_CORRECT_DATASET_NAME,
+                    model_arch_and_size=None,
+                    correctness=select_correctness_filteration,
+                    code_version=DEFAULT_MODEL_CORRECT_MODEL_CODE_VERSION,
+                )
+                if selected_context == EnumSelectFilterationContext.current_model_conditional_any_existing:
+                    filteration = filteration & AnyExistingCompletePromptFilteration()
+                return filteration
+            case EnumSelectFilterationContext.current_model_any_existing:
+                return AnyExistingCompletePromptFilteration()
+            case EnumSelectFilterationContext.context_models_intersect:
+                return LogicalPromptFilteration.create_and(
+                    [
+                        ModelCorrectPromptFilteration(
+                            dataset_name=DEFAULT_MODEL_CORRECT_DATASET_NAME,
+                            model_arch_and_size=model_arch_and_size,
+                            correctness=select_correctness_filteration,
+                            code_version=DEFAULT_MODEL_CORRECT_MODEL_CODE_VERSION,
+                        )
+                        for model_arch_and_size in self.context_model_arch_and_sizes
+                    ]
+                )
+            case _:
+                assert_never(selected_context)
 
 
 class FilterPromptsComponent(StreamlitComponent[BasePromptFilteration]):

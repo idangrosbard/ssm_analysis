@@ -36,7 +36,10 @@
                 "model_arch": "gpt2",
                 "model_size": "1.5B"
             }
-        ]
+        ],
+        "fixed_values": {},
+        "cell_plot_config": {},
+        "combine_plot_config": {}
     },
     {
         "plot_id": "test",
@@ -74,7 +77,19 @@
             9,
             15
         ],
-        "lines_options": []
+        "lines_options": [],
+        "fixed_values": {
+            "feature_category": "ALL",
+            "target": "last",
+            "filteration": {
+                "dataset_name": "counter_fact",
+                "model_arch_and_size": null,
+                "correctness": "correct",
+                "code_version": "v1"
+            }
+        },
+        "cell_plot_config": {},
+        "combine_plot_config": {}
     },
     {
         "plot_id": "figure1",
@@ -113,7 +128,29 @@
                 "model_arch": "mamba1",
                 "model_size": "7B-falcon"
             }
-        ]
+        ],
+        "fixed_values": {
+            "window_size": 9,
+            "feature_category": "ALL",
+            "target": "last",
+            "filteration": {
+                "operation_type": "AND",
+                "operands": [
+                    {
+                        "dataset_name": "counter_fact",
+                        "model_arch_and_size": null,
+                        "correctness": "correct",
+                        "code_version": "v1"
+                    },
+                    {
+                        "base_runner": null
+                    }
+                ],
+                "universe": null
+            }
+        },
+        "cell_plot_config": {},
+        "combine_plot_config": {}
     },
     {
         "plot_id": "model_size_knockout",
@@ -178,7 +215,10 @@
                 "model_arch": "gpt2",
                 "model_size": "774M"
             }
-        ]
+        ],
+        "fixed_values": {},
+        "cell_plot_config": {},
+        "combine_plot_config": {}
     },
     {
         "plot_id": "window_size_knockout",
@@ -216,7 +256,10 @@
             9,
             12,
             15
-        ]
+        ],
+        "fixed_values": {},
+        "cell_plot_config": {},
+        "combine_plot_config": {}
     },
     {
         "plot_id": "feature_knockout",
@@ -248,7 +291,10 @@
             "SLOW_DECAY",
             "FAST_DECAY",
             "ALL"
-        ]
+        ],
+        "fixed_values": {},
+        "cell_plot_config": {},
+        "combine_plot_config": {}
     },
     {
         "plot_id": "heatmap",
@@ -361,7 +407,10 @@
         "grids_options": [
             9
         ],
-        "lines_options": []
+        "lines_options": [],
+        "fixed_values": {},
+        "cell_plot_config": {},
+        "combine_plot_config": {}
     },
     {
         "plot_id": "all_to_all",
@@ -395,7 +444,10 @@
             "FAST_DECAY",
             "SLOW_DECAY",
             "ALL"
-        ]
+        ],
+        "fixed_values": {},
+        "cell_plot_config": {},
+        "combine_plot_config": {}
     },
     {
         "plot_id": "heatmaps_per_sizes",
@@ -433,7 +485,10 @@
             "mamba1",
             "mamba2"
         ],
-        "lines_options": []
+        "lines_options": [],
+        "fixed_values": {},
+        "cell_plot_config": {},
+        "combine_plot_config": {}
     },
     {
         "plot_id": "llama",
@@ -457,7 +512,10 @@
             "llama3.2"
         ],
         "grids_options": [],
-        "lines_options": []
+        "lines_options": [],
+        "fixed_values": {},
+        "cell_plot_config": {},
+        "combine_plot_config": {}
     },
     {
         "plot_id": "llama 2",
@@ -489,6 +547,9 @@
             "context",
             "all",
             "relation_minus_last"
-        ]
+        ],
+        "fixed_values": {},
+        "cell_plot_config": {},
+        "combine_plot_config": {}
     }
 ]

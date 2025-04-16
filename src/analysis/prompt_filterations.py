@@ -7,10 +7,8 @@ from src.core.consts import DEFAULT_MODEL_CORRECT_DATASET_NAME, DEFAULT_MODEL_CO
 from src.core.names import COLS, DatasetName
 from src.core.types import (
     ALL_SPLITS_LITERAL,
-    MODEL_ARCH,
     MODEL_ARCH_AND_SIZE,
     TCodeVersionName,
-    TModelSize,
     TPromptOriginalIndex,
     TSplitChoise,
 )
@@ -80,14 +78,14 @@ class Correctness(StrEnum):
 @dataclass(frozen=True)
 class ModelCorrectPromptFilteration(BasePromptFilteration):
     dataset_name: DatasetName
-    model_arch: MODEL_ARCH
-    model_size: TModelSize
+    model_arch_and_size: Optional[MODEL_ARCH_AND_SIZE]
     correctness: Correctness
     code_version: TCodeVersionName
 
     @lru_cache(maxsize=1)
     def get_static_prompt_ids(self) -> list[TPromptOriginalIndex]:  # type: ignore
         df = self.get_dependencies()["evaluate_model"].get_outputs()
+
         match self.correctness:
             case Correctness.correct:
                 df = df[df[COLS.EVALUATE_MODEL.MODEL_CORRECT]]
@@ -102,12 +100,19 @@ class ModelCorrectPromptFilteration(BasePromptFilteration):
 
         return df[COLS.ORIGINAL_IDX].tolist()
 
+    def get_contexted_prompt_ids(self, base_runner: BaseRunner) -> list[TPromptOriginalIndex]:
+        if self.model_arch_and_size is not None:
+            return self.get_static_prompt_ids()
+
+        return self.modify(model_arch_and_size=base_runner.variant_params.model_arch_and_size).get_static_prompt_ids()
+
     def get_dependencies(self):
+        assert self.model_arch_and_size is not None
         return {
             "evaluate_model": EvaluateModelRunner(
                 variant_params=EvaluateModelParams(
-                    model_arch=self.model_arch,
-                    model_size=self.model_size,
+                    model_arch=self.model_arch_and_size.arch,
+                    model_size=self.model_arch_and_size.size,
                 ),
                 input_params=InputParams(
                     filteration=AllPromptFilteration(dataset_name=self.dataset_name),
@@ -122,7 +127,7 @@ class ModelCorrectPromptFilteration(BasePromptFilteration):
         return self.get_dependencies()["evaluate_model"].is_computed()
 
     def display_name(self) -> str:
-        return f"Model {self.correctness.value} on {self.model_arch} {self.model_size}"
+        return f"Model {self.correctness.value} on {self.model_arch_and_size}"
 
 
 def get_shared_models_correctness_prompt_filteration(
@@ -137,8 +142,7 @@ def get_shared_models_correctness_prompt_filteration(
     for model_arch_and_size in model_arch_and_sizes:
         model_filter = ModelCorrectPromptFilteration(
             dataset_name=dataset_name,
-            model_arch=model_arch_and_size.arch,
-            model_size=model_arch_and_size.size,
+            model_arch_and_size=model_arch_and_size,
             correctness=correctness,
             code_version=code_version,
         )

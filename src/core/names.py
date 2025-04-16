@@ -153,6 +153,7 @@ class ExperimentHyperParams(StrEnum):
     feature_category = DataReqCols.feature_category
     target = DataReqCols.target
     prompt_idx = "prompt_idx"
+    filteration = "filteration"
 
 
 class HeatmapCols:

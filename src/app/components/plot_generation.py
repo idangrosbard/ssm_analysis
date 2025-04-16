@@ -430,24 +430,26 @@ class GridLayout:
         has_col_labels = any(cell.cols is not None for cell in self.cells)
         row_labels, col_labels = self.get_labels()
 
-        # Show column headers if needed
-        if has_col_labels:
-            col_cols = st.columns(([0.2] if has_row_labels else []) + [1] * len(self.col_values))
-            for col_name, col_col in zip(col_labels, col_cols[1:]):
-                with col_col:
-                    st.write(col_name)
+        columns_count = ([0.5] if has_row_labels else []) + [1] * len(col_labels)
 
         # Create rows
         for i, row_value in enumerate(self.row_values):
-            cols_cols = st.columns(([0.2] if has_row_labels else []) + [1] * len(self.col_values))
+            st_cols = st.columns(columns_count)
+
+            # Show column headers if needed
+            if i == 0 and has_col_labels:
+                for col_name, col_col in zip((["Row"] if has_row_labels else []) + col_labels, st_cols):
+                    col_col.write(f"**{col_name}**")
 
             # Add row label if needed
-            if has_row_labels and cols_cols:
-                with cols_cols[0]:
+            start_col = 0
+            if has_row_labels:
+                with st_cols[0]:
                     st.write(f"**{row_labels[i]}**")
+                start_col = 1
 
             # Add plots
-            for col_value, col_col in zip(self.col_values, cols_cols[1:]):
+            for col_value, col_col in zip(self.col_values, st_cols[start_col:]):
                 cell = self.get_cell_at(row_value, col_value)
                 if cell:
                     with col_col:

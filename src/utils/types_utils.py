@@ -1,7 +1,8 @@
 import contextlib
 import json
+from abc import ABC
 from collections import defaultdict
-from dataclasses import asdict
+from dataclasses import asdict, dataclass, replace
 from enum import StrEnum
 from typing import Any, Callable, ContextManager, Optional, Type, TypeVar, cast
 
@@ -163,3 +164,15 @@ def compare_dicts(dict1, dict2):
         "only_in_dict2": only_in_dict2,
         "different_values": different_values,
     }
+
+
+@dataclass(frozen=True)
+class BaseParams(ABC):
+    def modify(
+        self,
+        **kwargs,
+    ):
+        return replace(self, **kwargs)
+
+    def modify_ommit_none(self, **kwargs) -> "BaseParams":
+        return self.modify(**ommit_none(kwargs))

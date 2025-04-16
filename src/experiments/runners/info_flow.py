@@ -319,7 +319,7 @@ class InfoFlowRunner(BaseRunner[InfoFlowParams]):
 
     def get_outputs(self) -> TInfoFlowOutput:
         return self.output_file.load_to_info_flow_output(
-            prompt_idx_subset=self.input_params.filteration.get_static_prompt_ids(),
+            prompt_idx_subset=self.input_params.filteration.get_contexted_prompt_ids(self),
         )
 
     def _compute_impl(self) -> None:

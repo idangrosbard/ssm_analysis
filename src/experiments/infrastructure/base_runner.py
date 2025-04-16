@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from dataclasses import asdict, dataclass, field, replace
+from dataclasses import asdict, dataclass, field
 from functools import lru_cache
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Generic, Mapping, Optional, Type, TypeVar, Union, assert_never, cast, final
@@ -29,7 +29,7 @@ from src.utils.infra.git import get_git_commit_hash
 from src.utils.infra.output_path import OutputKey, combine_output_keys
 from src.utils.infra.slurm import SLURM_GPU_TYPE, submit_job
 from src.utils.infra.slurm_job_folder import ExperimentHistorySlurmJobsFolder
-from src.utils.types_utils import json_dumps_dataclass, ommit_none, str_enum_values
+from src.utils.types_utils import BaseParams, json_dumps_dataclass, str_enum_values
 
 if TYPE_CHECKING:
     from src.experiments.infrastructure.base_prompt_filteration import BasePromptFilteration
@@ -38,19 +38,7 @@ TDependencies = Mapping[str, Union["BaseRunner", "TDependencies"]]
 
 
 @dataclass(frozen=True)
-class BaseParams(ABC):
-    def modify(
-        self,
-        **kwargs,
-    ):
-        return replace(self, **kwargs)
-
-    def modify_ommit_none(self, **kwargs) -> "BaseParams":
-        return self.modify(**ommit_none(kwargs))
-
-
-@dataclass(frozen=True)
-class BaseVariantParams(BaseParams, ABC):
+class BaseVariantParams(BaseParams):
     model_arch: MODEL_ARCH
     model_size: TModelSize
     experiment_name: ExperimentName = field(init=False)

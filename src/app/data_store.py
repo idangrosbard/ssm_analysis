@@ -94,7 +94,9 @@ def load_prompts(
 def load_fulfilled_reqs_df() -> SummarizedDataFulfilledReqs:
     """Load the data requirements options and overrides to dispaly the fulfilled requirements"""
     results_bank = load_results_bank()
-    options = DataReqs(get_default_data_reqs().to_dict()).to_fulfilled_reqs(results_bank)
+    items = get_default_data_reqs().to_dict()
+    # items = {k: v for i, (k, v) in enumerate(items.items()) if i < 5}
+    options = DataReqs(items).to_fulfilled_reqs(results_bank)
     return SummarizedDataFulfilledReqs(options)
 
 

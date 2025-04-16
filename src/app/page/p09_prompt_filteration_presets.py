@@ -37,6 +37,7 @@ from src.core.consts import DEFAULT_MODEL_CORRECT_MODEL_CODE_VERSION
 from src.core.names import DatasetName
 from src.core.types import (
     MODEL_ARCH,
+    MODEL_ARCH_AND_SIZE,
     SPLIT,
     TModelSize,
     TPresetID,
@@ -122,8 +123,10 @@ class FilterationCreator(StreamlitComponent[BasePromptFilteration]):
             if st.button("Create Model Correct Filteration"):
                 self.current_filteration_sk.value = ModelCorrectPromptFilteration(
                     dataset_name=dataset,
-                    model_arch=cast(MODEL_ARCH, model_arch),
-                    model_size=cast(TModelSize, model_size),
+                    model_arch_and_size=MODEL_ARCH_AND_SIZE(
+                        arch=cast(MODEL_ARCH, model_arch),
+                        size=cast(TModelSize, model_size),
+                    ),
                     correctness=correctness,
                     code_version=DEFAULT_MODEL_CORRECT_MODEL_CODE_VERSION,
                 )
