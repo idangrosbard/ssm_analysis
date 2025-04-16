@@ -1,6 +1,5 @@
 from src.analysis.prompt_filterations import (
     Correctness,
-    UnionPromptFilteration,
     get_shared_models_correctness_prompt_filteration,
 )
 from src.core.consts import (
@@ -18,6 +17,7 @@ from src.core.types import (
     TWindowSize,
 )
 from src.data_ingestion.data_defs.data_defs import DataReqiermentCollection
+from src.experiments.infrastructure.base_prompt_filteration import LogicalPromptFilteration
 from src.experiments.runners.heatmap import HeatmapParams
 from src.experiments.runners.info_flow import InfoFlowParams
 
@@ -36,11 +36,11 @@ def get_default_data_reqs() -> DataReqiermentCollection:
         correctness=Correctness.top_3_correct,
     )
 
-    default_prompt_filteration = UnionPromptFilteration(
-        (
+    default_prompt_filteration = LogicalPromptFilteration.create_or(
+        [
             # AllPromptFilteration(DATASETS.COUNTER_FACT, split=(SPLIT.TRAIN1,)),
             all_correct_prompt_filteration,
-        )
+        ]
     )
 
     for model_arch_and_size in GRAPHS_ORDER:

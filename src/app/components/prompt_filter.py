@@ -11,11 +11,7 @@ from streamlit.delta_generator import DeltaGenerator
 
 from src.analysis.experiment_results.model_prompt_combination import ModelCombination
 from src.analysis.prompt_filterations import (
-    AllPromptFilteration,
     Correctness,
-    IntersectionPromptFilteration,
-    SamplePromptFilteration,
-    UnionPromptFilteration,
     get_shared_models_correctness_prompt_filteration,
 )
 from src.app.app_consts import GLOBAL_APP_CONSTS, AppSessionKeys
@@ -37,7 +33,12 @@ from src.data_ingestion.helpers.dataframe import (
     validate_one_selected_row_dataframe,
 )
 from src.data_ingestion.helpers.logits_utils import Prompt
-from src.experiments.infrastructure.base_runner import BasePromptFilteration
+from src.experiments.infrastructure.base_prompt_filteration import (
+    BasePromptFilteration,
+    LogicalOperationType,
+    LogicalPromptFilteration,
+    SamplePromptFilteration,
+)
 from src.utils.streamlit.components.aagrid import (
     SelectionMode,
     base_grid_builder,
@@ -75,7 +76,7 @@ class SamplePrompts(StreamlitComponent[BasePromptFilteration]):
     ):
         sample_results = st.checkbox("Sample results", value=True)
 
-        prompt_ids = self.prompts_filteration.get_prompt_ids()
+        prompt_ids = self.prompts_filteration.get_static_prompt_ids()
         if sample_results:
             sample_results_count = st.slider(
                 "Sample results count",
@@ -274,18 +275,19 @@ class ShowPromptFilterationComponent(StreamlitComponent[Optional[BasePromptFilte
 
         def recursive_build_items(prompt_filteration: BasePromptFilteration) -> Union[str, dict, sac.TreeItem]:
             children = None
-            if isinstance(prompt_filteration, UnionPromptFilteration) or isinstance(
-                prompt_filteration, IntersectionPromptFilteration
-            ):
+            if isinstance(prompt_filteration, LogicalPromptFilteration) and prompt_filteration.operation_type in [
+                LogicalOperationType.AND,
+                LogicalOperationType.OR,
+            ]:
                 children = [
                     recursive_build_items(sub_prompt_filteration)
-                    for sub_prompt_filteration in prompt_filteration.prompt_filterations
+                    for sub_prompt_filteration in prompt_filteration.operands
                 ]
 
             return sac.TreeItem(
                 children=cast(list, children),
-                label=register_label(prompt_filteration.display_name(), prompt_filteration),
-                tag=f"Filters {len(prompt_filteration.get_prompt_ids())}",
+                label=register_label(str(prompt_filteration.display_name()), prompt_filteration),
+                tag=f"Filters {len(prompt_filteration.get_static_prompt_ids())}",
             )
 
         items = [recursive_build_items(prompt_filteration)]
@@ -314,6 +316,7 @@ class ShowPromptFilterationComponent(StreamlitComponent[Optional[BasePromptFilte
             open_all=True,
             checkbox_strict=True,
             return_index=True,
+            height=40 * len(key_to_prompt_filteration),
             key=self.selected_tree_item_sk.key_for_component,
         )
 
@@ -368,41 +371,12 @@ class FilterPromptsComponent(StreamlitComponent[BasePromptFilteration]):
             base_prompt_filteration: Optional base prompt filteration to use instead of a preset.
                                      Typically an AnyExistingPromptFilteration to limit to available prompts.
         """
+        self.key = key
         self.base_prompt_filteration = base_prompt_filteration
-        unique_key = f"{key}_{hash(base_prompt_filteration)}"
-
-        # Determine initial filteration
-        self.base_prompt_filteration = base_prompt_filteration or AllPromptFilteration()
-
-        # Use base_prompt_filteration as an intersection with the preset
-        preset_filteration = get_default_prompt_filteration()[default_preset]([])
-        initial_filteration = IntersectionPromptFilteration(
-            (preset_filteration,),
-            base_prompt_filteration=self.base_prompt_filteration,
+        self.customized_filteration_sk = SessionKey[BasePromptFilteration](
+            f"{key}", get_default_prompt_filteration()[default_preset]([])
         )
-
-        self.prompt_filteration_sk = SessionKey[BasePromptFilteration](unique_key, default_value=initial_filteration)
-        self.prompt_filteration_sk.init_default()
-
-    def _ensure_context_intersection(self, filteration: BasePromptFilteration) -> BasePromptFilteration:
-        """Ensure the filteration is intersected with available prompt IDs from context.
-
-        If base_prompt_filteration is provided, creates an intersection between the given
-        filteration and the prompt IDs available from that filteration.
-
-        Args:
-            filteration: The base filteration to intersect
-
-        Returns:
-            BasePromptFilteration: The intersected filteration, or the original if no base_prompt_filteration
-        """
-        if not self.base_prompt_filteration:
-            return filteration
-
-        # Create an intersection with the original filteration
-        return IntersectionPromptFilteration(
-            (filteration, self.base_prompt_filteration), base_prompt_filteration=AllPromptFilteration()
-        )
+        self.customized_filteration_sk.init_default()
 
     def render(self) -> BasePromptFilteration:
         """Render the component and return the selected prompt filteration."""
@@ -414,47 +388,44 @@ class FilterPromptsComponent(StreamlitComponent[BasePromptFilteration]):
         with col1:
             preset_options = list(presets.keys())
             selected_preset = st.selectbox(
-                "Select Preset",
+                "Reset from Preset",
                 preset_options,
                 index=preset_options.index("all") if "all" in preset_options else 0,
-                key=f"{self.prompt_filteration_sk.key}_preset_selector",
+                key=f"{self.key}_preset_selector",
             )
 
         with col2:
-            if st.button("Load Preset", key=f"{self.prompt_filteration_sk.key}_load_btn"):
+            if st.button("Reset to Preset", key="load_btn"):
                 # Get the preset and ensure it's intersected with available prompt IDs from context
-                loaded_preset = presets[selected_preset]
-                self.prompt_filteration_sk.value = self._ensure_context_intersection(loaded_preset)
+                self.customized_filteration_sk.value = presets[selected_preset]
                 st.success(f"Loaded preset: {selected_preset}")
 
         # Display current filteration
         st.subheader("Current Filteration")
+        total = self.customized_filteration_sk.value
         if self.base_prompt_filteration:
-            available_count = len(self.base_prompt_filteration.get_prompt_ids())
+            available_count = len(self.base_prompt_filteration.get_static_prompt_ids())
             st.info(f"Filtering based on available prompts. {available_count} prompt(s) available in context.")
+            total = self.base_prompt_filteration & total
 
         ShowPromptFilterationComponent(
-            prompt_filteration=self.prompt_filteration_sk.value,
-            key=f"{self.prompt_filteration_sk.key}_current_filteration",
+            prompt_filteration=total,
+            key=f"{self.key}_current_filteration",
         ).render()
 
-        # Sample results option
-        st.subheader("Sample Results")
-        sample_results = st.checkbox(
-            "Apply sampling", value=True, key=f"{self.prompt_filteration_sk.key}_sample_checkbox"
-        )
-
-        if sample_results:
-            prompt_ids = self.prompt_filteration_sk.value.get_prompt_ids()
+        total_prompt_count = len(total.get_static_prompt_ids())
+        if total_prompt_count and st.checkbox(
+            "Apply sampling", value=True, key=f"{self.customized_filteration_sk.key}_sample_checkbox"
+        ):
             col1, col2 = st.columns(2)
             with col1:
                 sample_results_count = st.slider(
                     "Sample size",
-                    value=min(50, len(prompt_ids)),
+                    value=min(50, total_prompt_count),
                     min_value=1,
-                    max_value=len(prompt_ids),
+                    max_value=total_prompt_count,
                     step=10,
-                    key=f"{self.prompt_filteration_sk.key}_sample_size",
+                    key=f"{self.customized_filteration_sk.key}_sample_size",
                 )
 
             with col2:
@@ -464,13 +435,13 @@ class FilterPromptsComponent(StreamlitComponent[BasePromptFilteration]):
                     min_value=0,
                     max_value=1000000,
                     step=1,
-                    key=f"{self.prompt_filteration_sk.key}_seed",
+                    key=f"{self.customized_filteration_sk.key}_seed",
                 )
 
             return SamplePromptFilteration(
-                base_prompt_filteration=self.prompt_filteration_sk.value,
+                base_prompt_filteration=total,
                 sample_size=sample_results_count,
                 seed=seed,
             )
 
-        return self.prompt_filteration_sk.value
+        return total

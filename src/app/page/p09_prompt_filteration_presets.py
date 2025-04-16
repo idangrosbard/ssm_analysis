@@ -28,11 +28,7 @@ from streamlit.delta_generator import DeltaGenerator
 from src.analysis.prompt_filterations import (
     AllPromptFilteration,
     Correctness,
-    IntersectionPromptFilteration,
     ModelCorrectPromptFilteration,
-    SamplePromptFilteration,
-    SelectivePromptFilteration,
-    UnionPromptFilteration,
 )
 from src.app.components.prompt_filter import (
     ShowPromptFilterationComponent,
@@ -48,7 +44,13 @@ from src.core.types import (
     TSplitChoise,
 )
 from src.data_ingestion.data_defs.data_defs import PromptFilterationsPresets
-from src.experiments.infrastructure.base_runner import BasePromptFilteration
+from src.experiments.infrastructure.base_prompt_filteration import (
+    BasePromptFilteration,
+    LogicalOperationType,
+    LogicalPromptFilteration,
+    SamplePromptFilteration,
+    SelectivePromptFilteration,
+)
 from src.utils.streamlit.helpers.component import StreamlitComponent, StreamlitPage
 from src.utils.streamlit.helpers.session_keys import SessionKey
 
@@ -68,7 +70,7 @@ def render_preset_details(
         ).render()
 
         # Show prompt count
-        st.info(f"Number of prompts: {len(preset.get_prompt_ids())}")
+        st.info(f"Number of prompts: {len(preset.get_static_prompt_ids())}")
 
 
 class FilterationCreator(StreamlitComponent[BasePromptFilteration]):
@@ -135,8 +137,8 @@ class FilterationCreator(StreamlitComponent[BasePromptFilteration]):
             sample_size = st.number_input(
                 "Sample Size",
                 min_value=1,
-                max_value=len(self.current_filteration_sk.value.get_prompt_ids()),
-                value=min(50, len(self.current_filteration_sk.value.get_prompt_ids())),
+                max_value=len(self.current_filteration_sk.value.get_static_prompt_ids()),
+                value=min(50, len(self.current_filteration_sk.value.get_static_prompt_ids())),
                 key=f"{self.key}_sample_size",
             )
             seed = st.number_input("Random Seed", value=42, key=f"{self.key}_sample_seed")
@@ -154,18 +156,18 @@ class FilterationCreator(StreamlitComponent[BasePromptFilteration]):
             if st.button(f"Apply {operation}"):
                 other_filteration = presets[cast(TPresetID, selected_preset)]
                 if operation == "Union":
-                    if isinstance(self.current_filteration_sk.value, UnionPromptFilteration):
-                        self.current_filteration_sk.value = self.current_filteration_sk.value.add_prompt_filteration(
-                            other_filteration
-                        )
+                    if (
+                        isinstance(self.current_filteration_sk.value, LogicalPromptFilteration)
+                        and self.current_filteration_sk.value.operation_type == LogicalOperationType.OR
+                    ):
+                        self.current_filteration_sk.value = self.current_filteration_sk.value.or_with(other_filteration)
                     else:
-                        self.current_filteration_sk.value = UnionPromptFilteration(
-                            (self.current_filteration_sk.value, other_filteration)
+                        self.current_filteration_sk.value = LogicalPromptFilteration.create_or(
+                            [self.current_filteration_sk.value, other_filteration]
                         )
                 else:  # Intersection
-                    self.current_filteration_sk.value = IntersectionPromptFilteration(
-                        (self.current_filteration_sk.value, other_filteration),
-                        base_prompt_filteration=AllPromptFilteration(),
+                    self.current_filteration_sk.value = LogicalPromptFilteration.create_and(
+                        [self.current_filteration_sk.value, other_filteration]
                     )
 
     def render(self) -> BasePromptFilteration:

@@ -11,7 +11,7 @@ from datasets import DatasetDict
 
 from src.analysis.experiment_results.helpers import serialize_result_bank
 from src.analysis.experiment_results.results_bank import get_experiment_results_bank
-from src.analysis.prompt_filterations import Correctness, ModelCorrectPromptFilteration, SelectivePromptFilteration
+from src.analysis.prompt_filterations import Correctness, ModelCorrectPromptFilteration
 from src.core.consts import PathsConfig
 from src.core.names import COLS
 from src.core.types import (
@@ -26,6 +26,7 @@ from src.core.types import (
     TWindowSize,
 )
 from src.data_ingestion.datasets.download_dataset import DatasetName, load_splitted_counter_fact
+from src.experiments.infrastructure.base_prompt_filteration import SelectivePromptFilteration
 from src.experiments.infrastructure.base_runner import InputParams, MetadataParams
 from src.experiments.runners.full_pipeline import FullPipelineParams, FullPipelineRunner
 

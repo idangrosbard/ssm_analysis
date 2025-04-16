@@ -169,7 +169,7 @@ class JSONInfoFlowFile:
         # TODO: remove this after commiting tests results
         prompt_idx = [
             prompt_id
-            for prompt_id in AllPromptFilteration(DatasetName.counter_fact).get_prompt_ids()
+            for prompt_id in AllPromptFilteration(DatasetName.counter_fact).get_static_prompt_ids()
             if prompt_id in prompt_idx
         ]
 
@@ -319,7 +319,7 @@ class InfoFlowRunner(BaseRunner[InfoFlowParams]):
 
     def get_outputs(self) -> TInfoFlowOutput:
         return self.output_file.load_to_info_flow_output(
-            prompt_idx_subset=self.input_params.filteration.get_prompt_ids(),
+            prompt_idx_subset=self.input_params.filteration.get_static_prompt_ids(),
         )
 
     def _compute_impl(self) -> None:
@@ -331,7 +331,7 @@ class InfoFlowRunner(BaseRunner[InfoFlowParams]):
         return (
             len(
                 self.output_file.get_missing_prompt_layer_values(
-                    prompt_idx_subset=self.input_params.filteration.get_prompt_ids(),
+                    prompt_idx_subset=self.input_params.filteration.get_contexted_prompt_ids(self),
                     layer_idx_subset=self.variant_params.subset_layers,
                 )
             )
@@ -400,7 +400,7 @@ def run(args: InfoFlowRunner):
         args.output_file.create_new(layers_amount)
 
     missing_prompt_layer_values = args.output_file.get_missing_prompt_layer_values(
-        prompt_idx_subset=args.input_params.filteration.get_prompt_ids(),
+        prompt_idx_subset=args.input_params.filteration.get_static_prompt_ids(),
         layer_idx_subset=args.variant_params.subset_layers,
     )
 

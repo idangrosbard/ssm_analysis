@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from dataclasses import asdict, dataclass, field, replace
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, Generic, Mapping, Optional, Type, TypeVar, Union, assert_never, cast, final
+from typing import TYPE_CHECKING, Any, Generic, Mapping, Optional, Type, TypeVar, Union, assert_never, cast, final
 
 from src.core.consts import (
     BASE_OUTPUT_KEYS,
@@ -19,7 +19,6 @@ from src.core.types import (
     TCodeVersionName,
     TModelID,
     TModelSize,
-    TPromptOriginalIndex,
     TTokenizer,
 )
 from src.data_ingestion.datasets.download_dataset import DatasetName
@@ -31,6 +30,9 @@ from src.utils.infra.output_path import OutputKey, combine_output_keys
 from src.utils.infra.slurm import SLURM_GPU_TYPE, submit_job
 from src.utils.infra.slurm_job_folder import ExperimentHistorySlurmJobsFolder
 from src.utils.types_utils import json_dumps_dataclass, ommit_none, str_enum_values
+
+if TYPE_CHECKING:
+    from src.experiments.infrastructure.base_prompt_filteration import BasePromptFilteration
 
 TDependencies = Mapping[str, Union["BaseRunner", "TDependencies"]]
 
@@ -45,39 +47,6 @@ class BaseParams(ABC):
 
     def modify_ommit_none(self, **kwargs) -> "BaseParams":
         return self.modify(**ommit_none(kwargs))
-
-
-@dataclass(frozen=True)
-class BasePromptFilteration(ABC):
-    """Filteration of prompts to run the experiment on."""
-
-    @abstractmethod
-    def get_prompt_ids(self) -> list[TPromptOriginalIndex]:
-        pass
-
-    @abstractmethod
-    def get_dependencies(self) -> TDependencies:
-        pass
-
-    def uncomputed_dependencies(self) -> list["BaseRunner"]:
-        def rec_uncomputed_dependencies(dependencies: TDependencies) -> list["BaseRunner"]:
-            res = []
-            for k, v in dependencies.items():
-                if isinstance(v, BaseRunner):
-                    if not v.is_computed():
-                        res.append(v)
-                else:
-                    res.extend(rec_uncomputed_dependencies(v))
-            return res
-
-        return rec_uncomputed_dependencies(self.get_dependencies())
-
-    def dependencies_are_computed(self) -> bool:
-        return len(self.uncomputed_dependencies()) == 0
-
-    @abstractmethod
-    def display_name(self) -> str:
-        pass
 
 
 @dataclass(frozen=True)
@@ -104,7 +73,7 @@ class BaseVariantParams(BaseParams, ABC):
 
 @dataclass(frozen=True)
 class InputParams(BaseParams):
-    filteration: BasePromptFilteration
+    filteration: "BasePromptFilteration"
     dataset_name: DatasetName = DatasetName.counter_fact
 
 

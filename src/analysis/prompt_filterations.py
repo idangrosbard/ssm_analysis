@@ -1,5 +1,4 @@
-import random
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import StrEnum
 from functools import lru_cache
 from typing import Iterable, Optional
@@ -16,8 +15,8 @@ from src.core.types import (
     TSplitChoise,
 )
 from src.data_ingestion.datasets.download_dataset import get_prompt_ids
+from src.experiments.infrastructure.base_prompt_filteration import BasePromptFilteration, LogicalPromptFilteration
 from src.experiments.infrastructure.base_runner import (
-    BasePromptFilteration,
     BaseRunner,
     InputParams,
     MetadataParams,
@@ -32,7 +31,7 @@ class AllPromptFilteration(BasePromptFilteration):
     split: TSplitChoise = ALL_SPLITS_LITERAL
 
     @lru_cache(maxsize=1)
-    def get_prompt_ids(self) -> list[TPromptOriginalIndex]:  # type: ignore
+    def get_static_prompt_ids(self) -> list[TPromptOriginalIndex]:  # type: ignore
         return get_prompt_ids(self.dataset_name, self.split)
 
     def get_dependencies(self) -> TDependencies:
@@ -46,12 +45,15 @@ class AllPromptFilteration(BasePromptFilteration):
 class AnyExistingCompletePromptFilteration(BasePromptFilteration):
     base_runner: Optional[BaseRunner] = None
 
-    def get_prompt_ids(self) -> list[TPromptOriginalIndex]:
+    def get_static_prompt_ids(self) -> list[TPromptOriginalIndex]:
         if self.base_runner is None:
             raise ValueError("Base runner is not set")
-        return self.get_current_prompt_ids(self.base_runner)
+        return self.get_contexted_prompt_ids(self.base_runner)
 
-    def get_current_prompt_ids(self, base_runner: BaseRunner) -> list[TPromptOriginalIndex]:
+    def get_contexted_prompt_ids(self, base_runner: BaseRunner) -> list[TPromptOriginalIndex]:
+        if self.base_runner:
+            return self.get_static_prompt_ids()
+
         from src.experiments.runners.info_flow import InfoFlowRunner
 
         if isinstance(base_runner, EvaluateModelRunner):
@@ -66,96 +68,6 @@ class AnyExistingCompletePromptFilteration(BasePromptFilteration):
 
     def display_name(self) -> str:
         return "Any Existing (Complete Only)"
-
-
-@dataclass(frozen=True)
-class SelectivePromptFilteration(BasePromptFilteration):
-    prompt_ids: tuple[TPromptOriginalIndex, ...]
-
-    def get_prompt_ids(self) -> list[TPromptOriginalIndex]:
-        return list(self.prompt_ids)
-
-    def get_dependencies(self) -> TDependencies:
-        return {}
-
-    def display_name(self) -> str:
-        amount = len(self.prompt_ids)
-        if amount > 5:
-            return f"Selective ({amount})"
-        else:
-            return f"Selective ({', '.join(str(prompt_id) for prompt_id in self.prompt_ids)})"
-
-
-@dataclass(frozen=True)
-class IntersectionPromptFilteration(BasePromptFilteration):
-    prompt_filterations: tuple[BasePromptFilteration, ...]
-    base_prompt_filteration: BasePromptFilteration
-
-    @lru_cache(maxsize=1)
-    def get_prompt_ids(self) -> list[TPromptOriginalIndex]:  # type: ignore
-        prompt_ids = set(self.base_prompt_filteration.get_prompt_ids())
-
-        for prompt_filteration in self.prompt_filterations:
-            prompt_ids = prompt_ids.intersection(set(prompt_filteration.get_prompt_ids()))
-        return list(prompt_ids)
-
-    def get_dependencies(self) -> TDependencies:
-        dependencies = {}
-        for prompt_filteration in self.prompt_filterations:
-            deps = prompt_filteration.get_dependencies()
-            if deps:
-                dependencies[prompt_filteration] = deps
-        return dependencies
-
-    def display_name(self) -> str:
-        return "Intersection"
-
-
-@dataclass(frozen=True)
-class UnionPromptFilteration(BasePromptFilteration):
-    prompt_filterations: tuple[BasePromptFilteration, ...] = field(default_factory=tuple)
-
-    def get_prompt_ids(self) -> list[TPromptOriginalIndex]:
-        prompt_ids = set()
-        for prompt_filteration in self.prompt_filterations:
-            prompt_ids.update(prompt_filteration.get_prompt_ids())
-        return list(prompt_ids)
-
-    def get_dependencies(self) -> TDependencies:
-        dependencies = {}
-        for prompt_filteration in self.prompt_filterations:
-            deps = prompt_filteration.get_dependencies()
-            if deps:
-                dependencies[prompt_filteration] = deps
-        return dependencies
-
-    def add_prompt_filteration(self, prompt_filteration: BasePromptFilteration):
-        if isinstance(prompt_filteration, UnionPromptFilteration):
-            return UnionPromptFilteration(
-                tuple(set(self.prompt_filterations).union(prompt_filteration.prompt_filterations))
-            )
-        elif isinstance(prompt_filteration, AnyExistingCompletePromptFilteration):
-            return self
-        return UnionPromptFilteration(tuple(set(self.prompt_filterations).union({prompt_filteration})))
-
-    def display_name(self) -> str:
-        return "Union"
-
-
-@dataclass(frozen=True)
-class SamplePromptFilteration(BasePromptFilteration):
-    base_prompt_filteration: BasePromptFilteration
-    sample_size: int
-    seed: int
-
-    def get_prompt_ids(self) -> list[TPromptOriginalIndex]:
-        return random.sample(self.base_prompt_filteration.get_prompt_ids(), self.sample_size)
-
-    def get_dependencies(self) -> TDependencies:
-        return self.base_prompt_filteration.get_dependencies()
-
-    def display_name(self) -> str:
-        return f"Sample ({self.sample_size})"
 
 
 class Correctness(StrEnum):
@@ -174,7 +86,7 @@ class ModelCorrectPromptFilteration(BasePromptFilteration):
     code_version: TCodeVersionName
 
     @lru_cache(maxsize=1)
-    def get_prompt_ids(self) -> list[TPromptOriginalIndex]:  # type: ignore
+    def get_static_prompt_ids(self) -> list[TPromptOriginalIndex]:  # type: ignore
         df = self.get_dependencies()["evaluate_model"].get_outputs()
         match self.correctness:
             case Correctness.correct:
@@ -219,16 +131,17 @@ def get_shared_models_correctness_prompt_filteration(
     code_version: TCodeVersionName = DEFAULT_MODEL_CORRECT_MODEL_CODE_VERSION,
     dataset_name: DatasetName = DEFAULT_MODEL_CORRECT_DATASET_NAME,
 ):
-    return IntersectionPromptFilteration(
-        tuple(
-            ModelCorrectPromptFilteration(
-                dataset_name=dataset_name,
-                model_arch=model_arch_and_size.arch,
-                model_size=model_arch_and_size.size,
-                correctness=correctness,
-                code_version=code_version,
-            )
-            for model_arch_and_size in model_arch_and_sizes
-        ),
-        base_prompt_filteration=AllPromptFilteration(dataset_name=dataset_name),
-    )
+    # Create the base filteration
+    # Create a list of all model filterations
+    model_filterations = []
+    for model_arch_and_size in model_arch_and_sizes:
+        model_filter = ModelCorrectPromptFilteration(
+            dataset_name=dataset_name,
+            model_arch=model_arch_and_size.arch,
+            model_size=model_arch_and_size.size,
+            correctness=correctness,
+            code_version=code_version,
+        )
+        model_filterations.append(model_filter)
+
+    return LogicalPromptFilteration.create_and(model_filterations)

@@ -84,7 +84,7 @@ class EvaluateModelRunner(BaseRunner[EvaluateModelParams]):
         from src.analysis.prompt_filterations import AnyExistingCompletePromptFilteration
 
         if not isinstance(self.input_params.filteration, AnyExistingCompletePromptFilteration):
-            df = df.loc[self.input_params.filteration.get_prompt_ids()]
+            df = df.loc[self.input_params.filteration.get_static_prompt_ids()]
         return cast(
             TPromptData,
             df,

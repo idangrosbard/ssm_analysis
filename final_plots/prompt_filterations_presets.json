@@ -16,8 +16,20 @@
         "split": "all"
     },
     "all_correct": {
-        "py/object": "src.analysis.prompt_filterations.IntersectionPromptFilteration",
-        "prompt_filterations": {
+        "py/object": "src.experiments.infrastructure.base_prompt_filteration.LogicalPromptFilteration",
+        "operation_type": {
+            "py/reduce": [
+                {
+                    "py/type": "src.experiments.infrastructure.base_prompt_filteration.LogicalOperationType"
+                },
+                {
+                    "py/tuple": [
+                        "AND"
+                    ]
+                }
+            ]
+        },
+        "operands": {
             "py/tuple": [
                 {
                     "py/object": "src.analysis.prompt_filterations.ModelCorrectPromptFilteration",
@@ -70,7 +82,7 @@
                     },
                     "model_size": "130M",
                     "correctness": {
-                        "py/id": 6
+                        "py/id": 7
                     },
                     "code_version": "v1"
                 },
@@ -93,7 +105,7 @@
                     },
                     "model_size": "355M",
                     "correctness": {
-                        "py/id": 6
+                        "py/id": 7
                     },
                     "code_version": "v1"
                 },
@@ -103,11 +115,11 @@
                         "py/id": 2
                     },
                     "model_arch": {
-                        "py/id": 10
+                        "py/id": 11
                     },
                     "model_size": "774M",
                     "correctness": {
-                        "py/id": 6
+                        "py/id": 7
                     },
                     "code_version": "v1"
                 },
@@ -130,7 +142,7 @@
                     },
                     "model_size": "1B",
                     "correctness": {
-                        "py/id": 6
+                        "py/id": 7
                     },
                     "code_version": "v1"
                 },
@@ -140,11 +152,11 @@
                         "py/id": 2
                     },
                     "model_arch": {
-                        "py/id": 5
+                        "py/id": 6
                     },
                     "model_size": "1.4B",
                     "correctness": {
-                        "py/id": 6
+                        "py/id": 7
                     },
                     "code_version": "v1"
                 },
@@ -154,11 +166,11 @@
                         "py/id": 2
                     },
                     "model_arch": {
-                        "py/id": 8
+                        "py/id": 9
                     },
                     "model_size": "1.3B",
                     "correctness": {
-                        "py/id": 6
+                        "py/id": 7
                     },
                     "code_version": "v1"
                 },
@@ -168,11 +180,11 @@
                         "py/id": 2
                     },
                     "model_arch": {
-                        "py/id": 10
+                        "py/id": 11
                     },
                     "model_size": "1.5B",
                     "correctness": {
-                        "py/id": 6
+                        "py/id": 7
                     },
                     "code_version": "v1"
                 },
@@ -182,11 +194,11 @@
                         "py/id": 2
                     },
                     "model_arch": {
-                        "py/id": 5
+                        "py/id": 6
                     },
                     "model_size": "2.8B",
                     "correctness": {
-                        "py/id": 6
+                        "py/id": 7
                     },
                     "code_version": "v1"
                 },
@@ -196,11 +208,11 @@
                         "py/id": 2
                     },
                     "model_arch": {
-                        "py/id": 8
+                        "py/id": 9
                     },
                     "model_size": "2.7B",
                     "correctness": {
-                        "py/id": 6
+                        "py/id": 7
                     },
                     "code_version": "v1"
                 },
@@ -210,11 +222,11 @@
                         "py/id": 2
                     },
                     "model_arch": {
-                        "py/id": 13
+                        "py/id": 14
                     },
                     "model_size": "3B",
                     "correctness": {
-                        "py/id": 6
+                        "py/id": 7
                     },
                     "code_version": "v1"
                 },
@@ -224,11 +236,11 @@
                         "py/id": 2
                     },
                     "model_arch": {
-                        "py/id": 5
+                        "py/id": 6
                     },
                     "model_size": "7B",
                     "correctness": {
-                        "py/id": 6
+                        "py/id": 7
                     },
                     "code_version": "v1"
                 },
@@ -238,11 +250,11 @@
                         "py/id": 2
                     },
                     "model_arch": {
-                        "py/id": 5
+                        "py/id": 6
                     },
                     "model_size": "7B-falcon",
                     "correctness": {
-                        "py/id": 6
+                        "py/id": 7
                     },
                     "code_version": "v1"
                 },
@@ -252,11 +264,11 @@
                         "py/id": 2
                     },
                     "model_arch": {
-                        "py/id": 5
+                        "py/id": 6
                     },
                     "model_size": "7B-falcon-base",
                     "correctness": {
-                        "py/id": 6
+                        "py/id": 7
                     },
                     "code_version": "v1"
                 },
@@ -279,7 +291,7 @@
                     },
                     "model_size": "7B",
                     "correctness": {
-                        "py/id": 6
+                        "py/id": 7
                     },
                     "code_version": "v1"
                 },
@@ -302,7 +314,7 @@
                     },
                     "model_size": "7B",
                     "correctness": {
-                        "py/id": 6
+                        "py/id": 7
                     },
                     "code_version": "v1"
                 },
@@ -325,7 +337,7 @@
                     },
                     "model_size": "8B",
                     "correctness": {
-                        "py/id": 6
+                        "py/id": 7
                     },
                     "code_version": "v1"
                 },
@@ -348,7 +360,7 @@
                     },
                     "model_size": "0.5B",
                     "correctness": {
-                        "py/id": 6
+                        "py/id": 7
                     },
                     "code_version": "v1"
                 },
@@ -358,11 +370,11 @@
                         "py/id": 2
                     },
                     "model_arch": {
-                        "py/id": 30
+                        "py/id": 31
                     },
                     "model_size": "1.5B",
                     "correctness": {
-                        "py/id": 6
+                        "py/id": 7
                     },
                     "code_version": "v1"
                 },
@@ -372,11 +384,11 @@
                         "py/id": 2
                     },
                     "model_arch": {
-                        "py/id": 30
+                        "py/id": 31
                     },
                     "model_size": "7B",
                     "correctness": {
-                        "py/id": 6
+                        "py/id": 7
                     },
                     "code_version": "v1"
                 },
@@ -399,7 +411,7 @@
                     },
                     "model_size": "0.5B",
                     "correctness": {
-                        "py/id": 6
+                        "py/id": 7
                     },
                     "code_version": "v1"
                 },
@@ -409,11 +421,11 @@
                         "py/id": 2
                     },
                     "model_arch": {
-                        "py/id": 34
+                        "py/id": 35
                     },
                     "model_size": "1.5B",
                     "correctness": {
-                        "py/id": 6
+                        "py/id": 7
                     },
                     "code_version": "v1"
                 },
@@ -423,11 +435,11 @@
                         "py/id": 2
                     },
                     "model_arch": {
-                        "py/id": 34
+                        "py/id": 35
                     },
                     "model_size": "3B",
                     "correctness": {
-                        "py/id": 6
+                        "py/id": 7
                     },
                     "code_version": "v1"
                 },
@@ -437,27 +449,24 @@
                         "py/id": 2
                     },
                     "model_arch": {
-                        "py/id": 34
+                        "py/id": 35
                     },
                     "model_size": "7B",
                     "correctness": {
-                        "py/id": 6
+                        "py/id": 7
                     },
                     "code_version": "v1"
                 }
             ]
         },
-        "base_prompt_filteration": {
-            "py/object": "src.analysis.prompt_filterations.AllPromptFilteration",
-            "dataset_name": {
-                "py/id": 2
-            },
-            "split": "all"
-        }
+        "universe": null
     },
     "all_important_correct": {
-        "py/object": "src.analysis.prompt_filterations.IntersectionPromptFilteration",
-        "prompt_filterations": {
+        "py/object": "src.experiments.infrastructure.base_prompt_filteration.LogicalPromptFilteration",
+        "operation_type": {
+            "py/id": 4
+        },
+        "operands": {
             "py/tuple": [
                 {
                     "py/object": "src.analysis.prompt_filterations.ModelCorrectPromptFilteration",
@@ -465,11 +474,11 @@
                         "py/id": 2
                     },
                     "model_arch": {
-                        "py/id": 5
+                        "py/id": 6
                     },
                     "model_size": "1.4B",
                     "correctness": {
-                        "py/id": 6
+                        "py/id": 7
                     },
                     "code_version": "v1"
                 },
@@ -479,11 +488,11 @@
                         "py/id": 2
                     },
                     "model_arch": {
-                        "py/id": 8
+                        "py/id": 9
                     },
                     "model_size": "1.3B",
                     "correctness": {
-                        "py/id": 6
+                        "py/id": 7
                     },
                     "code_version": "v1"
                 },
@@ -493,11 +502,11 @@
                         "py/id": 2
                     },
                     "model_arch": {
-                        "py/id": 10
+                        "py/id": 11
                     },
                     "model_size": "1.5B",
                     "correctness": {
-                        "py/id": 6
+                        "py/id": 7
                     },
                     "code_version": "v1"
                 },
@@ -507,11 +516,11 @@
                         "py/id": 2
                     },
                     "model_arch": {
-                        "py/id": 5
+                        "py/id": 6
                     },
                     "model_size": "2.8B",
                     "correctness": {
-                        "py/id": 6
+                        "py/id": 7
                     },
                     "code_version": "v1"
                 },
@@ -521,11 +530,11 @@
                         "py/id": 2
                     },
                     "model_arch": {
-                        "py/id": 8
+                        "py/id": 9
                     },
                     "model_size": "2.7B",
                     "correctness": {
-                        "py/id": 6
+                        "py/id": 7
                     },
                     "code_version": "v1"
                 },
@@ -535,11 +544,11 @@
                         "py/id": 2
                     },
                     "model_arch": {
-                        "py/id": 13
+                        "py/id": 14
                     },
                     "model_size": "3B",
                     "correctness": {
-                        "py/id": 6
+                        "py/id": 7
                     },
                     "code_version": "v1"
                 },
@@ -549,11 +558,11 @@
                         "py/id": 2
                     },
                     "model_arch": {
-                        "py/id": 5
+                        "py/id": 6
                     },
                     "model_size": "7B",
                     "correctness": {
-                        "py/id": 6
+                        "py/id": 7
                     },
                     "code_version": "v1"
                 },
@@ -563,11 +572,11 @@
                         "py/id": 2
                     },
                     "model_arch": {
-                        "py/id": 5
+                        "py/id": 6
                     },
                     "model_size": "7B-falcon",
                     "correctness": {
-                        "py/id": 6
+                        "py/id": 7
                     },
                     "code_version": "v1"
                 },
@@ -577,11 +586,11 @@
                         "py/id": 2
                     },
                     "model_arch": {
-                        "py/id": 5
+                        "py/id": 6
                     },
                     "model_size": "7B-falcon-base",
                     "correctness": {
-                        "py/id": 6
+                        "py/id": 7
                     },
                     "code_version": "v1"
                 },
@@ -591,11 +600,11 @@
                         "py/id": 2
                     },
                     "model_arch": {
-                        "py/id": 24
+                        "py/id": 25
                     },
                     "model_size": "7B",
                     "correctness": {
-                        "py/id": 6
+                        "py/id": 7
                     },
                     "code_version": "v1"
                 },
@@ -605,11 +614,11 @@
                         "py/id": 2
                     },
                     "model_arch": {
-                        "py/id": 26
+                        "py/id": 27
                     },
                     "model_size": "7B",
                     "correctness": {
-                        "py/id": 6
+                        "py/id": 7
                     },
                     "code_version": "v1"
                 },
@@ -619,11 +628,11 @@
                         "py/id": 2
                     },
                     "model_arch": {
-                        "py/id": 28
+                        "py/id": 29
                     },
                     "model_size": "8B",
                     "correctness": {
-                        "py/id": 6
+                        "py/id": 7
                     },
                     "code_version": "v1"
                 },
@@ -633,27 +642,24 @@
                         "py/id": 2
                     },
                     "model_arch": {
-                        "py/id": 30
+                        "py/id": 31
                     },
                     "model_size": "0.5B",
                     "correctness": {
-                        "py/id": 6
+                        "py/id": 7
                     },
                     "code_version": "v1"
                 }
             ]
         },
-        "base_prompt_filteration": {
-            "py/object": "src.analysis.prompt_filterations.AllPromptFilteration",
-            "dataset_name": {
-                "py/id": 2
-            },
-            "split": "all"
-        }
+        "universe": null
     },
     "all_important_top_2_to_5_correct": {
-        "py/object": "src.analysis.prompt_filterations.IntersectionPromptFilteration",
-        "prompt_filterations": {
+        "py/object": "src.experiments.infrastructure.base_prompt_filteration.LogicalPromptFilteration",
+        "operation_type": {
+            "py/id": 4
+        },
+        "operands": {
             "py/tuple": [
                 {
                     "py/object": "src.analysis.prompt_filterations.ModelCorrectPromptFilteration",
@@ -661,7 +667,7 @@
                         "py/id": 2
                     },
                     "model_arch": {
-                        "py/id": 5
+                        "py/id": 6
                     },
                     "model_size": "1.4B",
                     "correctness": {
@@ -684,11 +690,11 @@
                         "py/id": 2
                     },
                     "model_arch": {
-                        "py/id": 8
+                        "py/id": 9
                     },
                     "model_size": "1.3B",
                     "correctness": {
-                        "py/id": 56
+                        "py/id": 55
                     },
                     "code_version": "v1"
                 },
@@ -698,11 +704,11 @@
                         "py/id": 2
                     },
                     "model_arch": {
-                        "py/id": 10
+                        "py/id": 11
                     },
                     "model_size": "1.5B",
                     "correctness": {
-                        "py/id": 56
+                        "py/id": 55
                     },
                     "code_version": "v1"
                 },
@@ -712,11 +718,11 @@
                         "py/id": 2
                     },
                     "model_arch": {
-                        "py/id": 5
+                        "py/id": 6
                     },
                     "model_size": "2.8B",
                     "correctness": {
-                        "py/id": 56
+                        "py/id": 55
                     },
                     "code_version": "v1"
                 },
@@ -726,11 +732,11 @@
                         "py/id": 2
                     },
                     "model_arch": {
-                        "py/id": 8
+                        "py/id": 9
                     },
                     "model_size": "2.7B",
                     "correctness": {
-                        "py/id": 56
+                        "py/id": 55
                     },
                     "code_version": "v1"
                 },
@@ -740,11 +746,11 @@
                         "py/id": 2
                     },
                     "model_arch": {
-                        "py/id": 13
+                        "py/id": 14
                     },
                     "model_size": "3B",
                     "correctness": {
-                        "py/id": 56
+                        "py/id": 55
                     },
                     "code_version": "v1"
                 },
@@ -754,11 +760,11 @@
                         "py/id": 2
                     },
                     "model_arch": {
-                        "py/id": 5
+                        "py/id": 6
                     },
                     "model_size": "7B",
                     "correctness": {
-                        "py/id": 56
+                        "py/id": 55
                     },
                     "code_version": "v1"
                 },
@@ -768,11 +774,11 @@
                         "py/id": 2
                     },
                     "model_arch": {
-                        "py/id": 5
+                        "py/id": 6
                     },
                     "model_size": "7B-falcon",
                     "correctness": {
-                        "py/id": 56
+                        "py/id": 55
                     },
                     "code_version": "v1"
                 },
@@ -782,11 +788,11 @@
                         "py/id": 2
                     },
                     "model_arch": {
-                        "py/id": 5
+                        "py/id": 6
                     },
                     "model_size": "7B-falcon-base",
                     "correctness": {
-                        "py/id": 56
+                        "py/id": 55
                     },
                     "code_version": "v1"
                 },
@@ -796,11 +802,11 @@
                         "py/id": 2
                     },
                     "model_arch": {
-                        "py/id": 24
+                        "py/id": 25
                     },
                     "model_size": "7B",
                     "correctness": {
-                        "py/id": 56
+                        "py/id": 55
                     },
                     "code_version": "v1"
                 },
@@ -810,11 +816,11 @@
                         "py/id": 2
                     },
                     "model_arch": {
-                        "py/id": 26
+                        "py/id": 27
                     },
                     "model_size": "7B",
                     "correctness": {
-                        "py/id": 56
+                        "py/id": 55
                     },
                     "code_version": "v1"
                 },
@@ -824,11 +830,11 @@
                         "py/id": 2
                     },
                     "model_arch": {
-                        "py/id": 28
+                        "py/id": 29
                     },
                     "model_size": "8B",
                     "correctness": {
-                        "py/id": 56
+                        "py/id": 55
                     },
                     "code_version": "v1"
                 },
@@ -838,26 +844,20 @@
                         "py/id": 2
                     },
                     "model_arch": {
-                        "py/id": 30
+                        "py/id": 31
                     },
                     "model_size": "0.5B",
                     "correctness": {
-                        "py/id": 56
+                        "py/id": 55
                     },
                     "code_version": "v1"
                 }
             ]
         },
-        "base_prompt_filteration": {
-            "py/object": "src.analysis.prompt_filterations.AllPromptFilteration",
-            "dataset_name": {
-                "py/id": 2
-            },
-            "split": "all"
-        }
+        "universe": null
     },
     "selective": {
-        "py/object": "src.analysis.prompt_filterations.SelectivePromptFilteration",
+        "py/object": "src.experiments.infrastructure.base_prompt_filteration.SelectivePromptFilteration",
         "prompt_ids": {
             "py/tuple": [
                 290,

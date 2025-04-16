@@ -24,10 +24,6 @@ import jsonpickle
 import pandas as pd
 import tqdm
 
-from src.analysis.prompt_filterations import (
-    SelectivePromptFilteration,
-    UnionPromptFilteration,
-)
 from src.core.consts import PATHS
 from src.core.names import (
     COLS,
@@ -47,8 +43,12 @@ from src.core.types import (
     TTokenizer,
 )
 from src.data_ingestion.helpers.logits_utils import Prompt
-from src.experiments.infrastructure.base_runner import (
+from src.experiments.infrastructure.base_prompt_filteration import (
     BasePromptFilteration,
+    LogicalPromptFilteration,
+    SelectivePromptFilteration,
+)
+from src.experiments.infrastructure.base_runner import (
     BaseRunner,
     BaseVariantParams,
     InputParams,
@@ -77,10 +77,12 @@ if TYPE_CHECKING:
 
 class DataReqiermentCollection:
     def __init__(self):
-        self._data_reqs: dict[BaseVariantParams, UnionPromptFilteration] = defaultdict(UnionPromptFilteration)
+        self._data_reqs: dict[BaseVariantParams, LogicalPromptFilteration] = defaultdict(
+            lambda: LogicalPromptFilteration.create_or([])
+        )
 
     def add_data_req(self, data_req: BaseVariantParams, prompt_filteration: BasePromptFilteration):
-        self._data_reqs[data_req] = self._data_reqs[data_req].add_prompt_filteration(prompt_filteration)
+        self._data_reqs[data_req] = self._data_reqs[data_req].or_with(prompt_filteration)
         for dependency in prompt_filteration.uncomputed_dependencies():
             self.add_data_req(dependency.variant_params, dependency.input_params.filteration)
 
@@ -251,10 +253,10 @@ class PromptFilterationsPresets(IndexableDataObject[TPresetID, BasePromptFiltera
         from src.analysis.prompt_filterations import (
             AllPromptFilteration,
             Correctness,
-            SelectivePromptFilteration,
             get_shared_models_correctness_prompt_filteration,
         )
         from src.core.consts import ALL_IMPORTANT_MODELS, GRAPHS_ORDER
+        from src.experiments.infrastructure.base_prompt_filteration import SelectivePromptFilteration
 
         return PromptFilterationsPresets(
             {
@@ -297,7 +299,10 @@ class PromptFilterationsPresets(IndexableDataObject[TPresetID, BasePromptFiltera
             presets.save()
             return presets
 
-        presets = cast(dict[TPresetID, BasePromptFilteration], jsonpickle.loads(cls.get_json_path().read_text()))
+        presets = cast(
+            dict[TPresetID, BasePromptFilteration],
+            jsonpickle.loads(cls.get_json_path().read_text(), on_missing="error"),
+        )
         return cls(presets)
 
 
@@ -529,7 +534,7 @@ class Prompts(IndexableDataObject[TPromptOriginalIndex, PromptNew]):
 
     @lru_cache(maxsize=5)
     def filter_by_prompt_filteration(self, prompt_filteration: BasePromptFilteration):
-        return self.filter_by_prompt_ids(prompt_filteration.get_prompt_ids())
+        return self.filter_by_prompt_ids(prompt_filteration.get_static_prompt_ids())
 
     @property
     def empty(self) -> bool:

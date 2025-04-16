@@ -9,8 +9,8 @@ from src.core.names import DataReqCols, DatasetName, ExperimentName
 from src.core.types import MODEL_ARCH_AND_SIZE, TCodeVersionName, TPromptData
 from src.data_ingestion.data_defs.data_defs import ResultBank
 from src.data_ingestion.datasets.download_dataset import flat_to_indexed_prompt_data
+from src.experiments.infrastructure.base_prompt_filteration import BasePromptFilteration
 from src.experiments.infrastructure.base_runner import (
-    BasePromptFilteration,
     BaseRunner,
     BaseVariantParams,
     InputParams,

@@ -15,9 +15,7 @@
 import streamlit as st
 
 from src.analysis.prompt_filterations import (
-    AllPromptFilteration,
     AnyExistingCompletePromptFilteration,
-    IntersectionPromptFilteration,
 )
 from src.app.components.info_flow import InfoFlowAnalysisComponent
 from src.app.components.prompt_filter import (
@@ -34,6 +32,7 @@ from src.core.types import (
     TInfoFlowWindowValue,
     TPromptOriginalIndex,
 )
+from src.experiments.infrastructure.base_prompt_filteration import LogicalPromptFilteration
 from src.utils.streamlit.helpers.component import StreamlitPage
 from src.utils.types_utils import (
     get_list_indexes_of_set_values,
@@ -87,9 +86,8 @@ class InfoFlowAnalysisPage(StreamlitPage):
         with st.expander(f"Prompt Filteration for {len(result_bank)} info flows"):
             prompt_filteration = FilterPromptsComponent(
                 key="info_flow_analysis_prompt_filteration",
-                base_prompt_filteration=IntersectionPromptFilteration(
-                    prompt_filterations=tuple(AnyExistingCompletePromptFilteration(runner) for runner in result_bank),
-                    base_prompt_filteration=AllPromptFilteration(),
+                base_prompt_filteration=LogicalPromptFilteration.create_and(
+                    [AnyExistingCompletePromptFilteration(runner) for runner in result_bank]
                 ),
             ).render()
 

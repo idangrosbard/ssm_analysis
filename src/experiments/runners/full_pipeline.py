@@ -21,7 +21,8 @@ from src.analysis.plots.info_flow_confidence import create_confidence_plot
 from src.core.consts import TOKEN_TYPE_COLORS, TOKEN_TYPE_LINE_STYLES
 from src.core.names import ExperimentName, InfoFlowVariantParam
 from src.core.types import FeatureCategory, TokenType, TWindowSize
-from src.experiments.infrastructure.base_runner import BasePromptFilteration, BaseRunner, BaseVariantParams, InputParams
+from src.experiments.infrastructure.base_prompt_filteration import BasePromptFilteration
+from src.experiments.infrastructure.base_runner import BaseRunner, BaseVariantParams, InputParams
 from src.experiments.runners.heatmap import HEATMAP_PLOT_FUNCS, HeatmapParams, HeatmapRunner
 from src.experiments.runners.info_flow import InfoFlowParams, InfoFlowRunner
 from src.utils.types_utils import first_dict_value

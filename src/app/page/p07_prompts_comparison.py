@@ -1,7 +1,6 @@
 import streamlit as st
 import streamlit_antd_components as sac
 
-from src.analysis.prompt_filterations import AllPromptFilteration
 from src.app.components.inputs import select_enum
 from src.app.components.prompt_filter import FilterPromptsComponent
 from src.app.components.result_bank import select_model_evaluations
@@ -31,7 +30,6 @@ class PromptsComparisonPage(StreamlitPage):
             prompt_filteration = FilterPromptsComponent(
                 key="prompts_comparison_filter_prompts",
                 default_preset="selective",
-                base_prompt_filteration=AllPromptFilteration(),
             ).render()
             results_bank = results_bank.set_prompt_filteration(prompt_filteration)
 

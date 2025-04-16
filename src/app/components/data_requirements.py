@@ -11,7 +11,6 @@ from rich.console import Console
 from st_aggrid import AgGrid, DataReturnMode, GridUpdateMode
 
 from src.analysis.experiment_results.helpers import init_runner_from_params
-from src.analysis.prompt_filterations import SelectivePromptFilteration
 from src.app.app_consts import (
     GLOBAL_APP_CONSTS,
     AppSessionKeys,
@@ -22,6 +21,7 @@ from src.app.components.result_bank import ShowRunnerStatus
 from src.core.names import HeatmapCols, SlurmStatus, SummarizedDataFulfilledReqsCols
 from src.core.types import MODEL_ARCH_AND_SIZE, TCodeVersionName, TPromptOriginalIndex, TWindowSize
 from src.data_ingestion.data_defs.data_defs import DataReqs, SummarizedDataFulfilledReqs
+from src.experiments.infrastructure.base_prompt_filteration import SelectivePromptFilteration
 from src.experiments.infrastructure.base_runner import InputParams, MetadataParams
 from src.experiments.runners.evaluate_model import EvaluateModelRunner
 from src.experiments.runners.heatmap import HeatmapParams, HeatmapRunner
@@ -129,7 +129,7 @@ class RequirementExecution(StreamlitComponent):
                 ),
             )
             configs.append(config)
-            requested_prompts = set(filteration.get_prompt_ids())
+            requested_prompts = set(filteration.get_static_prompt_ids())
 
             if isinstance(config, HeatmapRunner):
                 remaining_prompts = set(config.get_remaining_prompt_original_indices())

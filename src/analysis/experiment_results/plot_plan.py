@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any, Dict, Generic, List, Optional, Sequence, TypeVar, assert_never, cast
 
 from src.analysis.experiment_results.helpers import init_variant_params_from_values
-from src.analysis.prompt_filterations import AnyExistingCompletePromptFilteration, SelectivePromptFilteration
+from src.analysis.prompt_filterations import AnyExistingCompletePromptFilteration
 from src.core.consts import ALL_VARIANT_PARAMETERS, GRAPHS_ORDER
 from src.core.names import (
     VARIANT_PARAM_NAME,
@@ -31,6 +31,7 @@ from src.core.types import (
     TWindowSize,
 )
 from src.data_ingestion.data_defs.data_defs import DataReqiermentCollection, DataReqs, ResultBank
+from src.experiments.infrastructure.base_prompt_filteration import SelectivePromptFilteration
 from src.experiments.runners.heatmap import HeatmapRunner
 from src.experiments.runners.info_flow import InfoFlowRunner
 from src.utils.types_utils import str_enum_values

@@ -59,6 +59,7 @@ known-first-party = []
 # "notebooks/tmp*.ipynb" = ["ALL"]
 # "notebooks/test_knockout.ipynb" = ["ALL"]
 "notebooks/idan_plots.ipynb" = ["ALL"]
+"src/app/components/model_analysis.py" = ["ALL"] # TODO: fix this
 
 [tool.mypy]
 # General settings
@@ -132,6 +133,7 @@ ignore = [
     "tests/src/experiments/baselines/full_pipeline/**",
     "scripts/**",
     # TODO: Fix this:
+    "src/app/components/model_analysis.py",
     "src/experiments/knockout/**/minimal_*",
     "src/experiments/knockout/llama/interfere_hook.py",
     "src/experiments/knockout/llama/sdpa_attention.py",
