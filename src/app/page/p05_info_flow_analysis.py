@@ -87,7 +87,7 @@ class InfoFlowAnalysisPage(StreamlitPage):
             prompt_filteration = FilterPromptsComponent(
                 key="info_flow_analysis_prompt_filteration",
                 base_prompt_filteration=LogicalPromptFilteration.create_and(
-                    [AnyExistingCompletePromptFilteration(runner) for runner in result_bank]
+                    [AnyExistingCompletePromptFilteration() for runner in result_bank]
                 ),
             ).render()
 

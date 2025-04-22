@@ -25,6 +25,7 @@ from src.app.texts import FINAL_PLOTS_TEXTS
 from src.core.types import TPlotID
 from src.data_ingestion.data_defs.data_defs import PlotPlans, ResultBank
 from src.utils.streamlit.components.aagrid import SelectionMode
+from src.utils.streamlit.helpers.allow_nested_expanders import allow_nested_st_elements
 from src.utils.streamlit.helpers.component import StreamlitComponent, StreamlitPage
 from src.utils.streamlit.helpers.session_keys import SessionKeyDescriptor, SessionKeysBase
 
@@ -121,7 +122,8 @@ class PlotPlanRequirements(StreamlitComponent[None]):
 
             # Option to run missing requirements
             if data_reqs_to_run is not None:
-                RequirementExecution(data_reqs_to_run).render()
+                with allow_nested_st_elements():
+                    RequirementExecution(data_reqs_to_run).render()
 
 
 class FinalPlotsPage(StreamlitPage):

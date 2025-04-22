@@ -23,7 +23,7 @@ PromptsComparisonSessionKeys = _PromptsComparisonSessionKeys()
 class PromptsComparisonPage(StreamlitPage):
     def render(self):
         # Select models to compare
-        with st.expander("Select Models"):
+        with st.expander("Select Models", expanded=True):
             results_bank = select_model_evaluations(key="prompts_comparison_select_model_evaluations")
 
         with st.expander("Prompts Filteration"):

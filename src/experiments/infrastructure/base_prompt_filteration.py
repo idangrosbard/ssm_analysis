@@ -1,12 +1,14 @@
+from __future__ import annotations
+
 import random
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import StrEnum
 from functools import lru_cache
-from typing import TYPE_CHECKING, Callable, List, Optional
+from typing import TYPE_CHECKING, Any, Callable, List, Optional, final
 
 from src.core.types import TPromptOriginalIndex
-from src.utils.streamlit.helpers.hmr import HMRCompatibleMeta
+from src.utils.jsonable import JSONAble
 from src.utils.types_utils import BaseParams
 
 if TYPE_CHECKING:
@@ -14,24 +16,34 @@ if TYPE_CHECKING:
 
 
 @dataclass(frozen=True)
-class BasePromptFilteration(BaseParams, metaclass=HMRCompatibleMeta):
+class BasePromptFilteration(BaseParams, JSONAble):
     """Filteration of prompts to run the experiment on."""
 
+    _context: Optional[Any] = field(default=None, init=False)
+
     @abstractmethod
-    def get_static_prompt_ids(self) -> list[TPromptOriginalIndex]:
+    def get_prompt_ids(self) -> list[TPromptOriginalIndex]:
         pass
 
     @abstractmethod
-    def get_dependencies(self) -> "TDependencies":
+    def get_dependencies(self) -> TDependencies:
         pass
 
-    def get_contexted_prompt_ids(self, base_runner: "BaseRunner") -> list[TPromptOriginalIndex]:
-        return self.get_static_prompt_ids()
+    @final
+    def contextualize(self, context: Any):
+        new_self = self.modify()
+        object.__setattr__(new_self, "_context", context)
+        return new_self
 
-    def uncomputed_dependencies(self) -> list["BaseRunner"]:
+    @final
+    @property
+    def has_context(self) -> bool:
+        return self._context is not None
+
+    def uncomputed_dependencies(self) -> list[BaseRunner]:
         def rec_uncomputed_dependencies(
-            dependencies: "TDependencies",
-        ) -> list["BaseRunner"]:
+            dependencies: TDependencies,
+        ) -> list[BaseRunner]:
             from src.experiments.infrastructure.base_runner import BaseRunner
 
             res = []
@@ -52,15 +64,15 @@ class BasePromptFilteration(BaseParams, metaclass=HMRCompatibleMeta):
     def display_name(self) -> str:
         pass
 
-    def __and__(self, other: "BasePromptFilteration") -> "LogicalPromptFilteration":
+    def __and__(self, other: BasePromptFilteration) -> LogicalPromptFilteration:
         """Support for filter1 & filter2 syntax (AND operation)"""
         return LogicalPromptFilteration.create_and([self, other])
 
-    def __or__(self, other: "BasePromptFilteration") -> "LogicalPromptFilteration":
+    def __or__(self, other: BasePromptFilteration) -> LogicalPromptFilteration:
         """Support for filter1 | filter2 syntax (OR operation)"""
         return LogicalPromptFilteration.create_or([self, other])
 
-    def __invert__(self) -> "LogicalPromptFilteration":
+    def __invert__(self) -> LogicalPromptFilteration:
         """Support for ~filter syntax (NOT operation)"""
         return LogicalPromptFilteration.create_not(self)
 
@@ -69,10 +81,10 @@ class BasePromptFilteration(BaseParams, metaclass=HMRCompatibleMeta):
 class SelectivePromptFilteration(BasePromptFilteration):
     prompt_ids: tuple[TPromptOriginalIndex, ...]
 
-    def get_static_prompt_ids(self) -> list[TPromptOriginalIndex]:
+    def get_prompt_ids(self) -> list[TPromptOriginalIndex]:
         return list(self.prompt_ids)
 
-    def get_dependencies(self) -> "TDependencies":
+    def get_dependencies(self) -> TDependencies:
         return {}
 
     def display_name(self) -> str:
@@ -97,15 +109,11 @@ class ProxyPromptFilteration(BasePromptFilteration, ABC):
     ) -> list[TPromptOriginalIndex]:
         pass
 
-    def get_static_prompt_ids(self) -> list[TPromptOriginalIndex]:
+    def get_prompt_ids(self) -> list[TPromptOriginalIndex]:
         def func(filteration: BasePromptFilteration) -> list[TPromptOriginalIndex]:
-            return filteration.get_static_prompt_ids()
-
-        return self._get_prompt_ids(func)
-
-    def get_contexted_prompt_ids(self, base_runner: "BaseRunner") -> list[TPromptOriginalIndex]:
-        def func(filteration: BasePromptFilteration) -> list[TPromptOriginalIndex]:
-            return filteration.get_contexted_prompt_ids(base_runner)
+            if self._context is not None:
+                return filteration.contextualize(self._context).get_prompt_ids()
+            return filteration.get_prompt_ids()
 
         return self._get_prompt_ids(func)
 
@@ -120,19 +128,17 @@ class LogicalPromptFilteration(ProxyPromptFilteration):
     universe: Optional[BasePromptFilteration] = None
 
     @classmethod
-    def create_and(cls, filterations: List[BasePromptFilteration]) -> "LogicalPromptFilteration":
+    def create_and(cls, filterations: List[BasePromptFilteration]):
         """Create an AND (intersection) operation between filterations."""
         return cls(operation_type=LogicalOperationType.AND, operands=tuple(filterations))
 
     @classmethod
-    def create_or(cls, filterations: List[BasePromptFilteration]) -> "LogicalPromptFilteration":
+    def create_or(cls, filterations: List[BasePromptFilteration]):
         """Create an OR (union) operation between filterations."""
         return cls(operation_type=LogicalOperationType.OR, operands=tuple(filterations))
 
     @classmethod
-    def create_not(
-        cls, filteration: BasePromptFilteration, universe: Optional[BasePromptFilteration] = None
-    ) -> "LogicalPromptFilteration":
+    def create_not(cls, filteration: BasePromptFilteration, universe: Optional[BasePromptFilteration] = None):
         """Create a NOT operation for a filteration.
 
         Args:
@@ -141,41 +147,38 @@ class LogicalPromptFilteration(ProxyPromptFilteration):
         """
         return cls(operation_type=LogicalOperationType.NOT, operands=(filteration,), universe=universe)
 
-    def with_universe(self, universe: BasePromptFilteration) -> "LogicalPromptFilteration":
+    def with_universe(self, universe: BasePromptFilteration):
         """Set the universe for NOT operations."""
         if self.operation_type != LogicalOperationType.NOT:
             return self
-        import dataclasses
 
-        return dataclasses.replace(self, universe=universe)
+        return self.modify(universe=universe)
 
-    def add_operand(self, filteration: BasePromptFilteration) -> "LogicalPromptFilteration":
+    def add_operand(self, filteration: BasePromptFilteration):
         """Add another filteration to this logical operation."""
         if self.operation_type == LogicalOperationType.NOT:
             # NOT operations only support one operand
             return self
 
-        import dataclasses
-
         # If adding the same type of LogicalPromptFilteration, flatten the structure
         if isinstance(filteration, LogicalPromptFilteration) and filteration.operation_type == self.operation_type:
-            return dataclasses.replace(self, operands=self.operands + filteration.operands)
+            return self.modify(operands=self.operands + filteration.operands)
         else:
-            return dataclasses.replace(self, operands=self.operands + (filteration,))
+            return self.modify(operands=self.operands + (filteration,))
 
-    def and_with(self, filteration: BasePromptFilteration) -> "LogicalPromptFilteration":
+    def and_with(self, filteration: BasePromptFilteration):
         """Create a new AND operation with this filteration and another."""
         if self.operation_type == LogicalOperationType.AND:
             return self.add_operand(filteration)
         return LogicalPromptFilteration.create_and([self, filteration])
 
-    def or_with(self, filteration: BasePromptFilteration) -> "LogicalPromptFilteration":
+    def or_with(self, filteration: BasePromptFilteration):
         """Create a new OR operation with this filteration and another."""
         if self.operation_type == LogicalOperationType.OR:
             return self.add_operand(filteration)
         return LogicalPromptFilteration.create_or([self, filteration])
 
-    def not_op(self, universe: Optional[BasePromptFilteration] = None) -> "LogicalPromptFilteration":
+    def not_op(self, universe: Optional[BasePromptFilteration] = None):
         """Create a new NOT operation of this filteration."""
         return LogicalPromptFilteration.create_not(self, universe)
 
@@ -216,14 +219,10 @@ class LogicalPromptFilteration(ProxyPromptFilteration):
         return []
 
     @lru_cache(maxsize=1)
-    def get_static_prompt_ids(self) -> list[TPromptOriginalIndex]:  # type: ignore
-        return super().get_static_prompt_ids()
+    def get_prompt_ids(self) -> list[TPromptOriginalIndex]:  # type: ignore
+        return super().get_prompt_ids()
 
-    @lru_cache(maxsize=1)
-    def get_contexted_prompt_ids(self, base_runner: "BaseRunner") -> list[TPromptOriginalIndex]:  # type: ignore
-        return super().get_contexted_prompt_ids(base_runner)
-
-    def get_dependencies(self) -> "TDependencies":
+    def get_dependencies(self) -> TDependencies:
         dependencies = {}
         for filteration in self.operands:
             deps = filteration.get_dependencies()
@@ -253,7 +252,7 @@ class SamplePromptFilteration(ProxyPromptFilteration):
     ) -> list[TPromptOriginalIndex]:
         return random.sample(get_prompt_ids(self.base_prompt_filteration), self.sample_size)
 
-    def get_dependencies(self) -> "TDependencies":
+    def get_dependencies(self) -> TDependencies:
         return self.base_prompt_filteration.get_dependencies()
 
     def display_name(self) -> str:

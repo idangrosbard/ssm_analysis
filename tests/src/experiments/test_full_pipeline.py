@@ -17,6 +17,7 @@ from src.core.names import COLS
 from src.core.types import (
     ALL_SPLITS_LITERAL,
     MODEL_ARCH,
+    MODEL_ARCH_AND_SIZE,
     SPLIT,
     FeatureCategory,
     TCodeVersionName,
@@ -90,7 +91,7 @@ def get_test_full_pipeline_config(
             },
             info_flow_window_size=TWindowSize(15),
             heatmap_window_size=TWindowSize(15),
-            heatmap_prompts=SelectivePromptFilteration(tuple(ORIGINAL_IDS[SPLIT.TRAIN1])),
+            heatmap_prompts=SelectivePromptFilteration(prompt_ids=tuple(ORIGINAL_IDS[SPLIT.TRAIN1])),
             with_plotting=with_plotting,
             enforce_no_missing_outputs=True,
             with_generation=True,
@@ -100,8 +101,7 @@ def get_test_full_pipeline_config(
             dataset_name=DatasetName.counter_fact,
             filteration=ModelCorrectPromptFilteration(
                 dataset_name=DatasetName.counter_fact,
-                model_arch=model_arch,
-                model_size=TModelSize(model_size),
+                model_arch_and_size=MODEL_ARCH_AND_SIZE(model_arch, TModelSize(model_size)),
                 correctness=Correctness.correct,
                 code_version=TCodeVersionName(code_version_name),
             ),

@@ -446,7 +446,7 @@ class InfoFlowAnalysisComponent(StreamlitComponent):
                 [
                     "Analysis",
                     f"{len(self.info_flow_results)} info flows",
-                    f"{len(self.info_flow_results[0].input_params.filteration.get_static_prompt_ids())} prompts",
+                    f"{len(self.info_flow_results[0].input_params.filteration.get_prompt_ids())} prompts",
                 ]
             )
         )

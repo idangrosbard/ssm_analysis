@@ -39,7 +39,7 @@ class ShowResultsBank(StreamlitComponent[T_RESULT_BANK_TYPE]):
         self.height = height
         self.key = key
         self.filters = filters
-        self.hide_columns = [self.results_bank.KEY] + hide_columns
+        self.hide_columns = [self.results_bank._KEY] + hide_columns
         self.hide_singular_columns = hide_singular_columns
         self.pre_select_all_rows = pre_select_all_rows
 

@@ -1,8 +1,24 @@
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass
 from functools import lru_cache
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Generic, Mapping, Optional, Type, TypeVar, Union, assert_never, cast, final
+from typing import (
+    Any,
+    ClassVar,
+    Generic,
+    Mapping,
+    Optional,
+    Type,
+    TypeVar,
+    Union,
+    assert_never,
+    cast,
+    final,
+)
+
+from pydantic import Field
 
 from src.core.consts import (
     BASE_OUTPUT_KEYS,
@@ -22,6 +38,7 @@ from src.core.types import (
     TTokenizer,
 )
 from src.data_ingestion.datasets.download_dataset import DatasetName
+from src.experiments.infrastructure.base_prompt_filteration import BasePromptFilteration
 from src.experiments.infrastructure.model_interface import ModelInterface, get_model_interface
 from src.experiments.infrastructure.setup_models import get_tokenizer
 from src.utils.infra.experiment_helper import create_run_id
@@ -31,17 +48,14 @@ from src.utils.infra.slurm import SLURM_GPU_TYPE, submit_job
 from src.utils.infra.slurm_job_folder import ExperimentHistorySlurmJobsFolder
 from src.utils.types_utils import BaseParams, json_dumps_dataclass, str_enum_values
 
-if TYPE_CHECKING:
-    from src.experiments.infrastructure.base_prompt_filteration import BasePromptFilteration
-
 TDependencies = Mapping[str, Union["BaseRunner", "TDependencies"]]
 
 
 @dataclass(frozen=True)
 class BaseVariantParams(BaseParams):
+    experiment_name: ClassVar[ExperimentName] = Field(init=False)
     model_arch: MODEL_ARCH
     model_size: TModelSize
-    experiment_name: ExperimentName = field(init=False)
 
     @property
     def model_arch_and_size(self) -> MODEL_ARCH_AND_SIZE:
@@ -64,7 +78,7 @@ class BaseVariantParams(BaseParams):
 
 @dataclass(frozen=True)
 class InputParams(BaseParams):
-    filteration: "BasePromptFilteration"
+    filteration: BasePromptFilteration
     dataset_name: DatasetName = DatasetName.counter_fact
 
 
@@ -88,7 +102,7 @@ class BaseRunner(BaseParams, ABC, Generic[_TVariantParams]):
     """Base configuration class with common parameters across all scripts."""
 
     variant_params: _TVariantParams
-    input_params: InputParams
+    input_params: "InputParams"
     metadata_params: MetadataParams
 
     @property
@@ -128,7 +142,6 @@ class BaseRunner(BaseParams, ABC, Generic[_TVariantParams]):
         )
 
     @classmethod
-    @abstractmethod
     def get_variant_output_keys(cls) -> list[OutputKey]:
         return [
             BASE_OUTPUT_KEYS.EXPERIMENT_NAME,

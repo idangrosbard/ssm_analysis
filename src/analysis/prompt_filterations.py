@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 from enum import StrEnum
 from functools import lru_cache
@@ -29,7 +31,7 @@ class AllPromptFilteration(BasePromptFilteration):
     split: TSplitChoise = ALL_SPLITS_LITERAL
 
     @lru_cache(maxsize=1)
-    def get_static_prompt_ids(self) -> list[TPromptOriginalIndex]:  # type: ignore
+    def get_prompt_ids(self) -> list[TPromptOriginalIndex]:  # type: ignore
         return get_prompt_ids(self.dataset_name, self.split)
 
     def get_dependencies(self) -> TDependencies:
@@ -41,17 +43,13 @@ class AllPromptFilteration(BasePromptFilteration):
 
 @dataclass(frozen=True)
 class AnyExistingCompletePromptFilteration(BasePromptFilteration):
-    base_runner: Optional[BaseRunner] = None
+    def _get_base_runner_from_context(self) -> BaseRunner:
+        assert self._context is not None
+        assert isinstance(self._context, BaseRunner)
+        return self._context
 
-    def get_static_prompt_ids(self) -> list[TPromptOriginalIndex]:
-        if self.base_runner is None:
-            raise ValueError("Base runner is not set")
-        return self.get_contexted_prompt_ids(self.base_runner)
-
-    def get_contexted_prompt_ids(self, base_runner: BaseRunner) -> list[TPromptOriginalIndex]:
-        if self.base_runner:
-            return self.get_static_prompt_ids()
-
+    def get_prompt_ids(self) -> list[TPromptOriginalIndex]:
+        base_runner = self._get_base_runner_from_context()
         from src.experiments.runners.info_flow import InfoFlowRunner
 
         if isinstance(base_runner, EvaluateModelRunner):
@@ -82,8 +80,17 @@ class ModelCorrectPromptFilteration(BasePromptFilteration):
     correctness: Correctness
     code_version: TCodeVersionName
 
+    def _get_model_arch_and_size_from_context(self) -> MODEL_ARCH_AND_SIZE:
+        if self.model_arch_and_size is not None:
+            return self.model_arch_and_size
+        assert self.has_context
+        if isinstance(self._context, BaseRunner):
+            return self._context.variant_params.model_arch_and_size
+
+        raise NotImplementedError(f"Prompt filteration for {self._context.__class__.__name__} not implemented")
+
     @lru_cache(maxsize=1)
-    def get_static_prompt_ids(self) -> list[TPromptOriginalIndex]:  # type: ignore
+    def get_prompt_ids(self) -> list[TPromptOriginalIndex]:  # type: ignore
         df = self.get_dependencies()["evaluate_model"].get_outputs()
 
         match self.correctness:
@@ -100,19 +107,16 @@ class ModelCorrectPromptFilteration(BasePromptFilteration):
 
         return df[COLS.ORIGINAL_IDX].tolist()
 
-    def get_contexted_prompt_ids(self, base_runner: BaseRunner) -> list[TPromptOriginalIndex]:
-        if self.model_arch_and_size is not None:
-            return self.get_static_prompt_ids()
-
-        return self.modify(model_arch_and_size=base_runner.variant_params.model_arch_and_size).get_static_prompt_ids()
-
     def get_dependencies(self):
-        assert self.model_arch_and_size is not None
+        if not self.has_context:
+            return {}
+
+        model_arch_and_size = self._get_model_arch_and_size_from_context()
         return {
             "evaluate_model": EvaluateModelRunner(
                 variant_params=EvaluateModelParams(
-                    model_arch=self.model_arch_and_size.arch,
-                    model_size=self.model_arch_and_size.size,
+                    model_arch=model_arch_and_size.arch,
+                    model_size=model_arch_and_size.size,
                 ),
                 input_params=InputParams(
                     filteration=AllPromptFilteration(dataset_name=self.dataset_name),
@@ -124,6 +128,7 @@ class ModelCorrectPromptFilteration(BasePromptFilteration):
         }
 
     def is_computed(self) -> bool:
+        assert self._get_model_arch_and_size_from_context()
         return self.get_dependencies()["evaluate_model"].is_computed()
 
     def display_name(self) -> str:

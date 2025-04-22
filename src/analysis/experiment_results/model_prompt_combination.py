@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 import random
 from collections import defaultdict
@@ -29,7 +31,7 @@ class ModelCombination:
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "ModelCombination":
+    def from_dict(cls, data: dict[str, Any]) -> ModelCombination:
         return cls(
             correct_models={MODEL_ARCH_AND_SIZE(arch, size) for arch, size in data["correct_models"]},
             incorrect_models={MODEL_ARCH_AND_SIZE(arch, size) for arch, size in data["incorrect_models"]},
@@ -37,7 +39,7 @@ class ModelCombination:
             chosen_prompt=data["chosen_prompt"],
         )
 
-    def choose_prompt_by_seed(self, seed: int) -> "ModelCombination":
+    def choose_prompt_by_seed(self, seed: int) -> ModelCombination:
         random.seed(seed)
         chosen_prompt = random.choice(self.prompts)
         return ModelCombination(

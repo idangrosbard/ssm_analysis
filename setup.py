@@ -34,6 +34,8 @@ setup(
         "mypy>=1.11.1",
         "pillow>=10.4.0",
         "jsonpickle>=4.0.5",
+        "devtools>=0.12.12",
+        "mamba-ssm==2.2.2",  # TODO: update while making sure that the results don't change
     ],
     extras_require={
         "optimization": [
@@ -55,6 +57,7 @@ setup(
             "streamlit-pydantic>=0.6.0",
             "st-annotated-text>=4.0.2",
             "pygwalker>=0.4.9.14",
+            "streamlit-extras>=0.6.0",
         ],
         "typing": [
             "beartype>=0.20.2",

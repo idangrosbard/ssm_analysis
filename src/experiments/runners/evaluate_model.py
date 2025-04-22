@@ -8,11 +8,13 @@ The sub task result is a DataFrame with model predictions and metrics
 The combined result is saved as a CSV file
 """
 
+from __future__ import annotations
+
 import json
 from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
-from typing import cast
+from typing import ClassVar, cast
 
 import pandas as pd
 import torch
@@ -36,7 +38,7 @@ from src.experiments.infrastructure.base_runner import BaseRunner, BaseVariantPa
 
 @dataclass(frozen=True)
 class EvaluateModelParams(BaseVariantParams):
-    experiment_name: ExperimentName = field(init=False, default=ExperimentName.evaluate_model)
+    experiment_name: ClassVar[ExperimentName] = field(init=False, default=ExperimentName.evaluate_model)
     drop_subject: bool = False
     drop_subj_last_token: bool = False
     with_3_dots: bool = False
@@ -45,8 +47,8 @@ class EvaluateModelParams(BaseVariantParams):
 
 
 @lru_cache(maxsize=20)
-def _get_output_path(self: "EvaluateModelRunner") -> TPromptDataFlat:
-    df = pd.read_csv(self.output_result_path, index_col=False)
+def _get_output_path(evaluate_runner: EvaluateModelRunner) -> TPromptDataFlat:
+    df = pd.read_csv(evaluate_runner.output_result_path, index_col=False)
     for (
         counter_fact_col,
         known1000_col,
@@ -88,7 +90,7 @@ class EvaluateModelRunner(BaseRunner[EvaluateModelParams]):
         from src.analysis.prompt_filterations import AnyExistingCompletePromptFilteration
 
         if not isinstance(self.input_params.filteration, AnyExistingCompletePromptFilteration):
-            df = df.loc[self.input_params.filteration.get_static_prompt_ids()]
+            df = df.loc[self.input_params.filteration.get_prompt_ids()]
         return cast(
             TPromptData,
             df,

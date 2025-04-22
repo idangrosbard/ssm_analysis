@@ -11,7 +11,8 @@ from src.core.types import (
 )
 from src.experiments.runners.info_flow import forward_eval
 from src.utils.types_utils import first_dict_value
-from tests.src.experiments.test_full_pipeline import (
+
+from .test_full_pipeline import (
     INFO_FLOW_FORWARD_EVAL_PATH,
     INFO_FLOW_PRINT_INTERVAL_PATH,
     PATHS_PROJECT_DIR_PATH,

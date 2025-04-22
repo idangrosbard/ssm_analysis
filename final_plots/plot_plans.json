@@ -1,555 +1,1633 @@
-[
-    {
-        "plot_id": "architecture_knockout",
-        "title": "Architecture Knockout Plot",
-        "description": "Relative change in correct-token prediction probability when removing information flow to the last token from various source tokens. \nThe x-axis represents the relative depth of the first layer within the 9-layer attention knockout window, while the y-axis indicates the resulting performance change.",
-        "plot_type": "ARCHITECTURE_KNOCKOUT",
-        "is_appendix": false,
-        "order": 1,
-        "experiment_name": "info_flow",
-        "rows": null,
-        "cols": "source",
-        "grids": null,
-        "lines": "model_arch_and_size",
-        "rows_options": [],
-        "cols_options": [
-            "subject",
-            "relation",
-            "last",
-            "first"
-        ],
-        "grids_options": [],
-        "lines_options": [
-            {
-                "model_arch": "mamba2",
-                "model_size": "2.7B"
-            },
-            {
-                "model_arch": "mamba1",
-                "model_size": "7B-falcon"
-            },
-            {
-                "model_arch": "mamba1",
-                "model_size": "2.8B"
-            },
-            {
-                "model_arch": "gpt2",
-                "model_size": "1.5B"
-            }
-        ],
-        "fixed_values": {},
-        "cell_plot_config": {},
-        "combine_plot_config": {}
-    },
-    {
-        "plot_id": "test",
-        "title": "test",
-        "description": "test",
-        "plot_type": "ARCHITECTURE_KNOCKOUT",
-        "is_appendix": false,
-        "order": 1,
-        "experiment_name": "info_flow",
-        "rows": "model_arch_and_size",
-        "cols": "source",
-        "grids": "window_size",
-        "lines": null,
-        "rows_options": [
-            {
-                "model_arch": "mamba2",
-                "model_size": "2.7B"
-            },
-            {
-                "model_arch": "mamba1",
-                "model_size": "7B-falcon"
-            },
-            {
-                "model_arch": "mamba1",
-                "model_size": "2.8B"
-            }
-        ],
-        "cols_options": [
-            "subject",
-            "relation",
-            "last",
-            "first"
-        ],
-        "grids_options": [
-            9,
-            15
-        ],
-        "lines_options": [],
-        "fixed_values": {
-            "feature_category": "ALL",
-            "target": "last",
-            "filteration": {
-                "dataset_name": "counter_fact",
-                "model_arch_and_size": null,
-                "correctness": "correct",
-                "code_version": "v1"
-            }
-        },
-        "cell_plot_config": {},
-        "combine_plot_config": {}
-    },
-    {
-        "plot_id": "figure1",
-        "title": "Figure 1",
-        "description": "Figure 1 t",
-        "plot_type": "ARCHITECTURE_KNOCKOUT",
-        "is_appendix": false,
-        "order": 1,
-        "experiment_name": "info_flow",
-        "rows": null,
-        "cols": "source",
-        "grids": null,
-        "lines": "model_arch_and_size",
-        "rows_options": [],
-        "cols_options": [
-            "subject",
-            "relation",
-            "last",
-            "first"
-        ],
-        "grids_options": [],
-        "lines_options": [
-            {
-                "model_arch": "mamba1",
-                "model_size": "2.8B"
-            },
-            {
-                "model_arch": "mamba2",
-                "model_size": "2.7B"
-            },
-            {
-                "model_arch": "gpt2",
-                "model_size": "1.5B"
-            },
-            {
-                "model_arch": "mamba1",
-                "model_size": "7B-falcon"
-            }
-        ],
-        "fixed_values": {
-            "window_size": 9,
-            "feature_category": "ALL",
-            "target": "last",
-            "filteration": {
-                "operation_type": "AND",
-                "operands": [
-                    {
-                        "dataset_name": "counter_fact",
-                        "model_arch_and_size": null,
-                        "correctness": "correct",
-                        "code_version": "v1"
+{
+    "__JSONABLE_type__": "PlotPlans",
+    "__JSONABLE_value__": {
+        "_items": {
+            "architecture_knockout": {
+                "__JSONABLE_metadata__": "__JSONABLE_dataclass__",
+                "__JSONABLE_module__": "src.analysis.experiment_results.plot_plan",
+                "__JSONABLE_type__": "PlotPlan",
+                "__JSONABLE_value__": {
+                    "plot_id": "architecture_knockout",
+                    "title": "Architecture Knockout Plot",
+                    "description": "Relative change in correct-token prediction probability when removing information flow to the last token from various source tokens. \nThe x-axis represents the relative depth of the first layer within the 9-layer attention knockout window, while the y-axis indicates the resulting performance change.",
+                    "plot_type": {
+                        "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                        "__JSONABLE_module__": "src.core.names",
+                        "__JSONABLE_type__": "PlotType",
+                        "__JSONABLE_value__": "ARCHITECTURE_KNOCKOUT"
                     },
-                    {
-                        "base_runner": null
-                    }
-                ],
-                "universe": null
+                    "is_appendix": false,
+                    "order": 1,
+                    "experiment_name": {
+                        "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                        "__JSONABLE_module__": "src.core.names",
+                        "__JSONABLE_type__": "ExperimentName",
+                        "__JSONABLE_value__": "info_flow"
+                    },
+                    "rows": null,
+                    "cols": {
+                        "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                        "__JSONABLE_module__": "src.core.names",
+                        "__JSONABLE_type__": "ExperimentHyperParams",
+                        "__JSONABLE_value__": "source"
+                    },
+                    "grids": null,
+                    "lines": {
+                        "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                        "__JSONABLE_module__": "src.core.names",
+                        "__JSONABLE_type__": "ExperimentHyperParams",
+                        "__JSONABLE_value__": "model_arch_and_size"
+                    },
+                    "rows_options": [],
+                    "cols_options": [
+                        "subject",
+                        "relation",
+                        "last",
+                        "first"
+                    ],
+                    "grids_options": [],
+                    "lines_options": [
+                        {
+                            "__JSONABLE_metadata__": "__JSONABLE_namedtuple__",
+                            "__JSONABLE_module__": "src.core.types",
+                            "__JSONABLE_type__": "MODEL_ARCH_AND_SIZE",
+                            "__JSONABLE_value__": [
+                                {
+                                    "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                                    "__JSONABLE_module__": "src.core.types",
+                                    "__JSONABLE_type__": "MODEL_ARCH",
+                                    "__JSONABLE_value__": "mamba2"
+                                },
+                                "2.7B"
+                            ]
+                        },
+                        {
+                            "__JSONABLE_metadata__": "__JSONABLE_namedtuple__",
+                            "__JSONABLE_module__": "src.core.types",
+                            "__JSONABLE_type__": "MODEL_ARCH_AND_SIZE",
+                            "__JSONABLE_value__": [
+                                {
+                                    "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                                    "__JSONABLE_module__": "src.core.types",
+                                    "__JSONABLE_type__": "MODEL_ARCH",
+                                    "__JSONABLE_value__": "mamba1"
+                                },
+                                "7B-falcon"
+                            ]
+                        },
+                        {
+                            "__JSONABLE_metadata__": "__JSONABLE_namedtuple__",
+                            "__JSONABLE_module__": "src.core.types",
+                            "__JSONABLE_type__": "MODEL_ARCH_AND_SIZE",
+                            "__JSONABLE_value__": [
+                                {
+                                    "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                                    "__JSONABLE_module__": "src.core.types",
+                                    "__JSONABLE_type__": "MODEL_ARCH",
+                                    "__JSONABLE_value__": "mamba1"
+                                },
+                                "2.8B"
+                            ]
+                        },
+                        {
+                            "__JSONABLE_metadata__": "__JSONABLE_namedtuple__",
+                            "__JSONABLE_module__": "src.core.types",
+                            "__JSONABLE_type__": "MODEL_ARCH_AND_SIZE",
+                            "__JSONABLE_value__": [
+                                {
+                                    "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                                    "__JSONABLE_module__": "src.core.types",
+                                    "__JSONABLE_type__": "MODEL_ARCH",
+                                    "__JSONABLE_value__": "gpt2"
+                                },
+                                "1.5B"
+                            ]
+                        }
+                    ],
+                    "fixed_values": {
+                        "window_size": 9,
+                        "feature_category": "ALL",
+                        "target": "last",
+                        "filteration": {
+                            "__JSONABLE_type__": "LogicalPromptFilteration",
+                            "__JSONABLE_value__": {
+                                "operation_type": {
+                                    "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                                    "__JSONABLE_module__": "src.experiments.infrastructure.base_prompt_filteration",
+                                    "__JSONABLE_type__": "LogicalOperationType",
+                                    "__JSONABLE_value__": "AND"
+                                },
+                                "operands": {
+                                    "__JSONABLE_metadata__": "__JSONABLE_tuple__",
+                                    "__JSONABLE_value__": [
+                                        {
+                                            "__JSONABLE_type__": "ModelCorrectPromptFilteration",
+                                            "__JSONABLE_value__": {
+                                                "dataset_name": {
+                                                    "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                                                    "__JSONABLE_module__": "src.core.names",
+                                                    "__JSONABLE_type__": "DatasetName",
+                                                    "__JSONABLE_value__": "counter_fact"
+                                                },
+                                                "model_arch_and_size": null,
+                                                "correctness": "correct",
+                                                "code_version": "v1"
+                                            }
+                                        },
+                                        {
+                                            "__JSONABLE_type__": "AnyExistingCompletePromptFilteration",
+                                            "__JSONABLE_value__": {}
+                                        }
+                                    ]
+                                },
+                                "universe": null
+                            }
+                        }
+                    },
+                    "cell_plot_config": {},
+                    "combine_plot_config": {}
+                }
+            },
+            "test": {
+                "__JSONABLE_metadata__": "__JSONABLE_dataclass__",
+                "__JSONABLE_module__": "src.analysis.experiment_results.plot_plan",
+                "__JSONABLE_type__": "PlotPlan",
+                "__JSONABLE_value__": {
+                    "plot_id": "test",
+                    "title": "test",
+                    "description": "test",
+                    "plot_type": {
+                        "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                        "__JSONABLE_module__": "src.core.names",
+                        "__JSONABLE_type__": "PlotType",
+                        "__JSONABLE_value__": "ARCHITECTURE_KNOCKOUT"
+                    },
+                    "is_appendix": false,
+                    "order": 1,
+                    "experiment_name": {
+                        "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                        "__JSONABLE_module__": "src.core.names",
+                        "__JSONABLE_type__": "ExperimentName",
+                        "__JSONABLE_value__": "info_flow"
+                    },
+                    "rows": {
+                        "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                        "__JSONABLE_module__": "src.core.names",
+                        "__JSONABLE_type__": "ExperimentHyperParams",
+                        "__JSONABLE_value__": "model_arch_and_size"
+                    },
+                    "cols": {
+                        "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                        "__JSONABLE_module__": "src.core.names",
+                        "__JSONABLE_type__": "ExperimentHyperParams",
+                        "__JSONABLE_value__": "source"
+                    },
+                    "grids": {
+                        "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                        "__JSONABLE_module__": "src.core.names",
+                        "__JSONABLE_type__": "ExperimentHyperParams",
+                        "__JSONABLE_value__": "window_size"
+                    },
+                    "lines": null,
+                    "rows_options": [
+                        {
+                            "__JSONABLE_metadata__": "__JSONABLE_namedtuple__",
+                            "__JSONABLE_module__": "src.core.types",
+                            "__JSONABLE_type__": "MODEL_ARCH_AND_SIZE",
+                            "__JSONABLE_value__": [
+                                {
+                                    "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                                    "__JSONABLE_module__": "src.core.types",
+                                    "__JSONABLE_type__": "MODEL_ARCH",
+                                    "__JSONABLE_value__": "mamba2"
+                                },
+                                "2.7B"
+                            ]
+                        },
+                        {
+                            "__JSONABLE_metadata__": "__JSONABLE_namedtuple__",
+                            "__JSONABLE_module__": "src.core.types",
+                            "__JSONABLE_type__": "MODEL_ARCH_AND_SIZE",
+                            "__JSONABLE_value__": [
+                                {
+                                    "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                                    "__JSONABLE_module__": "src.core.types",
+                                    "__JSONABLE_type__": "MODEL_ARCH",
+                                    "__JSONABLE_value__": "mamba1"
+                                },
+                                "7B-falcon"
+                            ]
+                        },
+                        {
+                            "__JSONABLE_metadata__": "__JSONABLE_namedtuple__",
+                            "__JSONABLE_module__": "src.core.types",
+                            "__JSONABLE_type__": "MODEL_ARCH_AND_SIZE",
+                            "__JSONABLE_value__": [
+                                {
+                                    "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                                    "__JSONABLE_module__": "src.core.types",
+                                    "__JSONABLE_type__": "MODEL_ARCH",
+                                    "__JSONABLE_value__": "mamba1"
+                                },
+                                "2.8B"
+                            ]
+                        }
+                    ],
+                    "cols_options": [
+                        "subject",
+                        "relation",
+                        "last",
+                        "first"
+                    ],
+                    "grids_options": [
+                        9,
+                        15
+                    ],
+                    "lines_options": [],
+                    "fixed_values": {
+                        "feature_category": "ALL",
+                        "target": "last",
+                        "filteration": {
+                            "__JSONABLE_type__": "LogicalPromptFilteration",
+                            "__JSONABLE_value__": {
+                                "operation_type": {
+                                    "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                                    "__JSONABLE_module__": "src.experiments.infrastructure.base_prompt_filteration",
+                                    "__JSONABLE_type__": "LogicalOperationType",
+                                    "__JSONABLE_value__": "AND"
+                                },
+                                "operands": {
+                                    "__JSONABLE_metadata__": "__JSONABLE_tuple__",
+                                    "__JSONABLE_value__": [
+                                        {
+                                            "__JSONABLE_type__": "ModelCorrectPromptFilteration",
+                                            "__JSONABLE_value__": {
+                                                "dataset_name": {
+                                                    "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                                                    "__JSONABLE_module__": "src.core.names",
+                                                    "__JSONABLE_type__": "DatasetName",
+                                                    "__JSONABLE_value__": "counter_fact"
+                                                },
+                                                "model_arch_and_size": null,
+                                                "correctness": "correct",
+                                                "code_version": "v1"
+                                            }
+                                        },
+                                        {
+                                            "__JSONABLE_type__": "AnyExistingCompletePromptFilteration",
+                                            "__JSONABLE_value__": {}
+                                        }
+                                    ]
+                                },
+                                "universe": null
+                            }
+                        }
+                    },
+                    "cell_plot_config": {},
+                    "combine_plot_config": {}
+                }
+            },
+            "figure1": {
+                "__JSONABLE_metadata__": "__JSONABLE_dataclass__",
+                "__JSONABLE_module__": "src.analysis.experiment_results.plot_plan",
+                "__JSONABLE_type__": "PlotPlan",
+                "__JSONABLE_value__": {
+                    "plot_id": "figure1",
+                    "title": "Figure 1",
+                    "description": "Figure 1 t",
+                    "plot_type": {
+                        "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                        "__JSONABLE_module__": "src.core.names",
+                        "__JSONABLE_type__": "PlotType",
+                        "__JSONABLE_value__": "ARCHITECTURE_KNOCKOUT"
+                    },
+                    "is_appendix": false,
+                    "order": 1,
+                    "experiment_name": {
+                        "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                        "__JSONABLE_module__": "src.core.names",
+                        "__JSONABLE_type__": "ExperimentName",
+                        "__JSONABLE_value__": "info_flow"
+                    },
+                    "rows": null,
+                    "cols": {
+                        "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                        "__JSONABLE_module__": "src.core.names",
+                        "__JSONABLE_type__": "ExperimentHyperParams",
+                        "__JSONABLE_value__": "source"
+                    },
+                    "grids": null,
+                    "lines": {
+                        "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                        "__JSONABLE_module__": "src.core.names",
+                        "__JSONABLE_type__": "ExperimentHyperParams",
+                        "__JSONABLE_value__": "model_arch_and_size"
+                    },
+                    "rows_options": [],
+                    "cols_options": [
+                        "subject",
+                        "relation",
+                        "last",
+                        "first"
+                    ],
+                    "grids_options": [],
+                    "lines_options": [
+                        {
+                            "__JSONABLE_metadata__": "__JSONABLE_namedtuple__",
+                            "__JSONABLE_module__": "src.core.types",
+                            "__JSONABLE_type__": "MODEL_ARCH_AND_SIZE",
+                            "__JSONABLE_value__": [
+                                {
+                                    "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                                    "__JSONABLE_module__": "src.core.types",
+                                    "__JSONABLE_type__": "MODEL_ARCH",
+                                    "__JSONABLE_value__": "mamba1"
+                                },
+                                "2.8B"
+                            ]
+                        },
+                        {
+                            "__JSONABLE_metadata__": "__JSONABLE_namedtuple__",
+                            "__JSONABLE_module__": "src.core.types",
+                            "__JSONABLE_type__": "MODEL_ARCH_AND_SIZE",
+                            "__JSONABLE_value__": [
+                                {
+                                    "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                                    "__JSONABLE_module__": "src.core.types",
+                                    "__JSONABLE_type__": "MODEL_ARCH",
+                                    "__JSONABLE_value__": "mamba2"
+                                },
+                                "2.7B"
+                            ]
+                        },
+                        {
+                            "__JSONABLE_metadata__": "__JSONABLE_namedtuple__",
+                            "__JSONABLE_module__": "src.core.types",
+                            "__JSONABLE_type__": "MODEL_ARCH_AND_SIZE",
+                            "__JSONABLE_value__": [
+                                {
+                                    "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                                    "__JSONABLE_module__": "src.core.types",
+                                    "__JSONABLE_type__": "MODEL_ARCH",
+                                    "__JSONABLE_value__": "gpt2"
+                                },
+                                "1.5B"
+                            ]
+                        },
+                        {
+                            "__JSONABLE_metadata__": "__JSONABLE_namedtuple__",
+                            "__JSONABLE_module__": "src.core.types",
+                            "__JSONABLE_type__": "MODEL_ARCH_AND_SIZE",
+                            "__JSONABLE_value__": [
+                                {
+                                    "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                                    "__JSONABLE_module__": "src.core.types",
+                                    "__JSONABLE_type__": "MODEL_ARCH",
+                                    "__JSONABLE_value__": "mamba1"
+                                },
+                                "7B-falcon"
+                            ]
+                        }
+                    ],
+                    "fixed_values": {
+                        "window_size": 9,
+                        "feature_category": "ALL",
+                        "target": "last",
+                        "filteration": {
+                            "__JSONABLE_type__": "LogicalPromptFilteration",
+                            "__JSONABLE_value__": {
+                                "operation_type": {
+                                    "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                                    "__JSONABLE_module__": "src.experiments.infrastructure.base_prompt_filteration",
+                                    "__JSONABLE_type__": "LogicalOperationType",
+                                    "__JSONABLE_value__": "AND"
+                                },
+                                "operands": {
+                                    "__JSONABLE_metadata__": "__JSONABLE_tuple__",
+                                    "__JSONABLE_value__": [
+                                        {
+                                            "__JSONABLE_type__": "ModelCorrectPromptFilteration",
+                                            "__JSONABLE_value__": {
+                                                "dataset_name": {
+                                                    "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                                                    "__JSONABLE_module__": "src.core.names",
+                                                    "__JSONABLE_type__": "DatasetName",
+                                                    "__JSONABLE_value__": "counter_fact"
+                                                },
+                                                "model_arch_and_size": null,
+                                                "correctness": {
+                                                    "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                                                    "__JSONABLE_module__": "src.analysis.prompt_filterations",
+                                                    "__JSONABLE_type__": "Correctness",
+                                                    "__JSONABLE_value__": "correct"
+                                                },
+                                                "code_version": "v1"
+                                            }
+                                        },
+                                        {
+                                            "__JSONABLE_type__": "AnyExistingCompletePromptFilteration",
+                                            "__JSONABLE_value__": {}
+                                        }
+                                    ]
+                                },
+                                "universe": null
+                            }
+                        }
+                    },
+                    "cell_plot_config": {},
+                    "combine_plot_config": {}
+                }
+            },
+            "model_size_knockout": {
+                "__JSONABLE_metadata__": "__JSONABLE_dataclass__",
+                "__JSONABLE_module__": "src.analysis.experiment_results.plot_plan",
+                "__JSONABLE_type__": "PlotPlan",
+                "__JSONABLE_value__": {
+                    "plot_id": "model_size_knockout",
+                    "title": "Model Size Knockout Plot",
+                    "description": "Comparison of different model sizes within the same architecture family when removing information flow\nto the last token from various source tokens.",
+                    "plot_type": {
+                        "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                        "__JSONABLE_module__": "src.core.names",
+                        "__JSONABLE_type__": "PlotType",
+                        "__JSONABLE_value__": "ARCHITECTURE_KNOCKOUT"
+                    },
+                    "is_appendix": false,
+                    "order": 2,
+                    "experiment_name": {
+                        "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                        "__JSONABLE_module__": "src.core.names",
+                        "__JSONABLE_type__": "ExperimentName",
+                        "__JSONABLE_value__": "info_flow"
+                    },
+                    "rows": {
+                        "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                        "__JSONABLE_module__": "src.core.names",
+                        "__JSONABLE_type__": "ExperimentHyperParams",
+                        "__JSONABLE_value__": "target"
+                    },
+                    "cols": {
+                        "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                        "__JSONABLE_module__": "src.core.names",
+                        "__JSONABLE_type__": "ExperimentHyperParams",
+                        "__JSONABLE_value__": "source"
+                    },
+                    "grids": {
+                        "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                        "__JSONABLE_module__": "src.core.names",
+                        "__JSONABLE_type__": "ExperimentHyperParams",
+                        "__JSONABLE_value__": "model_arch"
+                    },
+                    "lines": {
+                        "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                        "__JSONABLE_module__": "src.core.names",
+                        "__JSONABLE_type__": "ExperimentHyperParams",
+                        "__JSONABLE_value__": "model_arch_and_size"
+                    },
+                    "rows_options": [
+                        "last"
+                    ],
+                    "cols_options": [
+                        "subject",
+                        "relation",
+                        "last",
+                        "first"
+                    ],
+                    "grids_options": [
+                        "mamba1",
+                        "mamba2",
+                        "gpt2"
+                    ],
+                    "lines_options": [
+                        {
+                            "__JSONABLE_metadata__": "__JSONABLE_namedtuple__",
+                            "__JSONABLE_module__": "src.core.types",
+                            "__JSONABLE_type__": "MODEL_ARCH_AND_SIZE",
+                            "__JSONABLE_value__": [
+                                {
+                                    "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                                    "__JSONABLE_module__": "src.core.types",
+                                    "__JSONABLE_type__": "MODEL_ARCH",
+                                    "__JSONABLE_value__": "mamba1"
+                                },
+                                "130M"
+                            ]
+                        },
+                        {
+                            "__JSONABLE_metadata__": "__JSONABLE_namedtuple__",
+                            "__JSONABLE_module__": "src.core.types",
+                            "__JSONABLE_type__": "MODEL_ARCH_AND_SIZE",
+                            "__JSONABLE_value__": [
+                                {
+                                    "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                                    "__JSONABLE_module__": "src.core.types",
+                                    "__JSONABLE_type__": "MODEL_ARCH",
+                                    "__JSONABLE_value__": "mamba1"
+                                },
+                                "1.4B"
+                            ]
+                        },
+                        {
+                            "__JSONABLE_metadata__": "__JSONABLE_namedtuple__",
+                            "__JSONABLE_module__": "src.core.types",
+                            "__JSONABLE_type__": "MODEL_ARCH_AND_SIZE",
+                            "__JSONABLE_value__": [
+                                {
+                                    "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                                    "__JSONABLE_module__": "src.core.types",
+                                    "__JSONABLE_type__": "MODEL_ARCH",
+                                    "__JSONABLE_value__": "mamba1"
+                                },
+                                "2.8B"
+                            ]
+                        },
+                        {
+                            "__JSONABLE_metadata__": "__JSONABLE_namedtuple__",
+                            "__JSONABLE_module__": "src.core.types",
+                            "__JSONABLE_type__": "MODEL_ARCH_AND_SIZE",
+                            "__JSONABLE_value__": [
+                                {
+                                    "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                                    "__JSONABLE_module__": "src.core.types",
+                                    "__JSONABLE_type__": "MODEL_ARCH",
+                                    "__JSONABLE_value__": "mamba2"
+                                },
+                                "130M"
+                            ]
+                        },
+                        {
+                            "__JSONABLE_metadata__": "__JSONABLE_namedtuple__",
+                            "__JSONABLE_module__": "src.core.types",
+                            "__JSONABLE_type__": "MODEL_ARCH_AND_SIZE",
+                            "__JSONABLE_value__": [
+                                {
+                                    "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                                    "__JSONABLE_module__": "src.core.types",
+                                    "__JSONABLE_type__": "MODEL_ARCH",
+                                    "__JSONABLE_value__": "mamba2"
+                                },
+                                "1.3B"
+                            ]
+                        },
+                        {
+                            "__JSONABLE_metadata__": "__JSONABLE_namedtuple__",
+                            "__JSONABLE_module__": "src.core.types",
+                            "__JSONABLE_type__": "MODEL_ARCH_AND_SIZE",
+                            "__JSONABLE_value__": [
+                                {
+                                    "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                                    "__JSONABLE_module__": "src.core.types",
+                                    "__JSONABLE_type__": "MODEL_ARCH",
+                                    "__JSONABLE_value__": "mamba2"
+                                },
+                                "2.7B"
+                            ]
+                        },
+                        {
+                            "__JSONABLE_metadata__": "__JSONABLE_namedtuple__",
+                            "__JSONABLE_module__": "src.core.types",
+                            "__JSONABLE_type__": "MODEL_ARCH_AND_SIZE",
+                            "__JSONABLE_value__": [
+                                {
+                                    "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                                    "__JSONABLE_module__": "src.core.types",
+                                    "__JSONABLE_type__": "MODEL_ARCH",
+                                    "__JSONABLE_value__": "gpt2"
+                                },
+                                "355M"
+                            ]
+                        },
+                        {
+                            "__JSONABLE_metadata__": "__JSONABLE_namedtuple__",
+                            "__JSONABLE_module__": "src.core.types",
+                            "__JSONABLE_type__": "MODEL_ARCH_AND_SIZE",
+                            "__JSONABLE_value__": [
+                                {
+                                    "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                                    "__JSONABLE_module__": "src.core.types",
+                                    "__JSONABLE_type__": "MODEL_ARCH",
+                                    "__JSONABLE_value__": "gpt2"
+                                },
+                                "1.5B"
+                            ]
+                        },
+                        {
+                            "__JSONABLE_metadata__": "__JSONABLE_namedtuple__",
+                            "__JSONABLE_module__": "src.core.types",
+                            "__JSONABLE_type__": "MODEL_ARCH_AND_SIZE",
+                            "__JSONABLE_value__": [
+                                {
+                                    "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                                    "__JSONABLE_module__": "src.core.types",
+                                    "__JSONABLE_type__": "MODEL_ARCH",
+                                    "__JSONABLE_value__": "gpt2"
+                                },
+                                "774M"
+                            ]
+                        }
+                    ],
+                    "fixed_values": {
+                        "window_size": 9,
+                        "feature_category": "ALL",
+                        "filteration": {
+                            "__JSONABLE_type__": "LogicalPromptFilteration",
+                            "__JSONABLE_value__": {
+                                "operation_type": {
+                                    "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                                    "__JSONABLE_module__": "src.experiments.infrastructure.base_prompt_filteration",
+                                    "__JSONABLE_type__": "LogicalOperationType",
+                                    "__JSONABLE_value__": "AND"
+                                },
+                                "operands": {
+                                    "__JSONABLE_metadata__": "__JSONABLE_tuple__",
+                                    "__JSONABLE_value__": [
+                                        {
+                                            "__JSONABLE_type__": "ModelCorrectPromptFilteration",
+                                            "__JSONABLE_value__": {
+                                                "dataset_name": {
+                                                    "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                                                    "__JSONABLE_module__": "src.core.names",
+                                                    "__JSONABLE_type__": "DatasetName",
+                                                    "__JSONABLE_value__": "counter_fact"
+                                                },
+                                                "model_arch_and_size": null,
+                                                "correctness": "correct",
+                                                "code_version": "v1"
+                                            }
+                                        },
+                                        {
+                                            "__JSONABLE_type__": "AnyExistingCompletePromptFilteration",
+                                            "__JSONABLE_value__": {}
+                                        }
+                                    ]
+                                },
+                                "universe": null
+                            }
+                        }
+                    },
+                    "cell_plot_config": {},
+                    "combine_plot_config": {}
+                }
+            },
+            "window_size_knockout": {
+                "__JSONABLE_metadata__": "__JSONABLE_dataclass__",
+                "__JSONABLE_module__": "src.analysis.experiment_results.plot_plan",
+                "__JSONABLE_type__": "PlotPlan",
+                "__JSONABLE_value__": {
+                    "plot_id": "window_size_knockout",
+                    "title": "Window Size Knockout Plot",
+                    "description": "Effect of different window sizes on the information flow from various source tokens to the last token.",
+                    "plot_type": {
+                        "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                        "__JSONABLE_module__": "src.core.names",
+                        "__JSONABLE_type__": "PlotType",
+                        "__JSONABLE_value__": "ARCHITECTURE_KNOCKOUT"
+                    },
+                    "is_appendix": false,
+                    "order": 3,
+                    "experiment_name": {
+                        "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                        "__JSONABLE_module__": "src.core.names",
+                        "__JSONABLE_type__": "ExperimentName",
+                        "__JSONABLE_value__": "info_flow"
+                    },
+                    "rows": null,
+                    "cols": {
+                        "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                        "__JSONABLE_module__": "src.core.names",
+                        "__JSONABLE_type__": "ExperimentHyperParams",
+                        "__JSONABLE_value__": "source"
+                    },
+                    "grids": {
+                        "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                        "__JSONABLE_module__": "src.core.names",
+                        "__JSONABLE_type__": "ExperimentHyperParams",
+                        "__JSONABLE_value__": "model_arch_and_size"
+                    },
+                    "lines": {
+                        "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                        "__JSONABLE_module__": "src.core.names",
+                        "__JSONABLE_type__": "ExperimentHyperParams",
+                        "__JSONABLE_value__": "window_size"
+                    },
+                    "rows_options": [],
+                    "cols_options": [
+                        "subject",
+                        "relation",
+                        "last",
+                        "first"
+                    ],
+                    "grids_options": [
+                        {
+                            "__JSONABLE_metadata__": "__JSONABLE_namedtuple__",
+                            "__JSONABLE_module__": "src.core.types",
+                            "__JSONABLE_type__": "MODEL_ARCH_AND_SIZE",
+                            "__JSONABLE_value__": [
+                                {
+                                    "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                                    "__JSONABLE_module__": "src.core.types",
+                                    "__JSONABLE_type__": "MODEL_ARCH",
+                                    "__JSONABLE_value__": "mamba1"
+                                },
+                                "1.4B"
+                            ]
+                        },
+                        {
+                            "__JSONABLE_metadata__": "__JSONABLE_namedtuple__",
+                            "__JSONABLE_module__": "src.core.types",
+                            "__JSONABLE_type__": "MODEL_ARCH_AND_SIZE",
+                            "__JSONABLE_value__": [
+                                {
+                                    "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                                    "__JSONABLE_module__": "src.core.types",
+                                    "__JSONABLE_type__": "MODEL_ARCH",
+                                    "__JSONABLE_value__": "mamba1"
+                                },
+                                "2.8B"
+                            ]
+                        }
+                    ],
+                    "lines_options": [
+                        1,
+                        3,
+                        5,
+                        9,
+                        12,
+                        15
+                    ],
+                    "fixed_values": {
+                        "feature_category": "ALL",
+                        "target": "last",
+                        "filteration": {
+                            "__JSONABLE_type__": "LogicalPromptFilteration",
+                            "__JSONABLE_value__": {
+                                "operation_type": {
+                                    "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                                    "__JSONABLE_module__": "src.experiments.infrastructure.base_prompt_filteration",
+                                    "__JSONABLE_type__": "LogicalOperationType",
+                                    "__JSONABLE_value__": "AND"
+                                },
+                                "operands": {
+                                    "__JSONABLE_metadata__": "__JSONABLE_tuple__",
+                                    "__JSONABLE_value__": [
+                                        {
+                                            "__JSONABLE_type__": "ModelCorrectPromptFilteration",
+                                            "__JSONABLE_value__": {
+                                                "dataset_name": {
+                                                    "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                                                    "__JSONABLE_module__": "src.core.names",
+                                                    "__JSONABLE_type__": "DatasetName",
+                                                    "__JSONABLE_value__": "counter_fact"
+                                                },
+                                                "model_arch_and_size": null,
+                                                "correctness": "correct",
+                                                "code_version": "v1"
+                                            }
+                                        },
+                                        {
+                                            "__JSONABLE_type__": "AnyExistingCompletePromptFilteration",
+                                            "__JSONABLE_value__": {}
+                                        }
+                                    ]
+                                },
+                                "universe": null
+                            }
+                        }
+                    },
+                    "cell_plot_config": {},
+                    "combine_plot_config": {}
+                }
+            },
+            "feature_knockout": {
+                "__JSONABLE_metadata__": "__JSONABLE_dataclass__",
+                "__JSONABLE_module__": "src.analysis.experiment_results.plot_plan",
+                "__JSONABLE_type__": "PlotPlan",
+                "__JSONABLE_value__": {
+                    "plot_id": "feature_knockout",
+                    "title": "Relation minus last",
+                    "description": "relation minus last",
+                    "plot_type": {
+                        "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                        "__JSONABLE_module__": "src.core.names",
+                        "__JSONABLE_type__": "PlotType",
+                        "__JSONABLE_value__": "ARCHITECTURE_KNOCKOUT"
+                    },
+                    "is_appendix": false,
+                    "order": 4,
+                    "experiment_name": {
+                        "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                        "__JSONABLE_module__": "src.core.names",
+                        "__JSONABLE_type__": "ExperimentName",
+                        "__JSONABLE_value__": "info_flow"
+                    },
+                    "rows": {
+                        "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                        "__JSONABLE_module__": "src.core.names",
+                        "__JSONABLE_type__": "ExperimentHyperParams",
+                        "__JSONABLE_value__": "source"
+                    },
+                    "cols": {
+                        "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                        "__JSONABLE_module__": "src.core.names",
+                        "__JSONABLE_type__": "ExperimentHyperParams",
+                        "__JSONABLE_value__": "model_arch_and_size"
+                    },
+                    "grids": null,
+                    "lines": {
+                        "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                        "__JSONABLE_module__": "src.core.names",
+                        "__JSONABLE_type__": "ExperimentHyperParams",
+                        "__JSONABLE_value__": "feature_category"
+                    },
+                    "rows_options": [
+                        "relation_minus_last"
+                    ],
+                    "cols_options": [
+                        {
+                            "__JSONABLE_metadata__": "__JSONABLE_namedtuple__",
+                            "__JSONABLE_module__": "src.core.types",
+                            "__JSONABLE_type__": "MODEL_ARCH_AND_SIZE",
+                            "__JSONABLE_value__": [
+                                {
+                                    "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                                    "__JSONABLE_module__": "src.core.types",
+                                    "__JSONABLE_type__": "MODEL_ARCH",
+                                    "__JSONABLE_value__": "mamba1"
+                                },
+                                "2.8B"
+                            ]
+                        },
+                        {
+                            "__JSONABLE_metadata__": "__JSONABLE_namedtuple__",
+                            "__JSONABLE_module__": "src.core.types",
+                            "__JSONABLE_type__": "MODEL_ARCH_AND_SIZE",
+                            "__JSONABLE_value__": [
+                                {
+                                    "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                                    "__JSONABLE_module__": "src.core.types",
+                                    "__JSONABLE_type__": "MODEL_ARCH",
+                                    "__JSONABLE_value__": "mamba2"
+                                },
+                                "2.7B"
+                            ]
+                        }
+                    ],
+                    "grids_options": [],
+                    "lines_options": [
+                        "SLOW_DECAY",
+                        "FAST_DECAY",
+                        "ALL"
+                    ],
+                    "fixed_values": {
+                        "window_size": 9,
+                        "target": "last",
+                        "filteration": {
+                            "__JSONABLE_type__": "LogicalPromptFilteration",
+                            "__JSONABLE_value__": {
+                                "operation_type": {
+                                    "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                                    "__JSONABLE_module__": "src.experiments.infrastructure.base_prompt_filteration",
+                                    "__JSONABLE_type__": "LogicalOperationType",
+                                    "__JSONABLE_value__": "AND"
+                                },
+                                "operands": {
+                                    "__JSONABLE_metadata__": "__JSONABLE_tuple__",
+                                    "__JSONABLE_value__": [
+                                        {
+                                            "__JSONABLE_type__": "ModelCorrectPromptFilteration",
+                                            "__JSONABLE_value__": {
+                                                "dataset_name": {
+                                                    "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                                                    "__JSONABLE_module__": "src.core.names",
+                                                    "__JSONABLE_type__": "DatasetName",
+                                                    "__JSONABLE_value__": "counter_fact"
+                                                },
+                                                "model_arch_and_size": null,
+                                                "correctness": "correct",
+                                                "code_version": "v1"
+                                            }
+                                        },
+                                        {
+                                            "__JSONABLE_type__": "AnyExistingCompletePromptFilteration",
+                                            "__JSONABLE_value__": {}
+                                        }
+                                    ]
+                                },
+                                "universe": null
+                            }
+                        }
+                    },
+                    "cell_plot_config": {},
+                    "combine_plot_config": {}
+                }
+            },
+            "heatmap": {
+                "__JSONABLE_metadata__": "__JSONABLE_dataclass__",
+                "__JSONABLE_module__": "src.analysis.experiment_results.plot_plan",
+                "__JSONABLE_type__": "PlotPlan",
+                "__JSONABLE_value__": {
+                    "plot_id": "heatmap",
+                    "title": "Heatmap Plot",
+                    "description": "Heatmap visualization of information flow between tokens for specific prompts.",
+                    "plot_type": {
+                        "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                        "__JSONABLE_module__": "src.core.names",
+                        "__JSONABLE_type__": "PlotType",
+                        "__JSONABLE_value__": "HEATMAP"
+                    },
+                    "is_appendix": false,
+                    "order": 6,
+                    "experiment_name": {
+                        "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                        "__JSONABLE_module__": "src.core.names",
+                        "__JSONABLE_type__": "ExperimentName",
+                        "__JSONABLE_value__": "heatmap"
+                    },
+                    "rows": {
+                        "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                        "__JSONABLE_module__": "src.core.names",
+                        "__JSONABLE_type__": "ExperimentHyperParams",
+                        "__JSONABLE_value__": "prompt_idx"
+                    },
+                    "cols": {
+                        "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                        "__JSONABLE_module__": "src.core.names",
+                        "__JSONABLE_type__": "ExperimentHyperParams",
+                        "__JSONABLE_value__": "model_arch_and_size"
+                    },
+                    "grids": {
+                        "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                        "__JSONABLE_module__": "src.core.names",
+                        "__JSONABLE_type__": "ExperimentHyperParams",
+                        "__JSONABLE_value__": "window_size"
+                    },
+                    "lines": null,
+                    "rows_options": [
+                        17261,
+                        4561,
+                        17046,
+                        17617,
+                        20790,
+                        16431,
+                        21157,
+                        4712,
+                        4836,
+                        4915,
+                        4869,
+                        15672,
+                        13496,
+                        14671,
+                        17897,
+                        15508,
+                        18491,
+                        20825,
+                        18845,
+                        21485
+                    ],
+                    "cols_options": [
+                        {
+                            "__JSONABLE_metadata__": "__JSONABLE_namedtuple__",
+                            "__JSONABLE_module__": "src.core.types",
+                            "__JSONABLE_type__": "MODEL_ARCH_AND_SIZE",
+                            "__JSONABLE_value__": [
+                                {
+                                    "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                                    "__JSONABLE_module__": "src.core.types",
+                                    "__JSONABLE_type__": "MODEL_ARCH",
+                                    "__JSONABLE_value__": "mamba1"
+                                },
+                                "2.8B"
+                            ]
+                        },
+                        {
+                            "__JSONABLE_metadata__": "__JSONABLE_namedtuple__",
+                            "__JSONABLE_module__": "src.core.types",
+                            "__JSONABLE_type__": "MODEL_ARCH_AND_SIZE",
+                            "__JSONABLE_value__": [
+                                {
+                                    "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                                    "__JSONABLE_module__": "src.core.types",
+                                    "__JSONABLE_type__": "MODEL_ARCH",
+                                    "__JSONABLE_value__": "mamba2"
+                                },
+                                "2.7B"
+                            ]
+                        },
+                        {
+                            "__JSONABLE_metadata__": "__JSONABLE_namedtuple__",
+                            "__JSONABLE_module__": "src.core.types",
+                            "__JSONABLE_type__": "MODEL_ARCH_AND_SIZE",
+                            "__JSONABLE_value__": [
+                                {
+                                    "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                                    "__JSONABLE_module__": "src.core.types",
+                                    "__JSONABLE_type__": "MODEL_ARCH",
+                                    "__JSONABLE_value__": "gpt2"
+                                },
+                                "1.5B"
+                            ]
+                        },
+                        {
+                            "__JSONABLE_metadata__": "__JSONABLE_namedtuple__",
+                            "__JSONABLE_module__": "src.core.types",
+                            "__JSONABLE_type__": "MODEL_ARCH_AND_SIZE",
+                            "__JSONABLE_value__": [
+                                {
+                                    "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                                    "__JSONABLE_module__": "src.core.types",
+                                    "__JSONABLE_type__": "MODEL_ARCH",
+                                    "__JSONABLE_value__": "mamba1"
+                                },
+                                "7B-falcon"
+                            ]
+                        },
+                        {
+                            "__JSONABLE_metadata__": "__JSONABLE_namedtuple__",
+                            "__JSONABLE_module__": "src.core.types",
+                            "__JSONABLE_type__": "MODEL_ARCH_AND_SIZE",
+                            "__JSONABLE_value__": [
+                                {
+                                    "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                                    "__JSONABLE_module__": "src.core.types",
+                                    "__JSONABLE_type__": "MODEL_ARCH",
+                                    "__JSONABLE_value__": "mamba1"
+                                },
+                                "7B-falcon-base"
+                            ]
+                        },
+                        {
+                            "__JSONABLE_metadata__": "__JSONABLE_namedtuple__",
+                            "__JSONABLE_module__": "src.core.types",
+                            "__JSONABLE_type__": "MODEL_ARCH_AND_SIZE",
+                            "__JSONABLE_value__": [
+                                {
+                                    "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                                    "__JSONABLE_module__": "src.core.types",
+                                    "__JSONABLE_type__": "MODEL_ARCH",
+                                    "__JSONABLE_value__": "mamba1"
+                                },
+                                "7B"
+                            ]
+                        },
+                        {
+                            "__JSONABLE_metadata__": "__JSONABLE_namedtuple__",
+                            "__JSONABLE_module__": "src.core.types",
+                            "__JSONABLE_type__": "MODEL_ARCH_AND_SIZE",
+                            "__JSONABLE_value__": [
+                                {
+                                    "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                                    "__JSONABLE_module__": "src.core.types",
+                                    "__JSONABLE_type__": "MODEL_ARCH",
+                                    "__JSONABLE_value__": "llama3.2"
+                                },
+                                "1B"
+                            ]
+                        },
+                        {
+                            "__JSONABLE_metadata__": "__JSONABLE_namedtuple__",
+                            "__JSONABLE_module__": "src.core.types",
+                            "__JSONABLE_type__": "MODEL_ARCH_AND_SIZE",
+                            "__JSONABLE_value__": [
+                                {
+                                    "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                                    "__JSONABLE_module__": "src.core.types",
+                                    "__JSONABLE_type__": "MODEL_ARCH",
+                                    "__JSONABLE_value__": "llama3.2"
+                                },
+                                "3B"
+                            ]
+                        },
+                        {
+                            "__JSONABLE_metadata__": "__JSONABLE_namedtuple__",
+                            "__JSONABLE_module__": "src.core.types",
+                            "__JSONABLE_type__": "MODEL_ARCH_AND_SIZE",
+                            "__JSONABLE_value__": [
+                                {
+                                    "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                                    "__JSONABLE_module__": "src.core.types",
+                                    "__JSONABLE_type__": "MODEL_ARCH",
+                                    "__JSONABLE_value__": "mistral0.1"
+                                },
+                                "7B"
+                            ]
+                        },
+                        {
+                            "__JSONABLE_metadata__": "__JSONABLE_namedtuple__",
+                            "__JSONABLE_module__": "src.core.types",
+                            "__JSONABLE_type__": "MODEL_ARCH_AND_SIZE",
+                            "__JSONABLE_value__": [
+                                {
+                                    "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                                    "__JSONABLE_module__": "src.core.types",
+                                    "__JSONABLE_type__": "MODEL_ARCH",
+                                    "__JSONABLE_value__": "mistral0.3"
+                                },
+                                "7B"
+                            ]
+                        },
+                        {
+                            "__JSONABLE_metadata__": "__JSONABLE_namedtuple__",
+                            "__JSONABLE_module__": "src.core.types",
+                            "__JSONABLE_type__": "MODEL_ARCH_AND_SIZE",
+                            "__JSONABLE_value__": [
+                                {
+                                    "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                                    "__JSONABLE_module__": "src.core.types",
+                                    "__JSONABLE_type__": "MODEL_ARCH",
+                                    "__JSONABLE_value__": "llama3"
+                                },
+                                "8B"
+                            ]
+                        },
+                        {
+                            "__JSONABLE_metadata__": "__JSONABLE_namedtuple__",
+                            "__JSONABLE_module__": "src.core.types",
+                            "__JSONABLE_type__": "MODEL_ARCH_AND_SIZE",
+                            "__JSONABLE_value__": [
+                                {
+                                    "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                                    "__JSONABLE_module__": "src.core.types",
+                                    "__JSONABLE_type__": "MODEL_ARCH",
+                                    "__JSONABLE_value__": "qwen2"
+                                },
+                                "0.5B"
+                            ]
+                        },
+                        {
+                            "__JSONABLE_metadata__": "__JSONABLE_namedtuple__",
+                            "__JSONABLE_module__": "src.core.types",
+                            "__JSONABLE_type__": "MODEL_ARCH_AND_SIZE",
+                            "__JSONABLE_value__": [
+                                {
+                                    "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                                    "__JSONABLE_module__": "src.core.types",
+                                    "__JSONABLE_type__": "MODEL_ARCH",
+                                    "__JSONABLE_value__": "qwen2"
+                                },
+                                "1.5B"
+                            ]
+                        },
+                        {
+                            "__JSONABLE_metadata__": "__JSONABLE_namedtuple__",
+                            "__JSONABLE_module__": "src.core.types",
+                            "__JSONABLE_type__": "MODEL_ARCH_AND_SIZE",
+                            "__JSONABLE_value__": [
+                                {
+                                    "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                                    "__JSONABLE_module__": "src.core.types",
+                                    "__JSONABLE_type__": "MODEL_ARCH",
+                                    "__JSONABLE_value__": "qwen2"
+                                },
+                                "7B"
+                            ]
+                        },
+                        {
+                            "__JSONABLE_metadata__": "__JSONABLE_namedtuple__",
+                            "__JSONABLE_module__": "src.core.types",
+                            "__JSONABLE_type__": "MODEL_ARCH_AND_SIZE",
+                            "__JSONABLE_value__": [
+                                {
+                                    "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                                    "__JSONABLE_module__": "src.core.types",
+                                    "__JSONABLE_type__": "MODEL_ARCH",
+                                    "__JSONABLE_value__": "qwen2.5"
+                                },
+                                "0.5B"
+                            ]
+                        },
+                        {
+                            "__JSONABLE_metadata__": "__JSONABLE_namedtuple__",
+                            "__JSONABLE_module__": "src.core.types",
+                            "__JSONABLE_type__": "MODEL_ARCH_AND_SIZE",
+                            "__JSONABLE_value__": [
+                                {
+                                    "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                                    "__JSONABLE_module__": "src.core.types",
+                                    "__JSONABLE_type__": "MODEL_ARCH",
+                                    "__JSONABLE_value__": "qwen2.5"
+                                },
+                                "7B"
+                            ]
+                        },
+                        {
+                            "__JSONABLE_metadata__": "__JSONABLE_namedtuple__",
+                            "__JSONABLE_module__": "src.core.types",
+                            "__JSONABLE_type__": "MODEL_ARCH_AND_SIZE",
+                            "__JSONABLE_value__": [
+                                {
+                                    "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                                    "__JSONABLE_module__": "src.core.types",
+                                    "__JSONABLE_type__": "MODEL_ARCH",
+                                    "__JSONABLE_value__": "qwen2.5"
+                                },
+                                "3B"
+                            ]
+                        },
+                        {
+                            "__JSONABLE_metadata__": "__JSONABLE_namedtuple__",
+                            "__JSONABLE_module__": "src.core.types",
+                            "__JSONABLE_type__": "MODEL_ARCH_AND_SIZE",
+                            "__JSONABLE_value__": [
+                                {
+                                    "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                                    "__JSONABLE_module__": "src.core.types",
+                                    "__JSONABLE_type__": "MODEL_ARCH",
+                                    "__JSONABLE_value__": "qwen2.5"
+                                },
+                                "1.5B"
+                            ]
+                        }
+                    ],
+                    "grids_options": [
+                        9
+                    ],
+                    "lines_options": [],
+                    "fixed_values": {},
+                    "cell_plot_config": {},
+                    "combine_plot_config": {}
+                }
+            },
+            "all_to_all": {
+                "__JSONABLE_metadata__": "__JSONABLE_dataclass__",
+                "__JSONABLE_module__": "src.analysis.experiment_results.plot_plan",
+                "__JSONABLE_type__": "PlotPlan",
+                "__JSONABLE_value__": {
+                    "plot_id": "all_to_all",
+                    "title": "all -> all",
+                    "description": "",
+                    "plot_type": {
+                        "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                        "__JSONABLE_module__": "src.core.names",
+                        "__JSONABLE_type__": "PlotType",
+                        "__JSONABLE_value__": "ARCHITECTURE_KNOCKOUT"
+                    },
+                    "is_appendix": false,
+                    "order": 10,
+                    "experiment_name": {
+                        "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                        "__JSONABLE_module__": "src.core.names",
+                        "__JSONABLE_type__": "ExperimentName",
+                        "__JSONABLE_value__": "info_flow"
+                    },
+                    "rows": {
+                        "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                        "__JSONABLE_module__": "src.core.names",
+                        "__JSONABLE_type__": "ExperimentHyperParams",
+                        "__JSONABLE_value__": "source"
+                    },
+                    "cols": {
+                        "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                        "__JSONABLE_module__": "src.core.names",
+                        "__JSONABLE_type__": "ExperimentHyperParams",
+                        "__JSONABLE_value__": "target"
+                    },
+                    "grids": {
+                        "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                        "__JSONABLE_module__": "src.core.names",
+                        "__JSONABLE_type__": "ExperimentHyperParams",
+                        "__JSONABLE_value__": "model_arch_and_size"
+                    },
+                    "lines": {
+                        "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                        "__JSONABLE_module__": "src.core.names",
+                        "__JSONABLE_type__": "ExperimentHyperParams",
+                        "__JSONABLE_value__": "feature_category"
+                    },
+                    "rows_options": [
+                        "all"
+                    ],
+                    "cols_options": [
+                        "all"
+                    ],
+                    "grids_options": [
+                        {
+                            "__JSONABLE_metadata__": "__JSONABLE_namedtuple__",
+                            "__JSONABLE_module__": "src.core.types",
+                            "__JSONABLE_type__": "MODEL_ARCH_AND_SIZE",
+                            "__JSONABLE_value__": [
+                                {
+                                    "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                                    "__JSONABLE_module__": "src.core.types",
+                                    "__JSONABLE_type__": "MODEL_ARCH",
+                                    "__JSONABLE_value__": "mamba1"
+                                },
+                                "2.8B"
+                            ]
+                        },
+                        {
+                            "__JSONABLE_metadata__": "__JSONABLE_namedtuple__",
+                            "__JSONABLE_module__": "src.core.types",
+                            "__JSONABLE_type__": "MODEL_ARCH_AND_SIZE",
+                            "__JSONABLE_value__": [
+                                {
+                                    "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                                    "__JSONABLE_module__": "src.core.types",
+                                    "__JSONABLE_type__": "MODEL_ARCH",
+                                    "__JSONABLE_value__": "mamba2"
+                                },
+                                "2.7B"
+                            ]
+                        }
+                    ],
+                    "lines_options": [
+                        "FAST_DECAY",
+                        "SLOW_DECAY",
+                        "ALL"
+                    ],
+                    "fixed_values": {
+                        "window_size": 9,
+                        "filteration": {
+                            "__JSONABLE_type__": "LogicalPromptFilteration",
+                            "__JSONABLE_value__": {
+                                "operation_type": {
+                                    "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                                    "__JSONABLE_module__": "src.experiments.infrastructure.base_prompt_filteration",
+                                    "__JSONABLE_type__": "LogicalOperationType",
+                                    "__JSONABLE_value__": "AND"
+                                },
+                                "operands": {
+                                    "__JSONABLE_metadata__": "__JSONABLE_tuple__",
+                                    "__JSONABLE_value__": [
+                                        {
+                                            "__JSONABLE_type__": "ModelCorrectPromptFilteration",
+                                            "__JSONABLE_value__": {
+                                                "dataset_name": {
+                                                    "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                                                    "__JSONABLE_module__": "src.core.names",
+                                                    "__JSONABLE_type__": "DatasetName",
+                                                    "__JSONABLE_value__": "counter_fact"
+                                                },
+                                                "model_arch_and_size": null,
+                                                "correctness": "correct",
+                                                "code_version": "v1"
+                                            }
+                                        },
+                                        {
+                                            "__JSONABLE_type__": "AnyExistingCompletePromptFilteration",
+                                            "__JSONABLE_value__": {}
+                                        }
+                                    ]
+                                },
+                                "universe": null
+                            }
+                        }
+                    },
+                    "cell_plot_config": {},
+                    "combine_plot_config": {}
+                }
+            },
+            "heatmaps_per_sizes": {
+                "__JSONABLE_metadata__": "__JSONABLE_dataclass__",
+                "__JSONABLE_module__": "src.analysis.experiment_results.plot_plan",
+                "__JSONABLE_type__": "PlotPlan",
+                "__JSONABLE_value__": {
+                    "plot_id": "heatmaps_per_sizes",
+                    "title": "Heatmaps Per sizes",
+                    "description": "Relative change in correct-token probability\nafter knocking out connection from each token to the last\ntoken.",
+                    "plot_type": {
+                        "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                        "__JSONABLE_module__": "src.core.names",
+                        "__JSONABLE_type__": "PlotType",
+                        "__JSONABLE_value__": "HEATMAP"
+                    },
+                    "is_appendix": true,
+                    "order": 11,
+                    "experiment_name": {
+                        "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                        "__JSONABLE_module__": "src.core.names",
+                        "__JSONABLE_type__": "ExperimentName",
+                        "__JSONABLE_value__": "heatmap"
+                    },
+                    "rows": {
+                        "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                        "__JSONABLE_module__": "src.core.names",
+                        "__JSONABLE_type__": "ExperimentHyperParams",
+                        "__JSONABLE_value__": "prompt_idx"
+                    },
+                    "cols": {
+                        "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                        "__JSONABLE_module__": "src.core.names",
+                        "__JSONABLE_type__": "ExperimentHyperParams",
+                        "__JSONABLE_value__": "model_size"
+                    },
+                    "grids": {
+                        "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                        "__JSONABLE_module__": "src.core.names",
+                        "__JSONABLE_type__": "ExperimentHyperParams",
+                        "__JSONABLE_value__": "model_arch"
+                    },
+                    "lines": null,
+                    "rows_options": [
+                        2080,
+                        9765,
+                        9255,
+                        6191,
+                        7222
+                    ],
+                    "cols_options": [
+                        "2.8B",
+                        "2.7B",
+                        "7B",
+                        "1.5B",
+                        "130M",
+                        "355M",
+                        "774M",
+                        "1.4B",
+                        "1.3B",
+                        "7B-falcon",
+                        "7B-falcon-base"
+                    ],
+                    "grids_options": [
+                        "mamba1",
+                        "mamba2"
+                    ],
+                    "lines_options": [],
+                    "fixed_values": {
+                        "window_size": 9
+                    },
+                    "cell_plot_config": {},
+                    "combine_plot_config": {}
+                }
+            },
+            "llama": {
+                "__JSONABLE_metadata__": "__JSONABLE_dataclass__",
+                "__JSONABLE_module__": "src.analysis.experiment_results.plot_plan",
+                "__JSONABLE_type__": "PlotPlan",
+                "__JSONABLE_value__": {
+                    "plot_id": "llama",
+                    "title": "llama",
+                    "description": "",
+                    "plot_type": {
+                        "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                        "__JSONABLE_module__": "src.core.names",
+                        "__JSONABLE_type__": "PlotType",
+                        "__JSONABLE_value__": "ARCHITECTURE_KNOCKOUT"
+                    },
+                    "is_appendix": true,
+                    "order": 100,
+                    "experiment_name": {
+                        "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                        "__JSONABLE_module__": "src.core.names",
+                        "__JSONABLE_type__": "ExperimentName",
+                        "__JSONABLE_value__": "info_flow"
+                    },
+                    "rows": {
+                        "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                        "__JSONABLE_module__": "src.core.names",
+                        "__JSONABLE_type__": "ExperimentHyperParams",
+                        "__JSONABLE_value__": "model_size"
+                    },
+                    "cols": {
+                        "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                        "__JSONABLE_module__": "src.core.names",
+                        "__JSONABLE_type__": "ExperimentHyperParams",
+                        "__JSONABLE_value__": "model_arch"
+                    },
+                    "grids": null,
+                    "lines": {
+                        "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                        "__JSONABLE_module__": "src.core.names",
+                        "__JSONABLE_type__": "ExperimentHyperParams",
+                        "__JSONABLE_value__": "source"
+                    },
+                    "rows_options": [
+                        "1B",
+                        "3B",
+                        "8B"
+                    ],
+                    "cols_options": [
+                        "llama3",
+                        "llama3.2"
+                    ],
+                    "grids_options": [],
+                    "lines_options": [],
+                    "fixed_values": {
+                        "window_size": 9,
+                        "feature_category": "ALL",
+                        "target": "last",
+                        "filteration": {
+                            "__JSONABLE_type__": "LogicalPromptFilteration",
+                            "__JSONABLE_value__": {
+                                "operation_type": {
+                                    "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                                    "__JSONABLE_module__": "src.experiments.infrastructure.base_prompt_filteration",
+                                    "__JSONABLE_type__": "LogicalOperationType",
+                                    "__JSONABLE_value__": "AND"
+                                },
+                                "operands": {
+                                    "__JSONABLE_metadata__": "__JSONABLE_tuple__",
+                                    "__JSONABLE_value__": [
+                                        {
+                                            "__JSONABLE_type__": "ModelCorrectPromptFilteration",
+                                            "__JSONABLE_value__": {
+                                                "dataset_name": {
+                                                    "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                                                    "__JSONABLE_module__": "src.core.names",
+                                                    "__JSONABLE_type__": "DatasetName",
+                                                    "__JSONABLE_value__": "counter_fact"
+                                                },
+                                                "model_arch_and_size": null,
+                                                "correctness": "correct",
+                                                "code_version": "v1"
+                                            }
+                                        },
+                                        {
+                                            "__JSONABLE_type__": "AnyExistingCompletePromptFilteration",
+                                            "__JSONABLE_value__": {}
+                                        }
+                                    ]
+                                },
+                                "universe": null
+                            }
+                        }
+                    },
+                    "cell_plot_config": {},
+                    "combine_plot_config": {}
+                }
+            },
+            "llama 2": {
+                "__JSONABLE_metadata__": "__JSONABLE_dataclass__",
+                "__JSONABLE_module__": "src.analysis.experiment_results.plot_plan",
+                "__JSONABLE_type__": "PlotPlan",
+                "__JSONABLE_value__": {
+                    "plot_id": "llama 2",
+                    "title": "llama",
+                    "description": "",
+                    "plot_type": {
+                        "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                        "__JSONABLE_module__": "src.core.names",
+                        "__JSONABLE_type__": "PlotType",
+                        "__JSONABLE_value__": "ARCHITECTURE_KNOCKOUT"
+                    },
+                    "is_appendix": true,
+                    "order": 100,
+                    "experiment_name": {
+                        "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                        "__JSONABLE_module__": "src.core.names",
+                        "__JSONABLE_type__": "ExperimentName",
+                        "__JSONABLE_value__": "info_flow"
+                    },
+                    "rows": {
+                        "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                        "__JSONABLE_module__": "src.core.names",
+                        "__JSONABLE_type__": "ExperimentHyperParams",
+                        "__JSONABLE_value__": "model_size"
+                    },
+                    "cols": {
+                        "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                        "__JSONABLE_module__": "src.core.names",
+                        "__JSONABLE_type__": "ExperimentHyperParams",
+                        "__JSONABLE_value__": "model_arch"
+                    },
+                    "grids": null,
+                    "lines": {
+                        "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                        "__JSONABLE_module__": "src.core.names",
+                        "__JSONABLE_type__": "ExperimentHyperParams",
+                        "__JSONABLE_value__": "source"
+                    },
+                    "rows_options": [
+                        "1B",
+                        "3B",
+                        "8B"
+                    ],
+                    "cols_options": [
+                        "llama3",
+                        "llama3.2"
+                    ],
+                    "grids_options": [],
+                    "lines_options": [
+                        "first",
+                        "last",
+                        "subject",
+                        "relation",
+                        "context",
+                        "all",
+                        "relation_minus_last"
+                    ],
+                    "fixed_values": {
+                        "window_size": 9,
+                        "feature_category": "ALL",
+                        "target": "last",
+                        "filteration": {
+                            "__JSONABLE_type__": "ModelCorrectPromptFilteration",
+                            "__JSONABLE_value__": {
+                                "dataset_name": {
+                                    "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                                    "__JSONABLE_module__": "src.core.names",
+                                    "__JSONABLE_type__": "DatasetName",
+                                    "__JSONABLE_value__": "counter_fact"
+                                },
+                                "model_arch_and_size": null,
+                                "correctness": "correct",
+                                "code_version": "v1"
+                            }
+                        }
+                    },
+                    "cell_plot_config": {},
+                    "combine_plot_config": {}
+                }
             }
-        },
-        "cell_plot_config": {},
-        "combine_plot_config": {}
-    },
-    {
-        "plot_id": "model_size_knockout",
-        "title": "Model Size Knockout Plot",
-        "description": "Comparison of different model sizes within the same architecture family when removing information flow\nto the last token from various source tokens.",
-        "plot_type": "ARCHITECTURE_KNOCKOUT",
-        "is_appendix": false,
-        "order": 2,
-        "experiment_name": "info_flow",
-        "rows": "target",
-        "cols": "source",
-        "grids": "model_arch",
-        "lines": "model_arch_and_size",
-        "rows_options": [
-            "last"
-        ],
-        "cols_options": [
-            "subject",
-            "relation",
-            "last",
-            "first"
-        ],
-        "grids_options": [
-            "mamba1",
-            "mamba2",
-            "gpt2"
-        ],
-        "lines_options": [
-            {
-                "model_arch": "mamba1",
-                "model_size": "130M"
-            },
-            {
-                "model_arch": "mamba1",
-                "model_size": "1.4B"
-            },
-            {
-                "model_arch": "mamba1",
-                "model_size": "2.8B"
-            },
-            {
-                "model_arch": "mamba2",
-                "model_size": "130M"
-            },
-            {
-                "model_arch": "mamba2",
-                "model_size": "1.3B"
-            },
-            {
-                "model_arch": "mamba2",
-                "model_size": "2.7B"
-            },
-            {
-                "model_arch": "gpt2",
-                "model_size": "355M"
-            },
-            {
-                "model_arch": "gpt2",
-                "model_size": "1.5B"
-            },
-            {
-                "model_arch": "gpt2",
-                "model_size": "774M"
-            }
-        ],
-        "fixed_values": {},
-        "cell_plot_config": {},
-        "combine_plot_config": {}
-    },
-    {
-        "plot_id": "window_size_knockout",
-        "title": "Window Size Knockout Plot",
-        "description": "Effect of different window sizes on the information flow from various source tokens to the last token.",
-        "plot_type": "ARCHITECTURE_KNOCKOUT",
-        "is_appendix": false,
-        "order": 3,
-        "experiment_name": "info_flow",
-        "rows": null,
-        "cols": "source",
-        "grids": "model_arch_and_size",
-        "lines": "window_size",
-        "rows_options": [],
-        "cols_options": [
-            "subject",
-            "relation",
-            "last",
-            "first"
-        ],
-        "grids_options": [
-            {
-                "model_arch": "mamba1",
-                "model_size": "1.4B"
-            },
-            {
-                "model_arch": "mamba1",
-                "model_size": "2.8B"
-            }
-        ],
-        "lines_options": [
-            1,
-            3,
-            5,
-            9,
-            12,
-            15
-        ],
-        "fixed_values": {},
-        "cell_plot_config": {},
-        "combine_plot_config": {}
-    },
-    {
-        "plot_id": "feature_knockout",
-        "title": "Relation minus last",
-        "description": "relation minus last",
-        "plot_type": "ARCHITECTURE_KNOCKOUT",
-        "is_appendix": false,
-        "order": 4,
-        "experiment_name": "info_flow",
-        "rows": "source",
-        "cols": "model_arch_and_size",
-        "grids": null,
-        "lines": "feature_category",
-        "rows_options": [
-            "relation_minus_last"
-        ],
-        "cols_options": [
-            {
-                "model_arch": "mamba1",
-                "model_size": "2.8B"
-            },
-            {
-                "model_arch": "mamba2",
-                "model_size": "2.7B"
-            }
-        ],
-        "grids_options": [],
-        "lines_options": [
-            "SLOW_DECAY",
-            "FAST_DECAY",
-            "ALL"
-        ],
-        "fixed_values": {},
-        "cell_plot_config": {},
-        "combine_plot_config": {}
-    },
-    {
-        "plot_id": "heatmap",
-        "title": "Heatmap Plot",
-        "description": "Heatmap visualization of information flow between tokens for specific prompts.",
-        "plot_type": "HEATMAP",
-        "is_appendix": false,
-        "order": 6,
-        "experiment_name": "heatmap",
-        "rows": "prompt_idx",
-        "cols": "model_arch_and_size",
-        "grids": "window_size",
-        "lines": null,
-        "rows_options": [
-            17261,
-            4561,
-            17046,
-            17617,
-            20790,
-            16431,
-            21157,
-            4712,
-            4836,
-            4915,
-            4869,
-            15672,
-            13496,
-            14671,
-            17897,
-            15508,
-            18491,
-            20825,
-            18845,
-            21485
-        ],
-        "cols_options": [
-            {
-                "model_arch": "mamba1",
-                "model_size": "2.8B"
-            },
-            {
-                "model_arch": "mamba2",
-                "model_size": "2.7B"
-            },
-            {
-                "model_arch": "gpt2",
-                "model_size": "1.5B"
-            },
-            {
-                "model_arch": "mamba1",
-                "model_size": "7B-falcon"
-            },
-            {
-                "model_arch": "mamba1",
-                "model_size": "7B-falcon-base"
-            },
-            {
-                "model_arch": "mamba1",
-                "model_size": "7B"
-            },
-            {
-                "model_arch": "llama3.2",
-                "model_size": "1B"
-            },
-            {
-                "model_arch": "llama3.2",
-                "model_size": "3B"
-            },
-            {
-                "model_arch": "mistral0.1",
-                "model_size": "7B"
-            },
-            {
-                "model_arch": "mistral0.3",
-                "model_size": "7B"
-            },
-            {
-                "model_arch": "llama3",
-                "model_size": "8B"
-            },
-            {
-                "model_arch": "qwen2",
-                "model_size": "0.5B"
-            },
-            {
-                "model_arch": "qwen2",
-                "model_size": "1.5B"
-            },
-            {
-                "model_arch": "qwen2",
-                "model_size": "7B"
-            },
-            {
-                "model_arch": "qwen2.5",
-                "model_size": "0.5B"
-            },
-            {
-                "model_arch": "qwen2.5",
-                "model_size": "7B"
-            },
-            {
-                "model_arch": "qwen2.5",
-                "model_size": "3B"
-            },
-            {
-                "model_arch": "qwen2.5",
-                "model_size": "1.5B"
-            }
-        ],
-        "grids_options": [
-            9
-        ],
-        "lines_options": [],
-        "fixed_values": {},
-        "cell_plot_config": {},
-        "combine_plot_config": {}
-    },
-    {
-        "plot_id": "all_to_all",
-        "title": "all -> all",
-        "description": "",
-        "plot_type": "ARCHITECTURE_KNOCKOUT",
-        "is_appendix": false,
-        "order": 10,
-        "experiment_name": "info_flow",
-        "rows": "source",
-        "cols": "target",
-        "grids": "model_arch_and_size",
-        "lines": "feature_category",
-        "rows_options": [
-            "all"
-        ],
-        "cols_options": [
-            "all"
-        ],
-        "grids_options": [
-            {
-                "model_arch": "mamba1",
-                "model_size": "2.8B"
-            },
-            {
-                "model_arch": "mamba2",
-                "model_size": "2.7B"
-            }
-        ],
-        "lines_options": [
-            "FAST_DECAY",
-            "SLOW_DECAY",
-            "ALL"
-        ],
-        "fixed_values": {},
-        "cell_plot_config": {},
-        "combine_plot_config": {}
-    },
-    {
-        "plot_id": "heatmaps_per_sizes",
-        "title": "Heatmaps Per sizes",
-        "description": "Relative change in correct-token probability\nafter knocking out connection from each token to the last\ntoken.",
-        "plot_type": "HEATMAP",
-        "is_appendix": true,
-        "order": 11,
-        "experiment_name": "heatmap",
-        "rows": "prompt_idx",
-        "cols": "model_size",
-        "grids": "model_arch",
-        "lines": null,
-        "rows_options": [
-            2080,
-            9765,
-            9255,
-            6191,
-            7222
-        ],
-        "cols_options": [
-            "2.8B",
-            "2.7B",
-            "7B",
-            "1.5B",
-            "130M",
-            "355M",
-            "774M",
-            "1.4B",
-            "1.3B",
-            "7B-falcon",
-            "7B-falcon-base"
-        ],
-        "grids_options": [
-            "mamba1",
-            "mamba2"
-        ],
-        "lines_options": [],
-        "fixed_values": {},
-        "cell_plot_config": {},
-        "combine_plot_config": {}
-    },
-    {
-        "plot_id": "llama",
-        "title": "llama",
-        "description": "",
-        "plot_type": "ARCHITECTURE_KNOCKOUT",
-        "is_appendix": true,
-        "order": 100,
-        "experiment_name": "info_flow",
-        "rows": "model_size",
-        "cols": "model_arch",
-        "grids": null,
-        "lines": "source",
-        "rows_options": [
-            "1B",
-            "3B",
-            "8B"
-        ],
-        "cols_options": [
-            "llama3",
-            "llama3.2"
-        ],
-        "grids_options": [],
-        "lines_options": [],
-        "fixed_values": {},
-        "cell_plot_config": {},
-        "combine_plot_config": {}
-    },
-    {
-        "plot_id": "llama 2",
-        "title": "llama",
-        "description": "",
-        "plot_type": "ARCHITECTURE_KNOCKOUT",
-        "is_appendix": true,
-        "order": 100,
-        "experiment_name": "info_flow",
-        "rows": "model_size",
-        "cols": "model_arch",
-        "grids": null,
-        "lines": "source",
-        "rows_options": [
-            "1B",
-            "3B",
-            "8B"
-        ],
-        "cols_options": [
-            "llama3",
-            "llama3.2"
-        ],
-        "grids_options": [],
-        "lines_options": [
-            "first",
-            "last",
-            "subject",
-            "relation",
-            "context",
-            "all",
-            "relation_minus_last"
-        ],
-        "fixed_values": {},
-        "cell_plot_config": {},
-        "combine_plot_config": {}
+        }
     }
-]
+}

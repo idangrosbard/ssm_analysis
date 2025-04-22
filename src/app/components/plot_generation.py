@@ -513,7 +513,7 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
                 items = list(fulfilled_reqs.items())
                 assert len(items) == 1
                 filterations, runners = items[0][1]
-                prompt_idx = filterations.get_static_prompt_ids()
+                prompt_idx = filterations.get_prompt_ids()
                 assert len(prompt_idx) == 1
                 assert len(runners) == 1
                 runner = runners[0].modify(input_params=InputParams(filteration=filterations))

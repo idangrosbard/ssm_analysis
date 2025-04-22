@@ -53,10 +53,6 @@ class PlotPlanSelector(StreamlitComponent[None]):
         self.new_plot_id = new_label
 
     def render(self):
-        if self.plot_plans.is_empty():
-            st.info("No plot plans available. Add a new plot plan to get started.")
-            return
-
         if not self.plot_plans.is_plan_exists(self.selected_plot_id_sk.value):
             self.selected_plot_id_sk.value = self.new_plot_id
 
@@ -391,16 +387,27 @@ class PlotPlanEditor(StreamlitComponent[Optional[PlotPlan]]):
             if (col not in [BaseVariantParamName.experiment_name] and col not in derived_variant_params)
         ]
 
+        missing_no_default_cols = []
         for col_name, st_col in zip(missing_cols, st.columns(len(missing_cols))):
+            hpd_col = ExperimentHyperParams(col_name)
+            hpd = get_hyper_param_definition(hpd_col)
+            options = hpd.get_options(self.result_bank)
+            try:
+                index = options.index(hpd.default_fix_value())
+            except NotImplementedError:
+                missing_no_default_cols.extend(hpd.derived_variants_params())
+                continue
             with st_col:
-                hpd_col = ExperimentHyperParams(col_name)
-                options = get_hyper_param_definition(hpd_col).get_options(self.result_bank)
                 existing_plan.fixed_values[hpd_col] = st.selectbox(
                     col_name.capitalize(),
                     options=options,
-                    index=options.index(get_hyper_param_definition(hpd_col).default_fix_value()),
+                    index=index,
                     key=f"select_{col_name}",
                 )
+
+        if missing_no_default_cols:
+            st.error(f"Missing column: {[ExperimentHyperParams(col).name for col in missing_no_default_cols]}")
+            return
 
         if ExperimentHyperParams.filteration not in derived_variant_params:
             existing_plan.fixed_values[ExperimentHyperParams.filteration] = SelectFilterationComponent(

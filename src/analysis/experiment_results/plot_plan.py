@@ -3,10 +3,21 @@ from collections import defaultdict
 from dataclasses import asdict, dataclass, field
 from itertools import product
 from pathlib import Path
-from typing import Any, Dict, Generic, List, Literal, Optional, Sequence, TypeVar, Union, assert_never, cast
+from typing import (
+    Any,
+    Dict,
+    Generic,
+    List,
+    Literal,
+    Optional,
+    Sequence,
+    TypeVar,
+    Union,
+    assert_never,
+    cast,
+)
 
 from src.analysis.experiment_results.helpers import init_variant_params_from_values
-from src.analysis.prompt_filterations import AnyExistingCompletePromptFilteration
 from src.core.consts import GRAPHS_ORDER
 from src.core.names import (
     VARIANT_PARAM_NAME,
@@ -32,8 +43,15 @@ from src.core.types import (
     TPromptOriginalIndex,
     TWindowSize,
 )
-from src.data_ingestion.data_defs.data_defs import DataReqiermentCollection, DataReqs, ResultBank
-from src.experiments.infrastructure.base_prompt_filteration import BasePromptFilteration, SelectivePromptFilteration
+from src.data_ingestion.data_defs.data_defs import (
+    DataReqiermentCollection,
+    DataReqs,
+    ResultBank,
+)
+from src.experiments.infrastructure.base_prompt_filteration import (
+    BasePromptFilteration,
+    SelectivePromptFilteration,
+)
 from src.experiments.runners.heatmap import HeatmapRunner
 from src.experiments.runners.info_flow import InfoFlowRunner
 from src.utils.types_utils import str_enum_values
@@ -224,17 +242,17 @@ class PromptIdxHPD(HyperParamDefinition[TPromptOriginalIndex]):
 
 
 class FilterationHPD(HyperParamDefinition[BasePromptFilteration]):
-    def get_result_bank_options(self, result_bank: ResultBank) -> Sequence[BasePromptFilteration]:
+    def get_result_bank_options(self, result_bank: ResultBank):
         raise NotImplementedError("FilterationHPD does not have result bank options")
 
-    def get_static_options(self) -> Sequence[BasePromptFilteration]:
+    def get_static_options(self):
         raise NotImplementedError("FilterationHPD does not have result bank options")
 
-    def get_options(self, result_bank: ResultBank) -> Sequence[BasePromptFilteration]:
+    def get_options(self, result_bank: ResultBank):
         return self.get_static_options()
 
     def get_display_name(self, option: BasePromptFilteration) -> str:
-        return option.__class__.__name__
+        return option.display_name()
 
     def derived_variants_params(self) -> Literal[ExperimentHyperParams.filteration]:
         return ExperimentHyperParams.filteration
@@ -267,7 +285,21 @@ def get_hyper_param_definition(option: ExperimentHyperParams) -> HyperParamDefin
             raise ValueError(f"Unsupported variation option: {option}")
 
 
-def get_experiment_orientations(experiment_name: ExperimentName) -> list[FinalPlotsPlanOrientation]:
+PossibleHPDTypes = Union[
+    MODEL_ARCH_AND_SIZE,
+    MODEL_ARCH,
+    TModelSize,
+    TokenType,
+    FeatureCategory,
+    TWindowSize,
+    TPromptOriginalIndex,
+    BasePromptFilteration,
+]
+
+
+def get_experiment_orientations(
+    experiment_name: ExperimentName,
+) -> list[FinalPlotsPlanOrientation]:
     """Get the relevant parameters for a specific experiment type."""
     if experiment_name == ExperimentName.info_flow:
         return [
@@ -286,7 +318,9 @@ def get_experiment_orientations(experiment_name: ExperimentName) -> list[FinalPl
         return list(FinalPlotsPlanOrientation)
 
 
-def get_experiment_hyper_param_hyper_param(experiment_name: ExperimentName) -> list[ExperimentHyperParams]:
+def get_experiment_hyper_param_hyper_param(
+    experiment_name: ExperimentName,
+) -> list[ExperimentHyperParams]:
     """Get the relevant parameters for a specific experiment type."""
     general = [
         ExperimentHyperParams.model_arch_and_size,
@@ -368,12 +402,12 @@ class PlotPlan:
     lines: Optional[ExperimentHyperParams] = None
 
     # Selected options for each parameter
-    rows_options: list[Any] = field(default_factory=list)
-    cols_options: list[Any] = field(default_factory=list)
-    grids_options: list[Any] = field(default_factory=list)
-    lines_options: list[Any] = field(default_factory=list)
+    rows_options: list[PossibleHPDTypes] = field(default_factory=list)
+    cols_options: list[PossibleHPDTypes] = field(default_factory=list)
+    grids_options: list[PossibleHPDTypes] = field(default_factory=list)
+    lines_options: list[PossibleHPDTypes] = field(default_factory=list)
 
-    fixed_values: dict[ExperimentHyperParams, Any] = field(default_factory=dict)
+    fixed_values: dict[ExperimentHyperParams, PossibleHPDTypes] = field(default_factory=dict)
     cell_plot_config: dict[str, Any] = field(default_factory=dict)
     combine_plot_config: dict[str, Any] = field(default_factory=dict)
 
@@ -411,7 +445,10 @@ class PlotPlan:
         for option in options:
             if param_type == ExperimentHyperParams.model_arch_and_size and isinstance(option, MODEL_ARCH_AND_SIZE):
                 serialized.append(
-                    {ResultBankParamNames.model_arch: option.arch, ResultBankParamNames.model_size: option.size}
+                    {
+                        ResultBankParamNames.model_arch: option.arch,
+                        ResultBankParamNames.model_size: option.size,
+                    }
                 )
             elif isinstance(option, (str, int, float, bool)) or option is None:
                 serialized.append(option)
@@ -430,7 +467,8 @@ class PlotPlan:
                 if ResultBankParamNames.model_arch in option and ResultBankParamNames.model_size in option:
                     deserialized.append(
                         MODEL_ARCH_AND_SIZE(
-                            option[ResultBankParamNames.model_arch], option[ResultBankParamNames.model_size]
+                            option[ResultBankParamNames.model_arch],
+                            option[ResultBankParamNames.model_size],
                         )
                     )
             else:
@@ -512,7 +550,9 @@ class PlotPlan:
         experiment_orientations = get_experiment_orientations(self.experiment_name)
         experiment_hyper_param_defs = get_experiment_hyper_param_hyper_param(self.experiment_name)
 
-        def get_options_for_orientation(orientation: FinalPlotsPlanOrientation) -> list[Any]:
+        def get_options_for_orientation(
+            orientation: FinalPlotsPlanOrientation,
+        ) -> list[Any]:
             param = self._get_orientation_value(orientation)
             if not param:
                 return [None]
@@ -533,27 +573,33 @@ class PlotPlan:
 
         # Process each combination
         for combination in combinations:
-            prompt_filterations = AnyExistingCompletePromptFilteration()
             orientation_combination = {
                 orientation: combination[i] for i, orientation in enumerate(experiment_orientations)
             }
 
             params: dict["ExperimentHyperParams", Any] = {
-                param: value
-                for orientation, value in orientation_combination.items()
-                if value is not None and (param := self._get_orientation_value(orientation)) is not None
+                **{
+                    param: value
+                    for orientation, value in orientation_combination.items()
+                    if value is not None and (param := self._get_orientation_value(orientation)) is not None
+                },
+                **{param: value for param, value in self.fixed_values.items() if value is not None},
             }
 
             # Handle the special case of model_arch_and_size
             if params.get(ExperimentHyperParams.model_arch_and_size) is not None:
-                model_arch_and_size = cast(MODEL_ARCH_AND_SIZE, params[ExperimentHyperParams.model_arch_and_size])
+                model_arch_and_size = cast(
+                    MODEL_ARCH_AND_SIZE,
+                    params[ExperimentHyperParams.model_arch_and_size],
+                )
                 params[ExperimentHyperParams.model_arch] = model_arch_and_size.arch
                 params[ExperimentHyperParams.model_size] = model_arch_and_size.size
             else:
                 assert params.get(ExperimentHyperParams.model_arch) is not None
                 assert params.get(ExperimentHyperParams.model_size) is not None
                 model_arch_and_size = MODEL_ARCH_AND_SIZE(
-                    params[ExperimentHyperParams.model_arch], params[ExperimentHyperParams.model_size]
+                    params[ExperimentHyperParams.model_arch],
+                    params[ExperimentHyperParams.model_size],
                 )
                 if model_arch_and_size not in GRAPHS_ORDER:
                     continue
@@ -563,6 +609,12 @@ class PlotPlan:
                 prompt_filterations = SelectivePromptFilteration(
                     prompt_ids=tuple([params[ExperimentHyperParams.prompt_idx]])
                 )
+            elif self.experiment_name == ExperimentName.info_flow:
+                item = params[ExperimentHyperParams.filteration]
+                assert isinstance(item, BasePromptFilteration)
+                prompt_filterations = item
+            else:
+                raise NotImplementedError(f"Not implemented for {self.experiment_name}")
 
             data_req_params: dict[VARIANT_PARAM_NAME, Any] = {
                 BaseVariantParamName.experiment_name: self.experiment_name,
@@ -632,4 +684,7 @@ class PlotPlan:
             hpd_col = ExperimentHyperParams(BaseVariantParamName.model_size)
             sizes = [self.fixed_values[hpd_col]]
 
-        return [MODEL_ARCH_AND_SIZE(model, size) for model, size in product(models, sizes)]
+        return [
+            MODEL_ARCH_AND_SIZE(cast(MODEL_ARCH, model), cast(TModelSize, size))
+            for model, size in product(models, sizes)
+        ]

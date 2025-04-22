@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import functools
 import json
 import random
@@ -6,9 +8,9 @@ from dataclasses import asdict, dataclass, field
 from functools import lru_cache
 from pathlib import Path
 from typing import (
-    TYPE_CHECKING,
     Any,
     Callable,
+    ClassVar,
     Dict,
     List,
     NewType,
@@ -20,7 +22,6 @@ from typing import (
     cast,
 )
 
-import jsonpickle
 import pandas as pd
 import tqdm
 
@@ -51,7 +52,6 @@ from src.experiments.infrastructure.base_prompt_filteration import (
 from src.experiments.infrastructure.base_runner import (
     BaseRunner,
     BaseVariantParams,
-    InputParams,
 )
 from src.experiments.infrastructure.setup_models import get_tokenizer, get_tokenizer_config_from_hub
 from src.experiments.runners.evaluate_model import EvaluateModelRunner
@@ -61,18 +61,13 @@ from src.utils.infra.data_object import (
     IndexableDataObject,
     IterableDataObject,
 )
+from src.utils.jsonable import JSONAble
 from src.utils.types_utils import (
     compare_dicts,
     get_dict_keys_by_condition,
     select_indexes_from_list,
     subset_dict_by_keys,
 )
-
-if TYPE_CHECKING:
-    from src.analysis.experiment_results.model_prompt_combination import (
-        ModelCombination,
-    )
-    from src.analysis.experiment_results.plot_plan import PlotPlan
 
 
 class DataReqiermentCollection:
@@ -96,7 +91,7 @@ class DataReqs(IndexableDataObject[BaseVariantParams, BasePromptFilteration]):
     def __init__(self, data_reqs: dict[BaseVariantParams, BasePromptFilteration]):
         super().__init__(data_reqs)
 
-    def to_fulfilled_reqs(self, result_bank: "ResultBank[BaseRunner]") -> "FulfilledReqs":
+    def to_fulfilled_reqs(self, result_bank: ResultBank[BaseRunner]) -> FulfilledReqs:
         data_reqs_options: dict[BaseVariantParams, list[BaseRunner]] = {
             data_req: [] for data_req, _ in self._items.items()
         }
@@ -106,11 +101,10 @@ class DataReqs(IndexableDataObject[BaseVariantParams, BasePromptFilteration]):
                 prompt_filterations = self._items[runner.variant_params]
 
                 if prompt_filterations.dependencies_are_computed():
-                    if runner.init_from_runner(
-                        runner,
-                        variant_params=runner.variant_params,
-                        input_params=InputParams(filteration=prompt_filterations),
-                    ).is_computed():
+                    runner = runner.modify(
+                        input_params=runner.input_params.modify(filteration=prompt_filterations.contextualize(runner))
+                    )
+                    if runner.is_computed():
                         data_reqs_options[runner.variant_params].append(runner)
 
         return FulfilledReqs(
@@ -118,7 +112,7 @@ class DataReqs(IndexableDataObject[BaseVariantParams, BasePromptFilteration]):
         )
 
     @classmethod
-    def from_data_reqs_collection(cls, data_reqs: DataReqiermentCollection) -> "DataReqs":
+    def from_data_reqs_collection(cls, data_reqs: DataReqiermentCollection) -> DataReqs:
         return cls(data_reqs.to_dict())
 
 
@@ -129,10 +123,10 @@ class FulfilledReqs(IndexableDataObject[BaseVariantParams, tuple[BasePromptFilte
     ):
         super().__init__(fulfilled_reqs)
 
-    def summarize(self) -> "SummarizedDataFulfilledReqs":
+    def summarize(self) -> SummarizedDataFulfilledReqs:
         return SummarizedDataFulfilledReqs(self)
 
-    def choose_latest_fulfilled(self) -> "FulfilledReqs":
+    def choose_latest_fulfilled(self) -> FulfilledReqs:
         def get_latest_results() -> Dict[BaseVariantParams, tuple[BasePromptFilteration, List[BaseRunner]]]:
             return {
                 data_req: (
@@ -186,7 +180,7 @@ class SummarizedDataFulfilledReqs(IterableDataObject[dict[str, Any]]):
         return pd.DataFrame(self._items)
 
 
-class PlotPlans(IndexableDataObject[TPlotID, "PlotPlan"]):
+class PlotPlans(IndexableDataObject[TPlotID, "PlotPlan"], JSONAble):
     @staticmethod
     def get_plot_plan_dir(plot_id: TPlotID) -> Path:
         return PATHS.FINAL_PLOTS_DIR / plot_id
@@ -199,7 +193,7 @@ class PlotPlans(IndexableDataObject[TPlotID, "PlotPlan"]):
     def get_cache_dir(cls, plot_id: TPlotID) -> Path:
         return cls.get_plot_plan_dir(plot_id) / "cache"
 
-    def add_plan(self, plan: "PlotPlan"):
+    def add_plan(self, plan: PlotPlan):
         if plan.plot_id in self._items:
             raise ValueError(f"Plot plan with title {plan.plot_id} already exists")
         new_items = self._items.copy()
@@ -219,30 +213,26 @@ class PlotPlans(IndexableDataObject[TPlotID, "PlotPlan"]):
     def is_plan_exists(self, plot_id: TPlotID) -> bool:
         return plot_id in self._items
 
-    def get_plan(self, plot_id: TPlotID) -> "PlotPlan":
+    def get_plan(self, plot_id: TPlotID) -> PlotPlan:
         return self._items[plot_id]
 
     def save(self) -> None:
         self.order_plans()
         self.get_json_path().parent.mkdir(parents=True, exist_ok=True)
 
-        self.get_json_path().write_text(json.dumps([plot_plan.to_dict() for plot_plan in self.values()], indent=4))
+        self.get_json_path().write_text(self.to_jsonable_json(indent=4))
 
     def is_empty(self) -> bool:
         return not self._items
 
     @classmethod
-    def load(cls) -> "PlotPlans":
-        from src.analysis.experiment_results.plot_plan import PlotPlan
-
-        plot_plans = cls({})
-        if cls.get_json_path().exists():
-            for plot_plan in json.loads(cls.get_json_path().read_text()):
-                plot_plans._items[TPlotID(plot_plan["plot_id"])] = PlotPlan.from_dict(plot_plan)
-        return plot_plans
+    def load(cls) -> PlotPlans:
+        if not cls.get_json_path().exists():
+            PlotPlans({}).save()
+        return cls.from_jsonable_json(cls.get_json_path().read_text())
 
 
-class PromptFilterationsPresets(IndexableDataObject[TPresetID, BasePromptFilteration]):
+class PromptFilterationsPresets(IndexableDataObject[TPresetID, BasePromptFilteration], JSONAble):
     def __init__(self, prompt_filterations: dict[TPresetID, BasePromptFilteration]):
         super().__init__(prompt_filterations)
 
@@ -251,7 +241,7 @@ class PromptFilterationsPresets(IndexableDataObject[TPresetID, BasePromptFiltera
         return PATHS.FINAL_PLOTS_DIR / "prompt_filterations_presets.json"
 
     @staticmethod
-    def get_default_presets() -> "PromptFilterationsPresets":
+    def get_default_presets() -> PromptFilterationsPresets:
         from src.analysis.prompt_filterations import (
             AllPromptFilteration,
             Correctness,
@@ -292,10 +282,10 @@ class PromptFilterationsPresets(IndexableDataObject[TPresetID, BasePromptFiltera
 
     def save(self) -> None:
         self.get_json_path().parent.mkdir(parents=True, exist_ok=True)
-        self.get_json_path().write_text(cast(str, jsonpickle.dumps(self._items, indent=4)))
+        self.get_json_path().write_text(self.to_jsonable_json(indent=4))
 
     @classmethod
-    def load(cls) -> "PromptFilterationsPresets":
+    def load(cls) -> PromptFilterationsPresets:
         if not cls.get_json_path().exists():
             presets = cls.get_default_presets()
             presets.save()
@@ -303,22 +293,22 @@ class PromptFilterationsPresets(IndexableDataObject[TPresetID, BasePromptFiltera
 
         presets = cast(
             dict[TPresetID, BasePromptFilteration],
-            jsonpickle.loads(cls.get_json_path().read_text(), on_missing="error"),
+            cls.from_jsonable_json(cls.get_json_path().read_text()),
         )
         return cls(presets)
 
 
 class ModelCombinationsPrompts(IterableDataObject["ModelCombination"]):
-    def __init__(self, model_combinations: list["ModelCombination"]):
+    def __init__(self, model_combinations: list[ModelCombination]):
         super().__init__(model_combinations)
 
     def cols_enum(self) -> Type[ModelCombinationCols]:
         return ModelCombinationCols
 
-    def sort_by_prompt_count(self) -> "ModelCombinationsPrompts":
+    def sort_by_prompt_count(self) -> ModelCombinationsPrompts:
         return ModelCombinationsPrompts(sorted(self._items, key=lambda x: len(x.prompts), reverse=True))
 
-    def change_chosen_prompt_by_seed(self, seed: int) -> "ModelCombinationsPrompts":
+    def change_chosen_prompt_by_seed(self, seed: int) -> ModelCombinationsPrompts:
         return ModelCombinationsPrompts([combination.choose_prompt_by_seed(seed) for combination in self._items])
 
     def to_display_df(self, models_combinations: list[MODEL_ARCH_AND_SIZE]) -> pd.DataFrame:
@@ -351,7 +341,7 @@ T_RUNNER_TYPE = TypeVar("T_RUNNER_TYPE", bound=BaseRunner)
 
 
 class ResultBank(IterableDataObject[T_RUNNER_TYPE]):
-    KEY = "key"
+    _KEY: ClassVar[str] = "key"
 
     def to_experiment_results_df(self) -> pd.DataFrame:
         results_data = []
@@ -359,20 +349,20 @@ class ResultBank(IterableDataObject[T_RUNNER_TYPE]):
             result_dict: dict = {param: getattr(result.variant_params, param, None) for param in ResultBankParamNames}
             result_dict[ResultBankParamNames.path] = str(result.variation_relative_path)
             result_dict[ResultBankParamNames.code_version] = result.metadata_params.code_version
-            result_dict[ResultBank.KEY] = i
+            result_dict[ResultBank._KEY] = i
             results_data.append(result_dict)
         return pd.DataFrame(results_data)
 
     def from_experiment_results_df(self, experiment_results_df: Optional[pd.DataFrame]):
         if experiment_results_df is None:
             return self.__class__([])
-        return self.__class__(select_indexes_from_list(self._items, experiment_results_df[ResultBank.KEY].tolist()))
+        return self.__class__(select_indexes_from_list(self._items, experiment_results_df[ResultBank._KEY].tolist()))
 
-    def to_info_flow_results(self) -> "InfoFlowResults":
+    def to_info_flow_results(self) -> InfoFlowResults:
         results = [result for result in self if result.variant_params.experiment_name == ExperimentName.info_flow]
         return InfoFlowResults(cast(list[InfoFlowRunner], results))
 
-    def to_evaluate_model_results(self) -> "EvaluateModelResults":
+    def to_evaluate_model_results(self) -> EvaluateModelResults:
         results = [result for result in self if result.variant_params.experiment_name == ExperimentName.evaluate_model]
         return EvaluateModelResults(cast(list[EvaluateModelRunner], results))
 
@@ -414,7 +404,7 @@ class ResultBank(IterableDataObject[T_RUNNER_TYPE]):
         )
 
     def subset_prompts(self, prompt_ids: list[TPromptOriginalIndex]):
-        return self.set_prompt_filteration(SelectivePromptFilteration(tuple(prompt_ids)))
+        return self.set_prompt_filteration(SelectivePromptFilteration(prompt_ids=tuple(prompt_ids)))
 
     def unique_model_arch_and_sizes(self) -> list[MODEL_ARCH_AND_SIZE]:
         return list(set(result.variant_params.model_arch_and_size for result in self))
@@ -452,7 +442,7 @@ class InfoFlowResults(ResultBank[InfoFlowRunner]):
     def size(self) -> int:
         return len(self)
 
-    def subset_layers(self, layer_idx_subset: TWindowLayerStartIndex) -> "InfoFlowResults":
+    def subset_layers(self, layer_idx_subset: TWindowLayerStartIndex) -> InfoFlowResults:
         return InfoFlowResults(
             [
                 info_flow.modify(variant_params=info_flow.variant_params.modify(subset_layers=layer_idx_subset))
@@ -510,7 +500,11 @@ class Tokenizers(IterableDataObject[UniqueTokenizerInfo]):
                 current_tokenizer = get_tokenizer(model_arch, model_size)
                 configs.append(tokenizer_config)
                 unique_tokenizers.append(
-                    UniqueTokenizerInfo(current_tokenizer, [model_arch_and_size], tokenizer_config)
+                    UniqueTokenizerInfo(
+                        tokenizer=current_tokenizer,
+                        model_arch_and_sizes=[model_arch_and_size],
+                        raw_config=tokenizer_config,
+                    )
                 )
 
         return cls(unique_tokenizers)
@@ -536,7 +530,7 @@ class Prompts(IndexableDataObject[TPromptOriginalIndex, PromptNew]):
 
     @lru_cache(maxsize=5)
     def filter_by_prompt_filteration(self, prompt_filteration: BasePromptFilteration):
-        return self.filter_by_prompt_ids(prompt_filteration.get_static_prompt_ids())
+        return self.filter_by_prompt_ids(prompt_filteration.get_prompt_ids())
 
     @property
     def empty(self) -> bool:
@@ -550,7 +544,7 @@ class Prompts(IndexableDataObject[TPromptOriginalIndex, PromptNew]):
     def original_idx(self) -> list[TPromptOriginalIndex]:
         return list(self._items.keys())
 
-    def sample(self, sample_size: int, seed: int) -> "Prompts":
+    def sample(self, sample_size: int, seed: int) -> Prompts:
         random.seed(seed)
         sampled_indices = random.choices(list(self._items.keys()), k=sample_size)
         return self.filter_by_prompt_ids(sampled_indices)
@@ -583,3 +577,9 @@ class Prompts(IndexableDataObject[TPromptOriginalIndex, PromptNew]):
         df = self.to_df()
 
         return df
+
+
+# Forward References
+
+from src.analysis.experiment_results.model_prompt_combination import ModelCombination  # noqa: E402
+from src.analysis.experiment_results.plot_plan import PlotPlan  # noqa: E402

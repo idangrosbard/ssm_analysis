@@ -71,7 +71,7 @@ def render_preset_details(
         ).render()
 
         # Show prompt count
-        st.info(f"Number of prompts: {len(preset.get_static_prompt_ids())}")
+        st.info(f"Number of prompts: {len(preset.get_prompt_ids())}")
 
 
 class FilterationCreator(StreamlitComponent[BasePromptFilteration]):
@@ -104,7 +104,7 @@ class FilterationCreator(StreamlitComponent[BasePromptFilteration]):
             if st.button("Create Selective Filteration") and prompt_ids_str:
                 try:
                     prompt_ids = [TPromptOriginalIndex(int(x.strip())) for x in prompt_ids_str.split(",")]
-                    self.current_filteration_sk.value = SelectivePromptFilteration(tuple(prompt_ids))
+                    self.current_filteration_sk.value = SelectivePromptFilteration(prompt_ids=tuple(prompt_ids))
                 except ValueError:
                     st.error("Invalid prompt IDs format. Please use comma-separated numbers.")
 
@@ -140,14 +140,16 @@ class FilterationCreator(StreamlitComponent[BasePromptFilteration]):
             sample_size = st.number_input(
                 "Sample Size",
                 min_value=1,
-                max_value=len(self.current_filteration_sk.value.get_static_prompt_ids()),
-                value=min(50, len(self.current_filteration_sk.value.get_static_prompt_ids())),
+                max_value=len(self.current_filteration_sk.value.get_prompt_ids()),
+                value=min(50, len(self.current_filteration_sk.value.get_prompt_ids())),
                 key=f"{self.key}_sample_size",
             )
             seed = st.number_input("Random Seed", value=42, key=f"{self.key}_sample_seed")
             if st.button("Apply Sampling"):
                 self.current_filteration_sk.value = SamplePromptFilteration(
-                    base_prompt_filteration=self.current_filteration_sk.value, sample_size=sample_size, seed=seed
+                    base_prompt_filteration=self.current_filteration_sk.value,
+                    sample_size=sample_size,
+                    seed=seed,
                 )
 
         elif operation in ["Union", "Intersection"]:

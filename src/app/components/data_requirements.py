@@ -129,7 +129,7 @@ class RequirementExecution(StreamlitComponent):
                 ),
             )
             configs.append(config)
-            requested_prompts = set(filteration.get_static_prompt_ids())
+            requested_prompts = set(filteration.contextualize(config).get_prompt_ids())
 
             if isinstance(config, HeatmapRunner):
                 remaining_prompts = set(config.get_remaining_prompt_original_indices())

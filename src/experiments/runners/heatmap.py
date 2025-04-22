@@ -13,7 +13,7 @@ import functools
 from dataclasses import dataclass, field
 from enum import StrEnum
 from pathlib import Path
-from typing import Callable, Optional, TypedDict, cast
+from typing import Callable, ClassVar, Optional, TypedDict, cast
 
 import h5py
 import matplotlib.pyplot as plt
@@ -51,7 +51,7 @@ plot_suffix_to_function: dict[HEATMAP_PLOT_FUNCS, Callable] = {
 
 @dataclass(frozen=True)
 class HeatmapParams(BaseVariantParams):
-    experiment_name: ExperimentName = field(init=False, default=ExperimentName.heatmap)
+    experiment_name: ClassVar[ExperimentName] = field(init=False, default=ExperimentName.heatmap)
     window_size: TWindowSize
 
 
@@ -111,17 +111,17 @@ class HeatmapRunner(BaseRunner[HeatmapParams]):
     def get_remaining_prompt_original_indices(self):
         """Return the list of prompt indices that need to be computed."""
         if not self.output_hdf5_path.path.exists() or self.metadata_params.overwrite_existing_outputs:
-            return self.input_params.filteration.get_static_prompt_ids()
+            return self.input_params.filteration.get_prompt_ids()
 
         existing_prompts = self.output_hdf5_path.get_existing_prompt_idx()
-        return [idx for idx in self.input_params.filteration.get_static_prompt_ids() if idx not in existing_prompts]
+        return [idx for idx in self.input_params.filteration.get_prompt_ids() if idx not in existing_prompts]
 
     def get_outputs(self) -> HeatmapExperimentOutput:
         """Load all prompt heatmaps from the HDF5 file."""
         if not self.output_hdf5_path.path.exists():
             return {}
 
-        return self.output_hdf5_path.get_prompt_idx_heatmaps(self.input_params.filteration.get_static_prompt_ids())
+        return self.output_hdf5_path.get_prompt_idx_heatmaps(self.input_params.filteration.get_prompt_ids())
 
     def get_plot_output_path(self, prompt_idx: TPromptOriginalIndex, plot_name: HEATMAP_PLOT_FUNCS) -> Path:
         return self.variation_paths.plots_path / f"idx={prompt_idx}{plot_name}.png"
@@ -138,7 +138,7 @@ class HeatmapRunner(BaseRunner[HeatmapParams]):
             return False
 
         existing_prompts = self.output_hdf5_path.get_existing_prompt_idx()
-        return all(idx in existing_prompts for idx in self.input_params.filteration.get_static_prompt_ids())
+        return all(idx in existing_prompts for idx in self.input_params.filteration.get_prompt_ids())
 
     def get_runner_dependencies(self) -> HeatmapDependencies:  # type: ignore
         return HeatmapDependencies(

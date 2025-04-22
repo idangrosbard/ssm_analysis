@@ -1,5 +1,5 @@
 from enum import Enum, StrEnum
-from typing import TYPE_CHECKING, Literal, NamedTuple, NewType, Sequence, TypeAlias, TypedDict, Union, assert_never
+from typing import TYPE_CHECKING, Any, Literal, NamedTuple, NewType, Sequence, TypeAlias, TypedDict, Union, assert_never
 
 import pandas as pd
 import torch
@@ -31,13 +31,13 @@ if TYPE_CHECKING:
     TMamba2Model: TypeAlias = minimal_mamba2.Mamba2LMHeadModel
     TModel: TypeAlias = Union[TMamba1Model, TGP2Model, TMamba2Model, PreTrainedModel, TLlamaModel]
 else:
-    TTokenizer = ...
-    TMamba1Model = ...
-    TGP2Model = ...
-    TMamba2Model = ...
-    TLlamaModel = ...
-    # TMistralModel = ...
-    TModel = ...
+    TTokenizer = Any
+    TMamba1Model = Any
+    TGP2Model = Any
+    TMamba2Model = Any
+    TLlamaModel = Any
+    # TMistralModel = Any
+    TModel = Any
 
 
 class SPLIT(StrEnum):

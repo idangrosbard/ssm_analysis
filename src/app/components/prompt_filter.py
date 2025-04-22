@@ -81,7 +81,7 @@ class SamplePrompts(StreamlitComponent[BasePromptFilteration]):
     ):
         sample_results = st.checkbox("Sample results", value=True)
 
-        prompt_ids = self.prompts_filteration.get_static_prompt_ids()
+        prompt_ids = self.prompts_filteration.get_prompt_ids()
         if sample_results:
             sample_results_count = st.slider(
                 "Sample results count",
@@ -292,7 +292,7 @@ class ShowPromptFilterationComponent(StreamlitComponent[Optional[BasePromptFilte
             return sac.TreeItem(
                 children=cast(list, children),
                 label=register_label(str(prompt_filteration.display_name()), prompt_filteration),
-                tag=f"Filters {len(prompt_filteration.get_static_prompt_ids())}",
+                tag=f"Filters {len(prompt_filteration.get_prompt_ids())}",
             )
 
         items = [recursive_build_items(prompt_filteration)]
@@ -479,7 +479,7 @@ class FilterPromptsComponent(StreamlitComponent[BasePromptFilteration]):
         st.subheader("Current Filteration")
         total = self.customized_filteration_sk.value
         if self.base_prompt_filteration:
-            available_count = len(self.base_prompt_filteration.get_static_prompt_ids())
+            available_count = len(self.base_prompt_filteration.get_prompt_ids())
             st.info(f"Filtering based on available prompts. {available_count} prompt(s) available in context.")
             total = self.base_prompt_filteration & total
 
@@ -488,7 +488,7 @@ class FilterPromptsComponent(StreamlitComponent[BasePromptFilteration]):
             key=f"{self.key}_current_filteration",
         ).render()
 
-        total_prompt_count = len(total.get_static_prompt_ids())
+        total_prompt_count = len(total.get_prompt_ids())
         if total_prompt_count and st.checkbox(
             "Apply sampling", value=True, key=f"{self.customized_filteration_sk.key}_sample_checkbox"
         ):

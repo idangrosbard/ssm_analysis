@@ -17,8 +17,7 @@ class ResultsBankPage(StreamlitPage):
 
         results_bank = result_bank_func()
         result_bank_func.render()
-        with st.expander("Results Bank"):
-            ShowResultsBank(results_bank).render()
+        ShowResultsBank(results_bank, key=f"results_bank_{is_test_results}").render()
 
         # if is_migrate_results:
         #     MigrateResults(results_bank, is_test_results).render()
