@@ -16,7 +16,7 @@ from src.analysis.experiment_results.plot_plan import PlotPlan
 from src.app.components.data_requirements import RequirementExecution, RequirementsDisplay
 from src.app.components.plot_generation import PlotGenerator
 from src.app.components.plot_plans import (
-    PlotPlanDetails,
+    PlotPlanDetailsSummary,
     PlotPlanEditor,
     PlotPlanSelector,
 )
@@ -163,16 +163,18 @@ class FinalPlotsPage(StreamlitPage):
             selected_plan = plot_plans.get_plan(FinalPlotsSessionKeys.SELECTED_PLOT_PLAN_ID.value)
             assert selected_plan is not None
             # Display plan details
-            PlotPlanDetails(plot_plans, FinalPlotsSessionKeys.SELECTED_PLOT_PLAN_ID.value, result_bank).render()
+            with st.expander("Details"):
+                PlotPlanDetailsSummary(
+                    plot_plans, FinalPlotsSessionKeys.SELECTED_PLOT_PLAN_ID.value, result_bank
+                ).render()
 
             # Display data requirements
             PlotPlanRequirements(selected_plan, result_bank).render()
 
             # Plot generation button
-            st.subheader(FINAL_PLOTS_TEXTS.generate_plot)
             plot_path = PlotGenerator(selected_plan, result_bank).render()
             if plot_path:
-                st.success(FINAL_PLOTS_TEXTS.plot_saved(plot_path))
+                st.toast(FINAL_PLOTS_TEXTS.plot_saved(plot_path))
 
         else:
             # No plan selected

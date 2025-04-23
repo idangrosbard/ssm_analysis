@@ -26,7 +26,7 @@ from src.analysis.plots.info_flow_confidence import create_confidence_plot
 from src.app.texts import FINAL_PLOTS_TEXTS
 from src.core.consts import MODEL_SIZES_PER_ARCH_TO_MODEL_ID, TOKEN_TYPE_COLORS, TOKEN_TYPE_LINE_STYLES
 from src.core.names import SummarizedDataFulfilledReqsCols
-from src.core.types import MODEL_ARCH_AND_SIZE, TInfoFlowOutput, TPromptData
+from src.core.types import MODEL_ARCH_AND_SIZE, TPromptData
 from src.data_ingestion.data_defs.data_defs import DataReqs, FulfilledReqs, PlotPlans, ResultBank
 from src.data_ingestion.helpers.logits_utils import decode_tokens, get_prompt_row_index
 from src.experiments.infrastructure.base_runner import InputParams
@@ -34,50 +34,6 @@ from src.experiments.infrastructure.setup_models import get_tokenizer
 from src.experiments.runners.heatmap import HeatmapRunner
 from src.experiments.runners.info_flow import InfoFlowRunner
 from src.utils.streamlit.helpers.component import StreamlitComponent
-
-
-def load_info_flow_data(data: TInfoFlowOutput, idx: bool = False):
-    df = {"Depth": [], "Probability diff": [], "Correct": []}
-
-    if idx:
-        df["original_idx"] = []
-
-    n_layers = len(data)
-
-    for layer in range(n_layers):
-        curr_layer = data[layer]
-        if len(curr_layer) == 0:
-            continue
-
-        if "correct" in curr_layer:
-            n_samples = len(curr_layer["correct"])
-        else:
-            assert "hit" in curr_layer
-            n_samples = len(curr_layer["hit"])
-
-        for i in range(n_samples):
-            df["Depth"] += [layer / (n_layers - 1)]
-            if "probability_diff" in curr_layer:
-                df["Probability diff"] += [curr_layer["probability_diff"][i]]
-            elif "diffs" in curr_layer:
-                df["Probability diff"] += [curr_layer["diffs"][i]]
-            else:
-                raise ValueError(f"No probability diff in layer: {list(curr_layer.keys())}")
-
-            if "correct" in curr_layer:
-                df["Correct"] += [curr_layer["correct"][i]]
-            elif "hit" in curr_layer:
-                df["Correct"] += [curr_layer["hit"][i]]
-            else:
-                raise ValueError(f'No "Correct" in layer: {list(curr_layer.keys())}')
-
-            if idx:
-                df["original_idx"] += [curr_layer["original_idx"][i]]
-
-            # df['original_idx'] += [curr_layer['original_idx'][i]]
-
-    return pd.DataFrame(df)
-
 
 # Constants for plotting
 COLORS = {

@@ -1,10 +1,11 @@
+from __future__ import annotations
+
 from dataclasses import asdict
 from pathlib import Path
 from typing import Optional, TypeVar
 
 import streamlit as st
 from st_aggrid import AgGrid, DataReturnMode, GridUpdateMode
-from streamlit_modal import Modal
 
 from src.app.data_store import load_results_bank
 from src.core.names import ResultBankParamNames
@@ -16,7 +17,7 @@ from src.utils.streamlit.components.aagrid import (
     set_aagrid_apply_default_filters,
 )
 from src.utils.streamlit.helpers.component import StreamlitComponent
-from src.utils.streamlit.helpers.session_keys import SessionKey
+from src.utils.streamlit.helpers.session_keys import SessionKeyDescriptor, SessionKeysBase
 
 T_RESULT_BANK_TYPE = TypeVar("T_RESULT_BANK_TYPE", bound=ResultBank)
 
@@ -101,13 +102,68 @@ def select_model_evaluations(
     return result_bank
 
 
-modal = Modal(key="job_output_modal", title="Job Output", max_width=1000)
-
-
 class ShowRunnerStatus(StreamlitComponent):
+    class ShowRunnerStatusSks(SessionKeysBase["ShowRunnerStatusSks"]):
+        first_line_count = SessionKeyDescriptor[int](100)
+        last_line_count = SessionKeyDescriptor[int](200)
+        wrap_log = SessionKeyDescriptor[bool](False)
+
+    @st.dialog(title="File Output", width="large")
+    def show_job_dialog(
+        self,
+        file_path: Path,
+        title: str,
+    ):
+        st.code(file_path, wrap_lines=True)
+
+        st.title(title)
+
+        if Path(file_path).exists():
+            for i, col in enumerate(st.columns(3)):
+                with col:
+                    if i == 0:
+                        st.number_input(
+                            "First N lines",
+                            min_value=10,
+                            max_value=1000,
+                            key=self.sks.first_line_count.key,
+                        )
+                    elif i == 1:
+                        st.number_input(
+                            "Last N lines",
+                            min_value=10,
+                            max_value=1000,
+                            key=self.sks.last_line_count.key,
+                        )
+                    else:
+                        st.checkbox("Wrap log", key=self.sks.wrap_log.key)
+
+            lines = Path(file_path).read_text().split("\n")
+            total_lines = len(lines)
+            max_display_lines = self.sks.first_line_count.value + self.sks.last_line_count.value
+
+            if total_lines > max_display_lines:
+                first_n = lines[: self.sks.first_line_count.value]
+                last_n = lines[-self.sks.last_line_count.value :]
+                skipped_lines = total_lines - max_display_lines
+                formatted_lines = [
+                    *first_n,
+                    f"...Skipped {skipped_lines} lines...",
+                    *last_n,
+                ]
+                st.code("\n".join(formatted_lines), wrap_lines=self.sks.wrap_log.value)
+            else:
+                st.code("\n".join(lines), wrap_lines=self.sks.wrap_log.value)
+
+        else:
+            st.error("File not found or could not be read")
+            if st.button("Close Error"):
+                st.rerun()
+
     def __init__(self, runner: BaseRunner):
         super().__init__()
         self.runner = runner
+        self.sks = self.ShowRunnerStatusSks()
 
     def render(self):
         st.code(self.runner.variation_paths.variation_base_path, wrap_lines=True)
@@ -116,25 +172,6 @@ class ShowRunnerStatus(StreamlitComponent):
 
         all_slurm_jobs = self.runner.slurm_job_folder.get_all_slurm_jobs()
         all_slurm_jobs = sorted(all_slurm_jobs, key=lambda x: -int(x.job_id))
-        sk_file_path = SessionKey[Path](f"job_output_path_{self.runner.experiment_name}", None, allow_none=True)
-
-        if modal.is_open():
-            with modal.container():
-                lines = sk_file_path.value.read_text().split("\n")
-                if len(lines) > 300:
-                    first_100 = lines[:100]
-                    last_200 = lines[-200:]
-                    skipped_lines = len(lines) - 300
-                    lines = [
-                        *first_100,
-                        f"...Skipped {skipped_lines} lines",
-                        "...",
-                        *last_200,
-                    ]
-
-                lines = lines[::-1]
-                st.code(sk_file_path.value, wrap_lines=True)
-                st.code("\n".join(lines))
 
         with st.expander(expanded=False, label=f"{len(all_slurm_jobs)} Slurm Runs"):
             for slurm_job in all_slurm_jobs:
@@ -143,14 +180,18 @@ class ShowRunnerStatus(StreamlitComponent):
                 cols = st.columns(2)
                 with cols[0]:
                     if st.button("Show Job Output", key=f"show_job_output_{slurm_job.job_id}"):
-                        sk_file_path.value = slurm_job.slurm_job_output_path
-                        modal.open()
+                        self.show_job_dialog(
+                            slurm_job.slurm_job_output_path,
+                            f"Job Output - {slurm_job.job_id}",
+                        )
 
                 with cols[1]:
                     if st.button("Show Job Error", key=f"show_job_error_{slurm_job.job_id}"):
-                        sk_file_path.value = slurm_job.slurm_job_error_path
-                        modal.open()
-
+                        # Use Streamlit's experimental dialog
+                        self.show_job_dialog(
+                            slurm_job.slurm_job_error_path,
+                            f"Job Error - {slurm_job.job_id}",
+                        )
         # Show uncomputed dependencies if any
         if not self.runner.dependencies_are_computed():
             with st.expander("**Uncomputed Dependencies** ❌"):
@@ -178,18 +219,3 @@ class ShowRunnerStatus(StreamlitComponent):
                             st.rerun()
                         except Exception as e:
                             st.error(f"Error during computation: {e}")
-
-        # # Add a button to compute if not computed yet
-        # if not self.runner.is_computed():
-        #     cols = st.columns([1, 2])
-        #     with cols[0]:
-        #         st.markdown("**Computed:** ❌")
-        #     with cols[1]:
-        #         if st.button("Compute Runner"):
-        #             with st.spinner("Computing..."):
-        #                 try:
-        #                     self.runner.run(with_dependencies=False)
-        #                     st.success("Computation completed or submitted!")
-        #                     st.rerun()
-        #                 except Exception as e:
-        #                     st.error(f"Error during computation: {e}")

@@ -92,13 +92,14 @@ class PlotPlanSelector(StreamlitComponent[None]):
 
         sac.menu(
             items=menu_items,
+            size="xs",
             format_func=lambda x: self.plot_plans.get_plan(x).title if self.plot_plans.is_plan_exists(x) else x,
             key=self.selected_plot_id_sk.key_for_component,
             return_index=False,
         )
 
 
-class PlotPlanDetails(StreamlitComponent[None]):
+class PlotPlanDetailsSummary(StreamlitComponent[None]):
     """Component for displaying the details of a selected plot plan."""
 
     def __init__(self, plot_plans: PlotPlans, selected_plan_id: Optional[TPlotID], result_bank: ResultBank):

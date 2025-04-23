@@ -18,7 +18,7 @@ class StreamlitComponent(ABC, Generic[OutputType]):
             try:
                 self.render()
             finally:
-                st.success("Rendering complete, generating profile...")
+                st.toast("Rendering complete, generating profile...")
 
 
 class StreamlitPage(StreamlitComponent[None]):
