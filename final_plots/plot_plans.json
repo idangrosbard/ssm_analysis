@@ -10,12 +10,6 @@
                     "plot_id": "architecture_knockout",
                     "title": "Architecture Knockout Plot",
                     "description": "Relative change in correct-token prediction probability when removing information flow to the last token from various source tokens. \nThe x-axis represents the relative depth of the first layer within the 9-layer attention knockout window, while the y-axis indicates the resulting performance change.",
-                    "plot_type": {
-                        "__JSONABLE_metadata__": "__JSONABLE_enum__",
-                        "__JSONABLE_module__": "src.core.names",
-                        "__JSONABLE_type__": "PlotType",
-                        "__JSONABLE_value__": "ARCHITECTURE_KNOCKOUT"
-                    },
                     "is_appendix": false,
                     "order": 1,
                     "experiment_name": {
@@ -156,12 +150,6 @@
                     "plot_id": "test",
                     "title": "test",
                     "description": "test",
-                    "plot_type": {
-                        "__JSONABLE_metadata__": "__JSONABLE_enum__",
-                        "__JSONABLE_module__": "src.core.names",
-                        "__JSONABLE_type__": "PlotType",
-                        "__JSONABLE_value__": "ARCHITECTURE_KNOCKOUT"
-                    },
                     "is_appendix": false,
                     "order": 1,
                     "experiment_name": {
@@ -295,12 +283,6 @@
                     "plot_id": "figure1",
                     "title": "Figure 1",
                     "description": "Figure 1 t",
-                    "plot_type": {
-                        "__JSONABLE_metadata__": "__JSONABLE_enum__",
-                        "__JSONABLE_module__": "src.core.names",
-                        "__JSONABLE_type__": "PlotType",
-                        "__JSONABLE_value__": "ARCHITECTURE_KNOCKOUT"
-                    },
                     "is_appendix": false,
                     "order": 1,
                     "experiment_name": {
@@ -446,12 +428,6 @@
                     "plot_id": "model_size_knockout",
                     "title": "Model Size Knockout Plot",
                     "description": "Comparison of different model sizes within the same architecture family when removing information flow\nto the last token from various source tokens.",
-                    "plot_type": {
-                        "__JSONABLE_metadata__": "__JSONABLE_enum__",
-                        "__JSONABLE_module__": "src.core.names",
-                        "__JSONABLE_type__": "PlotType",
-                        "__JSONABLE_value__": "ARCHITECTURE_KNOCKOUT"
-                    },
                     "is_appendix": false,
                     "order": 2,
                     "experiment_name": {
@@ -677,12 +653,6 @@
                     "plot_id": "window_size_knockout",
                     "title": "Window Size Knockout Plot",
                     "description": "Effect of different window sizes on the information flow from various source tokens to the last token.",
-                    "plot_type": {
-                        "__JSONABLE_metadata__": "__JSONABLE_enum__",
-                        "__JSONABLE_module__": "src.core.names",
-                        "__JSONABLE_type__": "PlotType",
-                        "__JSONABLE_value__": "ARCHITECTURE_KNOCKOUT"
-                    },
                     "is_appendix": false,
                     "order": 3,
                     "experiment_name": {
@@ -806,12 +776,6 @@
                     "plot_id": "feature_knockout",
                     "title": "Relation minus last",
                     "description": "relation minus last",
-                    "plot_type": {
-                        "__JSONABLE_metadata__": "__JSONABLE_enum__",
-                        "__JSONABLE_module__": "src.core.names",
-                        "__JSONABLE_type__": "PlotType",
-                        "__JSONABLE_value__": "ARCHITECTURE_KNOCKOUT"
-                    },
                     "is_appendix": false,
                     "order": 4,
                     "experiment_name": {
@@ -929,12 +893,6 @@
                     "plot_id": "heatmap",
                     "title": "Heatmap Plot",
                     "description": "Heatmap visualization of information flow between tokens for specific prompts.",
-                    "plot_type": {
-                        "__JSONABLE_metadata__": "__JSONABLE_enum__",
-                        "__JSONABLE_module__": "src.core.names",
-                        "__JSONABLE_type__": "PlotType",
-                        "__JSONABLE_value__": "HEATMAP"
-                    },
                     "is_appendix": false,
                     "order": 6,
                     "experiment_name": {
@@ -1255,12 +1213,6 @@
                     "plot_id": "all_to_all",
                     "title": "all -> all",
                     "description": "",
-                    "plot_type": {
-                        "__JSONABLE_metadata__": "__JSONABLE_enum__",
-                        "__JSONABLE_module__": "src.core.names",
-                        "__JSONABLE_type__": "PlotType",
-                        "__JSONABLE_value__": "ARCHITECTURE_KNOCKOUT"
-                    },
                     "is_appendix": false,
                     "order": 10,
                     "experiment_name": {
@@ -1384,12 +1336,6 @@
                     "plot_id": "heatmaps_per_sizes",
                     "title": "Heatmaps Per sizes",
                     "description": "Relative change in correct-token probability\nafter knocking out connection from each token to the last\ntoken.",
-                    "plot_type": {
-                        "__JSONABLE_metadata__": "__JSONABLE_enum__",
-                        "__JSONABLE_module__": "src.core.names",
-                        "__JSONABLE_type__": "PlotType",
-                        "__JSONABLE_value__": "HEATMAP"
-                    },
                     "is_appendix": true,
                     "order": 11,
                     "experiment_name": {
@@ -1457,12 +1403,6 @@
                     "plot_id": "llama",
                     "title": "llama",
                     "description": "",
-                    "plot_type": {
-                        "__JSONABLE_metadata__": "__JSONABLE_enum__",
-                        "__JSONABLE_module__": "src.core.names",
-                        "__JSONABLE_type__": "PlotType",
-                        "__JSONABLE_value__": "ARCHITECTURE_KNOCKOUT"
-                    },
                     "is_appendix": true,
                     "order": 100,
                     "experiment_name": {
@@ -1553,12 +1493,6 @@
                     "plot_id": "llama 2",
                     "title": "llama",
                     "description": "",
-                    "plot_type": {
-                        "__JSONABLE_metadata__": "__JSONABLE_enum__",
-                        "__JSONABLE_module__": "src.core.names",
-                        "__JSONABLE_type__": "PlotType",
-                        "__JSONABLE_value__": "ARCHITECTURE_KNOCKOUT"
-                    },
                     "is_appendix": true,
                     "order": 100,
                     "experiment_name": {

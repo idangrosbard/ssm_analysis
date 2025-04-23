@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from collections import defaultdict
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field
 from itertools import product
 from pathlib import Path
 from typing import (
@@ -26,10 +26,6 @@ from src.core.names import (
     ExperimentName,
     FinalPlotsPlanOrientation,
     InfoFlowVariantParam,
-    PlotPlanCols,
-    PlotPlanOptionCols,
-    PlotType,
-    ResultBankParamNames,
     WindowedVariantParam,
     map_final_plots_plan_orientation_to_options,
 )
@@ -392,7 +388,6 @@ class PlotPlan:
     plot_id: TPlotID
     title: str
     description: str
-    plot_type: PlotType
     is_appendix: bool
     order: int
     experiment_name: ExperimentName
@@ -416,90 +411,6 @@ class PlotPlan:
 
     def _get_param_options_col(self, param_name: FinalPlotsPlanOrientation) -> list[Any]:
         return getattr(self, map_final_plots_plan_orientation_to_options(param_name))
-
-    def to_dict(self) -> Dict[str, Any]:
-        result = asdict(self)
-        # Convert Enum values to strings for JSON serialization
-        result[PlotPlanCols.plot_type] = self.plot_type.name
-        result[PlotPlanCols.experiment_name] = self.experiment_name.name
-
-        for orientation in str_enum_values(FinalPlotsPlanOrientation):
-            # Convert orientation parameters to strings
-            param = self._get_orientation_value(orientation)
-            if param:
-                result[orientation] = param.name
-
-                param_options_col = map_final_plots_plan_orientation_to_options(orientation)
-                # Convert complex objects in options to serializable format
-                if result[param_options_col]:
-                    result[param_options_col] = self._serialize_options(self._get_param_options_col(orientation), param)
-
-        return result
-
-    def _serialize_options(self, options: List[Any], param_type: Optional[ExperimentHyperParams]) -> List[Any]:
-        """Serialize options to a JSON-compatible format."""
-        if not param_type or not options:
-            return options
-
-        serialized: list[Any] = []
-        for option in options:
-            if param_type == ExperimentHyperParams.model_arch_and_size and isinstance(option, MODEL_ARCH_AND_SIZE):
-                serialized.append(
-                    {
-                        ResultBankParamNames.model_arch: option.arch,
-                        ResultBankParamNames.model_size: option.size,
-                    }
-                )
-            elif isinstance(option, (str, int, float, bool)) or option is None:
-                serialized.append(option)
-            else:
-                serialized.append(str(option))
-        return serialized
-
-    def _deserialize_options(self, options: List[Any], param_type: Optional[ExperimentHyperParams]) -> List[Any]:
-        """Deserialize options from a JSON format."""
-        if not param_type or not options:
-            return options
-
-        deserialized = []
-        for option in options:
-            if param_type == ExperimentHyperParams.model_arch_and_size and isinstance(option, dict):
-                if ResultBankParamNames.model_arch in option and ResultBankParamNames.model_size in option:
-                    deserialized.append(
-                        MODEL_ARCH_AND_SIZE(
-                            option[ResultBankParamNames.model_arch],
-                            option[ResultBankParamNames.model_size],
-                        )
-                    )
-            else:
-                deserialized.append(option)
-        return deserialized
-
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "PlotPlan":
-        # Convert string values back to Enum values
-        data_copy = data.copy()
-        data_copy[PlotPlanCols.plot_type] = PlotType[data_copy[PlotPlanCols.plot_type]]
-        data_copy[PlotPlanCols.experiment_name] = ExperimentName[data_copy[PlotPlanCols.experiment_name]]
-
-        # Convert orientation parameters to ExperimentHyperParams
-        for orientation in str_enum_values(FinalPlotsPlanOrientation):
-            col_name = getattr(PlotPlanCols, orientation)
-            if data_copy.get(col_name):
-                data_copy[col_name] = ExperimentHyperParams[data_copy[col_name]]
-
-        # Create the instance
-        instance = cls(**{k: v for k, v in data_copy.items()})
-
-        # Deserialize options for each orientation
-        for orientation in str_enum_values(FinalPlotsPlanOrientation):
-            options_col = getattr(PlotPlanOptionCols, f"{orientation}_options")
-            if options_col in data_copy:
-                param = instance._get_orientation_value(orientation)
-                deserialized_options = instance._deserialize_options(data_copy[options_col], param)
-                instance.set_options_for_orientation(orientation, deserialized_options)
-
-        return instance
 
     def get_options_for_param(self, param: FinalPlotsPlanOrientation) -> List[Any]:
         """Get the selected options for a parameter."""

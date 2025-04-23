@@ -9,23 +9,23 @@
 # Outline Compatibility Issues:
 # - New file, outline will be implemented
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Literal, Optional, Tuple, assert_never, cast
+from typing import Any, Optional, cast
 
 import matplotlib.pyplot as plt
-import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
+import streamlit_antd_components as sac
 
 from src.analysis.experiment_results.helpers import get_model_evaluations
-from src.analysis.experiment_results.plot_plan import Cell, PlotPlan, PlotType, get_hyper_param_definition
+from src.analysis.experiment_results.plot_plan import Cell, PlotPlan, get_hyper_param_definition
 from src.analysis.plots.heatmaps import simple_diff_fixed
 from src.analysis.plots.image_combiner import ImageGridParams, combine_image_grid
 from src.analysis.plots.info_flow_confidence import create_confidence_plot
 from src.app.texts import FINAL_PLOTS_TEXTS
 from src.core.consts import MODEL_SIZES_PER_ARCH_TO_MODEL_ID, TOKEN_TYPE_COLORS, TOKEN_TYPE_LINE_STYLES
-from src.core.names import SummarizedDataFulfilledReqsCols
+from src.core.names import ExperimentName, SummarizedDataFulfilledReqsCols
 from src.core.types import MODEL_ARCH_AND_SIZE, TPromptData
 from src.data_ingestion.data_defs.data_defs import DataReqs, FulfilledReqs, PlotPlans, ResultBank
 from src.data_ingestion.helpers.logits_utils import decode_tokens, get_prompt_row_index
@@ -34,271 +34,7 @@ from src.experiments.infrastructure.setup_models import get_tokenizer
 from src.experiments.runners.heatmap import HeatmapRunner
 from src.experiments.runners.info_flow import InfoFlowRunner
 from src.utils.streamlit.helpers.component import StreamlitComponent
-
-# Constants for plotting
-COLORS = {
-    "Mamba-1 2.8B": (31, 119, 180),
-    "Mamba-2 2.7B": (255, 127, 14),
-    "Falcon-Mamba 7B": (44, 160, 44),
-    "GPT-2 1.5B": (214, 39, 40),
-    "gpt2-355M": (148, 103, 189),
-    "gpt2-774M": (140, 86, 75),
-    "gpt2-1.5B": (227, 119, 194),
-    "mamba-130M": (127, 127, 127),
-    "mamba-370M": (188, 189, 34),
-    "mamba-790M": (23, 190, 207),
-    "mamba-1.4B": (31, 119, 180),
-    "mamba-2.8B": (255, 127, 14),
-    "mamba2-370M": (44, 160, 44),
-    "mamba2-790M": (214, 39, 40),
-    "mamba2-1.4B": (148, 103, 189),
-    "mamba2-2.7B": (140, 86, 75),
-    "All": (31, 119, 180),
-    "Context dependent": (255, 127, 14),
-    "Context independent": (44, 160, 44),
-    "first": (31, 119, 180),
-    "relation": (255, 127, 14),
-    "subject": (44, 160, 44),
-    "last": (214, 39, 40),
-}
-
-
-@dataclass
-class PlotDimensions:
-    height_per_row: int = 400
-    width_per_col: int = 400
-    margin_top: int = 100
-    margin_bottom: int = 100
-
-
-@dataclass
-class PlotFontSettings:
-    size: int = 36
-
-
-@dataclass
-class PlotColors:
-    paper_bgcolor: str = "#FFFFFF"
-    plot_bgcolor: str = "#FFFFFF"
-    grid_color: str = "#D3D3D3"
-    zero_line_color: str = "#D3D3D3"
-    axis_line_color: str = "#000000"
-
-
-@dataclass
-class PlotLineSettings:
-    line_width: int = 2
-    grid_width: int = 1
-    zero_line_width: int = 2
-    fill_opacity: float = 0.2
-
-
-@dataclass
-class PlotLegendSettings:
-    orientation: Literal["h", "v"] = "h"
-    y_anchor: Literal["top", "bottom", "middle"] = "bottom"
-    y: float = 1.02
-    x_anchor: Literal["left", "right", "center"] = "right"
-    x: float = 1
-
-
-@dataclass
-class PlotParams:
-    dimensions: PlotDimensions = field(default_factory=PlotDimensions)
-    font: PlotFontSettings = field(default_factory=PlotFontSettings)
-    colors: PlotColors = field(default_factory=PlotColors)
-    line: PlotLineSettings = field(default_factory=PlotLineSettings)
-    legend: PlotLegendSettings = field(default_factory=PlotLegendSettings)
-
-
-class PlotStyle:
-    """Class to manage plot styling parameters."""
-
-    def __init__(self):
-        self.params = PlotParams()
-
-    def show_style_form(self):
-        """Display a form to control plot styling parameters in the sidebar."""
-        with st.sidebar:
-            st.subheader("Plot Style Settings")
-
-            with st.form("plot_style_settings"):
-                with st.expander("Figure Dimensions", expanded=False):
-                    self.params.dimensions.height_per_row = st.number_input(
-                        "Height per row", min_value=100, value=self.params.dimensions.height_per_row
-                    )
-                    self.params.dimensions.width_per_col = st.number_input(
-                        "Width per column", min_value=100, value=self.params.dimensions.width_per_col
-                    )
-                    self.params.dimensions.margin_top = st.number_input(
-                        "Top margin", min_value=0, value=self.params.dimensions.margin_top
-                    )
-                    self.params.dimensions.margin_bottom = st.number_input(
-                        "Bottom margin", min_value=0, value=self.params.dimensions.margin_bottom
-                    )
-
-                with st.expander("Font Settings", expanded=False):
-                    self.params.font.size = st.number_input("Font size", min_value=8, value=self.params.font.size)
-
-                with st.expander("Colors", expanded=False):
-                    self.params.colors.paper_bgcolor = st.color_picker(
-                        "Paper background color", self.params.colors.paper_bgcolor
-                    )
-                    self.params.colors.plot_bgcolor = st.color_picker(
-                        "Plot background color", self.params.colors.plot_bgcolor
-                    )
-                    self.params.colors.grid_color = st.color_picker("Grid color", self.params.colors.grid_color)
-                    self.params.colors.zero_line_color = st.color_picker(
-                        "Zero line color", self.params.colors.zero_line_color
-                    )
-                    self.params.colors.axis_line_color = st.color_picker(
-                        "Axis line color", self.params.colors.axis_line_color
-                    )
-
-                with st.expander("Lines Settings", expanded=False):
-                    self.params.line.line_width = st.number_input(
-                        "Line width", min_value=1, value=self.params.line.line_width
-                    )
-                    self.params.line.grid_width = st.number_input(
-                        "Grid width", min_value=1, value=self.params.line.grid_width
-                    )
-                    self.params.line.zero_line_width = st.number_input(
-                        "Zero line width", min_value=1, value=self.params.line.zero_line_width
-                    )
-                    self.params.line.fill_opacity = st.slider(
-                        "Fill opacity", min_value=0.0, max_value=1.0, value=self.params.line.fill_opacity
-                    )
-
-                with st.expander("Legend Settings", expanded=False):
-                    self.params.legend.orientation = st.selectbox(
-                        "Legend orientation", ["h", "v"], index=0 if self.params.legend.orientation == "h" else 1
-                    )
-                    self.params.legend.y = st.number_input("Legend Y position", value=self.params.legend.y)
-                    self.params.legend.x = st.number_input("Legend X position", value=self.params.legend.x)
-                    self.params.legend.y_anchor = st.selectbox(
-                        "Legend Y anchor",
-                        ["top", "bottom", "middle"],
-                        index=["top", "bottom", "middle"].index(self.params.legend.y_anchor),
-                    )
-                    self.params.legend.x_anchor = st.selectbox(
-                        "Legend X anchor",
-                        ["left", "right", "center"],
-                        index=["left", "right", "center"].index(self.params.legend.x_anchor),
-                    )
-
-                return st.form_submit_button("Apply Style")
-
-    def apply_to_figure(self, fig: go.Figure, n_cols: int, n_rows: int = 1) -> go.Figure:
-        """Apply the current style settings to a figure."""
-        fig.update_layout(
-            height=self.params.dimensions.height_per_row * n_rows,
-            width=self.params.dimensions.width_per_col * n_cols,
-            paper_bgcolor=self.params.colors.paper_bgcolor,
-            plot_bgcolor=self.params.colors.plot_bgcolor,
-            margin=dict(t=self.params.dimensions.margin_top, b=self.params.dimensions.margin_bottom),
-            font=dict(size=self.params.font.size),
-            legend=dict(
-                orientation=self.params.legend.orientation,
-                yanchor=self.params.legend.y_anchor,
-                y=self.params.legend.y,
-                xanchor=self.params.legend.x_anchor,
-                x=self.params.legend.x,
-                font=dict(size=self.params.font.size),
-            ),
-        )
-
-        # Update all axes
-        for i in range(1, n_cols + 1):
-            for j in range(1, n_rows + 1):
-                # X axis
-                fig.update_xaxes(
-                    title_text="Relative depth (%)" if j == n_rows else None,
-                    showline=True,
-                    linewidth=self.params.line.line_width,
-                    linecolor=self.params.colors.axis_line_color,
-                    showgrid=True,
-                    gridwidth=self.params.line.grid_width,
-                    gridcolor=self.params.colors.grid_color,
-                    zeroline=True,
-                    zerolinewidth=self.params.line.zero_line_width,
-                    zerolinecolor=self.params.colors.zero_line_color,
-                    tickfont=dict(size=self.params.font.size),
-                )
-
-                # Y axis
-                fig.update_yaxes(
-                    title_text="Probability diff" if i == 1 else None,
-                    showline=True,
-                    linewidth=self.params.line.line_width,
-                    linecolor=self.params.colors.axis_line_color,
-                    showgrid=True,
-                    gridwidth=self.params.line.grid_width,
-                    gridcolor=self.params.colors.grid_color,
-                    zeroline=True,
-                    zerolinewidth=self.params.line.zero_line_width,
-                    zerolinecolor=self.params.colors.zero_line_color,
-                    tickfont=dict(size=self.params.font.size),
-                )
-
-        return fig
-
-
-def plot_trend(
-    fig: go.Figure,
-    joined: pd.DataFrame,
-    model: str,
-    rgb: Tuple[int, int, int],
-    column: str = "Model",
-    line_dash: str = "solid",
-    col: int = 1,
-    row: int = 1,
-    style: PlotStyle = PlotStyle(),
-) -> go.Figure:
-    """Add a trend line to a plotly figure."""
-    filtered = joined[joined[column] == model]
-
-    upper = filtered["Probability diff_mean"] + filtered["Probability diff_ci95"]
-    lower = filtered["Probability diff_mean"] - filtered["Probability diff_ci95"]
-
-    name_concode_version = {
-        "Mamba-1 2.8B": "mamba-2.8B",
-        "Mamba-2 2.7B": "mamba2-2.7B",
-        "Falcon-Mamba 7B": "falcon-mamba-7B",
-        "GPT-2 1.5B": "gpt2-1.5B",
-    }
-
-    if model in name_concode_version:
-        title = name_concode_version[model]
-    else:
-        title = model
-
-    fig.add_trace(
-        go.Scatter(
-            x=100 * filtered["Depth"],
-            y=filtered["Probability diff_mean"],
-            line=dict(color=f"rgb{rgb}", dash=line_dash, width=style.params.line.line_width),
-            mode="lines",
-            name=title,
-            showlegend=((col == 1) & (row == 1)),
-        ),
-    )
-    fig.add_trace(
-        go.Scatter(
-            x=(100 * filtered["Depth"]).tolist() + (100 * filtered["Depth"][::-1]).tolist(),  # x, then x reversed
-            y=upper.tolist() + lower[::-1].tolist(),  # upper, then lower reversed
-            fill="toself",
-            fillcolor=f"rgba{rgb + (style.params.line.fill_opacity,)}",
-            line=dict(color="rgba(255,255,255,0)"),
-            hoverinfo="skip",
-            showlegend=False,
-        ),
-    )
-    return fig
-
-
-def format_fig(fig: go.Figure, n_cols: int, n_rows: int = 1, style: PlotStyle = PlotStyle()) -> go.Figure:
-    """Format a plotly figure with consistent styling."""
-    return style.apply_to_figure(fig, n_cols, n_rows)
+from src.utils.types_utils import class_values
 
 
 @dataclass
@@ -419,13 +155,18 @@ class GridLayout:
             self.render_separate(recreate_plots)
 
 
+class Tabs:
+    PLOT_INDIVIDUAL = "Plot Individually"
+    PLOT_COMBINED = "Plot Combined"
+    CUSTOMIZE_PLOT = "Customize Plot"
+
+
 class PlotGenerator(StreamlitComponent[Optional[str]]):
     """Component for generating plots based on plot plans."""
 
     def __init__(self, plot_plan: PlotPlan, result_bank: ResultBank):
         self.plot_plan = plot_plan
         self.result_bank = result_bank
-        self.style = PlotStyle()
 
     def _get_model_display_name(self, model_arch_and_size: MODEL_ARCH_AND_SIZE) -> str:
         return model_arch_and_size.model_name
@@ -461,10 +202,10 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
 
         # Create the plot based on plot type
         fig = None
-        match self.plot_plan.plot_type:
-            case PlotType.ARCHITECTURE_KNOCKOUT:
+        match self.plot_plan.experiment_name:
+            case ExperimentName.info_flow:
                 fig = self._generate_cell_knockout(fulfilled_reqs)
-            case PlotType.HEATMAP:
+            case ExperimentName.heatmap:
                 fulfilled_reqs = fulfilled_reqs.choose_latest_fulfilled()
                 items = list(fulfilled_reqs.items())
                 assert len(items) == 1
@@ -507,7 +248,7 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
                 )
 
             case _:
-                assert_never(self.plot_plan.plot_type)
+                raise ValueError(f"Unknown experiment name: {self.plot_plan.experiment_name}")
 
         if fig is not None:
             cache_path.parent.mkdir(parents=True, exist_ok=True)
@@ -595,13 +336,6 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
         """Generate and display a plot based on the plot plan."""
         st.subheader(f"{FINAL_PLOTS_TEXTS.generating_plot(self.plot_plan.title)}")
 
-        # Show style form in sidebar
-        with st.sidebar:
-            st.markdown("### Plot Settings")
-            form_submitted = self.style.show_style_form()
-            if form_submitted:
-                st.success("Style settings applied!")
-
         # Check if we have all the required data
         data_reqs = self.plot_plan.get_data_requirements(self.result_bank)
         summarized_fulfilled_reqs = data_reqs.to_fulfilled_reqs(self.result_bank).summarize()
@@ -621,34 +355,38 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
         data_reqs_per_cell = self.plot_plan.get_data_requirements_per_cell(self.result_bank)
 
         # Add checkbox for plot recreation
-        recreate_plots = st.checkbox("Recreate all plots", value=False)
-        combine_plots = st.checkbox("Combine plots", value=False)
+        tab = sac.tabs([sac.TabsItem(label=tab_name) for tab_name in class_values(Tabs)])
+        combine_plots = tab == Tabs.PLOT_COMBINED
 
-        # Group cells by grid
-        cells_by_grid: dict[Any, list[Cell]] = {}
-        for cell in data_reqs_per_cell:
-            cells_by_grid.setdefault(cell.grids, []).append(cell)
+        if tab == Tabs.CUSTOMIZE_PLOT:
+            pass
 
-        # Create tabs for different plot views
-        if len(cells_by_grid) == 1 and None in cells_by_grid:
-            tabs = [st.empty()]
-            grid_names = [None]
         else:
-            grid_options = self.plot_plan.grids
-            assert grid_options is not None
-            grid_param_definition = get_hyper_param_definition(grid_options)
-            grid_names = sorted(cells_by_grid.keys())
-            tabs = st.tabs([grid_param_definition.get_display_name(grid) for grid in grid_names])
+            recreate_plots = tab == Tabs.PLOT_INDIVIDUAL and st.checkbox("Recreate all plots", value=False)
 
-        # Render each grid
-        for grid_name, tab in zip(grid_names, tabs):
-            with tab:
-                grid_layout = GridLayout(
-                    plot_plan=self.plot_plan,
-                    cells=cells_by_grid[grid_name],
-                    data_reqs_per_cell=data_reqs_per_cell,
-                    plot_generator=self,
-                )
-                grid_layout.render(recreate_plots, combine_plots)
+            # Group cells by grid
+            cells_by_grid: dict[Any, list[Cell]] = {}
+            for cell in data_reqs_per_cell:
+                cells_by_grid.setdefault(cell.grids, []).append(cell)
 
-        return None
+            # Create tabs for different plot views
+            if len(cells_by_grid) == 1 and None in cells_by_grid:
+                tabs = [st.empty()]
+                grid_names = [None]
+            else:
+                grid_options = self.plot_plan.grids
+                assert grid_options is not None
+                grid_param_definition = get_hyper_param_definition(grid_options)
+                grid_names = sorted(cells_by_grid.keys())
+                tabs = st.tabs([grid_param_definition.get_display_name(grid) for grid in grid_names])
+
+            # Render each grid
+            for grid_name, tab in zip(grid_names, tabs):
+                with tab:
+                    grid_layout = GridLayout(
+                        plot_plan=self.plot_plan,
+                        cells=cells_by_grid[grid_name],
+                        data_reqs_per_cell=data_reqs_per_cell,
+                        plot_generator=self,
+                    )
+                    grid_layout.render(recreate_plots, combine_plots)

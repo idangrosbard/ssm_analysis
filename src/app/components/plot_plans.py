@@ -16,7 +16,6 @@ import streamlit_antd_components as sac
 
 from src.analysis.experiment_results.plot_plan import (
     PlotPlan,
-    PlotType,
     get_experiment_orientations,
     get_hyper_param_definition,
 )
@@ -73,7 +72,7 @@ class PlotPlanSelector(StreamlitComponent[None]):
                     sac.MenuItem(
                         plan.plot_id,
                         icon="file-earmark-bar-graph",
-                        description=plan.plot_type.name,
+                        # description=plan.plot_type.name,
                         tag=plan.experiment_name.name,
                     )
                 )
@@ -85,7 +84,7 @@ class PlotPlanSelector(StreamlitComponent[None]):
                     sac.MenuItem(
                         plan.plot_id,
                         icon="file-earmark-bar-graph",
-                        description=plan.plot_type.name,
+                        # description=plan.plot_type.name,
                         tag=plan.experiment_name.name,
                     )
                 )
@@ -279,7 +278,6 @@ class PlotPlanEditor(StreamlitComponent[Optional[PlotPlan]]):
                 title="",
                 description="",
                 experiment_name=ExperimentName.info_flow,
-                plot_type=PlotType.ARCHITECTURE_KNOCKOUT,
                 is_appendix=False,
                 order=0,
                 fixed_values={},
@@ -336,15 +334,6 @@ class PlotPlanEditor(StreamlitComponent[Optional[PlotPlan]]):
                             options=[exp.name for exp in ExperimentName],
                             index=list(ExperimentName).index(existing_plan.experiment_name),
                             help="Experiment type for the plot",
-                        )
-                    )
-                elif i == 1:
-                    existing_plan.plot_type = PlotType(
-                        st.selectbox(
-                            "Plot Type",
-                            options=[pt.name for pt in PlotType],
-                            index=list(PlotType).index(existing_plan.plot_type),
-                            help="Type of plot to generate",
                         )
                     )
 

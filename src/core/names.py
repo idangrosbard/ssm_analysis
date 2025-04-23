@@ -162,11 +162,6 @@ class HeatmapCols:
     MODEL_CORRECT = "Model Correct"
 
 
-class PlotType(StrEnum):
-    ARCHITECTURE_KNOCKOUT = "ARCHITECTURE_KNOCKOUT"
-    HEATMAP = "HEATMAP"
-
-
 class FinalPlotsPlanOrientation(StrEnum):
     grids = "grids"
     rows = "rows"
@@ -182,7 +177,6 @@ class PlotPlanCols(StrEnum):
     plot_id = "plot_id"
     TITLE = "title"
     description = "description"
-    plot_type = "plot_type"
     is_appendix = "is_appendix"
     order = "order"
     experiment_name = "experiment_name"
