@@ -4,7 +4,6 @@ from typing import Any, List, Optional, Tuple, TypeVar, Union
 
 from PIL import Image, ImageDraw, ImageFont
 from pydantic import BaseModel, Field
-from pydantic_extra_types.color import Color
 
 FONT_BASE = lambda x: f"/usr/share/fonts/truetype/liberation/LiberationSans{x}.ttf"  # noqa
 FONT_REGULAR = FONT_BASE("-Regular")
@@ -19,11 +18,6 @@ class ImageGridParams(BaseModel):
     font_size: int = 25
     img_width: int = Field(-1, ge=-1, description="If -1, will use max width of images")
     img_height: int = Field(-1, ge=-1, description="If -1, will use max height of images")
-    color_dict: dict[str, Color] = Field(
-        default_factory=lambda: {
-            "gpt-4o": Color((255, 0, 0, 0.5)),
-        }
-    )
     row_labels: Optional[list[str]] = None
     col_labels: Optional[list[str]] = None
     label_width: int = 200  # Width for row labels

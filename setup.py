@@ -58,6 +58,7 @@ setup(
             "st-annotated-text>=4.0.2",
             "pygwalker>=0.4.9.14",
             "streamlit-extras>=0.6.0",
+            "streamlit-cropper>=0.2.2",
         ],
         "typing": [
             "beartype>=0.20.2",

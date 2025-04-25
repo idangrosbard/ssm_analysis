@@ -10,31 +10,46 @@
 # - New file, outline will be implemented
 
 from dataclasses import dataclass
+from io import BytesIO
 from pathlib import Path
-from typing import Any, Optional, cast
+from typing import Any, Dict, Literal, Optional, Type, cast
 
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go
 import streamlit as st
 import streamlit_antd_components as sac
+from pydantic import BaseModel
 
 from src.analysis.experiment_results.helpers import get_model_evaluations
 from src.analysis.experiment_results.plot_plan import Cell, PlotPlan, get_hyper_param_definition
-from src.analysis.plots.heatmaps import simple_diff_fixed
+from src.analysis.plots.heatmaps import HeatmapPlotConfig, simple_diff_fixed
 from src.analysis.plots.image_combiner import ImageGridParams, combine_image_grid
-from src.analysis.plots.info_flow_confidence import create_confidence_plot
+from src.analysis.plots.info_flow_confidence import InfoFlowPlotConfig, PlotMetadata, create_confidence_plot
 from src.app.texts import FINAL_PLOTS_TEXTS
 from src.core.consts import MODEL_SIZES_PER_ARCH_TO_MODEL_ID, TOKEN_TYPE_COLORS, TOKEN_TYPE_LINE_STYLES
 from src.core.names import ExperimentName, SummarizedDataFulfilledReqsCols
 from src.core.types import MODEL_ARCH_AND_SIZE, TPromptData
-from src.data_ingestion.data_defs.data_defs import DataReqs, FulfilledReqs, PlotPlans, ResultBank
+from src.data_ingestion.data_defs.data_defs import (
+    DataReqs,
+    PlotPlans,
+    ResultBank,
+)
 from src.data_ingestion.helpers.logits_utils import decode_tokens, get_prompt_row_index
-from src.experiments.infrastructure.base_runner import InputParams
+from src.experiments.infrastructure.base_prompt_filteration import SamplePromptFilteration
+from src.experiments.infrastructure.base_runner import BaseRunner
 from src.experiments.infrastructure.setup_models import get_tokenizer
 from src.experiments.runners.heatmap import HeatmapRunner
 from src.experiments.runners.info_flow import InfoFlowRunner
+from src.utils.streamlit.components.extended_streamlit_pydantic import pydantic_input
 from src.utils.streamlit.helpers.component import StreamlitComponent
 from src.utils.types_utils import class_values
+
+
+@st.cache_data(hash_funcs={DataReqs: hash, ResultBank: hash})
+def _cache_get_runners(data_reqs: DataReqs, result_bank: ResultBank) -> list[BaseRunner]:
+    print(hash(data_reqs))
+    print(hash(result_bank))
+    return list(data_reqs.to_fulfilled_reqs(result_bank).choose_latest_fulfilled().get_config().values())
 
 
 @dataclass
@@ -82,7 +97,7 @@ class GridLayout:
     def render_combined(self, recreate_plots: bool = False) -> None:
         """Render all plots combined into a single image."""
         image_grid: list[list[Optional[Path]]] = []
-        row_labels, col_labels = self.get_labels()
+        row_labels, col_labels = self.get_labels()  # noqa: F841
 
         # Generate all plots and collect their paths
         for row_value in self.row_values:
@@ -98,13 +113,16 @@ class GridLayout:
                     row_images.append(None)
             image_grid.append(row_images)
 
-        # Create grid params
-        grid_params = ImageGridParams(
-            row_labels=row_labels if row_labels else None,
-            col_labels=col_labels if col_labels else None,
-            img_width=800,  # Default width for plots
-            img_height=600,  # Default height for plots
-        )
+        # Get configuration from plot_plan
+        combine_config = ImageGridParams.model_validate(self.plot_generator.plot_plan.combine_plot_config)
+
+        with st.sidebar.expander("Combined Plot Configuration"):
+            grid_params = ImageGridParams.model_validate(
+                pydantic_input(
+                    key=f"combine_config_{self.plot_plan.plot_id}",
+                    model=combine_config,
+                )
+            )
 
         # Filter out None values from image grid
         filtered_grid = [[path for path in row if path is not None] for row in image_grid]
@@ -180,41 +198,21 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
         cell_id = f"{grid_name}_{row_name}_{col_name}".replace(" ", "_")
         return cache_dir / f"{cell_id}.png"
 
-    def _plot_cell(
-        self,
-        data_reqs: DataReqs,
-        cell: Cell,
-        recreate: bool = False,
-        with_plotly: bool = False,
-        show_plot: bool = True,
-    ) -> Path:
-        """Plot a single cell with caching."""
-        cache_path = cell.get_cache_path(self.plot_plan, PlotPlans.get_cache_dir(self.plot_plan.plot_id))
+    def _plot_data_reqs(self, data_reqs: DataReqs, cell_plot_config: dict[str, Any]):
+        runners = _cache_get_runners(data_reqs, self.result_bank)
 
-        if not recreate and cache_path.exists():
-            # Load and display cached plot if needed
-            if show_plot:
-                st.image(str(cache_path))
-            return cache_path
-
-        # Get fulfilled requirements
-        fulfilled_reqs = data_reqs.to_fulfilled_reqs(self.result_bank)
-
-        # Create the plot based on plot type
         fig = None
         match self.plot_plan.experiment_name:
             case ExperimentName.info_flow:
-                fig = self._generate_cell_knockout(fulfilled_reqs)
+                # Convert dict to InfoFlowPlotConfig
+                config = InfoFlowPlotConfig.model_validate(cell_plot_config)
+                fig = self._generate_cell_knockout(runners, config)
             case ExperimentName.heatmap:
-                fulfilled_reqs = fulfilled_reqs.choose_latest_fulfilled()
-                items = list(fulfilled_reqs.items())
-                assert len(items) == 1
-                filterations, runners = items[0][1]
-                prompt_idx = filterations.get_prompt_ids()
-                assert len(prompt_idx) == 1
                 assert len(runners) == 1
-                runner = runners[0].modify(input_params=InputParams(filteration=filterations))
+                runner = runners[0]
                 assert isinstance(runner, HeatmapRunner)
+                prompt_idx = runner.input_params.filteration.get_prompt_ids()
+                assert len(prompt_idx) == 1
                 prompt_id = prompt_idx[0]
                 model_arch_and_size = MODEL_ARCH_AND_SIZE(
                     runner.variant_params.model_arch, runner.variant_params.model_size
@@ -236,6 +234,9 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
                 last_tok = toks[-1]
                 toks[-1] = toks[-1] + "*"
 
+                # Convert dict to HeatmapPlotConfig
+                config = HeatmapPlotConfig.model_validate(cell_plot_config)
+
                 fig, _ = simple_diff_fixed(
                     prob_mat=prob_mat,
                     model_id=model_id,
@@ -244,12 +245,32 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
                     base_prob=prompt.base_prob,
                     true_word=prompt.true_word,
                     toks=toks,
-                    fixed_diff=0.3,
+                    config=config,
                 )
 
             case _:
                 raise ValueError(f"Unknown experiment name: {self.plot_plan.experiment_name}")
 
+        return fig
+
+    def _plot_cell(
+        self,
+        data_reqs: DataReqs,
+        cell: Cell,
+        recreate: bool = False,
+        with_plotly: bool = False,
+        show_plot: bool = True,
+    ) -> Path:
+        """Plot a single cell with caching."""
+        cache_path = cell.get_cache_path(self.plot_plan, PlotPlans.get_cache_dir(self.plot_plan.plot_id))
+
+        if not recreate and cache_path.exists():
+            # Load and display cached plot if needed
+            if show_plot:
+                st.image(str(cache_path))
+            return cache_path
+
+        fig = self._plot_data_reqs(data_reqs, self.plot_plan.cell_plot_config)
         if fig is not None:
             cache_path.parent.mkdir(parents=True, exist_ok=True)
             if isinstance(fig, go.Figure):
@@ -268,10 +289,9 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
 
         return cache_path
 
-    def _generate_cell_knockout(self, fulfilled_reqs: FulfilledReqs):
+    def _generate_cell_knockout(self, runners: list[BaseRunner], cell_plot_config: InfoFlowPlotConfig):
         """Generate knockout plot for a single cell."""
         # Create the base figure
-        configs = list(fulfilled_reqs.get_config().values())
         data = []
         title = "-".join(
             [
@@ -280,54 +300,52 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
                 # str(config.runner_params.window_size),
             ]
         )
-        for config in configs:
-            assert isinstance(config, InfoFlowRunner)
+        for runner in runners:
+            assert isinstance(runner, InfoFlowRunner)
 
-            try:
-                data.append(
-                    {
-                        "label": f"{config.variant_params.source} - {config.variant_params.feature_category}",
-                        "color": TOKEN_TYPE_COLORS.get(config.variant_params.source, "#000000"),
-                        "linestyle": TOKEN_TYPE_LINE_STYLES.get(config.variant_params.feature_category, "-"),
-                        "data": config.get_outputs(),
-                    }
-                )
-            except Exception as e:
-                # TODO: remove
-                print(e)
-                print(config.variant_params)
-                config.output_file.get_statistics.cache_clear()  # type: ignore
-                if config.output_file.statistics_path.exists():
-                    config.output_file.statistics_path.unlink()
-                data.append(
-                    {
-                        "label": f"{config.variant_params.source} - {config.variant_params.feature_category}",
-                        "color": TOKEN_TYPE_COLORS.get(config.variant_params.source, "#000000"),
-                        "linestyle": TOKEN_TYPE_LINE_STYLES.get(config.variant_params.feature_category, "-"),
-                        "data": config.get_outputs(),
-                    }
-                )
-        with_fixed_limits = False
+            data.append(
+                {
+                    "label": f"{runner.variant_params.source} - {runner.variant_params.feature_category}",
+                    "color": TOKEN_TYPE_COLORS.get(runner.variant_params.source, "#000000"),
+                    "linestyle": TOKEN_TYPE_LINE_STYLES.get(runner.variant_params.feature_category, "-"),
+                    "data": runner.get_outputs(),
+                }
+            )
+
+        # Prepare metadata for plots based on selected metrics
+        plots_meta_data: dict[Literal["acc", "diff"], PlotMetadata] = {}
+
+        if "acc" in cell_plot_config.metrics_to_show:
+            plots_meta_data["acc"] = PlotMetadata(
+                title="Accuracy",
+                ylabel="% accuracy",
+                ylabel_loc="center",
+                axhline_value=100.0,
+                ylim=(cell_plot_config.acc_ylim_min, cell_plot_config.acc_ylim_max)
+                if cell_plot_config.with_fixed_limits
+                else None,
+            )
+
+        if "diff" in cell_plot_config.metrics_to_show:
+            plots_meta_data["diff"] = PlotMetadata(
+                title="Normalized change in prediction probability",
+                ylabel="% probability change",
+                ylabel_loc="top",
+                axhline_value=0.0,
+                ylim=(cell_plot_config.diff_ylim_min, cell_plot_config.diff_ylim_max)
+                if cell_plot_config.with_fixed_limits
+                else None,
+            )
+
+        # Use custom title if provided
+        custom_title = cell_plot_config.title if cell_plot_config.title else title
+
         fig = create_confidence_plot(
             lines_metadata=data,
-            confidence_level=0.95,
-            title=title,
-            plots_meta_data={
-                "acc": {
-                    "title": "Accuracy",
-                    "ylabel": "% accuracy",
-                    "ylabel_loc": "center",
-                    "axhline_value": 100.0,
-                    "ylim": (60.0, 105.0) if with_fixed_limits else None,
-                },
-                "diff": {
-                    "title": "Normalized change in prediction probability",
-                    "ylabel": "% probability change",
-                    "ylabel_loc": "top",
-                    "axhline_value": 0.0,
-                    "ylim": (-50.0, 50.0) if with_fixed_limits else None,
-                },
-            },
+            confidence_level=cell_plot_config.confidence_level,
+            title=custom_title,
+            plots_meta_data=plots_meta_data,
+            config=cell_plot_config,
         )
 
         return fig
@@ -359,7 +377,73 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
         combine_plots = tab == Tabs.PLOT_COMBINED
 
         if tab == Tabs.CUSTOMIZE_PLOT:
-            pass
+            # Initialize configs if they don't exist
+            # Show customization UI
+            st.write("### Cell Plot Configuration")
+            config_model = get_config_for_experiment_name(self.plot_plan.experiment_name)
+            with st.sidebar:
+                with st.expander("Cell Plot Configuration"):
+                    cell_config_dict = pydantic_input(
+                        key=f"cell_config_{self.plot_plan.plot_id}",
+                        model=config_model.model_validate(self.plot_plan.cell_plot_config),  # type: ignore
+                    )
+
+            data_reqs_cells = list(data_reqs_per_cell.keys())
+            # Show preview of first cell
+            if data_reqs_per_cell:
+                select_col, sample_col = st.columns(2)
+                with select_col:
+                    i = st.selectbox(
+                        "Select cell to preview",
+                        range(len(data_reqs_cells)),
+                        format_func=lambda i: data_reqs_cells[i],
+                    )
+                    cell_to_show = data_reqs_cells[i]
+
+                runner = next(
+                    iter(data_reqs_per_cell[cell_to_show].to_fulfilled_reqs(self.result_bank).get_config().values())
+                )
+                prompt_filteration = runner.input_params.filteration
+                prompt_ids = prompt_filteration.get_prompt_ids()
+
+                if self.plot_plan.experiment_name == ExperimentName.info_flow:
+                    with sample_col:
+                        sample_results_count = st.slider(
+                            "Sample results count",
+                            min_value=50,
+                            max_value=len(prompt_ids),
+                            value=50,
+                        )
+
+                    data_req = DataReqs(
+                        {
+                            runner: SamplePromptFilteration(
+                                base_prompt_filteration=prompt_filteration,
+                                sample_size=sample_results_count,
+                                seed=42,
+                            )
+                            for runner, prompt_filteration in data_reqs_per_cell[cell_to_show].items()
+                        }
+                    )
+                else:
+                    data_req = data_reqs_per_cell[cell_to_show]
+
+                fig = self._plot_data_reqs(data_req, cell_config_dict)
+                buf = BytesIO()
+                fig.savefig(buf, format="png")
+                buf.seek(0)
+                st.image(buf)
+
+            # Add save button
+            if st.button("Save Configuration"):
+                self.plot_plan.cell_plot_config = cell_config_dict
+
+                # Save to disk
+                plot_plans = PlotPlans.load()
+                plot_plans._items[self.plot_plan.plot_id] = self.plot_plan
+                plot_plans.save()
+
+                st.success("Configuration saved successfully!")
 
         else:
             recreate_plots = tab == Tabs.PLOT_INDIVIDUAL and st.checkbox("Recreate all plots", value=False)
@@ -390,3 +474,23 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
                         plot_generator=self,
                     )
                     grid_layout.render(recreate_plots, combine_plots)
+
+
+def get_config_for_experiment_name(experiment_name: ExperimentName) -> Type[BaseModel]:
+    """Get the appropriate configuration model based on experiment name."""
+    if experiment_name == ExperimentName.info_flow:
+        return InfoFlowPlotConfig
+    elif experiment_name == ExperimentName.heatmap:
+        return HeatmapPlotConfig
+    else:
+        raise ValueError(f"Experiment name {experiment_name} is not implemented")
+
+
+def get_default_cell_config(experiment_name: ExperimentName) -> Dict[str, Any]:
+    """Get the default cell configuration for a plot type."""
+    if experiment_name == ExperimentName.info_flow:
+        return InfoFlowPlotConfig().model_dump()
+    elif experiment_name == ExperimentName.heatmap:
+        return HeatmapPlotConfig().model_dump()
+    else:
+        raise ValueError(f"Experiment name {experiment_name} is not implemented")

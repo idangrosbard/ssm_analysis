@@ -21,6 +21,7 @@ from src.core.types import (
     FeatureCategory,
     TCodeVersionName,
     TDatasetID,
+    TLineStyle,
     TModelID,
     TModelSize,
     TokenType,
@@ -345,20 +346,15 @@ TOKEN_TYPE_COLORS: dict[TokenType, str] = {
     TokenType.relation_minus_last: "#800000",  # maroon
 }
 
-TOKEN_TYPE_LINE_STYLES: dict[FeatureCategory, str] = {
+TOKEN_TYPE_LINE_STYLES: dict[FeatureCategory, TLineStyle] = {
     # Options: "-", ":", "--", "-.", "-.-", "-.-."
-    FeatureCategory.ALL: "-",
-    FeatureCategory.FAST_DECAY: "-.",
-    FeatureCategory.SLOW_DECAY: ":",
+    FeatureCategory.ALL: TLineStyle.solid,
+    FeatureCategory.FAST_DECAY: TLineStyle.dashdot,
+    FeatureCategory.SLOW_DECAY: TLineStyle.dash,
 }
 
 CONVERT_TO_PLOTLY_LINE_STYLE = {
-    "-": "solid",
-    ":": "dot",
-    "--": "dash",
-    "-.": "longdashdot",
-    "-.-": "dashdot",
-    "-.-.": "longdash",
+    **{line_style.name: line_style for line_style in TLineStyle},
 }
 
 

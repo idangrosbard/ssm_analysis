@@ -176,3 +176,12 @@ class MODEL_ARCH_AND_SIZE(NamedTuple):
     @property
     def model_name(self) -> str:
         return f"{self.arch}-{self.size}"
+
+
+class TLineStyle(StrEnum):
+    solid = "-"
+    dash = "--"
+    dot = ":"
+    dashdot = "-."
+    dashdotdot = "-.-"
+    dashdotdotdot = "-.-."

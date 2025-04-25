@@ -88,9 +88,6 @@ class DataReqiermentCollection:
 
 
 class DataReqs(IndexableDataObject[BaseVariantParams, BasePromptFilteration]):
-    def __init__(self, data_reqs: dict[BaseVariantParams, BasePromptFilteration]):
-        super().__init__(data_reqs)
-
     def to_fulfilled_reqs(self, result_bank: ResultBank[BaseRunner]) -> FulfilledReqs:
         data_reqs_options: dict[BaseVariantParams, list[BaseRunner]] = {
             data_req: [] for data_req, _ in self._items.items()
@@ -108,7 +105,7 @@ class DataReqs(IndexableDataObject[BaseVariantParams, BasePromptFilteration]):
                         data_reqs_options[runner.variant_params].append(runner)
 
         return FulfilledReqs(
-            {data_req: (self._items[data_req], options) for data_req, options in data_reqs_options.items()}
+            {data_req: (self._items[data_req], tuple(options)) for data_req, options in data_reqs_options.items()}
         )
 
     @classmethod
@@ -116,10 +113,10 @@ class DataReqs(IndexableDataObject[BaseVariantParams, BasePromptFilteration]):
         return cls(data_reqs.to_dict())
 
 
-class FulfilledReqs(IndexableDataObject[BaseVariantParams, tuple[BasePromptFilteration, List[BaseRunner]]]):
+class FulfilledReqs(IndexableDataObject[BaseVariantParams, tuple[BasePromptFilteration, tuple[BaseRunner, ...]]]):
     def __init__(
         self,
-        fulfilled_reqs: Dict[BaseVariantParams, tuple[BasePromptFilteration, List[BaseRunner]]],
+        fulfilled_reqs: Dict[BaseVariantParams, tuple[BasePromptFilteration, tuple[BaseRunner, ...]]],
     ):
         super().__init__(fulfilled_reqs)
 
@@ -127,12 +124,9 @@ class FulfilledReqs(IndexableDataObject[BaseVariantParams, tuple[BasePromptFilte
         return SummarizedDataFulfilledReqs(self)
 
     def choose_latest_fulfilled(self) -> FulfilledReqs:
-        def get_latest_results() -> Dict[BaseVariantParams, tuple[BasePromptFilteration, List[BaseRunner]]]:
+        def get_latest_results() -> Dict[BaseVariantParams, tuple[BasePromptFilteration, tuple[BaseRunner, ...]]]:
             return {
-                data_req: (
-                    filteration,
-                    [max(options, key=lambda x: x.metadata_params.code_version)],
-                )
+                data_req: (filteration, tuple([max(options, key=lambda x: x.metadata_params.code_version)]))
                 for data_req, (filteration, options) in self._items.items()
             }
 

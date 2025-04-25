@@ -250,6 +250,7 @@ class SamplePromptFilteration(ProxyPromptFilteration):
     def _get_prompt_ids(
         self, get_prompt_ids: Callable[[BasePromptFilteration], list[TPromptOriginalIndex]]
     ) -> list[TPromptOriginalIndex]:
+        random.seed(self.seed)
         return random.sample(get_prompt_ids(self.base_prompt_filteration), self.sample_size)
 
     def get_dependencies(self) -> TDependencies:

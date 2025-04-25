@@ -1,6 +1,7 @@
 from enum import Enum
 from typing import Any, Callable, Dict, Type, TypeVar
 
+import streamlit as st
 from pydantic import BaseModel
 from streamlit_pydantic import schema_utils
 from streamlit_pydantic.ui_renderer import GroupOptionalFieldsStrategy, InputUI
@@ -130,19 +131,31 @@ class CustomInputUI(InputUI):
 
 def pydantic_input(
     key: str,
-    model: Type[BaseModel],
+    model: BaseModel | Type[BaseModel],
     group_optional_fields: GroupOptionalFieldsStrategy = GroupOptionalFieldsStrategy.NO,
     lowercase_labels: bool = False,
     ignore_empty_values: bool = False,
 ) -> Dict:
     """Extended version of pydantic_input that uses CustomInputUI."""
-    return CustomInputUI(
+    model_instance = {}
+    if isinstance(model, BaseModel):
+        model_instance = model.model_dump()
+        model = model.__class__
+
+    ui = CustomInputUI(
         key,
         model,
         group_optional_fields=group_optional_fields,
         lowercase_labels=lowercase_labels,
         ignore_empty_values=ignore_empty_values,
-    ).render_ui()
+    )
+    reset_values = st.button("Reset values")
+    if model_instance:
+        for key, value in model_instance.items():
+            if reset_values or ui._get_value(key) is None:
+                ui._store_value(key, value)
+
+    return ui.render_ui()
 
 
 # Example of how to register a custom renderer:

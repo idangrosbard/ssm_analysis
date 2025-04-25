@@ -6,7 +6,7 @@ from typing import ClassVar, Literal, Optional, TypedDict
 
 import numpy as np
 import torch
-from cachetools import TTLCache, cached
+from cachetools import LRUCache, cached
 from tqdm import tqdm
 
 from src.analysis.prompt_filterations import (
@@ -103,6 +103,10 @@ class InfoFlowFileStatistics:
         return json.dumps(data, indent=4)
 
 
+OUTPUTS_CACHE = LRUCache(maxsize=10)
+STATISTICS_CACHE = LRUCache(maxsize=10)
+
+
 @dataclass(frozen=True)
 class JSONInfoFlowFile:
     path: Path
@@ -123,7 +127,7 @@ class JSONInfoFlowFile:
         self.statistics_path.unlink(missing_ok=True)
         self.path.write_text(json.dumps(data, indent=4))
 
-    @cached(TTLCache(maxsize=1, ttl=60))
+    @cached(OUTPUTS_CACHE)
     def load(self) -> InfoFlowFileContent:
         if not self.path.exists():
             return InfoFlowFileContent(
@@ -186,7 +190,7 @@ class JSONInfoFlowFile:
             for layer_id in layer_idx
         }
 
-    @cached(TTLCache(maxsize=1, ttl=60))
+    @cached(STATISTICS_CACHE)
     def get_statistics(self) -> InfoFlowFileStatistics:
         # TODO: remove
         if (old_path := self.statistics_path.parent / "info_flow.json.stats").exists():
