@@ -1,23 +1,18 @@
----
-description: Project Structure
-globs: 
-alwaysApply: false
----
 # ssm_analysis
 
-This is a repository for the analysis of State Space Models (SSM) data, focusing on understanding and comparing different model architectures through knockout analysis. The project includes tools for data processing, model evaluation, visualization, and interactive exploration of results.
+This is a repository for the analysis of State Space Models (SSM) and Transformer models, focusing on understanding model decision-making through knockout analysis. The project investigates how different parts of a sentence influence model predictions by selectively blocking attention or state updates between tokens.
 
 Project Structure:
 
 - [src/](mdc:src/__init__.py)
   - [analysis/](mdc:src/analysis/__init__.py)                                   # Analysis utilities and visualization functions
     - [plots/](mdc:src/analysis/plots/__init__.py)                                    # Plotting utilities for analysis
-      - [image_combiner.py](mdc:src/analysis/plots/image_combiner.py)                       # Image combination utilities - combines multiple plots into a single image
-      - [heatmaps.py](mdc:src/analysis/plots/heatmaps.py)                             # Creates heatmap visualizations for model analysis
+      - [image_combiner.py](mdc:src/analysis/plots/image_combiner.py)                       # Combines multiple plots into a single image with smart cropping
+      - [heatmaps.py](mdc:src/analysis/plots/heatmaps.py)                             # Creates heatmap visualizations for model knockout analysis
       - [info_flow_confidence.py](mdc:src/analysis/plots/info_flow_confidence.py)                   # Plotting confidence intervals for information flow analysis
     - [experiment_results/](mdc:src/analysis/experiment_results/__init__.py)                       # Utilities for processing and analyzing experiment results
-      - [results_bank.py](mdc:src/analysis/experiment_results/results_bank.py)                         # Provides an interface for retrieving and manipulating results from the results bank
-      - [plot_plan.py](mdc:src/analysis/experiment_results/plot_plan.py)                            # Defines structured specifications for plot generation
+      - [results_bank.py](mdc:src/analysis/experiment_results/results_bank.py)                         # Interface for retrieving and manipulating results from experiments
+      - [plot_plan.py](mdc:src/analysis/experiment_results/plot_plan.py)                            # Defines structured specifications for plot generation and organization
       - [default_data_reqs.py](mdc:src/analysis/experiment_results/default_data_reqs.py)                    # Defines default data requirements for different analysis types
       - [model_prompt_combination.py](mdc:src/analysis/experiment_results/model_prompt_combination.py)             # Manages combinations of models and prompts for experiment design
       - [helpers.py](mdc:src/analysis/experiment_results/helpers.py)                              # Helper functions for experiment results analysis
@@ -25,7 +20,7 @@ Project Structure:
   - [app/](mdc:src/app/__init__.py)                                        # Streamlit application code and UI components
     - [entry_point.py](mdc:src/app/entry_point.py)                            # Application entry point and setup
     - [app_consts.py](mdc:src/app/app_consts.py)                             # Application-specific constants and settings
-    - [data_store.py](mdc:src/app/data_store.py)                             # Data management for the application
+    - [data_store.py](mdc:src/app/data_store.py)                             # Cached data management for the application
     - [texts.py](mdc:src/app/texts.py)                                  # Text content and localization
     - [app_utils.py](mdc:src/app/app_utils.py)                              # Utility functions specific to the application
     - [components/](mdc:src/app/components/__init__.py)                               # Reusable UI components for the Streamlit app
@@ -41,13 +36,13 @@ Project Structure:
       - [tokenization.py](mdc:src/app/components/tokenization.py)                         # Tools for tokenization visualization and analysis
     - [page/](mdc:src/app/page/__init__.py)                                     # Individual pages of the Streamlit application
       - [p01_home.py](mdc:src/app/page/p01_home.py)                             # Main dashboard and navigation page
-      - [p02_results_bank.py](mdc:src/app/page/p02_results_bank.py)                     # Interface for exploring the results database
-      - [p03_data_requirements.py](mdc:src/app/page/p03_data_requirements.py)                # Page for configuring data requirements
+      - [p02_results_bank.py](mdc:src/app/page/p02_results_bank.py)                     # Interface for exploring the experiment results
+      - [p03_data_requirements.py](mdc:src/app/page/p03_data_requirements.py)                # Page for configuring and running data requirements
       - [p04_heatmap_creation.py](mdc:src/app/page/p04_heatmap_creation.py)                 # Tools for creating and customizing heatmaps
-      - [p05_info_flow_analysis.py](mdc:src/app/page/p05_info_flow_analysis.py)                # Interface for information flow visualization and analysis
+      - [p05_info_flow_analysis.py](mdc:src/app/page/p05_info_flow_analysis.py)                # Interface for information flow visualization
       - [p06_final_plots.py](mdc:src/app/page/p06_final_plots.py)                       # Generation of publication-ready plots
-      - [p07_prompts_comparison.py](mdc:src/app/page/p07_prompts_comparison.py)               # Tools for comparing model performance across prompts
-      - [p08_mamba_analysis.py](mdc:src/app/page/p08_mamba_analysis.py)                   # Specialized tools for Mamba model analysis
+      - [p07_prompts_comparison.py](mdc:src/app/page/p07_prompts_comparison.py)               # Tools for comparing tokenization across prompts
+      - [p08_mamba_analysis.py](mdc:src/app/page/p08_mamba_analysis.py)                   # Specialized tools for Mamba architecture analysis (WIP)
       - [p09_prompt_filteration_presets.py](mdc:src/app/page/p09_prompt_filteration_presets.py)        # Management of preset filters for prompt selection
   - [core/](mdc:src/core/__init__.py)                                       # Global constants and type definitions
     - [consts.py](mdc:src/core/consts.py)                                 # Global constants, configurations, file paths, and environment settings
@@ -55,7 +50,7 @@ Project Structure:
     - [types.py](mdc:src/core/types.py)                                  # Custom type definitions, enums, and type aliases
   - [data_ingestion/](mdc:src/data_ingestion/__init__.py)                             # Data processing and handling
     - [data_defs/](mdc:src/data_ingestion/data_defs/__init__.py)                                # Data structure definitions
-      - [data_defs.py](mdc:src/data_ingestion/data_defs/data_defs.py)                            # Core data container classes and utilities
+      - [data_defs.py](mdc:src/data_ingestion/data_defs/data_defs.py)                            # Core data container classes and object relationships
     - [datasets/](mdc:src/data_ingestion/datasets/__init__.py)                                 # Dataset handling code
       - [download_dataset.py](mdc:src/data_ingestion/datasets/download_dataset.py)                     # Utilities for downloading datasets
       - [splitting.py](mdc:src/data_ingestion/datasets/splitting.py)                            # Tools for splitting data into train/validation/test sets
@@ -64,14 +59,14 @@ Project Structure:
       - [logits_utils.py](mdc:src/data_ingestion/helpers/logits_utils.py)                         # Utilities for working with model logits
   - [experiments/](mdc:src/experiments/__init__.py)                                # Experiment framework and implementations
     - [infrastructure/](mdc:src/experiments/infrastructure/__init__.py)                           # Core infrastructure for experiment execution
-      - [base_runner.py](mdc:src/experiments/infrastructure/base_runner.py)                          # Base class for experiment runners
+      - [base_runner.py](mdc:src/experiments/infrastructure/base_runner.py)                          # Base class for experiment runners with caching and checkpointing
       - [model_interface.py](mdc:src/experiments/infrastructure/model_interface.py)                      # Abstract interface for model interactions
       - [setup_models.py](mdc:src/experiments/infrastructure/setup_models.py)                         # Utilities for model initialization and configuration
     - [runners/](mdc:src/experiments/runners/__init__.py)                                  # Concrete experiment implementations
-      - [evaluate_model.py](mdc:src/experiments/runners/evaluate_model.py)                       # Runner for basic model evaluation
-      - [full_pipeline.py](mdc:src/experiments/runners/full_pipeline.py)                        # End-to-end experiment pipeline
-      - [heatmap.py](mdc:src/experiments/runners/heatmap.py)                              # Runner for generating heatmap visualizations
-      - [info_flow.py](mdc:src/experiments/runners/info_flow.py)                             # Runner for information flow analysis
+      - [evaluate_model.py](mdc:src/experiments/runners/evaluate_model.py)                       # Runner for basic model evaluation (dependency for other experiments)
+      - [full_pipeline.py](mdc:src/experiments/runners/full_pipeline.py)                        # End-to-end experiment pipeline combining multiple experiments
+      - [heatmap.py](mdc:src/experiments/runners/heatmap.py)                              # Runner for per-prompt token-to-token influence analysis
+      - [info_flow.py](mdc:src/experiments/runners/info_flow.py)                             # Runner for cross-prompt information flow analysis with layer windows
     - [knockout/](mdc:src/experiments/knockout/__init__.py)                                 # Implementation of knockout analysis for different model architectures
       - [gpt/](mdc:src/experiments/knockout/gpt/__init__.py)                                    # Transformer-based model knockout implementations
         - [gpt2/](mdc:src/experiments/knockout/gpt/gpt2/__init__.py)                                 # GPT2-specific knockout methods
@@ -111,7 +106,7 @@ Project Structure:
         - [extended_streamlit_pydantic.py](mdc:src/utils/streamlit/components/extended_streamlit_pydantic.py)     # Extended Pydantic form components
       - [helpers/](mdc:src/utils/streamlit/helpers/__init__.py)                                # Helper utilities for Streamlit
         - [cache.py](mdc:src/utils/streamlit/helpers/cache.py)                              # Caching utilities for Streamlit
-        - [component.py](mdc:src/utils/streamlit/helpers/component.py)                          # Base component implementation
+        - [component.py](mdc:src/utils/streamlit/helpers/component.py)                          # Base component implementation for StreamlitComponent and StreamlitPage
         - [global_store.py](mdc:src/utils/streamlit/helpers/global_store.py)                       # Global state management
         - [redirect_output.py](mdc:src/utils/streamlit/helpers/redirect_output.py)                    # Output redirection utilities
-        - [session_keys.py](mdc:src/utils/streamlit/helpers/session_keys.py)                       # Session state key management
+        - [session_keys.py](mdc:src/utils/streamlit/helpers/session_keys.py)                       # Session state key management with object-oriented interface

@@ -12,7 +12,7 @@
 from dataclasses import dataclass
 from io import BytesIO
 from pathlib import Path
-from typing import Any, Dict, Literal, Optional, Type, cast
+from typing import Any, Optional, Type, cast
 
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go
@@ -24,11 +24,16 @@ from src.analysis.experiment_results.helpers import get_model_evaluations
 from src.analysis.experiment_results.plot_plan import Cell, PlotPlan, get_hyper_param_definition
 from src.analysis.plots.heatmaps import HeatmapPlotConfig, simple_diff_fixed
 from src.analysis.plots.image_combiner import ImageGridParams, combine_image_grid
-from src.analysis.plots.info_flow_confidence import InfoFlowPlotConfig, PlotMetadata, create_confidence_plot
+from src.analysis.plots.info_flow_confidence import (
+    InfoFlowPlotConfig,
+    PlotMetadata,
+    TMetricType,
+    create_confidence_plot,
+)
 from src.app.texts import FINAL_PLOTS_TEXTS
-from src.core.consts import MODEL_SIZES_PER_ARCH_TO_MODEL_ID, TOKEN_TYPE_COLORS, TOKEN_TYPE_LINE_STYLES
-from src.core.names import ExperimentName, SummarizedDataFulfilledReqsCols
-from src.core.types import MODEL_ARCH_AND_SIZE, TPromptData
+from src.core.consts import MODEL_SIZES_PER_ARCH_TO_MODEL_ID
+from src.core.names import ExperimentName, FinalPlotsPlanOrientation, SummarizedDataFulfilledReqsCols
+from src.core.types import MODEL_ARCH_AND_SIZE, TInfoFlowOutput, TPromptData
 from src.data_ingestion.data_defs.data_defs import (
     DataReqs,
     PlotPlans,
@@ -47,8 +52,6 @@ from src.utils.types_utils import class_values
 
 @st.cache_data(hash_funcs={DataReqs: hash, ResultBank: hash})
 def _cache_get_runners(data_reqs: DataReqs, result_bank: ResultBank) -> list[BaseRunner]:
-    print(hash(data_reqs))
-    print(hash(result_bank))
     return list(data_reqs.to_fulfilled_reqs(result_bank).choose_latest_fulfilled().get_config().values())
 
 
@@ -186,9 +189,6 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
         self.plot_plan = plot_plan
         self.result_bank = result_bank
 
-    def _get_model_display_name(self, model_arch_and_size: MODEL_ARCH_AND_SIZE) -> str:
-        return model_arch_and_size.model_name
-
     def _get_cell_cache_path(self, grid_name: Any, row_name: Any, col_name: Any) -> Path:
         """Generate a unique cache path for a cell's plot."""
         cache_dir = PlotPlans.get_cache_dir(self.plot_plan.plot_id)
@@ -292,7 +292,7 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
     def _generate_cell_knockout(self, runners: list[BaseRunner], cell_plot_config: InfoFlowPlotConfig):
         """Generate knockout plot for a single cell."""
         # Create the base figure
-        data = []
+        data: dict[str, TInfoFlowOutput] = {}
         title = "-".join(
             [
                 # config.common_params.model_arch,
@@ -300,48 +300,38 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
                 # str(config.runner_params.window_size),
             ]
         )
-        for runner in runners:
+        lines_hp_definition = self.plot_plan.get_orientation_value_hpd(FinalPlotsPlanOrientation.lines)
+        assert lines_hp_definition is not None
+        line_ids = [
+            lines_hp_definition.get_display_name(x)
+            for x in self.plot_plan.get_options_for_param(FinalPlotsPlanOrientation.lines)
+        ]
+        for line_id, runner in zip(line_ids, runners):
             assert isinstance(runner, InfoFlowRunner)
 
-            data.append(
-                {
-                    "label": f"{runner.variant_params.source} - {runner.variant_params.feature_category}",
-                    "color": TOKEN_TYPE_COLORS.get(runner.variant_params.source, "#000000"),
-                    "linestyle": TOKEN_TYPE_LINE_STYLES.get(runner.variant_params.feature_category, "-"),
-                    "data": runner.get_outputs(),
-                }
-            )
+            data[line_id] = runner.get_outputs()
 
         # Prepare metadata for plots based on selected metrics
-        plots_meta_data: dict[Literal["acc", "diff"], PlotMetadata] = {}
+        plots_meta_data: dict[TMetricType, PlotMetadata] = {}
 
-        if "acc" in cell_plot_config.metrics_to_show:
-            plots_meta_data["acc"] = PlotMetadata(
+        if TMetricType.ACC in cell_plot_config.metrics_to_show:
+            plots_meta_data[TMetricType.ACC] = PlotMetadata(
                 title="Accuracy",
                 ylabel="% accuracy",
-                ylabel_loc="center",
                 axhline_value=100.0,
-                ylim=(cell_plot_config.acc_ylim_min, cell_plot_config.acc_ylim_max)
-                if cell_plot_config.with_fixed_limits
-                else None,
             )
 
-        if "diff" in cell_plot_config.metrics_to_show:
-            plots_meta_data["diff"] = PlotMetadata(
+        if TMetricType.DIFF in cell_plot_config.metrics_to_show:
+            plots_meta_data[TMetricType.DIFF] = PlotMetadata(
                 title="Normalized change in prediction probability",
                 ylabel="% probability change",
-                ylabel_loc="top",
                 axhline_value=0.0,
-                ylim=(cell_plot_config.diff_ylim_min, cell_plot_config.diff_ylim_max)
-                if cell_plot_config.with_fixed_limits
-                else None,
             )
 
         # Use custom title if provided
         custom_title = cell_plot_config.title if cell_plot_config.title else title
-
         fig = create_confidence_plot(
-            lines_metadata=data,
+            lines=data,
             confidence_level=cell_plot_config.confidence_level,
             title=custom_title,
             plots_meta_data=plots_meta_data,
@@ -349,6 +339,22 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
         )
 
         return fig
+
+    def _get_config_for_experiment_name(self, experiment_name: ExperimentName) -> Type[BaseModel]:
+        """Get the appropriate configuration model based on experiment name."""
+        if experiment_name == ExperimentName.info_flow:
+            lines_hp_definition = self.plot_plan.get_orientation_value_hpd(FinalPlotsPlanOrientation.lines)
+            assert lines_hp_definition is not None
+            return InfoFlowPlotConfig.specify_config(
+                [
+                    lines_hp_definition.get_display_name(x)
+                    for x in self.plot_plan.get_options_for_param(FinalPlotsPlanOrientation.lines)
+                ]
+            )
+        elif experiment_name == ExperimentName.heatmap:
+            return HeatmapPlotConfig
+        else:
+            raise ValueError(f"Experiment name {experiment_name} is not implemented")
 
     def render(self) -> Optional[str]:
         """Generate and display a plot based on the plot plan."""
@@ -380,7 +386,7 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
             # Initialize configs if they don't exist
             # Show customization UI
             st.write("### Cell Plot Configuration")
-            config_model = get_config_for_experiment_name(self.plot_plan.experiment_name)
+            config_model = self._get_config_for_experiment_name(self.plot_plan.experiment_name)
             with st.sidebar:
                 with st.expander("Cell Plot Configuration"):
                     cell_config_dict = pydantic_input(
@@ -429,6 +435,7 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
                     data_req = data_reqs_per_cell[cell_to_show]
 
                 fig = self._plot_data_reqs(data_req, cell_config_dict)
+                # st.pyplot(fig, use_container_width=False)
                 buf = BytesIO()
                 fig.savefig(buf, format="png")
                 buf.seek(0)
@@ -446,7 +453,7 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
                 st.success("Configuration saved successfully!")
 
         else:
-            recreate_plots = tab == Tabs.PLOT_INDIVIDUAL and st.checkbox("Recreate all plots", value=False)
+            recreate_plots = tab == Tabs.PLOT_INDIVIDUAL and st.button("Recreate all plots")
 
             # Group cells by grid
             cells_by_grid: dict[Any, list[Cell]] = {}
@@ -474,23 +481,3 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
                         plot_generator=self,
                     )
                     grid_layout.render(recreate_plots, combine_plots)
-
-
-def get_config_for_experiment_name(experiment_name: ExperimentName) -> Type[BaseModel]:
-    """Get the appropriate configuration model based on experiment name."""
-    if experiment_name == ExperimentName.info_flow:
-        return InfoFlowPlotConfig
-    elif experiment_name == ExperimentName.heatmap:
-        return HeatmapPlotConfig
-    else:
-        raise ValueError(f"Experiment name {experiment_name} is not implemented")
-
-
-def get_default_cell_config(experiment_name: ExperimentName) -> Dict[str, Any]:
-    """Get the default cell configuration for a plot type."""
-    if experiment_name == ExperimentName.info_flow:
-        return InfoFlowPlotConfig().model_dump()
-    elif experiment_name == ExperimentName.heatmap:
-        return HeatmapPlotConfig().model_dump()
-    else:
-        raise ValueError(f"Experiment name {experiment_name} is not implemented")

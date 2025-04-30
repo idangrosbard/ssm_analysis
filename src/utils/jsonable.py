@@ -28,6 +28,7 @@ from typing import (
 )
 
 from devtools import debug
+from pydantic_extra_types.color import Color
 
 
 class _JSONAbleMarkers:
@@ -203,6 +204,8 @@ class JSONAble(ABC):
                     }
                 else:
                     return obj.value
+            elif type(obj) is Color:
+                return str(obj)
             return obj
 
         return cast(dict, _rec_to_dict(self, type_hint=self.__class__))
@@ -268,6 +271,8 @@ class JSONAble(ABC):
                 else:
                     item_types = args
                 return [_rec_from_dict(item, type_hint=item_types[i]) for i, item in enumerate(obj["values"])]
+            elif type_hint == Any:
+                return obj
             else:
                 # Check if it's a dataclass
                 new_obj = type_hint.__new__(type_hint)  # type: ignore

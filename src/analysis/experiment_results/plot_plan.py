@@ -429,6 +429,12 @@ class PlotPlan:
     def set_orientation_value(self, param: FinalPlotsPlanOrientation, value: Optional[ExperimentHyperParams]) -> None:
         setattr(self, param.value, value)
 
+    def get_orientation_value_hpd(self, param: FinalPlotsPlanOrientation) -> Optional[HyperParamDefinition]:
+        param_value = self._get_orientation_value(param)
+        if param_value is None:
+            return None
+        return get_hyper_param_definition(param_value)
+
     def set_options_for_orientation(self, param: FinalPlotsPlanOrientation, options: List[Any]) -> None:
         """Set the selected options for a parameter."""
         match param:

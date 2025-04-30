@@ -4,7 +4,6 @@ import random
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import StrEnum
-from functools import lru_cache
 from typing import TYPE_CHECKING, Any, Callable, List, Optional, final
 
 from src.core.types import TPromptOriginalIndex
@@ -218,7 +217,6 @@ class LogicalPromptFilteration(ProxyPromptFilteration):
 
         return []
 
-    @lru_cache(maxsize=1)
     def get_prompt_ids(self) -> list[TPromptOriginalIndex]:  # type: ignore
         return super().get_prompt_ids()
 
@@ -251,7 +249,10 @@ class SamplePromptFilteration(ProxyPromptFilteration):
         self, get_prompt_ids: Callable[[BasePromptFilteration], list[TPromptOriginalIndex]]
     ) -> list[TPromptOriginalIndex]:
         random.seed(self.seed)
-        return random.sample(get_prompt_ids(self.base_prompt_filteration), self.sample_size)
+        prompt_ids = get_prompt_ids(self.base_prompt_filteration)
+        if len(prompt_ids) <= self.sample_size:
+            return prompt_ids
+        return random.sample(prompt_ids, self.sample_size)
 
     def get_dependencies(self) -> TDependencies:
         return self.base_prompt_filteration.get_dependencies()

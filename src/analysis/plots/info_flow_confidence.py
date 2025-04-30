@@ -1,6 +1,7 @@
 from collections import defaultdict
+from enum import StrEnum
 from pathlib import Path
-from typing import Dict, List, Literal, Optional, TypedDict, cast
+from typing import Annotated, Dict, Literal, Optional, Type, TypedDict, cast
 
 import numpy as np
 import plotly.graph_objects as go
@@ -9,18 +10,30 @@ from matplotlib.axes import Axes
 from matplotlib.collections import PolyCollection
 from matplotlib.figure import Figure
 from numpy.typing import NDArray
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, create_model
 from pydantic_extra_types.color import Color
 from scipy import stats
 
-from src.core.consts import CONVERT_TO_PLOTLY_LINE_STYLE
+from src.core.consts import CONVERT_TO_PLOTLY_LINE_STYLE, TOKEN_TYPE_COLORS
 from src.core.names import COLS
-from src.core.types import FeatureCategory, TInfoFlowOutput, TLineStyle, TokenType
-from src.utils.types_utils import first_dict_value
+from src.core.types import TInfoFlowOutput, TLineStyle, TokenType
+from src.utils.pydantic_utils import create_literal_value
+from src.utils.types_utils import str_enum_values
+
+
+class TMetricType(StrEnum):
+    ACC = "acc"
+    DIFF = "diff"
+
+
+LiteralMetricType = Literal[TMetricType.ACC, TMetricType.DIFF]
 
 
 class InfoFlowPlotConfig(BaseModel):
     """Configuration for Info Flow confidence plots."""
+
+    class Config:
+        json_encoders = {Color: lambda c: c.as_hex(format="long")}
 
     with_fixed_limits: bool = Field(default=False, description="Use fixed limits for y-axis")
     acc_ylim_min: float = Field(default=60.0, description="Minimum y value for accuracy plot", ge=0.0, le=100.0)
@@ -29,22 +42,35 @@ class InfoFlowPlotConfig(BaseModel):
     diff_ylim_max: float = Field(default=50.0, description="Maximum y value for difference plot", ge=0.0, le=100.0)
     confidence_level: float = Field(default=0.95, description="Confidence level for intervals", ge=0.5, le=0.99)
     title: str = Field(default="", description="Custom plot title (leave empty for default)")
-    metrics_to_show: List[Literal["acc", "diff"]] = Field(
-        default=["acc", "diff"], description="Which metrics to show in the plot"
+    metrics_to_show: list[TMetricType] = Field(
+        default=str_enum_values(TMetricType), description="Which metrics to show in the plot"
     )
 
     # Figure and Layout options
-    figure_width: float = Field(default=12.0, description="Figure width in inches", ge=4.0, le=24.0)
-    figure_height: float = Field(default=5.0, description="Figure height in inches", ge=3.0, le=18.0)
-    title_fontsize: int = Field(default=12, description="Font size for title", ge=8, le=24)
-    axis_fontsize: int = Field(default=10, description="Font size for axis labels", ge=8, le=20)
+    figure_width: float = Field(default=12.0, description="Figure width in inches", ge=1.0)
+    figure_height: float = Field(default=5.0, description="Figure height in inches", ge=1.0)
+    title_fontsize: int = Field(default=12, description="Font size for title", ge=4)
+    axis_fontsize: int = Field(default=10, description="Font size for axis labels", ge=4)
+    legend_fontsize: int = Field(default=10, description="Font size for legend", ge=4)
+    legend_loc: Literal["lower center", "upper center", "lower right", "upper right"] = Field(
+        default="lower center", description="Location of legend"
+    )
+    legend_loc_y: float = Field(default=0.84, description="Y-coordinate of legend location")
+    legend_loc_x: float = Field(default=0.5, description="X-coordinate of legend location")
+    show_number_of_points: Literal["min", "per_line", "both", "none", "auto"] = Field(
+        default="auto", description="Show number of points in legend"
+    )
+    tight_layout: bool = Field(default=True, description="Tight layout for the figure")
 
     # Color and style options
-    custom_colors: Dict[TokenType, Color] = Field(
+    custom_colors: Dict[str, Color] = Field(
         default=None, description="Custom colors mapping token types to hex color codes"
     )
-    custom_line_styles: Dict[FeatureCategory, TLineStyle] = Field(
+    custom_line_styles: Dict[str, TLineStyle] = Field(
         default=None, description="Custom line styles mapping feature categories to styles"
+    )
+    custom_line_labels: Dict[str, str] = Field(
+        default=None, description="Custom line labels mapping feature categories to labels"
     )
     alpha: float = Field(default=0.2, description="Alpha (transparency) for confidence intervals", ge=0.0, le=1.0)
 
@@ -52,12 +78,47 @@ class InfoFlowPlotConfig(BaseModel):
     x_axis_as_percentage: bool = Field(
         default=True, description="Show X-axis (layer positions) as percentages instead of indices"
     )
-    x_tick_count: int = Field(default=6, description="Number of tick marks on the x-axis", ge=2, le=12)
+    x_tick_count: int = Field(default=6, description="Number of tick marks on the x-axis", ge=2, le=20)
 
-    # Column sizing - adjusts subplot widths based on metrics shown
-    subplot_width_ratio: Dict[str, float] = Field(
-        default={"acc": 1.0, "diff": 1.0}, description="Width ratio for each subplot type (proportional sizing)"
-    )
+    @classmethod
+    def specify_config(cls, lines_options: list[str]) -> Type[BaseModel]:
+        literal_lines_options = create_literal_value(lines_options)
+        return create_model(
+            f"{cls.__name__}Config",
+            __base__=cls,
+            custom_colors=Annotated[
+                Dict[literal_lines_options, Color],
+                Field(
+                    default_factory=lambda: {
+                        option: Color(value)
+                        for option, value in zip(
+                            literal_lines_options,
+                            TOKEN_TYPE_COLORS.values(),
+                        )
+                    },
+                ),
+            ],
+            custom_line_styles=Annotated[
+                Dict[literal_lines_options, TLineStyle],
+                Field(
+                    default_factory=lambda: {
+                        option: value for option, value in zip(literal_lines_options, str_enum_values(TLineStyle))
+                    }
+                ),
+            ],
+            custom_line_labels=Annotated[
+                Dict[literal_lines_options, str],
+                Field(default_factory=lambda: {option: option for option in literal_lines_options}),
+            ],
+        )
+
+    def get_ylim(self, metric_type: TMetricType) -> tuple[float, float]:
+        if metric_type == TMetricType.ACC:
+            return self.acc_ylim_min, self.acc_ylim_max
+        elif metric_type == TMetricType.DIFF:
+            return self.diff_ylim_min, self.diff_ylim_max
+        else:
+            raise ValueError(f"Invalid metric type: {metric_type}")
 
 
 class MetricData(TypedDict):
@@ -72,24 +133,13 @@ class Confidence(TypedDict):
     ci_upper: float
 
 
-class MetricsDict(TypedDict):
-    acc: MetricData
-    diff: MetricData
+type MetricsDict = dict[TMetricType, MetricData]
 
 
 class PlotMetadata(TypedDict):
     title: str
     ylabel: str
-    ylabel_loc: Literal["bottom", "center", "top"]
     axhline_value: float
-    ylim: Optional[tuple[float, float]]
-
-
-class LinePlotMetadata(TypedDict):
-    label: str
-    color: str
-    linestyle: str
-    data: TInfoFlowOutput
 
 
 # region Confidence Calculation
@@ -227,7 +277,7 @@ def calculate_confidence(
 
 def calculate_metrics_with_confidence(
     window_outputs: TInfoFlowOutput,
-    metric_types: list[Literal["acc", "diff"]],
+    metric_types: list[TMetricType],
     confidence_level: float = 0.95,
     confidence_method: Literal["CI", "PI", "bootstrap", "SE"] = "CI",
 ) -> MetricsDict:
@@ -270,7 +320,7 @@ def calculate_metrics_with_confidence(
 
 def plot_with_confidence(
     metrics: MetricsDict,
-    metric_type: Literal["acc", "diff"],
+    metric_type: TMetricType,
     label: str,
     color: str,
     linestyle: str,
@@ -283,7 +333,7 @@ def plot_with_confidence(
     # Plot mean line
     ax.plot(
         layers,
-        metrics[metric_type]["mean"] * (100 if metric_type == "acc" else 1),
+        metrics[metric_type]["mean"] * (100 if metric_type == TMetricType.ACC else 1),
         label=label,
         color=color,
         linestyle=linestyle,
@@ -292,19 +342,19 @@ def plot_with_confidence(
     # Plot confidence interval
     ax.fill_between(
         layers,
-        metrics[metric_type]["ci_lower"] * (100 if metric_type == "acc" else 1),
-        metrics[metric_type]["ci_upper"] * (100 if metric_type == "acc" else 1),
+        metrics[metric_type]["ci_lower"] * (100 if metric_type == TMetricType.ACC else 1),
+        metrics[metric_type]["ci_upper"] * (100 if metric_type == TMetricType.ACC else 1),
         color=color,
         alpha=alpha,
     )
 
 
 def create_confidence_plot(
-    lines_metadata: list[LinePlotMetadata],
+    lines: dict[str, TInfoFlowOutput],
     confidence_level: float,
     title: str,
-    plots_meta_data: dict[Literal["acc", "diff"], PlotMetadata],
-    config: Optional[InfoFlowPlotConfig] = None,
+    plots_meta_data: dict[TMetricType, PlotMetadata],
+    config: InfoFlowPlotConfig,
 ) -> Figure:
     """Create plots with confidence intervals for all metrics.
 
@@ -318,22 +368,11 @@ def create_confidence_plot(
     Returns:
         The matplotlib figure containing the plots
     """
-    # Use default config if none provided
-    if config is None:
-        config = InfoFlowPlotConfig()
-
-    # Determine subplot width ratios based on the metrics shown
-    if len(plots_meta_data) > 1:
-        width_ratios = [config.subplot_width_ratio.get(metric_type, 1.0) for metric_type in plots_meta_data.keys()]
-    else:
-        width_ratios = None
-
     # Create figure with subplots side by side, with possibly different widths
     fig, axes = plt.subplots(
         1,
         len(plots_meta_data),
         figsize=(config.figure_width, config.figure_height),
-        gridspec_kw={"width_ratios": width_ratios} if width_ratios else None,
     )
 
     # If only one subplot, wrap in list
@@ -344,12 +383,15 @@ def create_confidence_plot(
     unique_handles = {}
 
     # Get number of points from first window of first block
-    first_window = first_dict_value(lines_metadata[0]["data"])
-    n_points = len(first_window[COLS.INFO_FLOW.HIT.value])
-
-    max_layers = max(len(line_metadata["data"]) for line_metadata in lines_metadata)
+    points_per_line = {line_id: len(line_data[0][COLS.INFO_FLOW.HIT.value]) for line_id, line_data in lines.items()}
+    min_points = min(points_per_line.values())
+    diff_points = max(points_per_line.values()) - min_points
+    if config.show_number_of_points == "auto":
+        config.show_number_of_points = "min" if diff_points / min_points < 1 / 20 else "per_line"
+    max_layers = max(len(line) for line in lines.values())
     # Process each metric type (accuracy and diff)
-    for i, (metric_type, plot_metadata) in enumerate(plots_meta_data.items()):
+    for i, metric_type in enumerate(config.metrics_to_show):
+        plot_metadata = plots_meta_data[metric_type]
         ax = axes[i]
 
         if config.x_axis_as_percentage:
@@ -366,26 +408,25 @@ def create_confidence_plot(
             x_ticks_labels = [str(int(x)) for x in x_ticks]
 
         # Plot data for each block
-        for line_metadata in lines_metadata:
+        for line_id, line_data in lines.items():
             # Apply custom colors if provided
-            color = line_metadata["color"]
-            if config.custom_colors is not None:
-                for token_type, custom_color in config.custom_colors.items():
-                    if token_type.value in line_metadata["label"]:
-                        color = str(custom_color)
-                        break
+            color = "#000000"
+            if config.custom_colors is not None and line_id in config.custom_colors:
+                color = str(config.custom_colors[line_id])
 
             # Apply custom line styles if provided
-            linestyle = line_metadata["linestyle"]
-            if config.custom_line_styles is not None:
-                for feature_cat, custom_style in config.custom_line_styles.items():
-                    if feature_cat.value in line_metadata["label"]:
-                        linestyle = custom_style.value
-                        break
+            linestyle = "solid"
+            if config.custom_line_styles is not None and line_id in config.custom_line_styles:
+                linestyle = config.custom_line_styles[line_id].value
 
-            metrics = calculate_metrics_with_confidence(
-                line_metadata["data"], list(plots_meta_data.keys()), confidence_level
-            )
+            label = f"{line_id}"
+            if config.show_number_of_points == "per_line" or config.show_number_of_points == "both":
+                label += f" ({points_per_line[line_id]} points)"
+
+            if config.custom_line_labels is not None and line_id in config.custom_line_labels:
+                label = config.custom_line_labels[line_id]
+
+            metrics = calculate_metrics_with_confidence(line_data, [metric_type], confidence_level)
 
             # Get layer indices and convert to percentage if requested
 
@@ -405,7 +446,7 @@ def create_confidence_plot(
             plot_with_confidence(
                 metrics=metrics,
                 metric_type=metric_type,
-                label=line_metadata["label"],
+                label=label,
                 color=color,
                 linestyle=linestyle,
                 ax=ax,
@@ -430,11 +471,10 @@ def create_confidence_plot(
         ax.set_xticklabels(x_ticks_labels, fontsize=config.axis_fontsize)
 
         ax.axhline(plot_metadata["axhline_value"], color="gray", linewidth=1)
-        ax.set_ylabel(plot_metadata["ylabel"], fontsize=config.axis_fontsize, loc=plot_metadata["ylabel_loc"])
-        if plot_metadata["ylim"]:
-            ax.set_ylim(plot_metadata["ylim"])
+        ax.set_ylabel(plot_metadata["ylabel"], fontsize=config.axis_fontsize)
+        ax.set_ylim(config.get_ylim(metric_type))
         ax.tick_params(axis="both", which="major", labelsize=config.axis_fontsize)
-        ax.set_title(plot_metadata["title"], fontsize=config.title_fontsize)
+        # ax.set_title(plot_metadata["title"], fontsize=config.title_fontsize)
 
         # Adjust tick parameters
         ax.tick_params(axis="both", which="both", length=0, labelsize=config.axis_fontsize)
@@ -446,21 +486,24 @@ def create_confidence_plot(
     fig.legend(
         all_handles,
         all_labels,
-        loc="lower center",
-        bbox_to_anchor=(0.5, 0.84),
+        loc=config.legend_loc,
+        bbox_to_anchor=(config.legend_loc_x, config.legend_loc_y),
         ncol=len(all_handles),
-        fontsize=config.axis_fontsize,
+        fontsize=config.legend_fontsize,
         frameon=False,
     )
 
     # Set overall title
     custom_title = config.title if hasattr(config, "title") and config.title else title
+    if config.show_number_of_points == "min" or config.show_number_of_points == "both":
+        custom_title += f" ({min_points = })"
     fig.suptitle(
-        f"{custom_title} ({n_points = })",
+        f"{custom_title}",
         fontsize=config.title_fontsize,
     )
 
-    fig.tight_layout()
+    if config.tight_layout:
+        fig.tight_layout()
     return fig
 
 
@@ -591,7 +634,7 @@ def combine_confidence_plots(
 def process_info_flow_files(
     from_blocks: dict[TokenType, tuple[dict, Path]],
     target_block: TokenType,
-    plots_meta_data: dict[Literal["acc", "diff"], PlotMetadata],
+    plots_meta_data: dict[TMetricType, PlotMetadata],
     confidence_level: float = 0.95,
     save_fig: bool = True,
     show_fig: bool = True,
@@ -623,7 +666,7 @@ def process_info_flow_files(
     title = f"Knocking out flow to {target_block}\n{model_id}, window size={window_size}"
 
     fig = create_confidence_plot(
-        lines_metadata=targets_window_outputs,  # type: ignore
+        lines=targets_window_outputs,  # type: ignore
         confidence_level=confidence_level,
         title=title,
         plots_meta_data=plots_meta_data,
@@ -651,7 +694,7 @@ def process_info_flow_files(
 
 def create_plotly_confidence_chart(
     targets_window_outputs: list[TInfoFlowOutput],
-    metric_type: Literal["acc", "diff"],
+    metric_type: TMetricType,
     colors: list[str],
     line_styles: list[str],
     legend_labels: list[str],
@@ -674,7 +717,7 @@ def create_plotly_confidence_chart(
     fig = go.Figure()
 
     # Set up y-axis parameters based on metric type
-    if metric_type == "acc":
+    if metric_type == TMetricType.ACC:
         y_title = "Accuracy (%)"
         y_range = [0, 100]
         axhline_value = 100

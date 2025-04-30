@@ -18,6 +18,7 @@ from typing import ClassVar, cast
 
 import pandas as pd
 import torch
+from cachetools import LRUCache, cached
 from tqdm import tqdm
 
 from src.core.consts import COUNTER_FACT_2_KNOWN1000_COL_CONV
@@ -63,6 +64,9 @@ def _get_output_path(evaluate_runner: EvaluateModelRunner) -> TPromptDataFlat:
     return TPromptDataFlat(df)
 
 
+evalurate_model_prompt_data_cache = LRUCache(maxsize=30)
+
+
 @dataclass(frozen=True)
 class EvaluateModelRunner(BaseRunner[EvaluateModelParams]):
     """Configuration for model evaluation."""
@@ -84,7 +88,7 @@ class EvaluateModelRunner(BaseRunner[EvaluateModelParams]):
     def get_outputs(self) -> TPromptDataFlat:  # type: ignore
         return _get_output_path(self)
 
-    @lru_cache(maxsize=1)
+    @cached(evalurate_model_prompt_data_cache)
     def get_prompt_data(self) -> TPromptData:
         df = flat_to_indexed_prompt_data(self.get_outputs())
         from src.analysis.prompt_filterations import AnyExistingCompletePromptFilteration

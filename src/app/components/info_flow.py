@@ -1,5 +1,3 @@
-from typing import Literal, cast
-
 import numpy as np
 import pandas as pd
 import plotly.express as px
@@ -8,6 +6,7 @@ import streamlit as st
 from pandas import DataFrame
 
 from src.analysis.plots.info_flow_confidence import (
+    TMetricType,
     create_plotly_confidence_chart,
 )
 from src.app.texts import INFO_FLOW_ANALYSIS_TEXTS
@@ -27,7 +26,10 @@ class InfoFlowAnalysisComponent(StreamlitComponent):
         info_flow_results: InfoFlowResults,
     ):
         self.info_flow_results = info_flow_results
-        self.metric_options = {"Accuracy": "acc", "Probability Difference": "diff"}
+        self.metric_options = {
+            "Accuracy": TMetricType.ACC,
+            "Probability Difference": TMetricType.DIFF,
+        }
 
     def render_probability_distribution(self):
         """Render info flow over time analysis with confidence intervals using Plotly."""
@@ -90,7 +92,7 @@ class InfoFlowAnalysisComponent(StreamlitComponent):
         cols = st.columns(num_cols, border=True)
         # Create and display plots for each selected metric
         for i, metric_name in enumerate(selected_metrics):
-            metric_type = cast(Literal["acc", "diff"], self.metric_options[metric_name])
+            metric_type = self.metric_options[metric_name]
 
             with cols[i]:
                 st.subheader(f"{metric_name} Over Time")

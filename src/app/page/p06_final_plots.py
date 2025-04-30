@@ -40,6 +40,9 @@ class _FinalPlotsSessionKeys(SessionKeysBase["_FinalPlotsSessionKeys"]):
     def is_new_plot_plan(self) -> bool:
         return self.SELECTED_PLOT_PLAN_ID.value == NEW_LABEL
 
+    def display_plot_plan_name(self) -> str:
+        return "NEW" if self.is_new_plot_plan() else self.SELECTED_PLOT_PLAN_ID.value
+
 
 FinalPlotsSessionKeys = _FinalPlotsSessionKeys()
 
@@ -62,11 +65,15 @@ class ManagePlotPlans(StreamlitComponent[None]):
         selected_plot_changed = FinalPlotsSessionKeys.SELECTED_PLOT_PLAN_ID.is_changed
 
         # Plot plan selector
-        PlotPlanSelector(
-            plot_plans=self.plot_plans,
-            selected_plot_id_sk=FinalPlotsSessionKeys.SELECTED_PLOT_PLAN_ID,
-            new_label=NEW_LABEL,
-        ).render()
+        with st.expander(
+            FinalPlotsSessionKeys.display_plot_plan_name(),
+            expanded=False,
+        ):
+            PlotPlanSelector(
+                plot_plans=self.plot_plans,
+                selected_plot_id_sk=FinalPlotsSessionKeys.SELECTED_PLOT_PLAN_ID,
+                new_label=NEW_LABEL,
+            ).render()
 
         if selected_plot_changed:
             FinalPlotsSessionKeys.EDIT_MODE_KEY.value = False

@@ -45,7 +45,7 @@ class HEATMAP_PLOT_FUNCS(StrEnum):
 
 
 plot_suffix_to_function: dict[HEATMAP_PLOT_FUNCS, Callable] = {
-    HEATMAP_PLOT_FUNCS._simple_diff_fixed_0_3: functools.partial(simple_diff_fixed, fixed_diff=0.3),
+    HEATMAP_PLOT_FUNCS._simple_diff_fixed_0_3: functools.partial(simple_diff_fixed),
 }
 
 
@@ -173,7 +173,6 @@ def plot(args: HeatmapRunner, plot_name: HEATMAP_PLOT_FUNCS):
             base_prob=prompt.base_prob,
             true_word=prompt.true_word,
             toks=toks,
-            fixed_diff=0.3,
         )
         output_path = args.get_plot_output_path(prompt.original_idx, HEATMAP_PLOT_FUNCS._simple_diff_fixed_0_3)
         plt.savefig(output_path, bbox_inches="tight")

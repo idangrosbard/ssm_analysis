@@ -1,3 +1,4 @@
+from functools import lru_cache
 from typing import Callable, TypeVar, assert_never, cast
 
 import pandas as pd
@@ -62,6 +63,7 @@ def load_splitted_counter_fact(
     return dataset
 
 
+@lru_cache(maxsize=1)
 def get_prompt_ids(dataset_name: DatasetName, split: TSplitChoise = ALL_SPLITS_LITERAL) -> list[TPromptOriginalIndex]:
     match dataset_name:
         case DatasetName.counter_fact:

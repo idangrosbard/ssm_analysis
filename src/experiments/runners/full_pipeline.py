@@ -13,11 +13,16 @@ consistent configuration across all steps.
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TypedDict
+from typing import ClassVar, TypedDict
 
 import matplotlib.pyplot as plt
 
-from src.analysis.plots.info_flow_confidence import create_confidence_plot
+from src.analysis.plots.info_flow_confidence import (
+    InfoFlowPlotConfig,
+    PlotMetadata,
+    TMetricType,
+    create_confidence_plot,
+)
 from src.core.consts import TOKEN_TYPE_COLORS, TOKEN_TYPE_LINE_STYLES
 from src.core.names import ExperimentName, InfoFlowVariantParam
 from src.core.types import FeatureCategory, TokenType, TWindowSize
@@ -35,7 +40,7 @@ class FullPipelineDependencies(TypedDict):
 
 @dataclass(frozen=True)
 class FullPipelineParams(BaseVariantParams):
-    experiment_name: ExperimentName = field(init=False, default=ExperimentName.full_pipeline)
+    experiment_name: ClassVar[ExperimentName] = field(init=False, default=ExperimentName.full_pipeline)
     knockout_map: dict[TokenType, list[tuple[TokenType, FeatureCategory]]]
     info_flow_window_size: TWindowSize
 
@@ -151,39 +156,45 @@ def main_local(args: FullPipelineRunner):
                 )
                 + f"\nKnocking out flow to {target_token}"
             )
-            lines_metadata = []
+            lines_metadata = {}
+            colors = []
+            linestyles = []
+            labels = []
             for source_token, feature_category in source_info_flows.keys():
                 info_flow_config = source_info_flows[(source_token, feature_category)]
-                lines_metadata.append(
-                    {
-                        "label": f"{source_token} - {feature_category}",
-                        "color": TOKEN_TYPE_COLORS.get(source_token, "#000000"),
-                        "linestyle": TOKEN_TYPE_LINE_STYLES.get(feature_category, "-"),
-                        "data": info_flow_config.get_outputs(),
-                    }
-                )
+                lines_metadata[f"{source_token} - {feature_category}"] = info_flow_config.get_outputs()
+                colors.append(TOKEN_TYPE_COLORS.get(source_token, "#000000"))
+                linestyles.append(TOKEN_TYPE_LINE_STYLES.get(feature_category, "-"))
+                labels.append(f"{source_token} - {feature_category}")
+
             for with_fixed_limits in [True, False]:
                 plot_name = "_fixed_limits" if with_fixed_limits else ""
                 fig = create_confidence_plot(
-                    lines_metadata=lines_metadata,
+                    lines=lines_metadata,
                     confidence_level=0.95,
                     title=title,
                     plots_meta_data={
-                        "acc": {
-                            "title": "Accuracy",
-                            "ylabel": "% accuracy",
-                            "ylabel_loc": "center",
-                            "axhline_value": 100.0,
-                            "ylim": (60.0, 105.0) if with_fixed_limits else None,
-                        },
-                        "diff": {
-                            "title": "Normalized change in prediction probability",
-                            "ylabel": "% probability change",
-                            "ylabel_loc": "top",
-                            "axhline_value": 0.0,
-                            "ylim": (-50.0, 50.0) if with_fixed_limits else None,
-                        },
+                        TMetricType.ACC: PlotMetadata(
+                            title="Accuracy",
+                            ylabel="% accuracy",
+                            axhline_value=100.0,
+                        ),
+                        TMetricType.DIFF: PlotMetadata(
+                            title="Normalized change in prediction probability",
+                            ylabel="% probability change",
+                            axhline_value=0.0,
+                        ),
                     },
+                    config=InfoFlowPlotConfig(
+                        with_fixed_limits=with_fixed_limits,
+                        custom_colors=dict(zip(labels, colors)),
+                        custom_line_styles=dict(zip(labels, linestyles)),
+                        metrics_to_show=[TMetricType.ACC, TMetricType.DIFF],
+                        acc_ylim_max=105.0,
+                        acc_ylim_min=60.0,
+                        diff_ylim_max=50.0,
+                        diff_ylim_min=-50.0,
+                    ),
                 )
                 path = args.target_plot_path(target_token, plot_name)
                 path.parent.mkdir(parents=True, exist_ok=True)

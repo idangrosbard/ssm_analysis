@@ -124,7 +124,12 @@
                                                     "__JSONABLE_value__": "counter_fact"
                                                 },
                                                 "model_arch_and_size": null,
-                                                "correctness": "correct",
+                                                "correctness": {
+                                                    "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                                                    "__JSONABLE_module__": "src.analysis.prompt_filterations",
+                                                    "__JSONABLE_type__": "Correctness",
+                                                    "__JSONABLE_value__": "correct"
+                                                },
                                                 "code_version": "v1"
                                             }
                                         },
@@ -257,7 +262,12 @@
                                                     "__JSONABLE_value__": "counter_fact"
                                                 },
                                                 "model_arch_and_size": null,
-                                                "correctness": "correct",
+                                                "correctness": {
+                                                    "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                                                    "__JSONABLE_module__": "src.analysis.prompt_filterations",
+                                                    "__JSONABLE_type__": "Correctness",
+                                                    "__JSONABLE_value__": "correct"
+                                                },
                                                 "code_version": "v1"
                                             }
                                         },
@@ -416,7 +426,41 @@
                             }
                         }
                     },
-                    "cell_plot_config": {},
+                    "cell_plot_config": {
+                        "with_fixed_limits": false,
+                        "acc_ylim_min": 60.0,
+                        "acc_ylim_max": 105.0,
+                        "diff_ylim_min": -50.0,
+                        "diff_ylim_max": 50.0,
+                        "confidence_level": 0.95,
+                        "title": "",
+                        "metrics_to_show": [
+                            "diff"
+                        ],
+                        "figure_width": 12.0,
+                        "figure_height": 5.0,
+                        "title_fontsize": 12,
+                        "axis_fontsize": 10,
+                        "legend_fontsize": 10,
+                        "legend_loc": "upper center",
+                        "legend_loc_y": 1.0,
+                        "legend_loc_x": 0.5,
+                        "show_number_of_points": "auto",
+                        "tight_layout": true,
+                        "custom_colors": {
+                            "mamba1-7B-falcon": "#af7404",
+                            "mamba1-2.8B": "#67ff00",
+                            "mamba2-2.7B": "#1b00dc",
+                            "gpt2-1.5B": "#0a9c8a"
+                        },
+                        "custom_line_styles": {},
+                        "custom_line_labels": {},
+                        "alpha": 0.2,
+                        "x_axis_as_percentage": true,
+                        "x_tick_count": 6,
+                        "0-cell_config_figure1-cell_config_figure1-metrics_to_show": {},
+                        "0-cell_config_figure1-cell_config_figure1-custom_colors": {}
+                    },
                     "combine_plot_config": {}
                 }
             },
@@ -627,7 +671,12 @@
                                                     "__JSONABLE_value__": "counter_fact"
                                                 },
                                                 "model_arch_and_size": null,
-                                                "correctness": "correct",
+                                                "correctness": {
+                                                    "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                                                    "__JSONABLE_module__": "src.analysis.prompt_filterations",
+                                                    "__JSONABLE_type__": "Correctness",
+                                                    "__JSONABLE_value__": "correct"
+                                                },
                                                 "code_version": "v1"
                                             }
                                         },
@@ -750,7 +799,12 @@
                                                     "__JSONABLE_value__": "counter_fact"
                                                 },
                                                 "model_arch_and_size": null,
-                                                "correctness": "correct",
+                                                "correctness": {
+                                                    "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                                                    "__JSONABLE_module__": "src.analysis.prompt_filterations",
+                                                    "__JSONABLE_type__": "Correctness",
+                                                    "__JSONABLE_value__": "correct"
+                                                },
                                                 "code_version": "v1"
                                             }
                                         },
@@ -867,7 +921,12 @@
                                                     "__JSONABLE_value__": "counter_fact"
                                                 },
                                                 "model_arch_and_size": null,
-                                                "correctness": "correct",
+                                                "correctness": {
+                                                    "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                                                    "__JSONABLE_module__": "src.analysis.prompt_filterations",
+                                                    "__JSONABLE_type__": "Correctness",
+                                                    "__JSONABLE_value__": "correct"
+                                                },
                                                 "code_version": "v1"
                                             }
                                         },
@@ -1310,7 +1369,12 @@
                                                     "__JSONABLE_value__": "counter_fact"
                                                 },
                                                 "model_arch_and_size": null,
-                                                "correctness": "correct",
+                                                "correctness": {
+                                                    "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                                                    "__JSONABLE_module__": "src.analysis.prompt_filterations",
+                                                    "__JSONABLE_type__": "Correctness",
+                                                    "__JSONABLE_value__": "correct"
+                                                },
                                                 "code_version": "v1"
                                             }
                                         },
@@ -1467,7 +1531,12 @@
                                                     "__JSONABLE_value__": "counter_fact"
                                                 },
                                                 "model_arch_and_size": null,
-                                                "correctness": "correct",
+                                                "correctness": {
+                                                    "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                                                    "__JSONABLE_module__": "src.analysis.prompt_filterations",
+                                                    "__JSONABLE_type__": "Correctness",
+                                                    "__JSONABLE_value__": "correct"
+                                                },
                                                 "code_version": "v1"
                                             }
                                         },
@@ -1553,7 +1622,12 @@
                                     "__JSONABLE_value__": "counter_fact"
                                 },
                                 "model_arch_and_size": null,
-                                "correctness": "correct",
+                                "correctness": {
+                                    "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                                    "__JSONABLE_module__": "src.analysis.prompt_filterations",
+                                    "__JSONABLE_type__": "Correctness",
+                                    "__JSONABLE_value__": "correct"
+                                },
                                 "code_version": "v1"
                             }
                         }

@@ -13,24 +13,30 @@ from src.core.consts import reverse_model_id
 class HeatmapPlotConfig(BaseModel):
     """Configuration for heatmap plots."""
 
-    # Basic plot parameters
-    fixed_diff: float = Field(default=0.3, description="Fixed difference value for colormap scaling", ge=0.01, le=1.0)
-    fontsize: int = Field(default=12, description="Font size for labels and title", ge=8, le=20)
-    minimal_title: bool = Field(default=False, description="Use minimal title without extra details")
-
     # Figure layout and positioning
-    figure_width: float = Field(default=4.0, description="Figure width in inches", ge=2.0, le=12.0)
+    figure_width: float = Field(
+        default=4.0,
+        description="Figure width in inches",
+        ge=2.0,
+        le=12.0,
+    )
     figure_height: float = Field(default=3.0, description="Figure height in inches", ge=2.0, le=10.0)
+    minimal_title: bool = Field(default=False, description="Use minimal title without extra details")
     title_position: Tuple[float, float] = Field(default=(0.45, 0.95), description="Position of the title (x, y)")
+    fontsize: int = Field(default=12, description="Font size for labels and title", ge=8, le=20)
     title_fontsize: int = Field(default=12, description="Font size for the title", ge=8, le=24)
+    is_tight_layout: bool = Field(default=True, description="Use tight layout")
 
     # Color settings
     colormap: str = Field(default="RdYlGn", description="Colormap name (e.g., 'RdYlGn', 'coolwarm', 'viridis')")
     reverse_colormap: bool = Field(default=False, description="Reverse the colormap direction")
 
     # Normalization and scaling
+    with_fixed_diff: bool = Field(default=True, description="Use fixed difference value for colormap scaling")
+    fixed_diff: float = Field(default=0.3, description="Fixed difference value for colormap scaling", ge=0.01, le=1.0)
     is_diff_probs: bool = Field(default=True, description="Normalize values by subtracting the base probability")
     two_slopes_normalization: bool = Field(default=False, description="Use two slopes normalization")
+    is_robust_normalization: bool = Field(default=False, description="Use robust normalization")
 
     # Axis ticks and labels
     tick_fontsize: int = Field(default=10, description="Font size for tick labels", ge=6, le=18)
@@ -52,9 +58,6 @@ def simple_diff_fixed(
     base_prob,
     true_word,
     toks,
-    fixed_diff=0.3,
-    fontsize=12,
-    minimal_title=False,
     config: Optional[HeatmapPlotConfig] = None,
 ):
     """
@@ -78,11 +81,7 @@ def simple_diff_fixed(
     """
     # Use provided config or default parameters
     if config is None:
-        config = HeatmapPlotConfig(
-            fixed_diff=fixed_diff,
-            fontsize=fontsize,
-            minimal_title=minimal_title,
-        )
+        config = HeatmapPlotConfig()
 
     # Create figure with specified dimensions
     fig, ax = plt.subplots(figsize=(config.figure_width, config.figure_height))
@@ -95,10 +94,13 @@ def simple_diff_fixed(
 
     model_arch, model_size = reverse_model_id(model_id)
 
+    sub_params = {}
+
     if config.two_slopes_normalization:
-        norm = TwoSlopeNorm(vmin=-fixed_diff_value, vmax=fixed_diff_value, vcenter=center)
-    else:
-        norm = None
+        sub_params["norm"] = TwoSlopeNorm(vmin=-fixed_diff_value, vmax=fixed_diff_value, vcenter=center)
+    elif config.with_fixed_diff:
+        sub_params["vmin"] = -fixed_diff_value
+        sub_params["vmax"] = fixed_diff_value
 
     # Select colormap
     cmap = config.colormap
@@ -110,10 +112,9 @@ def simple_diff_fixed(
         plot_data,
         cbar=True,
         cmap=cmap,
-        norm=norm,
-        vmin=-fixed_diff_value,
-        vmax=fixed_diff_value,
+        robust=config.is_robust_normalization,
         ax=ax,
+        **sub_params,
     )
 
     # Set title with appropriate formatting
@@ -125,7 +126,7 @@ def simple_diff_fixed(
                 if config.minimal_title
                 else (f" - Window Size: {window_size}" "\n" "Knockout to last token '" r"$\bf{" f"{last_tok}" r"}$" "'")
             )
-            + (f" - base probability: {round(base_prob, 4)}" if config.is_base_prob_in_title else "")
+            + (f"\nbase probability: {round(base_prob, 4)}" if config.is_base_prob_in_title else "")
         ),
         position=config.title_position,
         fontsize=config.title_fontsize,
@@ -170,6 +171,9 @@ def simple_diff_fixed(
         cbar.update_ticks()
         cbar.ax.tick_params(labelsize=config.tick_fontsize)
 
-    fig.subplots_adjust(top=0.8)
+    # fig.subplots_adjust(top=0.8)
+
+    if config.is_tight_layout:
+        fig.tight_layout()
 
     return fig, ax

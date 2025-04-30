@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import StrEnum
-from functools import lru_cache
 from typing import Iterable, Optional
 
 from src.core.consts import DEFAULT_MODEL_CORRECT_DATASET_NAME, DEFAULT_MODEL_CORRECT_MODEL_CODE_VERSION
@@ -30,7 +29,6 @@ class AllPromptFilteration(BasePromptFilteration):
     dataset_name: DatasetName = DatasetName.counter_fact
     split: TSplitChoise = ALL_SPLITS_LITERAL
 
-    @lru_cache(maxsize=1)
     def get_prompt_ids(self) -> list[TPromptOriginalIndex]:  # type: ignore
         return get_prompt_ids(self.dataset_name, self.split)
 
@@ -89,7 +87,6 @@ class ModelCorrectPromptFilteration(BasePromptFilteration):
 
         raise NotImplementedError(f"Prompt filteration for {self._context.__class__.__name__} not implemented")
 
-    @lru_cache(maxsize=1)
     def get_prompt_ids(self) -> list[TPromptOriginalIndex]:  # type: ignore
         df = self.get_dependencies()["evaluate_model"].get_outputs()
 

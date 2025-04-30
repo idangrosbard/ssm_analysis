@@ -33,11 +33,9 @@ class SlurmJobFolder:
     def slurm_job_error_path(self) -> Path:
         return self.path / f"{self.job_id}_0_log.err"
 
-    # @cached(TTLCache(maxsize=1, ttl=60))
     def get_slurm_job_output(self) -> str:
         return self.slurm_job_output_path.read_text()
 
-    # @cached(TTLCache(maxsize=1, ttl=60))
     def get_slurm_job_error(self) -> str:
         return self.slurm_job_error_path.read_text()
 

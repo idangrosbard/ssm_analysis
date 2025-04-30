@@ -1,16 +1,28 @@
 from enum import Enum
-from typing import Any, Callable, Dict, Type, TypeVar
+from typing import Any, Callable, Dict, Literal, Type, TypeVar, get_args, get_origin
 
 import streamlit as st
 from pydantic import BaseModel
+from pydantic_extra_types.color import Color
 from streamlit_pydantic import schema_utils
 from streamlit_pydantic.ui_renderer import GroupOptionalFieldsStrategy, InputUI
+
+from src.utils.types_utils import conditional_context_manager
 
 # Also, need to fix a bug in the library:
 # see  https://github.com/lukasmasuch/streamlit-pydantic/issues/69
 
 
 T = TypeVar("T")
+
+
+def find_annotation_of_model_property(model: BaseModel, property_name: str) -> Any:
+    """Find the annotation of a property in a model."""
+
+    for key, field in model.model_fields.items():
+        if key == property_name:
+            return field.annotation
+    return None
 
 
 class ExtendedSchemaUtils:
@@ -128,6 +140,91 @@ class CustomInputUI(InputUI):
 
         return selected_values
 
+    def _render_dict_item(
+        self,
+        streamlit_app: Any,
+        parent_key: str,
+        in_value: tuple[str, Any],
+        index: int,
+        property: Dict[str, Any],
+    ) -> Any:
+        new_key = self._key + "-" + parent_key + "." + str(index)
+        item_placeholder = streamlit_app.empty()
+
+        with item_placeholder.container():
+            key_col, value_col, button_col = streamlit_app.columns([4, 4, 3])
+
+            dict_key = in_value[0]
+            dict_value = in_value[1]
+
+            dict_key_key = new_key + "-key"
+            dict_value_key = new_key + "-value"
+
+            button_col.markdown("##")
+
+            if self._remove_button_allowed(index, property):
+                remove = False
+            else:
+                remove = button_col.button("Remove", key=new_key + "-remove")
+
+            if not remove:
+                with key_col:
+                    if (annotation := self._input_class.model_fields[parent_key].annotation) and get_origin(
+                        get_args(annotation)[0]
+                    ) == Literal:
+                        values = get_args(get_args(annotation)[0])
+                        new_key_property = {
+                            "title": "Key",
+                            "default": values[0],
+                            "init_value": dict_key,
+                            "enum": values,
+                        }
+                        updated_key = self._render_property(streamlit_app, dict_key_key, new_key_property)
+
+                    else:
+                        updated_key = streamlit_app.text_input(
+                            "Key",
+                            value=dict_key,
+                            key=dict_key_key,
+                            disabled=property.get("readOnly", False),
+                        )
+
+                with value_col:
+                    new_property = {
+                        "title": "Value",
+                        "init_value": dict_value,
+                        "is_item": True,
+                        "readOnly": property.get("readOnly"),
+                        **property["additionalProperties"],
+                    }
+                    with value_col:
+                        updated_value = self._render_property(streamlit_app, dict_value_key, new_property)
+
+                    return updated_key, updated_value
+
+            else:
+                # when the remove button is clicked clear the placeholder and return None
+                item_placeholder.empty()
+                return None, None
+
+    def _render_single_color_input(self, streamlit_app: Any, key: str, property: Dict) -> Any:
+        streamlit_kwargs = self._get_default_streamlit_input_kwargs(key, property)
+        overwrite_kwargs = self._get_overwrite_streamlit_kwargs(key, property)
+
+        def ensure_hex_format(color: Color | str) -> str:
+            if isinstance(color, Color):
+                return color.as_hex(format="long")
+            return color
+
+        if property.get("init_value") is not None:
+            streamlit_kwargs["value"] = ensure_hex_format(property["init_value"])
+        elif property.get("default") is not None:
+            streamlit_kwargs["value"] = ensure_hex_format(property["default"])
+        elif property.get("example") is not None:
+            streamlit_kwargs["value"] = ensure_hex_format(property["example"])
+
+        return streamlit_app.color_picker(**{**streamlit_kwargs, **overwrite_kwargs})
+
 
 def pydantic_input(
     key: str,
@@ -135,6 +232,7 @@ def pydantic_input(
     group_optional_fields: GroupOptionalFieldsStrategy = GroupOptionalFieldsStrategy.NO,
     lowercase_labels: bool = False,
     ignore_empty_values: bool = False,
+    with_form: bool = False,
 ) -> Dict:
     """Extended version of pydantic_input that uses CustomInputUI."""
     model_instance = {}
@@ -142,6 +240,7 @@ def pydantic_input(
         model_instance = model.model_dump()
         model = model.__class__
 
+    ctx = conditional_context_manager(with_form, st.form(key))
     ui = CustomInputUI(
         key,
         model,
@@ -155,7 +254,11 @@ def pydantic_input(
             if reset_values or ui._get_value(key) is None:
                 ui._store_value(key, value)
 
-    return ui.render_ui()
+    with ctx:
+        if with_form:
+            st.form_submit_button("Submit")
+
+        return ui.render_ui()
 
 
 # Example of how to register a custom renderer:

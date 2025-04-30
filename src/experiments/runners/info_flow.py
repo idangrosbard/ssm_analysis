@@ -2,9 +2,11 @@ import json
 import time
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
+from types import MappingProxyType
 from typing import ClassVar, Literal, Optional, TypedDict
 
 import numpy as np
+import orjson
 import torch
 from cachetools import LRUCache, cached
 from tqdm import tqdm
@@ -39,6 +41,7 @@ from src.experiments.infrastructure.base_runner import (
 from src.experiments.infrastructure.model_interface import ModelInterface
 from src.experiments.runners.evaluate_model import EvaluateModelParams, EvaluateModelRunner
 from src.utils.infra.output_path import OutputKey
+from src.utils.json_utils import sanitize
 
 # Time in seconds between intermediate saves
 SAVE_INTERVAL = 600  # 10 minutes
@@ -73,23 +76,25 @@ class InfoFlowFileContent(TypedDict):
     data: dict[TPromptOriginalIndex, dict[TLayerIndex, InfoFlowPromptLayerValue]]
 
 
-@dataclass
+@dataclass(frozen=True)
 class InfoFlowFileStatistics:
-    complete_prompt_ids: set[TPromptOriginalIndex]
-    partial_prompt_ids: dict[TPromptOriginalIndex, set[TLayerIndex]]
-    banned_prompt_ids: set[TPromptOriginalIndex]
+    complete_prompt_ids: frozenset[TPromptOriginalIndex]
+    partial_prompt_ids: MappingProxyType[TPromptOriginalIndex, frozenset[TLayerIndex]]
+    banned_prompt_ids: frozenset[TPromptOriginalIndex]
     layers_amount: TLayerIndex
 
     @classmethod
     def from_json(cls, json_str: str) -> "InfoFlowFileStatistics":
         data = json.loads(json_str)
         return cls(
-            complete_prompt_ids=set(data.pop("complete_prompt_ids")),
-            partial_prompt_ids={
-                TPromptOriginalIndex(int(prompt_id)): set(layer_ids)
-                for prompt_id, layer_ids in data.pop("partial_prompt_ids").items()
-            },
-            banned_prompt_ids=set(data.pop("banned_prompt_ids")),
+            complete_prompt_ids=frozenset(data.pop("complete_prompt_ids")),
+            partial_prompt_ids=MappingProxyType(
+                {
+                    TPromptOriginalIndex(int(prompt_id)): frozenset(layer_ids)
+                    for prompt_id, layer_ids in data.pop("partial_prompt_ids").items()
+                }
+            ),
+            banned_prompt_ids=frozenset(data.pop("banned_prompt_ids")),
             layers_amount=data.pop("layers_amount"),
         )
 
@@ -125,10 +130,12 @@ class JSONInfoFlowFile:
 
     def save(self, data: InfoFlowFileContent) -> None:
         self.statistics_path.unlink(missing_ok=True)
-        self.path.write_text(json.dumps(data, indent=4))
+        self.path.write_bytes(orjson.dumps(sanitize(data), option=orjson.OPT_INDENT_2))
+        STATISTICS_CACHE.clear()
+        OUTPUTS_CACHE.clear()
 
     @cached(OUTPUTS_CACHE)
-    def load(self) -> InfoFlowFileContent:
+    def _load(self) -> InfoFlowFileContent:
         if not self.path.exists():
             return InfoFlowFileContent(
                 metadata=InfoFlowMetadata(layers_amount=0, banned_prompts={}),
@@ -156,6 +163,27 @@ class JSONInfoFlowFile:
             },
         )
 
+    def load(self) -> InfoFlowFileContent:
+        content = self._load()
+        layers_amount = content[InfoFlowJSONFileCols.metadata][InfoFlowJSONMetadataCols.layers_amount]
+        corrupted_prompt_ids = []
+        for prompt_id in content[InfoFlowJSONFileCols.data]:
+            if len(content[InfoFlowJSONFileCols.data][prompt_id]) != layers_amount:
+                corrupted_prompt_ids.append(prompt_id)
+        for prompt_id in corrupted_prompt_ids:
+            assert len(content[InfoFlowJSONFileCols.data][prompt_id]) == 0
+            del content[InfoFlowJSONFileCols.data][prompt_id]
+            print("Debug: Deleted prompt", prompt_id)
+        if corrupted_prompt_ids:
+            print("Debug: Saving", self.path)
+            self.save(content)
+            # self.statistics_path.unlink(missing_ok=True)
+            # if (self,) in STATISTICS_CACHE:
+            #     del STATISTICS_CACHE[(self,)]
+            # if (self,) in OUTPUTS_CACHE:
+            #     del OUTPUTS_CACHE[(self,)]
+        return content
+
     def load_to_info_flow_output(
         self,
         prompt_idx_subset: Optional[list[TPromptOriginalIndex]] = None,
@@ -165,7 +193,7 @@ class JSONInfoFlowFile:
         info_flow_data = content[InfoFlowJSONFileCols.data]
 
         prompt_idx: list[TPromptOriginalIndex] = (
-            list(content[InfoFlowJSONFileCols.data].keys()) if prompt_idx_subset is None else prompt_idx_subset
+            list(info_flow_data.keys()) if prompt_idx_subset is None else prompt_idx_subset
         )
 
         # Preserve order for test output clarity
@@ -180,11 +208,11 @@ class JSONInfoFlowFile:
 
         return {
             layer_id: TInfoFlowWindowValue(
-                hit=[info_flow_data[prompt_idx][layer_id][InfoFlowMetricName.hit] for prompt_idx in prompt_idx],
+                hit=[info_flow_data[prompt_id][layer_id][InfoFlowMetricName.hit] for prompt_id in prompt_idx],
                 true_probs=[
-                    info_flow_data[prompt_idx][layer_id][InfoFlowMetricName.true_probs] for prompt_idx in prompt_idx
+                    info_flow_data[prompt_id][layer_id][InfoFlowMetricName.true_probs] for prompt_id in prompt_idx
                 ],
-                diffs=[info_flow_data[prompt_idx][layer_id][InfoFlowMetricName.diffs] for prompt_idx in prompt_idx],
+                diffs=[info_flow_data[prompt_id][layer_id][InfoFlowMetricName.diffs] for prompt_id in prompt_idx],
                 original_idx=prompt_idx,
             )
             for layer_id in layer_idx
@@ -215,9 +243,11 @@ class JSONInfoFlowFile:
                 partial_prompt_ids[prompt_id] = completed_layer_ids
 
         res = InfoFlowFileStatistics(
-            complete_prompt_ids=complete_prompt_ids,
-            partial_prompt_ids=partial_prompt_ids,
-            banned_prompt_ids=set(
+            complete_prompt_ids=frozenset(complete_prompt_ids),
+            partial_prompt_ids=MappingProxyType(
+                {prompt_id: frozenset(layer_ids) for prompt_id, layer_ids in partial_prompt_ids.items()}
+            ),
+            banned_prompt_ids=frozenset(
                 content[InfoFlowJSONFileCols.metadata][InfoFlowJSONMetadataCols.banned_prompts].keys()
             ),
             layers_amount=layers_amount,
@@ -234,7 +264,7 @@ class JSONInfoFlowFile:
         self, layer_idx_subset: Optional[TWindowLayerStartIndex] = None, include_banned: bool = False
     ) -> set[TPromptOriginalIndex]:
         statistics = self.get_statistics()
-        ids = statistics.complete_prompt_ids
+        ids = set(statistics.complete_prompt_ids)
         if include_banned:
             ids.update(statistics.banned_prompt_ids)
 
