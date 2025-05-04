@@ -19,6 +19,7 @@ from src.analysis.experiment_results.plot_plan import (
     get_experiment_orientations,
     get_hyper_param_definition,
 )
+from src.analysis.plots.image_combiner import ImageGridParams
 from src.app.components.prompt_filter import SelectFilterationComponent
 from src.app.texts import FINAL_PLOTS_TEXTS
 from src.core.names import (
@@ -282,7 +283,7 @@ class PlotPlanEditor(StreamlitComponent[Optional[PlotPlan]]):
                 order=0,
                 fixed_values={},
                 cell_plot_config={},
-                combine_plot_config={},
+                combine_plot_config=ImageGridParams(),
             )
 
         # Form for editing/creating a plot plan

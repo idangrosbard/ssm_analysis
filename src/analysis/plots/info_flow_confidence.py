@@ -1,7 +1,7 @@
 from collections import defaultdict
 from enum import StrEnum
 from pathlib import Path
-from typing import Annotated, Dict, Literal, Optional, Type, TypedDict, cast
+from typing import Dict, Literal, Optional, Type, TypedDict, cast
 
 import numpy as np
 import plotly.graph_objects as go
@@ -18,6 +18,8 @@ from src.core.consts import CONVERT_TO_PLOTLY_LINE_STYLE, TOKEN_TYPE_COLORS
 from src.core.names import COLS
 from src.core.types import TInfoFlowOutput, TLineStyle, TokenType
 from src.utils.pydantic_utils import create_literal_value
+from src.utils.streamlit.components.extended_streamlit_pydantic import annotate_dict_with_literal_values
+from src.utils.streamlit.st_pydantic_v2.input import SpecialFieldKeys
 from src.utils.types_utils import str_enum_values
 
 
@@ -35,50 +37,160 @@ class InfoFlowPlotConfig(BaseModel):
     class Config:
         json_encoders = {Color: lambda c: c.as_hex(format="long")}
 
-    with_fixed_limits: bool = Field(default=False, description="Use fixed limits for y-axis")
-    acc_ylim_min: float = Field(default=60.0, description="Minimum y value for accuracy plot", ge=0.0, le=100.0)
-    acc_ylim_max: float = Field(default=105.0, description="Maximum y value for accuracy plot", ge=0.0, le=110.0)
-    diff_ylim_min: float = Field(default=-50.0, description="Minimum y value for difference plot", ge=-100.0, le=0.0)
-    diff_ylim_max: float = Field(default=50.0, description="Maximum y value for difference plot", ge=0.0, le=100.0)
-    confidence_level: float = Field(default=0.95, description="Confidence level for intervals", ge=0.5, le=0.99)
-    title: str = Field(default="", description="Custom plot title (leave empty for default)")
+    # Basic Config
+    title: str = Field(
+        default="",
+        description="Custom plot title (leave empty for default)",
+    )
+    confidence_level: float = Field(
+        default=0.95,
+        description="Confidence level for intervals",
+        ge=0.5,
+        le=0.99,
+        json_schema_extra={SpecialFieldKeys.column_group: "basic_config"},
+    )
+    alpha: float = Field(
+        default=0.2,
+        description="Alpha (transparency) for confidence intervals",
+        ge=0.0,
+        le=1.0,
+        json_schema_extra={SpecialFieldKeys.column_group: "basic_config"},
+    )
     metrics_to_show: list[TMetricType] = Field(
-        default=str_enum_values(TMetricType), description="Which metrics to show in the plot"
+        default=str_enum_values(TMetricType),
+        description="Which metrics to show in the plot",
     )
 
-    # Figure and Layout options
-    figure_width: float = Field(default=12.0, description="Figure width in inches", ge=1.0)
-    figure_height: float = Field(default=5.0, description="Figure height in inches", ge=1.0)
-    title_fontsize: int = Field(default=12, description="Font size for title", ge=4)
-    axis_fontsize: int = Field(default=10, description="Font size for axis labels", ge=4)
-    legend_fontsize: int = Field(default=10, description="Font size for legend", ge=4)
-    legend_loc: Literal["lower center", "upper center", "lower right", "upper right"] = Field(
-        default="lower center", description="Location of legend"
+    # Display Options
+    x_axis_as_percentage: bool = Field(
+        default=True,
+        description="Show X-axis (layer positions) as percentages instead of indices",
+        json_schema_extra={SpecialFieldKeys.column_group: "display_options"},
     )
-    legend_loc_y: float = Field(default=0.84, description="Y-coordinate of legend location")
-    legend_loc_x: float = Field(default=0.5, description="X-coordinate of legend location")
+    x_tick_count: int = Field(
+        default=6,
+        description="Number of tick marks on the x-axis",
+        ge=2,
+        le=20,
+        json_schema_extra={SpecialFieldKeys.column_group: "display_options"},
+    )
     show_number_of_points: Literal["min", "per_line", "both", "none", "auto"] = Field(
-        default="auto", description="Show number of points in legend"
+        default="auto",
+        description="Show number of points in legend",
+        json_schema_extra={SpecialFieldKeys.column_group: "display_options"},
     )
-    tight_layout: bool = Field(default=True, description="Tight layout for the figure")
 
-    # Color and style options
+    # Y-Axis Limits
+    with_fixed_limits: bool = Field(
+        default=False,
+        description="Use fixed limits for y-axis",
+        json_schema_extra={SpecialFieldKeys.column_group: "y_axis_limits"},
+    )
+    acc_ylim_min: float = Field(
+        default=60.0,
+        description="Minimum y value for accuracy plot",
+        ge=0.0,
+        le=100.0,
+        json_schema_extra={SpecialFieldKeys.column_group: "y_axis_limits"},
+    )
+    acc_ylim_max: float = Field(
+        default=105.0,
+        description="Maximum y value for accuracy plot",
+        ge=0.0,
+        le=110.0,
+        json_schema_extra={SpecialFieldKeys.column_group: "y_axis_limits"},
+    )
+    diff_ylim_min: float = Field(
+        default=-50.0,
+        description="Minimum y value for difference plot",
+        ge=-100.0,
+        le=0.0,
+        json_schema_extra={SpecialFieldKeys.column_group: "y_axis_limits"},
+    )
+    diff_ylim_max: float = Field(
+        default=50.0,
+        description="Maximum y value for difference plot",
+        ge=0.0,
+        le=100.0,
+        json_schema_extra={SpecialFieldKeys.column_group: "y_axis_limits"},
+    )
+
+    # Separator
+    sep1: None = Field(default=None, json_schema_extra={SpecialFieldKeys.separator: True})
+
+    # Figure Settings
+    figure_width: float = Field(
+        default=12.0,
+        description="Figure width in inches",
+        ge=1.0,
+        json_schema_extra={SpecialFieldKeys.column_group: "figure_settings"},
+    )
+    figure_height: float = Field(
+        default=5.0,
+        description="Figure height in inches",
+        ge=1.0,
+        json_schema_extra={SpecialFieldKeys.column_group: "figure_settings"},
+    )
+    tight_layout: bool = Field(
+        default=True,
+        description="Tight layout for the figure",
+        json_schema_extra={SpecialFieldKeys.column_group: "figure_settings"},
+    )
+
+    # Font Settings
+    title_fontsize: int = Field(
+        default=12,
+        description="Font size for title",
+        ge=4,
+        json_schema_extra={SpecialFieldKeys.column_group: "font_settings"},
+    )
+    axis_fontsize: int = Field(
+        default=10,
+        description="Font size for axis labels",
+        ge=4,
+        json_schema_extra={SpecialFieldKeys.column_group: "font_settings"},
+    )
+    legend_fontsize: int = Field(
+        default=10,
+        description="Font size for legend",
+        ge=4,
+        json_schema_extra={SpecialFieldKeys.column_group: "font_settings"},
+    )
+
+    # Legend Settings
+    legend_loc: Literal["lower center", "upper center", "lower right", "upper right"] = Field(
+        default="lower center",
+        description="Location of legend",
+        json_schema_extra={SpecialFieldKeys.column_group: "legend_settings"},
+    )
+    legend_loc_y: float = Field(
+        default=0.84,
+        description="Y-coordinate of legend location",
+        json_schema_extra={SpecialFieldKeys.column_group: "legend_settings"},
+    )
+    legend_loc_x: float = Field(
+        default=0.5,
+        description="X-coordinate of legend location",
+        json_schema_extra={SpecialFieldKeys.column_group: "legend_settings"},
+    )
+
+    # Separator
+    sep2: None = Field(default=None, json_schema_extra={SpecialFieldKeys.separator: True})
+
+    # Custom Colors
     custom_colors: Dict[str, Color] = Field(
         default=None, description="Custom colors mapping token types to hex color codes"
     )
+
+    # Custom Line Styles
     custom_line_styles: Dict[str, TLineStyle] = Field(
         default=None, description="Custom line styles mapping feature categories to styles"
     )
+
+    # Custom Line Labels
     custom_line_labels: Dict[str, str] = Field(
         default=None, description="Custom line labels mapping feature categories to labels"
     )
-    alpha: float = Field(default=0.2, description="Alpha (transparency) for confidence intervals", ge=0.0, le=1.0)
-
-    # X-axis options
-    x_axis_as_percentage: bool = Field(
-        default=True, description="Show X-axis (layer positions) as percentages instead of indices"
-    )
-    x_tick_count: int = Field(default=6, description="Number of tick marks on the x-axis", ge=2, le=20)
 
     @classmethod
     def specify_config(cls, lines_options: list[str]) -> Type[BaseModel]:
@@ -86,30 +198,25 @@ class InfoFlowPlotConfig(BaseModel):
         return create_model(
             f"{cls.__name__}Config",
             __base__=cls,
-            custom_colors=Annotated[
-                Dict[literal_lines_options, Color],
-                Field(
-                    default_factory=lambda: {
-                        option: Color(value)
-                        for option, value in zip(
-                            literal_lines_options,
-                            TOKEN_TYPE_COLORS.values(),
-                        )
-                    },
-                ),
-            ],
-            custom_line_styles=Annotated[
-                Dict[literal_lines_options, TLineStyle],
-                Field(
-                    default_factory=lambda: {
-                        option: value for option, value in zip(literal_lines_options, str_enum_values(TLineStyle))
-                    }
-                ),
-            ],
-            custom_line_labels=Annotated[
-                Dict[literal_lines_options, str],
-                Field(default_factory=lambda: {option: option for option in literal_lines_options}),
-            ],
+            custom_colors=annotate_dict_with_literal_values(
+                lines_options,
+                Color,
+                default_factory=lambda: {
+                    option: Color(value)
+                    for option, value in zip(
+                        literal_lines_options,
+                        TOKEN_TYPE_COLORS.values(),
+                    )
+                },
+            ),
+            custom_line_styles=annotate_dict_with_literal_values(
+                lines_options,
+                TLineStyle,
+            ),
+            custom_line_labels=annotate_dict_with_literal_values(
+                lines_options,
+                str,
+            ),
         )
 
     def get_ylim(self, metric_type: TMetricType) -> tuple[float, float]:
@@ -472,7 +579,8 @@ def create_confidence_plot(
 
         ax.axhline(plot_metadata["axhline_value"], color="gray", linewidth=1)
         ax.set_ylabel(plot_metadata["ylabel"], fontsize=config.axis_fontsize)
-        ax.set_ylim(config.get_ylim(metric_type))
+        if config.with_fixed_limits:
+            ax.set_ylim(config.get_ylim(metric_type))
         ax.tick_params(axis="both", which="major", labelsize=config.axis_fontsize)
         # ax.set_title(plot_metadata["title"], fontsize=config.title_fontsize)
 

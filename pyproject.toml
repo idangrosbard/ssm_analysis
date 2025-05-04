@@ -141,6 +141,11 @@ ignore = [
     "tests/src/test_llama2_tokenizer.py",
 ]
 
+reportUnknownMemberType = false
+reportMissingImports = false
+reportMissingTypeStubs = false
+analyzeUnannotatedLibraries = false
+
 executionEnvironments = [
   { root = "." }
 ]

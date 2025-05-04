@@ -1,12 +1,13 @@
 from enum import Enum
-from typing import Any, Callable, Dict, Literal, Type, TypeVar, get_args, get_origin
+from typing import Annotated, Any, Callable, Dict, Literal, Type, TypeVar, cast, get_args, get_origin
 
 import streamlit as st
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from pydantic_extra_types.color import Color
 from streamlit_pydantic import schema_utils
 from streamlit_pydantic.ui_renderer import GroupOptionalFieldsStrategy, InputUI
 
+from src.utils.pydantic_utils import create_literal_value
 from src.utils.types_utils import conditional_context_manager
 
 # Also, need to fix a bug in the library:
@@ -16,13 +17,35 @@ from src.utils.types_utils import conditional_context_manager
 T = TypeVar("T")
 
 
-def find_annotation_of_model_property(model: BaseModel, property_name: str) -> Any:
-    """Find the annotation of a property in a model."""
-
-    for key, field in model.model_fields.items():
-        if key == property_name:
-            return field.annotation
+def get_dict_key_literal_values(model: BaseModel, field_name: str):
+    annotation = model.model_fields[field_name].annotation
+    if annotation:
+        args = get_args(annotation)[0]
+        if get_origin(args) == Literal:
+            return get_args(args)
     return None
+
+
+def annotate_dict_with_literal_values(keys: list[str], value_type: type, default_factory: Callable[[], dict] = dict):
+    result_type = dict[
+        create_literal_value(keys) if len(keys) > 0 else str,
+        value_type,
+    ]
+
+    def f_json_schema_extra(schema: dict):
+        schema["maxItems"] = len(keys)
+        # schema["minItems"] = len(value)
+        if len(keys) == 0:
+            schema["readOnly"] = True
+        pass
+
+    return Annotated[
+        result_type,
+        Field(
+            default_factory=default_factory,
+            json_schema_extra=f_json_schema_extra,
+        ),
+    ]
 
 
 class ExtendedSchemaUtils:
@@ -139,6 +162,23 @@ class CustomInputUI(InputUI):
                 return [enum_class(val) for val in selected_values]
 
         return selected_values
+
+    def _render_dict_add_button(self, key: str, streamlit_app: Any, data_dict: Dict[str, Any]) -> Dict[str, Any]:
+        next_key = str(len(data_dict) + 1)
+        if values := get_dict_key_literal_values(cast(BaseModel, self._input_class), key):
+            remaining_values = [val for val in values if val not in data_dict]
+            if remaining_values:
+                next_key = remaining_values[0]
+            else:
+                return data_dict
+
+        if streamlit_app.button(
+            "Add Item",
+            key=self._key + "-" + key + "-add-item",
+        ):
+            data_dict[next_key] = None
+
+        return data_dict
 
     def _render_dict_item(
         self,

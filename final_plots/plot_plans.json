@@ -181,7 +181,12 @@
                         "__JSONABLE_type__": "ExperimentHyperParams",
                         "__JSONABLE_value__": "window_size"
                     },
-                    "lines": null,
+                    "lines": {
+                        "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                        "__JSONABLE_module__": "src.core.names",
+                        "__JSONABLE_type__": "ExperimentHyperParams",
+                        "__JSONABLE_value__": "target"
+                    },
                     "rows_options": [
                         {
                             "__JSONABLE_metadata__": "__JSONABLE_namedtuple__",
@@ -236,7 +241,9 @@
                         9,
                         15
                     ],
-                    "lines_options": [],
+                    "lines_options": [
+                        "last"
+                    ],
                     "fixed_values": {
                         "feature_category": "ALL",
                         "target": "last",
@@ -281,8 +288,50 @@
                             }
                         }
                     },
-                    "cell_plot_config": {},
-                    "combine_plot_config": {}
+                    "cell_plot_config": {
+                        "with_fixed_limits": false,
+                        "acc_ylim_min": 60.0,
+                        "acc_ylim_max": 105.0,
+                        "diff_ylim_min": -50.0,
+                        "diff_ylim_max": 50.0,
+                        "confidence_level": 0.95,
+                        "title": "",
+                        "metrics_to_show": [
+                            "acc",
+                            "diff"
+                        ],
+                        "figure_width": 12.0,
+                        "figure_height": 5.0,
+                        "title_fontsize": 12,
+                        "axis_fontsize": 10,
+                        "legend_fontsize": 10,
+                        "legend_loc": "lower center",
+                        "legend_loc_y": 0.84,
+                        "legend_loc_x": 0.5,
+                        "show_number_of_points": "auto",
+                        "tight_layout": true,
+                        "custom_colors": {
+                            "last": "#110fde"
+                        },
+                        "custom_line_styles": {},
+                        "custom_line_labels": {},
+                        "alpha": 0.2,
+                        "x_axis_as_percentage": true,
+                        "x_tick_count": 6
+                    },
+                    "combine_plot_config": {
+                        "padding": 10,
+                        "title": "",
+                        "title_height": 30,
+                        "font_size": 25,
+                        "img_width": -1,
+                        "img_height": -1,
+                        "show_row_labels": false,
+                        "rows_labels_override": {},
+                        "show_col_labels": false,
+                        "columns_labels_override": {},
+                        "label_font_size": 40
+                    }
                 }
             },
             "figure1": {
@@ -427,41 +476,72 @@
                         }
                     },
                     "cell_plot_config": {
-                        "with_fixed_limits": false,
+                        "title": "",
+                        "confidence_level": 0.95,
+                        "alpha": 0.2,
+                        "metrics_to_show": [
+                            {
+                                "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                                "__JSONABLE_module__": "src.analysis.plots.info_flow_confidence",
+                                "__JSONABLE_type__": "TMetricType",
+                                "__JSONABLE_value__": "diff"
+                            }
+                        ],
+                        "x_axis_as_percentage": true,
+                        "x_tick_count": 6,
+                        "show_number_of_points": "min",
+                        "with_fixed_limits": true,
                         "acc_ylim_min": 60.0,
                         "acc_ylim_max": 105.0,
-                        "diff_ylim_min": -50.0,
-                        "diff_ylim_max": 50.0,
-                        "confidence_level": 0.95,
-                        "title": "",
-                        "metrics_to_show": [
-                            "diff"
-                        ],
+                        "diff_ylim_min": -60.0,
+                        "diff_ylim_max": 40.0,
+                        "sep1": null,
                         "figure_width": 12.0,
                         "figure_height": 5.0,
+                        "tight_layout": false,
                         "title_fontsize": 12,
                         "axis_fontsize": 10,
                         "legend_fontsize": 10,
                         "legend_loc": "upper center",
-                        "legend_loc_y": 1.0,
+                        "legend_loc_y": 0.95,
                         "legend_loc_x": 0.5,
-                        "show_number_of_points": "auto",
-                        "tight_layout": true,
+                        "sep2": null,
                         "custom_colors": {
                             "mamba1-7B-falcon": "#af7404",
-                            "mamba1-2.8B": "#67ff00",
+                            "mamba1-2.8B": "#3e7316",
                             "mamba2-2.7B": "#1b00dc",
                             "gpt2-1.5B": "#0a9c8a"
                         },
                         "custom_line_styles": {},
-                        "custom_line_labels": {},
-                        "alpha": 0.2,
-                        "x_axis_as_percentage": true,
-                        "x_tick_count": 6,
-                        "0-cell_config_figure1-cell_config_figure1-metrics_to_show": {},
-                        "0-cell_config_figure1-cell_config_figure1-custom_colors": {}
+                        "custom_line_labels": {}
                     },
-                    "combine_plot_config": {}
+                    "combine_plot_config": {
+                        "title": "",
+                        "title_height": 30,
+                        "font_size": 25,
+                        "img_width": -1,
+                        "img_height": -1,
+                        "padding": 0,
+                        "sep1": null,
+                        "show_row_labels": false,
+                        "show_col_labels": true,
+                        "rows_labels_override": {},
+                        "columns_labels_override": {
+                            "subject": "aaa"
+                        },
+                        "label_font_size": 40,
+                        "crop_params": {
+                            "enable_crop": true,
+                            "edge_left": 0.0055,
+                            "edge_right": 0.0,
+                            "edge_top": 0.0,
+                            "edge_bottom": 0.0,
+                            "crop_left": 0.05,
+                            "crop_right": 0.0,
+                            "crop_top": 0.0,
+                            "crop_bottom": 0.0
+                        }
+                    }
                 }
             },
             "model_size_knockout": {
@@ -1260,7 +1340,34 @@
                     ],
                     "lines_options": [],
                     "fixed_values": {},
-                    "cell_plot_config": {},
+                    "cell_plot_config": {
+                        "title": "",
+                        "minimal_title": false,
+                        "is_base_prob_in_title": false,
+                        "x_axis_as_percentage": true,
+                        "x_tick_count": 6,
+                        "sep1": null,
+                        "figure_width": 4.0,
+                        "figure_height": 3.0,
+                        "is_tight_layout": true,
+                        "title_position_x": 0.45,
+                        "title_position_y": 0.95,
+                        "fontsize": 12,
+                        "title_fontsize": 12,
+                        "tick_fontsize": 10,
+                        "sep2": null,
+                        "x_axis_label": "Depth %",
+                        "y_axis_label": "",
+                        "colorbar_nbins": 5,
+                        "colormap": "RdYlGn",
+                        "reverse_colormap": false,
+                        "sep3": null,
+                        "with_fixed_diff": true,
+                        "fixed_diff": 0.3,
+                        "is_diff_probs": true,
+                        "two_slopes_normalization": false,
+                        "is_robust_normalization": false
+                    },
                     "combine_plot_config": {}
                 }
             },

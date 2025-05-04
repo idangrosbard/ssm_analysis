@@ -3,6 +3,8 @@ Uses a context manager to temporarily allow nested layouts without permanently m
 """
 
 from contextlib import contextmanager
+from functools import wraps
+from typing import Callable
 
 
 @contextmanager
@@ -48,3 +50,12 @@ def allow_nested_st_elements():
     finally:
         # Restore the original function when leaving the context
         streamlit.delta_generator._check_nested_element_violation = original_function
+
+
+def decorator_allow_nested_st_elements(func: Callable):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        with allow_nested_st_elements():
+            return func(*args, **kwargs)
+
+    return wrapper

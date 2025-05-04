@@ -1,4 +1,4 @@
-from typing import Optional, Tuple
+from typing import Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -8,46 +8,161 @@ from matplotlib.ticker import MaxNLocator
 from pydantic import BaseModel, Field
 
 from src.core.consts import reverse_model_id
+from src.utils.streamlit.st_pydantic_v2.input import SpecialFieldKeys
 
 
 class HeatmapPlotConfig(BaseModel):
     """Configuration for heatmap plots."""
 
-    # Figure layout and positioning
+    # Basic Configuration
+    title: str = Field(
+        default="",
+        description="Custom plot title (leave empty for default)",
+    )
+    minimal_title: bool = Field(
+        default=False,
+        description="Use minimal title without extra details",
+        json_schema_extra={SpecialFieldKeys.column_group: "basic_config"},
+    )
+    is_base_prob_in_title: bool = Field(
+        default=False,
+        description="Show the base probability in the title",
+        json_schema_extra={SpecialFieldKeys.column_group: "basic_config"},
+    )
+
+    # X-axis Options
+    x_axis_as_percentage: bool = Field(
+        default=True,
+        description="Show X-axis as percentages",
+        json_schema_extra={SpecialFieldKeys.column_group: "x_axis_options"},
+    )
+    x_tick_count: int = Field(
+        default=6,
+        description="Number of tick marks on the x-axis",
+        ge=2,
+        le=12,
+        json_schema_extra={SpecialFieldKeys.column_group: "x_axis_options"},
+    )
+
+    # Separator
+    sep1: None = Field(default=None, json_schema_extra={SpecialFieldKeys.separator: True})
+
+    # Figure Settings
     figure_width: float = Field(
         default=4.0,
         description="Figure width in inches",
         ge=2.0,
         le=12.0,
+        json_schema_extra={SpecialFieldKeys.column_group: "figure_settings"},
     )
-    figure_height: float = Field(default=3.0, description="Figure height in inches", ge=2.0, le=10.0)
-    minimal_title: bool = Field(default=False, description="Use minimal title without extra details")
-    title_position: Tuple[float, float] = Field(default=(0.45, 0.95), description="Position of the title (x, y)")
-    fontsize: int = Field(default=12, description="Font size for labels and title", ge=8, le=20)
-    title_fontsize: int = Field(default=12, description="Font size for the title", ge=8, le=24)
-    is_tight_layout: bool = Field(default=True, description="Use tight layout")
+    figure_height: float = Field(
+        default=3.0,
+        description="Figure height in inches",
+        ge=2.0,
+        le=10.0,
+        json_schema_extra={SpecialFieldKeys.column_group: "figure_settings"},
+    )
+    is_tight_layout: bool = Field(
+        default=True,
+        description="Use tight layout",
+        json_schema_extra={SpecialFieldKeys.column_group: "_figure_settings1"},
+    )
+    title_position_x: float = Field(
+        default=0.45,
+        description="Position of the title (x, y)",
+        json_schema_extra={SpecialFieldKeys.column_group: "_figure_settings1"},
+    )
+    title_position_y: float = Field(
+        default=0.95,
+        description="Position of the title (x, y)",
+        json_schema_extra={SpecialFieldKeys.column_group: "_figure_settings1"},
+    )
 
-    # Color settings
-    colormap: str = Field(default="RdYlGn", description="Colormap name (e.g., 'RdYlGn', 'coolwarm', 'viridis')")
-    reverse_colormap: bool = Field(default=False, description="Reverse the colormap direction")
+    # Font Settings
+    fontsize: int = Field(
+        default=12,
+        description="Font size for labels and title",
+        ge=8,
+        le=20,
+        json_schema_extra={SpecialFieldKeys.column_group: "font_settings"},
+    )
+    title_fontsize: int = Field(
+        default=12,
+        description="Font size for the title",
+        ge=8,
+        le=24,
+        json_schema_extra={SpecialFieldKeys.column_group: "font_settings"},
+    )
+    tick_fontsize: int = Field(
+        default=10,
+        description="Font size for tick labels",
+        ge=6,
+        le=18,
+        json_schema_extra={SpecialFieldKeys.column_group: "font_settings"},
+    )
 
-    # Normalization and scaling
-    with_fixed_diff: bool = Field(default=True, description="Use fixed difference value for colormap scaling")
-    fixed_diff: float = Field(default=0.3, description="Fixed difference value for colormap scaling", ge=0.01, le=1.0)
-    is_diff_probs: bool = Field(default=True, description="Normalize values by subtracting the base probability")
-    two_slopes_normalization: bool = Field(default=False, description="Use two slopes normalization")
-    is_robust_normalization: bool = Field(default=False, description="Use robust normalization")
+    # Separator
+    sep2: None = Field(default=None, json_schema_extra={SpecialFieldKeys.separator: True})
 
-    # Axis ticks and labels
-    tick_fontsize: int = Field(default=10, description="Font size for tick labels", ge=6, le=18)
-    is_base_prob_in_title: bool = Field(default=False, description="Show the base probability in the title")
-    x_axis_label: str = Field(default="Depth %", description="Label for x-axis")
-    y_axis_label: str = Field(default="", description="Label for y-axis")
-    colorbar_nbins: int = Field(default=5, description="Number of bins in the colorbar", ge=3, le=10)
+    # Axis & Labels
+    x_axis_label: str = Field(
+        default="Depth %",
+        description="Label for x-axis",
+        json_schema_extra={SpecialFieldKeys.column_group: "axis_labels"},
+    )
+    y_axis_label: str = Field(
+        default="",
+        description="Label for y-axis",
+        json_schema_extra={SpecialFieldKeys.column_group: "axis_labels"},
+    )
+    colorbar_nbins: int = Field(
+        default=5,
+        description="Number of bins in the colorbar",
+        ge=3,
+        le=10,
+        json_schema_extra={SpecialFieldKeys.column_group: "axis_labels"},
+    )
 
-    # X-axis options
-    x_axis_as_percentage: bool = Field(default=True, description="Show X-axis as percentages")
-    x_tick_count: int = Field(default=6, description="Number of tick marks on the x-axis", ge=2, le=12)
+    # Color Settings
+    colormap: str = Field(
+        default="RdYlGn",
+        description="Colormap name (e.g., 'RdYlGn', 'coolwarm', 'viridis')",
+        json_schema_extra={SpecialFieldKeys.column_group: "color_settings"},
+    )
+    reverse_colormap: bool = Field(
+        default=False,
+        description="Reverse the colormap direction",
+        json_schema_extra={SpecialFieldKeys.column_group: "color_settings"},
+    )
+
+    # Separator
+    sep3: None = Field(default=None, json_schema_extra={SpecialFieldKeys.separator: True})
+
+    # Normalization Settings
+    with_fixed_diff: bool = Field(
+        default=True,
+        description="Use fixed difference value for colormap scaling",
+        json_schema_extra={SpecialFieldKeys.column_group: "normalization"},
+    )
+    fixed_diff: float = Field(
+        default=0.3,
+        description="Fixed difference value for colormap scaling",
+        ge=0.01,
+        le=1.0,
+        json_schema_extra={SpecialFieldKeys.column_group: "normalization"},
+    )
+    is_diff_probs: bool = Field(
+        default=True,
+        description="Normalize values by subtracting the base probability",
+    )
+    two_slopes_normalization: bool = Field(
+        default=False,
+        description="Use two slopes normalization",
+    )
+    is_robust_normalization: bool = Field(
+        default=False,
+        description="Use robust normalization",
+    )
 
 
 def simple_diff_fixed(
@@ -128,7 +243,7 @@ def simple_diff_fixed(
             )
             + (f"\nbase probability: {round(base_prob, 4)}" if config.is_base_prob_in_title else "")
         ),
-        position=config.title_position,
+        position=(config.title_position_x, config.title_position_y),
         fontsize=config.title_fontsize,
     )
 

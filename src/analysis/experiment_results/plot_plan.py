@@ -18,6 +18,7 @@ from typing import (
 )
 
 from src.analysis.experiment_results.helpers import init_variant_params_from_values
+from src.analysis.plots.image_combiner import ImageGridParams
 from src.core.consts import GRAPHS_ORDER
 from src.core.names import (
     VARIANT_PARAM_NAME,
@@ -404,7 +405,7 @@ class PlotPlan:
 
     fixed_values: dict[ExperimentHyperParams, PossibleHPDTypes] = field(default_factory=dict)
     cell_plot_config: dict[str, Any] = field(default_factory=dict)
-    combine_plot_config: dict[str, Any] = field(default_factory=dict)
+    combine_plot_config: ImageGridParams = field(default_factory=ImageGridParams)
 
     def _get_orientation_value(self, param_name: FinalPlotsPlanOrientation) -> Optional[ExperimentHyperParams]:
         return getattr(self, param_name)
@@ -425,6 +426,12 @@ class PlotPlan:
                 return self.lines_options
             case _:
                 assert_never(param)
+
+    def get_option_display_names_for_orientation(self, param: FinalPlotsPlanOrientation) -> list[str]:
+        param_hpd = self.get_orientation_value_hpd(param)
+        if param_hpd is None:
+            return []
+        return [param_hpd.get_display_name(option) for option in self.get_options_for_param(param)]
 
     def set_orientation_value(self, param: FinalPlotsPlanOrientation, value: Optional[ExperimentHyperParams]) -> None:
         setattr(self, param.value, value)

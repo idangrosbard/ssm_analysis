@@ -40,13 +40,10 @@ class HeatmapPlotGenerationComponent(StreamlitComponent):
         # Apply model filters to get qualifying prompts
         with st.sidebar:
             heatmap_parms = choose_heatmap_parms()
-            image_grid_params_dict = pydantic_input(key="my_form", model=ImageGridParams)
+            image_grid_params = ImageGridParams.model_validate(pydantic_input(key="my_form", model=ImageGridParams))
 
             # Create the grid organizer with UI-configurable properties
-            grid_organizer_dict = pydantic_input(key="grid_organizer", model=GridOrganizer)
-
-        # Convert image_grid_params from dict to object if provided
-        image_grid_params = ImageGridParams(**image_grid_params_dict) if image_grid_params_dict else None
+            grid_organizer = GridOrganizer.model_validate(pydantic_input(key="grid_organizer", model=GridOrganizer))
 
         # Create GridOrganizer with default column order for model sizes
         default_col_order: List[Union[str, int, Enum]] = [
@@ -57,25 +54,7 @@ class HeatmapPlotGenerationComponent(StreamlitComponent):
         ]
 
         # Create grid organizer with our preferred ordering
-        grid_organizer = GridOrganizer(
-            col_order=default_col_order,
-        )
-
-        # Update the grid organizer with user-configurable properties if provided
-        if grid_organizer_dict:
-            # Update fields from the UI inputs
-            if "row_order" in grid_organizer_dict and grid_organizer_dict["row_order"] is not None:
-                grid_organizer.row_order = grid_organizer_dict["row_order"]
-
-            if "col_order" in grid_organizer_dict and grid_organizer_dict["col_order"] is not None:
-                # Skip UI col_order because it can't handle Enum types properly
-                pass
-
-            if "grid_params" in grid_organizer_dict and grid_organizer_dict["grid_params"] is not None:
-                if isinstance(grid_organizer_dict["grid_params"], dict):
-                    grid_organizer.grid_params = ImageGridParams(**grid_organizer_dict["grid_params"])
-                else:
-                    grid_organizer.grid_params = grid_organizer_dict["grid_params"]
+        grid_organizer.col_order = default_col_order
 
         # Collect plots with their metadata
         plot_items_with_keys = []

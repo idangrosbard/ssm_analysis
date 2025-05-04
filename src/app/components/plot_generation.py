@@ -12,12 +12,13 @@
 from dataclasses import dataclass
 from io import BytesIO
 from pathlib import Path
-from typing import Any, Optional, Type, cast
+from typing import Any, Iterator, Optional, Type, cast
 
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go
 import streamlit as st
 import streamlit_antd_components as sac
+from more_itertools import unique_everseen
 from pydantic import BaseModel
 
 from src.analysis.experiment_results.helpers import get_model_evaluations
@@ -45,8 +46,8 @@ from src.experiments.infrastructure.base_runner import BaseRunner
 from src.experiments.infrastructure.setup_models import get_tokenizer
 from src.experiments.runners.heatmap import HeatmapRunner
 from src.experiments.runners.info_flow import InfoFlowRunner
-from src.utils.streamlit.components.extended_streamlit_pydantic import pydantic_input
 from src.utils.streamlit.helpers.component import StreamlitComponent
+from src.utils.streamlit.st_pydantic_v2.input import pydantic_ui
 from src.utils.types_utils import class_values
 
 
@@ -65,14 +66,12 @@ class GridLayout:
     plot_generator: "PlotGenerator"
 
     @property
-    def row_values(self) -> list[Any]:
-        """Get unique sorted row values."""
-        return sorted({cell.rows for cell in self.cells})
+    def row_values(self) -> Iterator[Any]:
+        return unique_everseen([cell.rows for cell in self.cells])
 
     @property
-    def col_values(self) -> list[Any]:
-        """Get unique sorted column values."""
-        return sorted({cell.cols for cell in self.cells})
+    def col_values(self) -> Iterator[Any]:
+        return unique_everseen([cell.cols for cell in self.cells])
 
     def get_cell_at(self, row_value: Any, col_value: Any) -> Optional[Cell]:
         """Get cell at the specified position."""
@@ -97,7 +96,7 @@ class GridLayout:
 
         return row_labels, col_labels
 
-    def render_combined(self, recreate_plots: bool = False) -> None:
+    def render_combined(self, recreate_plots: bool, grid_params: ImageGridParams):
         """Render all plots combined into a single image."""
         image_grid: list[list[Optional[Path]]] = []
         row_labels, col_labels = self.get_labels()  # noqa: F841
@@ -116,26 +115,16 @@ class GridLayout:
                     row_images.append(None)
             image_grid.append(row_images)
 
-        # Get configuration from plot_plan
-        combine_config = ImageGridParams.model_validate(self.plot_generator.plot_plan.combine_plot_config)
-
-        with st.sidebar.expander("Combined Plot Configuration"):
-            grid_params = ImageGridParams.model_validate(
-                pydantic_input(
-                    key=f"combine_config_{self.plot_plan.plot_id}",
-                    model=combine_config,
-                )
-            )
-
         # Filter out None values from image grid
         filtered_grid = [[path for path in row if path is not None] for row in image_grid]
         filtered_grid = [row for row in filtered_grid if row]  # Remove empty rows
 
         # Combine images into a grid
-        if filtered_grid:
-            combined_image = combine_image_grid(filtered_grid, grid_params)
-            if combined_image:
-                st.image(combined_image)
+        combined_image = combine_image_grid(filtered_grid, grid_params)
+        if combined_image:
+            st.image(combined_image, width=combined_image.width)
+
+        return combined_image
 
     def render_separate(self, recreate_plots: bool = False) -> None:
         """Render plots in separate Streamlit columns."""
@@ -168,13 +157,6 @@ class GridLayout:
                     with col_col:
                         self.plot_generator._plot_cell(self.data_reqs_per_cell[cell], cell, recreate_plots)
 
-    def render(self, recreate_plots: bool = False, combine_plots: bool = False) -> None:
-        """Render the grid layout."""
-        if combine_plots:
-            self.render_combined(recreate_plots)
-        else:
-            self.render_separate(recreate_plots)
-
 
 class Tabs:
     PLOT_INDIVIDUAL = "Plot Individually"
@@ -197,6 +179,12 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
         # Create a unique identifier for the cell
         cell_id = f"{grid_name}_{row_name}_{col_name}".replace(" ", "_")
         return cache_dir / f"{cell_id}.png"
+
+    def _get_combined_plot_cache_path(self, grid_name: Any) -> Path:
+        """Generate a unique cache path for the combined plot."""
+        cache_dir = PlotPlans.get_plot_plan_dir(self.plot_plan.plot_id)
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        return cache_dir / f"{self.plot_plan.plot_id}_{grid_name}.png"
 
     def _plot_data_reqs(self, data_reqs: DataReqs, cell_plot_config: dict[str, Any]):
         runners = _cache_get_runners(data_reqs, self.result_bank)
@@ -252,6 +240,11 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
                 raise ValueError(f"Unknown experiment name: {self.plot_plan.experiment_name}")
 
         return fig
+
+    def _save_plot_plan(self):
+        plot_plans = PlotPlans.load()
+        plot_plans._items[self.plot_plan.plot_id] = self.plot_plan
+        plot_plans.save()
 
     def _plot_cell(
         self,
@@ -343,13 +336,8 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
     def _get_config_for_experiment_name(self, experiment_name: ExperimentName) -> Type[BaseModel]:
         """Get the appropriate configuration model based on experiment name."""
         if experiment_name == ExperimentName.info_flow:
-            lines_hp_definition = self.plot_plan.get_orientation_value_hpd(FinalPlotsPlanOrientation.lines)
-            assert lines_hp_definition is not None
             return InfoFlowPlotConfig.specify_config(
-                [
-                    lines_hp_definition.get_display_name(x)
-                    for x in self.plot_plan.get_options_for_param(FinalPlotsPlanOrientation.lines)
-                ]
+                self.plot_plan.get_option_display_names_for_orientation(FinalPlotsPlanOrientation.lines)
             )
         elif experiment_name == ExperimentName.heatmap:
             return HeatmapPlotConfig
@@ -386,13 +374,14 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
             # Initialize configs if they don't exist
             # Show customization UI
             st.write("### Cell Plot Configuration")
+            save_configuration = st.button("Save Configuration")
             config_model = self._get_config_for_experiment_name(self.plot_plan.experiment_name)
             with st.sidebar:
                 with st.expander("Cell Plot Configuration"):
-                    cell_config_dict = pydantic_input(
+                    cell_config_dict = pydantic_ui(
                         key=f"cell_config_{self.plot_plan.plot_id}",
                         model=config_model.model_validate(self.plot_plan.cell_plot_config),  # type: ignore
-                    )
+                    ).model_dump()
 
             data_reqs_cells = list(data_reqs_per_cell.keys())
             # Show preview of first cell
@@ -442,18 +431,15 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
                 st.image(buf)
 
             # Add save button
-            if st.button("Save Configuration"):
+            if save_configuration:
                 self.plot_plan.cell_plot_config = cell_config_dict
-
-                # Save to disk
-                plot_plans = PlotPlans.load()
-                plot_plans._items[self.plot_plan.plot_id] = self.plot_plan
-                plot_plans.save()
-
-                st.success("Configuration saved successfully!")
+                self._save_plot_plan()
+                st.toast("Configuration saved successfully!")
 
         else:
             recreate_plots = tab == Tabs.PLOT_INDIVIDUAL and st.button("Recreate all plots")
+            save_combined_plot = tab == Tabs.PLOT_COMBINED and st.button("Save Combined Plot")
+            save_configuration = tab == Tabs.PLOT_COMBINED and st.button("Save Configuration")
 
             # Group cells by grid
             cells_by_grid: dict[Any, list[Cell]] = {}
@@ -471,13 +457,48 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
                 grid_names = sorted(cells_by_grid.keys())
                 tabs = st.tabs([grid_param_definition.get_display_name(grid) for grid in grid_names])
 
+            maybe_combined_image = None
+            grid_params = None
+            if combine_plots:
+                specified_image_grid_params = ImageGridParams.specify_config(
+                    self.plot_plan.get_option_display_names_for_orientation(FinalPlotsPlanOrientation.rows),
+                    self.plot_plan.get_option_display_names_for_orientation(FinalPlotsPlanOrientation.cols),
+                )
+                # Get configuration from plot_plan
+                combine_config = specified_image_grid_params.model_validate(
+                    self.plot_plan.combine_plot_config.model_dump()
+                )
+
+                with st.sidebar.expander("Combined Plot Configuration"):
+                    grid_params = specified_image_grid_params.model_validate(
+                        pydantic_ui(
+                            key=f"combine_config_{self.plot_plan.plot_id}",
+                            model=combine_config,
+                        )
+                    )
+
+                    # Add save button
+                    if save_configuration:
+                        self.plot_plan.combine_plot_config = grid_params
+                        self._save_plot_plan()
+                        st.toast("Configuration saved successfully!")
             # Render each grid
             for grid_name, tab in zip(grid_names, tabs):
+                grid_layout = GridLayout(
+                    plot_plan=self.plot_plan,
+                    cells=cells_by_grid[grid_name],
+                    data_reqs_per_cell=data_reqs_per_cell,
+                    plot_generator=self,
+                )
                 with tab:
-                    grid_layout = GridLayout(
-                        plot_plan=self.plot_plan,
-                        cells=cells_by_grid[grid_name],
-                        data_reqs_per_cell=data_reqs_per_cell,
-                        plot_generator=self,
-                    )
-                    grid_layout.render(recreate_plots, combine_plots)
+                    if combine_plots:
+                        assert grid_params is not None
+                        maybe_combined_image = grid_layout.render_combined(recreate_plots, grid_params)
+                    else:
+                        grid_layout.render_separate(recreate_plots)
+
+                if maybe_combined_image and save_combined_plot:
+                    path = self._get_combined_plot_cache_path(grid_name)
+                    path.parent.mkdir(parents=True, exist_ok=True)
+                    maybe_combined_image.save(str(path))
+                    st.toast("Combined plot saved successfully!")

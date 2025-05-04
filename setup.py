@@ -36,6 +36,7 @@ setup(
         "jsonpickle>=4.0.5",
         "devtools>=0.12.12",
         "mamba-ssm==2.2.2",  # TODO: update while making sure that the results don't change
+        "more-itertools>=10.7.0",
     ],
     extras_require={
         "optimization": [

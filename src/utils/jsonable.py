@@ -28,6 +28,7 @@ from typing import (
 )
 
 from devtools import debug
+from pydantic import BaseModel
 from pydantic_extra_types.color import Color
 
 
@@ -169,8 +170,9 @@ class JSONAble(ABC):
                             _, value_type = args[0], args[1]
                     data = {k: _rec_to_dict(v, type_hint=value_type) for k, v in obj.items()}
                     return data
-
-                if type_hint is not None:
+                elif isinstance(obj, BaseModel):
+                    return _rec_to_dict(obj.model_dump(), type_hint=None)
+                elif type_hint is not None:
                     origin = get_origin(type_hint)
                     args = get_args(type_hint)
                     item_type = None
@@ -278,7 +280,9 @@ class JSONAble(ABC):
                 new_obj = type_hint.__new__(type_hint)  # type: ignore
 
                 type_hints = {}
-                if inspect.isclass(type_hint) and hasattr(type_hint, "__dataclass_fields__"):
+                if inspect.isclass(type_hint) and (
+                    hasattr(type_hint, "__dataclass_fields__") or issubclass(type_hint, BaseModel)
+                ):
                     # Process fields with their type hints
                     type_hints = resolved_type_hints(type_hint)
                 elif type_hint is not None:
