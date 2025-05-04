@@ -105,7 +105,7 @@ class ModelCorrectPromptFilteration(BasePromptFilteration):
         return df[COLS.ORIGINAL_IDX].tolist()
 
     def get_dependencies(self):
-        if not self.has_context:
+        if not (self.model_arch_and_size is not None or self.has_context):
             return {}
 
         model_arch_and_size = self._get_model_arch_and_size_from_context()

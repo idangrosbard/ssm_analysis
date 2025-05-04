@@ -94,7 +94,7 @@ class EvaluateModelRunner(BaseRunner[EvaluateModelParams]):
         from src.analysis.prompt_filterations import AnyExistingCompletePromptFilteration
 
         if not isinstance(self.input_params.filteration, AnyExistingCompletePromptFilteration):
-            df = df.loc[self.input_params.filteration.get_prompt_ids()]
+            df = df.loc[self.input_params.filteration.contextualize(self).get_prompt_ids()]
         return cast(
             TPromptData,
             df,
@@ -108,7 +108,7 @@ class EvaluateModelRunner(BaseRunner[EvaluateModelParams]):
         return self.output_result_path.exists()
 
     def get_runner_dependencies(self):
-        return self.input_params.filteration.get_dependencies()
+        return self.input_params.filteration.contextualize(self).get_dependencies()
 
 
 def run(args: EvaluateModelRunner):

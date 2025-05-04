@@ -2,13 +2,13 @@ import json
 import time
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from types import MappingProxyType
 from typing import ClassVar, Literal, Optional, TypedDict
 
 import numpy as np
 import orjson
 import torch
 from cachetools import LRUCache, cached
+from frozendict import frozendict
 from tqdm import tqdm
 
 from src.analysis.prompt_filterations import (
@@ -79,7 +79,7 @@ class InfoFlowFileContent(TypedDict):
 @dataclass(frozen=True)
 class InfoFlowFileStatistics:
     complete_prompt_ids: frozenset[TPromptOriginalIndex]
-    partial_prompt_ids: MappingProxyType[TPromptOriginalIndex, frozenset[TLayerIndex]]
+    partial_prompt_ids: frozendict[TPromptOriginalIndex, frozenset[TLayerIndex]]
     banned_prompt_ids: frozenset[TPromptOriginalIndex]
     layers_amount: TLayerIndex
 
@@ -88,7 +88,7 @@ class InfoFlowFileStatistics:
         data = json.loads(json_str)
         return cls(
             complete_prompt_ids=frozenset(data.pop("complete_prompt_ids")),
-            partial_prompt_ids=MappingProxyType(
+            partial_prompt_ids=frozendict(
                 {
                     TPromptOriginalIndex(int(prompt_id)): frozenset(layer_ids)
                     for prompt_id, layer_ids in data.pop("partial_prompt_ids").items()
@@ -167,8 +167,11 @@ class JSONInfoFlowFile:
         content = self._load()
         layers_amount = content[InfoFlowJSONFileCols.metadata][InfoFlowJSONMetadataCols.layers_amount]
         corrupted_prompt_ids = []
-        for prompt_id in content[InfoFlowJSONFileCols.data]:
-            if len(content[InfoFlowJSONFileCols.data][prompt_id]) != layers_amount:
+        for prompt_id in content[InfoFlowJSONFileCols.metadata][InfoFlowJSONMetadataCols.banned_prompts]:
+            if (
+                prompt_id in content[InfoFlowJSONFileCols.data]
+                and len(content[InfoFlowJSONFileCols.data][prompt_id]) != layers_amount
+            ):
                 corrupted_prompt_ids.append(prompt_id)
         for prompt_id in corrupted_prompt_ids:
             assert len(content[InfoFlowJSONFileCols.data][prompt_id]) == 0
@@ -244,7 +247,7 @@ class JSONInfoFlowFile:
 
         res = InfoFlowFileStatistics(
             complete_prompt_ids=frozenset(complete_prompt_ids),
-            partial_prompt_ids=MappingProxyType(
+            partial_prompt_ids=frozendict(
                 {prompt_id: frozenset(layer_ids) for prompt_id, layer_ids in partial_prompt_ids.items()}
             ),
             banned_prompt_ids=frozenset(
@@ -429,7 +432,7 @@ def run(args: InfoFlowRunner):
         args.output_file.create_new(layers_amount)
 
     missing_prompt_layer_values = args.output_file.get_missing_prompt_layer_values(
-        prompt_idx_subset=args.input_params.filteration.get_prompt_ids(),
+        prompt_idx_subset=args.input_params.filteration.contextualize(args).get_prompt_ids(),
         layer_idx_subset=args.variant_params.subset_layers,
     )
 

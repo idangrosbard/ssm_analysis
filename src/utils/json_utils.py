@@ -7,6 +7,8 @@ type SanitizedJsonObject = dict[str, SanitizedJsonObject] | list[SanitizedJsonOb
 
 
 def sanitize(obj: GeneralJsonObject) -> SanitizedJsonObject:
+    if isinstance(obj, str):
+        return obj
     if isinstance(obj, Mapping):
         return {str(k): sanitize(v) for k, v in obj.items()}
     elif isinstance(obj, Iterable):
