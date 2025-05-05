@@ -1,9 +1,7 @@
 import functools
 import threading
-import time  # Added for potential thread join timeout
 from collections import defaultdict
 from dataclasses import dataclass, field
-from enum import StrEnum
 from typing import Dict, List, Optional, Set, Tuple
 
 import pandas as pd
@@ -20,6 +18,11 @@ from src.data_ingestion.data_defs.data_defs import (
 )
 from src.data_ingestion.helpers.logits_utils import find_token_range
 from src.utils.streamlit.components.aagrid import SelectionMode
+from src.utils.streamlit.helpers.background_task import (
+    TasksManager,
+    TaskStatus,
+    show_tasks_manager_summary,
+)
 from src.utils.streamlit.helpers.component import StreamlitComponent
 from src.utils.streamlit.helpers.session_keys import SessionKey
 
@@ -80,34 +83,65 @@ class TokenizationResults:
         return dict(reasons)
 
 
-class AnalysisTaskStatus(StrEnum):
-    RUNNING = "RUNNING"
-    CANCELLED = "CANCELLED"
-    COMPLETED = "COMPLETED"
+type TokenizationTaskInput = Tuple[UniqueTokenizerInfo, List[TPromptOriginalIndex], Prompts, TokenizationResults]
 
 
-@dataclass
-class AnalysisTask:
+def tokenize_prompts_task(
+    args: TokenizationTaskInput,
+    cancellation_event: threading.Event,
+) -> None:
+    """Worker function for tokenizing a subset of prompts with one tokenizer."""
+    tokenizer_info, prompt_indices_to_process, prompts, results = args
+    tokenizer_name = tokenizer_info.display_name
+
+    for prompt_idx in prompt_indices_to_process:
+        if cancellation_event.is_set():
+            return  # Stop processing if cancellation is requested
+
+        prompt = prompts.get_prompt(prompt_idx)
+
+        # Initialize stats for this specific pair
+        stats = PromptTokenizationStats()
+
+        try:
+            # Tokenize the prompt
+            input_ids = prompt.input_ids(tokenizer_info.tokenizer, "cpu")
+            stats.token_count = len(input_ids[0])
+
+            # Get token counts by type
+            for token_type in TokenType:
+                try:
+                    token_indices = prompt.get_knockout_idx(tokenizer_info.tokenizer, token_type, "cpu")
+                    stats.token_type_counts[token_type] = len(token_indices)
+                    stats.token_type_edges[token_type] = (token_indices[0], token_indices[-1])
+                except Exception as e_type:
+                    stats.token_type_error_msg[token_type] = TErrorMessage(str(e_type))
+
+            stats.subject_token_edges = find_token_range(tokenizer_info.tokenizer, input_ids[0], prompt.subject)
+        except Exception as e_main:
+            stats.error_msg = TErrorMessage(str(e_main))
+
+        # --- Update shared results safely ---
+        with results.lock:
+            # Store the completed stats object
+            results.data[tokenizer_name][prompt_idx] = stats
+            # Mark this specific pair as processed
+            results.processed_pairs.add((prompt_idx, tokenizer_name))
+
+
+class AnalysisJob(TasksManager[TokenizationTaskInput, None]):
     """Manages the state of a tokenization analysis task."""
 
-    prompts: Prompts
-    unique_tokenizers: Tokenizers
-    cancellation_event: threading.Event = field(default_factory=threading.Event)
-    worker_threads: List[threading.Thread] = field(default_factory=list)
+    def __init__(self, prompts: Prompts, unique_tokenizers: Tokenizers):
+        """Initialize the analysis job with prompts and tokenizers."""
+        super().__init__()  # Initialize the parent TasksManager
+        self.prompts = prompts
+        self.unique_tokenizers = unique_tokenizers
 
     def __hash__(self) -> int:
         prompt_ids_hash = hash(tuple(sorted(self.prompts.keys())))
         tokenizer_names_hash = hash(tuple(sorted([t.display_name for t in self.unique_tokenizers])))
         return hash((prompt_ids_hash, tokenizer_names_hash))
-
-    @property
-    def status(self) -> AnalysisTaskStatus:
-        if self.cancellation_event.is_set():
-            return AnalysisTaskStatus.CANCELLED
-        elif len(self.worker_threads) > 0 and any(t.is_alive() for t in self.worker_threads):
-            return AnalysisTaskStatus.RUNNING
-        else:
-            return AnalysisTaskStatus.COMPLETED
 
     @property
     def total_pairs_needed(self) -> int:
@@ -117,34 +151,31 @@ class AnalysisTask:
         self, existing_results: TokenizationResults
     ) -> Dict[UniqueTokenizerInfo, List[TPromptOriginalIndex]]:
         return {
-            tk_info: list(set(self.prompts.keys()) - set(existing_results.data[tk_info.display_name].keys()))
+            tk_info: list(set(self.prompts.keys()) - set(existing_results.data.get(tk_info.display_name, {}).keys()))
             for tk_info in self.unique_tokenizers
         }
 
     def cancel(self):
-        """Signal cancellation to worker threads."""
-        if not self.cancellation_event.is_set():
-            self.cancellation_event.set()
+        self.cancel_all_tasks()  # Use parent method directly
 
     def start(self, existing_results: TokenizationResults):
         missing_pairs = self.missing_pair_per_tokenizer(existing_results)
 
-        if not missing_pairs:
-            self.worker_threads = []  # Ensure no lingering threads if no work
-            return
+        if not any(missing_pairs.values()):
+            return  # No work to do if no missing pairs
 
-        # Clear old threads before starting new ones
-        self.worker_threads = []
+        # Create tasks for each tokenizer
         for tokenizer_info, prompt_indices in missing_pairs.items():
-            thread = AnalysisWorkerArgs(
-                tokenizer_info,
-                prompt_indices,
-                self.prompts,  # Pass dict for quick lookup
-                existing_results,  # Shared results object
-                self.cancellation_event,  # Cancellation signal for this task
-            ).create_thread()
-            self.worker_threads.append(thread)
-            thread.start()
+            if not prompt_indices:  # Skip empty prompt lists
+                continue
+
+            task_name = tokenizer_info.display_name
+
+            # Create input data tuple for the task
+            task_input = (tokenizer_info, prompt_indices, self.prompts, existing_results)
+
+            # Create and start the background task
+            self.create_and_start_task(task_name, tokenize_prompts_task, task_input)
 
 
 @dataclass
@@ -152,27 +183,30 @@ class TokenizationComponentCache:
     """Cache for tokenization results and ongoing tasks."""
 
     results: TokenizationResults = field(default_factory=TokenizationResults)
-    task: AnalysisTask = field(
+    task: AnalysisJob = field(
         default_factory=lambda: (
-            AnalysisTask(
+            AnalysisJob(
                 prompts=Prompts({}),
                 unique_tokenizers=Tokenizers([]),
             )
         )
     )
 
-    def analyze_tokenization(self, prompts: Prompts, unique_tokenizers: Tokenizers):
-        task = AnalysisTask(
+    def analyze_tokenization(self, prompts: Prompts, unique_tokenizers: Tokenizers, force_refresh: bool = False):
+        """Create and start a new analysis job if needed or requested."""
+        # Create a new task
+        new_task = AnalysisJob(
             prompts=prompts,
             unique_tokenizers=unique_tokenizers,
         )
 
-        if hash(task) == hash(self.task):
-            return
+        # Only start if it's a new task configuration or force refresh is requested
+        if hash(new_task) != hash(self.task) or force_refresh:
+            self.task.cancel()
+            self.task = new_task
+            self.task.start(self.results)
 
-        self.task.cancel()
-        self.task = task
-        self.task.start(self.results)
+        return self.task
 
     def get_task_subset_results(self) -> TokenizationResults:
         """Returns a *new* TokenizationResults object containing only the data relevant to the current task's scope."""
@@ -198,62 +232,6 @@ class TokenizationComponentCache:
                         subset.data[tk_name][p_idx] = stats  # Shallow copy of stats is okay
 
         return subset
-
-
-@dataclass
-class AnalysisWorkerArgs:
-    tokenizer_info: UniqueTokenizerInfo
-    prompt_indices_to_process: List[TPromptOriginalIndex]
-    prompts: Prompts
-    results: TokenizationResults
-    cancel_event: threading.Event
-
-    def create_thread(self):
-        return threading.Thread(
-            target=self.tokenization_worker,
-            daemon=True,  # Ensure threads don't block exit
-            name=f"TokenizationWorker-{self.tokenizer_info.display_name}",
-        )
-
-    def tokenization_worker(self):
-        """Worker thread function for tokenizing a subset of prompts with one tokenizer."""
-        tokenizer_name = self.tokenizer_info.display_name
-
-        for prompt_idx in self.prompt_indices_to_process:
-            if self.cancel_event.is_set():
-                return  # Stop processing if cancellation is requested
-
-            prompt = self.prompts.get_prompt(prompt_idx)
-
-            # Initialize stats for this specific pair
-            stats = PromptTokenizationStats()
-
-            try:
-                # Tokenize the prompt
-                input_ids = prompt.input_ids(self.tokenizer_info.tokenizer, "cpu")
-                stats.token_count = len(input_ids[0])
-
-                # Get token counts by type
-                for token_type in TokenType:
-                    try:
-                        token_indices = prompt.get_knockout_idx(self.tokenizer_info.tokenizer, token_type, "cpu")
-                        stats.token_type_counts[token_type] = len(token_indices)
-                        stats.token_type_edges[token_type] = (token_indices[0], token_indices[-1])
-                    except Exception as e_type:
-                        stats.token_type_error_msg[token_type] = TErrorMessage(str(e_type))
-
-                stats.subject_token_edges = find_token_range(
-                    self.tokenizer_info.tokenizer, input_ids[0], prompt.subject
-                )
-            except Exception as e_main:
-                stats.error_msg = TErrorMessage(str(e_main))
-
-            # --- Update shared results safely ---
-            with self.results.lock:
-                # Store the completed stats object
-                self.results.data[tokenizer_name][prompt_idx] = stats
-                # Mark this specific pair as processed
-                self.results.processed_pairs.add((prompt_idx, tokenizer_name))
 
 
 class TokenizationResultsVisualizer(StreamlitComponent):
@@ -725,8 +703,6 @@ class TokenizationVisualizerComponent(StreamlitComponent):
         with tabs[0]:
             st.subheader("Compare All Prompts")
             # Initialize containers
-            progress_container = st.container()
-            control_buttons_container = st.container()
 
             # --- Trigger Analysis ---
             cache = self.cache_sk.value
@@ -735,28 +711,10 @@ class TokenizationVisualizerComponent(StreamlitComponent):
                 self.unique_tokenizers,
             )
 
-            clear_cache, clear_tasks = False, False
-            with control_buttons_container:
-                cols = st.columns([1, 1, 1, 1])  # Adjust column ratios
-                cols[0].button("🔄 Refresh Results", key="refresh_all")  # Give unique key
+            if cache.task.status != TaskStatus.COMPLETED:
+                # Task progress and status display
 
-                clear_tasks = cols[1].button(
-                    "🛑 Stop Analysis", key="stop_all", disabled=not cache.task.status == AnalysisTaskStatus.RUNNING
-                )
-                clear_cache = cols[2].button("🧹 Clear Cache & Results", key="clear_all")
-                # Default to showing analysis, user can hide it
-                show_analysis = cols[3].checkbox("Show Comparison Analysis", value=True, key="show_analysis_check")
-
-            if clear_tasks or clear_cache:
-                cache.task.cancel()
-                time.sleep(0.1)
-                if clear_cache:
-                    self.cache_sk.reset_value()
-                st.rerun()
-
-            if not cache.task.status == AnalysisTaskStatus.COMPLETED:
-                with progress_container:
-                    task = cache.task
+                def get_additional_metrics(task: AnalysisJob) -> Tuple[Dict[str, str], float]:
                     missing_amount = functools.reduce(
                         lambda acc, missing_prompts: acc + len(missing_prompts),
                         task.missing_pair_per_tokenizer(cache.results).values(),
@@ -765,19 +723,32 @@ class TokenizationVisualizerComponent(StreamlitComponent):
                     total_pairs_in_task = task.total_pairs_needed
                     percent_complete = (total_pairs_in_task - missing_amount) / total_pairs_in_task
 
-                    status_message = " | ".join(
-                        [
-                            f"Task Status: {task.status}",
-                            f"Progress: {percent_complete * 100:.1f}%",
-                            f"({total_pairs_in_task - missing_amount}/{total_pairs_in_task} pairs in current task)",
-                        ]
+                    # Additional metrics for task manager summary
+                    return (
+                        {
+                            "Total Pairs": str(total_pairs_in_task),
+                            "Remaining": str(missing_amount),
+                        },
+                        percent_complete,
                     )
-                    st.progress(percent_complete)
 
-                    if cache.task.status == AnalysisTaskStatus.CANCELLED:
-                        st.warning(status_message)
-                    else:
-                        st.info(status_message)
+                # Show task manager summary with controls
+                show_tasks_manager_summary(
+                    lambda: cache.task,
+                    on_start_click=lambda: cache.analyze_tokenization(
+                        self.prompts, self.unique_tokenizers, force_refresh=True
+                    ),
+                    get_additional_metrics=get_additional_metrics,
+                    button_keys_prefix="task_viz_",
+                )
+
+            col1, col2 = st.columns([8, 2])
+            with col1:
+                show_analysis = st.checkbox("Show Comparison Analysis", value=True, key="show_analysis_check")
+            with col2:
+                if st.button("🧹 Clear Results", key="clear_results"):
+                    self.cache_sk.reset_value()
+                    st.rerun()
 
             if show_analysis:
                 # Pass the subset results relevant to the *current* task
