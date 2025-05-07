@@ -1,3 +1,8 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
 # ssm_analysis
 
 This is a repository for the analysis of State Space Models (SSM) and Transformer models, focusing on understanding model decision-making through knockout analysis. The project investigates how different parts of a sentence influence model predictions by selectively blocking attention or state updates between tokens.

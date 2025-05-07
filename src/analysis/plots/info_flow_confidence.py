@@ -16,7 +16,7 @@ from scipy import stats
 
 from src.core.consts import CONVERT_TO_PLOTLY_LINE_STYLE, TOKEN_TYPE_COLORS
 from src.core.names import COLS
-from src.core.types import TInfoFlowOutput, TLineStyle, TokenType
+from src.core.types import TInfoFlowOutput, TLineStyle
 from src.utils.pydantic_utils import create_literal_value
 from src.utils.streamlit.components.extended_streamlit_pydantic import annotate_dict_with_literal_values
 from src.utils.streamlit.st_pydantic_v2.input import SpecialFieldKeys
@@ -65,18 +65,24 @@ class InfoFlowPlotConfig(BaseModel):
     x_axis_as_percentage: bool = Field(
         default=True,
         description="Show X-axis (layer positions) as percentages instead of indices",
-        json_schema_extra={SpecialFieldKeys.column_group: "display_options"},
     )
     x_tick_count: int = Field(
         default=6,
         description="Number of tick marks on the x-axis",
-        ge=2,
-        le=20,
         json_schema_extra={SpecialFieldKeys.column_group: "display_options"},
     )
     show_number_of_points: Literal["min", "per_line", "both", "none", "auto"] = Field(
         default="auto",
-        description="Show number of points in legend",
+        title="\\# Points format",
+        description="The way the points are displayed, per line will show on the legend",
+        json_schema_extra={
+            SpecialFieldKeys.column_group: "display_options",
+        },
+    )
+    x_axis_margin: float = Field(
+        default=0.0,
+        description="Margin on the x-axis",
+        ge=0.0,
         json_schema_extra={SpecialFieldKeys.column_group: "display_options"},
     )
 
@@ -84,7 +90,6 @@ class InfoFlowPlotConfig(BaseModel):
     with_fixed_limits: bool = Field(
         default=False,
         description="Use fixed limits for y-axis",
-        json_schema_extra={SpecialFieldKeys.column_group: "y_axis_limits"},
     )
     acc_ylim_min: float = Field(
         default=60.0,
@@ -140,18 +145,21 @@ class InfoFlowPlotConfig(BaseModel):
     # Font Settings
     title_fontsize: int = Field(
         default=12,
+        title="Title",
         description="Font size for title",
         ge=4,
         json_schema_extra={SpecialFieldKeys.column_group: "font_settings"},
     )
     axis_fontsize: int = Field(
         default=10,
+        title="Axis",
         description="Font size for axis labels",
         ge=4,
         json_schema_extra={SpecialFieldKeys.column_group: "font_settings"},
     )
     legend_fontsize: int = Field(
         default=10,
+        title="Legend",
         description="Font size for legend",
         ge=4,
         json_schema_extra={SpecialFieldKeys.column_group: "font_settings"},
@@ -172,6 +180,10 @@ class InfoFlowPlotConfig(BaseModel):
         default=0.5,
         description="X-coordinate of legend location",
         json_schema_extra={SpecialFieldKeys.column_group: "legend_settings"},
+    )
+    show_legend: bool = Field(
+        default=True,
+        description="Show legend",
     )
 
     # Separator
@@ -479,7 +491,7 @@ def create_confidence_plot(
     fig, axes = plt.subplots(
         1,
         len(plots_meta_data),
-        figsize=(config.figure_width, config.figure_height),
+        figsize=(config.figure_width * len(plots_meta_data), config.figure_height),
     )
 
     # If only one subplot, wrap in list
@@ -581,6 +593,7 @@ def create_confidence_plot(
         ax.set_ylabel(plot_metadata["ylabel"], fontsize=config.axis_fontsize)
         if config.with_fixed_limits:
             ax.set_ylim(config.get_ylim(metric_type))
+        ax.margins(x=config.x_axis_margin)
         ax.tick_params(axis="both", which="major", labelsize=config.axis_fontsize)
         # ax.set_title(plot_metadata["title"], fontsize=config.title_fontsize)
 
@@ -591,20 +604,23 @@ def create_confidence_plot(
     all_handles, all_labels = zip(*unique_handles.values()) if unique_handles else ([], [])
 
     # Create a single legend for the entire figure
-    fig.legend(
-        all_handles,
-        all_labels,
-        loc=config.legend_loc,
-        bbox_to_anchor=(config.legend_loc_x, config.legend_loc_y),
-        ncol=len(all_handles),
-        fontsize=config.legend_fontsize,
-        frameon=False,
-    )
+    if config.show_legend:
+        fig.legend(
+            all_handles,
+            all_labels,
+            loc=config.legend_loc,
+            bbox_to_anchor=(config.legend_loc_x, config.legend_loc_y),
+            ncol=len(all_handles),
+            fontsize=config.legend_fontsize,
+            frameon=False,
+        )
 
     # Set overall title
     custom_title = config.title if hasattr(config, "title") and config.title else title
     if config.show_number_of_points == "min" or config.show_number_of_points == "both":
-        custom_title += f" ({min_points = })"
+        custom_title += f" {min_points} Points"
+        if diff_points > 0:
+            custom_title += " (Min)"
     fig.suptitle(
         f"{custom_title}",
         fontsize=config.title_fontsize,
@@ -733,67 +749,6 @@ def combine_confidence_plots(
 
     if show_fig:
         plt.show()
-    else:
-        plt.close(fig)
-
-    return fig
-
-
-def process_info_flow_files(
-    from_blocks: dict[TokenType, tuple[dict, Path]],
-    target_block: TokenType,
-    plots_meta_data: dict[TMetricType, PlotMetadata],
-    confidence_level: float = 0.95,
-    save_fig: bool = True,
-    show_fig: bool = True,
-) -> Figure:
-    """
-    Process information flow files for multiple from_blocks and create plots with confidence intervals.
-
-    Args:
-        from_blocks: Dictionary mapping TokenTypes to their details and file paths
-        target_block: TokenType to analyze flows to
-        confidence_level: Confidence level for intervals (default: 0.95)
-        colors: Dictionary mapping TokenTypes to colors (optional)
-        line_styles: Dictionary mapping TokenTypes to line styles (optional)
-        save_fig: Whether to save the figure (default: True)
-        show_fig: Whether to show the figure (default: True)
-
-    Returns:
-        The matplotlib figure containing the plots
-    """
-    from src.experiments.runners.info_flow import InfoFlowRunner
-
-    targets_window_outputs = {
-        target: InfoFlowRunner.load_output(file_path) for target, (_, file_path) in from_blocks.items()
-    }
-    # Create plots
-    first_details = next(iter(from_blocks.values()))[0]
-    model_id = first_details["model_id"]
-    window_size = first_details["window_size"]
-    title = f"Knocking out flow to {target_block}\n{model_id}, window size={window_size}"
-
-    fig = create_confidence_plot(
-        lines=targets_window_outputs,  # type: ignore
-        confidence_level=confidence_level,
-        title=title,
-        plots_meta_data=plots_meta_data,
-    )
-
-    if save_fig:
-        # Get the output directory from the first file path
-        first_file_path = next(iter(from_blocks.values()))[1]
-        output_dir = first_file_path.parent.parent
-        results_dir = output_dir / "results"
-        results_dir.mkdir(parents=True, exist_ok=True)
-        fig.savefig(
-            results_dir / f"knockout_target={target_block}_with_confidence.png",
-            bbox_inches="tight",
-        )
-
-    if show_fig:
-        # plt.show()
-        pass
     else:
         plt.close(fig)
 

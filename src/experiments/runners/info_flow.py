@@ -40,7 +40,9 @@ from src.experiments.infrastructure.base_runner import (
 )
 from src.experiments.infrastructure.model_interface import ModelInterface
 from src.experiments.runners.evaluate_model import EvaluateModelParams, EvaluateModelRunner
+from src.utils.file_system import atomic_write
 from src.utils.infra.output_path import OutputKey
+from src.utils.infra.snapshot import load_json_with_snapshot_recovery
 from src.utils.json_utils import sanitize
 
 # Time in seconds between intermediate saves
@@ -130,7 +132,7 @@ class JSONInfoFlowFile:
 
     def save(self, data: InfoFlowFileContent) -> None:
         self.statistics_path.unlink(missing_ok=True)
-        self.path.write_bytes(orjson.dumps(sanitize(data), option=orjson.OPT_INDENT_2))
+        atomic_write(self.path, orjson.dumps(sanitize(data), option=orjson.OPT_INDENT_2))
         STATISTICS_CACHE.clear()
         OUTPUTS_CACHE.clear()
 
@@ -141,7 +143,7 @@ class JSONInfoFlowFile:
                 metadata=InfoFlowMetadata(layers_amount=0, banned_prompts={}),
                 data={},
             )
-        raw_json = json.load(self.path.open("r"))
+        raw_json = load_json_with_snapshot_recovery(self.path, recover=True)
         return InfoFlowFileContent(
             metadata=InfoFlowMetadata(
                 layers_amount=raw_json[InfoFlowJSONFileCols.metadata][InfoFlowJSONMetadataCols.layers_amount],
@@ -201,7 +203,12 @@ class JSONInfoFlowFile:
 
         # Preserve order for test output clarity
         # TODO: remove this after commiting tests results
-        prompt_idx = [prompt_id for prompt_id in AllPromptFilteration().get_prompt_ids() if prompt_id in prompt_idx]
+        prompt_idx = [
+            prompt_id
+            for prompt_id in AllPromptFilteration().get_prompt_ids()
+            if prompt_id in prompt_idx
+            and prompt_id not in content[InfoFlowJSONFileCols.metadata][InfoFlowJSONMetadataCols.banned_prompts]
+        ]
 
         layer_idx: list[TLayerIndex] = (
             list(range(content[InfoFlowJSONFileCols.metadata][InfoFlowJSONMetadataCols.layers_amount]))

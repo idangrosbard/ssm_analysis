@@ -1,3 +1,4 @@
+import tempfile
 from pathlib import Path
 
 
@@ -33,3 +34,16 @@ def fast_relative_to(path: Path, base_path: Path, allow_slow: bool = False) -> P
         path_parts = path.parts
         assert path_parts[:base_len] == base_parts
         return Path(*path_parts[base_len:])
+
+
+def atomic_write(path: Path, text: str | bytes) -> None:
+    """Safely write text to a file using an atomic replace strategy."""
+    if isinstance(text, str):
+        with tempfile.NamedTemporaryFile("w", dir=path.parent, delete=False) as tmp_file:
+            tmp_file.write(text)
+            tmp_path = Path(tmp_file.name)
+    else:
+        with tempfile.NamedTemporaryFile("wb", dir=path.parent, delete=False) as tmp_file:
+            tmp_file.write(text)
+            tmp_path = Path(tmp_file.name)
+    tmp_path.replace(path)
