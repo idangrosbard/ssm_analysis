@@ -458,20 +458,27 @@ def _draw_legend(
         total_width = sample_width + legend_params.spacing + txt_w
         start_x = x_center - (total_width / 2)
 
-        if item.linestyle == "solid":
-            # Draw a solid rectangle
-            draw.rectangle(
-                [start_x, sample_y, start_x + sample_width, sample_y + sample_height], fill=item.color, outline="black"
-            )
-        elif item.linestyle == "dashed":
-            # Draw a dashed line
-            for j in range(0, int(sample_width), 4):
-                if j % 8 < 4:  # Draw every other segment
-                    draw.line(
-                        [start_x + j, sample_y + sample_height / 2, start_x + j + 3, sample_y + sample_height / 2],
-                        fill=item.color,
-                        width=int(sample_height * 0.4),
-                    )
+        if item.linestyle in ["--", ":"]:
+            if item.linestyle == "--":
+                # Draw a dashed line (longer dashes)
+                dash_length = 6
+                gap_length = 3
+            elif item.linestyle == ":":
+                dash_length = 2
+                gap_length = 6
+            else:
+                raise ValueError(f"Invalid linestyle: {item.linestyle}")
+            for j in range(0, int(sample_width), dash_length + gap_length):
+                draw.line(
+                    [
+                        start_x + j,
+                        sample_y + sample_height / 2,
+                        start_x + j + dash_length,
+                        sample_y + sample_height / 2,
+                    ],
+                    fill=item.color,
+                    width=int(sample_height * 0.2),
+                )
         else:
             # Default to solid line
             draw.line(
@@ -479,7 +486,6 @@ def _draw_legend(
                 fill=item.color,
                 width=int(sample_height * 0.4),
             )
-
         # Draw text label
         draw.text(
             (start_x + sample_width + legend_params.spacing, legend_y + (legend_h - txt_h) / 2),

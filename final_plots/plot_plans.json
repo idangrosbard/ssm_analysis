@@ -747,7 +747,7 @@
                                                             "__JSONABLE_type__": "MODEL_ARCH",
                                                             "__JSONABLE_value__": "mamba1"
                                                         },
-                                                        "2.8B"
+                                                        "130M"
                                                     ]
                                                 },
                                                 "correctness": {
@@ -779,7 +779,7 @@
                                                             "__JSONABLE_type__": "MODEL_ARCH",
                                                             "__JSONABLE_value__": "mamba1"
                                                         },
-                                                        "7B-falcon"
+                                                        "2.8B"
                                                     ]
                                                 },
                                                 "correctness": {
@@ -907,7 +907,7 @@
                                                             "__JSONABLE_type__": "MODEL_ARCH",
                                                             "__JSONABLE_value__": "mamba1"
                                                         },
-                                                        "130M"
+                                                        "7B-falcon"
                                                     ]
                                                 },
                                                 "correctness": {
@@ -939,31 +939,41 @@
                         ],
                         "x_axis_as_percentage": true,
                         "x_tick_count": 6,
-                        "show_number_of_points": "min",
+                        "show_number_of_points": "auto",
+                        "x_axis_margin": 0.0,
+                        "x_tick_shift": {
+                            "-1": -2.5,
+                            "0": 1.0
+                        },
                         "with_fixed_limits": true,
                         "acc_ylim_min": 60.0,
                         "acc_ylim_max": 105.0,
-                        "diff_ylim_min": -60.0,
+                        "diff_ylim_min": -70.0,
                         "diff_ylim_max": 40.0,
                         "sep1": null,
-                        "figure_width": 12.0,
+                        "figure_width": 5.0,
                         "figure_height": 5.0,
-                        "tight_layout": false,
+                        "tight_layout": true,
                         "title_fontsize": 12,
-                        "axis_fontsize": 10,
+                        "axis_fontsize": 16,
                         "legend_fontsize": 10,
                         "legend_loc": "upper center",
                         "legend_loc_y": 0.95,
                         "legend_loc_x": 0.5,
+                        "show_legend": false,
                         "sep2": null,
                         "custom_colors": {
-                            "mamba1-7B-falcon": "#af7404",
-                            "mamba1-2.8B": "#3e7316",
-                            "mamba2-2.7B": "#1b00dc",
-                            "gpt2-1.5B": "#0a9c8a"
+                            "mamba1-130M": "#d1c4e9",
+                            "mamba1-1.4B": "#b39ddb",
+                            "mamba1-2.8B": "#8a63e2",
+                            "mamba1-7B": "#522494",
+                            "mamba1-7B-falcon-base": "#482094",
+                            "mamba1-7B-falcon": "#281175"
                         },
-                        "custom_line_styles": {},
-                        "custom_line_labels": {}
+                        "custom_line_styles": {
+                            "mamba1-7B-falcon-base": "--",
+                            "mamba1-7B-falcon": ":"
+                        }
                     },
                     "combine_plot_config": {
                         "title": "",
@@ -971,27 +981,40 @@
                         "font_size": 25,
                         "padding": 0,
                         "sep1": null,
+                        "column_header_padding": -12.0,
                         "show_row_labels": false,
                         "show_col_labels": true,
+                        "row_prefix_style": "none",
+                        "column_prefix_style": "lowercase_letter_paren",
                         "rows_labels_override": {},
                         "columns_labels_override": {},
                         "label_font_size": 40,
                         "crop_params": {
                             "enable_crop": true,
                             "edge_crop": {
-                                "left": 0.0055,
-                                "top": 0.0,
-                                "width": 0.0,
-                                "height": 0.0
+                                "left": 0.004081632653061225,
+                                "top": 0.08888888888888889,
+                                "width": 0.9897959183673469,
+                                "height": 0.9050505050505051
                             },
                             "standard_crop": {
-                                "left": 0.05,
-                                "top": 0.0,
-                                "width": 0.0,
-                                "height": 0.0
+                                "left": 0.1683,
+                                "top": 0.10707070707070707,
+                                "width": 0.8183673469387756,
+                                "height": 0.8202020202020202
                             }
+                        },
+                        "legend_params": {
+                            "width": 40,
+                            "height": 0.5,
+                            "spacing": 6,
+                            "font_size": 22,
+                            "anchor": "lt",
+                            "show_border": true,
+                            "border_width": 1
                         }
-                    }
+                    },
+                    "custom_line_labels": {}
                 }
             },
             "figure4": {
