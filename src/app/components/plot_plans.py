@@ -400,9 +400,9 @@ class PlotPlanEditor(StreamlitComponent[Optional[PlotPlan]]):
             st.error(f"Missing column: {[ExperimentHyperParams(col).name for col in missing_no_default_cols]}")
             return
 
-        if ExperimentHyperParams.filteration not in derived_variant_params:
-            existing_plan.fixed_values[ExperimentHyperParams.filteration] = SelectFilterationComponent(
-                key=f"select_{ExperimentHyperParams.filteration}",
+        if ExperimentHyperParams.filteration_factory not in derived_variant_params:
+            existing_plan.fixed_values[ExperimentHyperParams.filteration_factory] = SelectFilterationComponent(
+                key=f"select_{ExperimentHyperParams.filteration_factory}",
                 context_model_arch_and_sizes=existing_plan.derive_model_arch_and_sizes_context(),
             ).render()
 

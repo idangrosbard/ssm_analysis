@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from dataclasses import dataclass, field
+from enum import StrEnum
 from itertools import product
 from pathlib import Path
 from typing import (
@@ -19,7 +20,13 @@ from typing import (
 
 from src.analysis.experiment_results.helpers import init_variant_params_from_values
 from src.analysis.plots.image_combiner import ImageGridParams
-from src.core.consts import GRAPHS_ORDER
+from src.analysis.prompt_filterations import (
+    AnyExistingCompletePromptFilteration,
+    Correctness,
+    LogicalPromptFilteration,
+    ModelCorrectPromptFilteration,
+)
+from src.core.consts import DEFAULT_MODEL_CORRECT_DATASET_NAME, DEFAULT_MODEL_CORRECT_MODEL_CODE_VERSION, GRAPHS_ORDER
 from src.core.names import (
     VARIANT_PARAM_NAME,
     BaseVariantParamName,
@@ -81,7 +88,7 @@ class HyperParamDefinition(ABC, Generic[_T]):
     ) -> Union[
         Sequence[VARIANT_PARAM_NAME],
         Literal[ExperimentHyperParams.prompt_idx],
-        Literal[ExperimentHyperParams.filteration],
+        Literal[ExperimentHyperParams.filteration_factory],
     ]:
         pass
 
@@ -238,7 +245,52 @@ class PromptIdxHPD(HyperParamDefinition[TPromptOriginalIndex]):
         return ExperimentHyperParams.prompt_idx
 
 
-class FilterationHPD(HyperParamDefinition[BasePromptFilteration]):
+class EnumSelectFilterationContext(StrEnum):
+    current_model_all = "current_model_all"
+    current_model_conditional_any_existing = "current_model_conditional_any_existing"
+    current_model_any_existing = "current_model_any_existing"
+    context_models_intersect = "context_models_intersect"
+
+
+@dataclass(frozen=True)
+class PromptFilterationFactory:
+    filteration_context: EnumSelectFilterationContext
+    correctness: Correctness
+
+    def get_filteration(self, context_model_arch_and_sizes: list[MODEL_ARCH_AND_SIZE]) -> BasePromptFilteration:
+        match self.filteration_context:
+            case (
+                EnumSelectFilterationContext.current_model_all
+                | EnumSelectFilterationContext.current_model_conditional_any_existing
+            ):
+                filteration = ModelCorrectPromptFilteration(
+                    dataset_name=DEFAULT_MODEL_CORRECT_DATASET_NAME,
+                    model_arch_and_size=None,
+                    correctness=self.correctness,
+                    code_version=DEFAULT_MODEL_CORRECT_MODEL_CODE_VERSION,
+                )
+                if self.filteration_context == EnumSelectFilterationContext.current_model_conditional_any_existing:
+                    filteration = filteration & AnyExistingCompletePromptFilteration()
+                return filteration
+            case EnumSelectFilterationContext.current_model_any_existing:
+                return AnyExistingCompletePromptFilteration()
+            case EnumSelectFilterationContext.context_models_intersect:
+                return LogicalPromptFilteration.create_and(
+                    [
+                        ModelCorrectPromptFilteration(
+                            dataset_name=DEFAULT_MODEL_CORRECT_DATASET_NAME,
+                            model_arch_and_size=model_arch_and_size,
+                            correctness=self.correctness,
+                            code_version=DEFAULT_MODEL_CORRECT_MODEL_CODE_VERSION,
+                        )
+                        for model_arch_and_size in context_model_arch_and_sizes
+                    ]
+                )
+            case _:
+                assert_never(self.filteration_context)
+
+
+class FilterationHPD(HyperParamDefinition[PromptFilterationFactory]):
     def get_result_bank_options(self, result_bank: ResultBank):
         raise NotImplementedError("FilterationHPD does not have result bank options")
 
@@ -248,11 +300,11 @@ class FilterationHPD(HyperParamDefinition[BasePromptFilteration]):
     def get_options(self, result_bank: ResultBank):
         return self.get_static_options()
 
-    def get_display_name(self, option: BasePromptFilteration) -> str:
-        return option.display_name()
+    def get_display_name(self, option: PromptFilterationFactory) -> str:
+        return f"{option.filteration_context} {option.correctness}"
 
-    def derived_variants_params(self) -> Literal[ExperimentHyperParams.filteration]:
-        return ExperimentHyperParams.filteration
+    def derived_variants_params(self) -> Literal[ExperimentHyperParams.filteration_factory]:
+        return ExperimentHyperParams.filteration_factory
 
 
 # endregion
@@ -276,7 +328,7 @@ def get_hyper_param_definition(option: ExperimentHyperParams) -> HyperParamDefin
             return WindowSizeHPD()
         case ExperimentHyperParams.prompt_idx:
             return PromptIdxHPD()
-        case ExperimentHyperParams.filteration:
+        case ExperimentHyperParams.filteration_factory:
             return FilterationHPD()
         case _:
             raise ValueError(f"Unsupported variation option: {option}")
@@ -290,7 +342,7 @@ PossibleHPDTypes = Union[
     FeatureCategory,
     TWindowSize,
     TPromptOriginalIndex,
-    BasePromptFilteration,
+    PromptFilterationFactory,
 ]
 
 
@@ -534,9 +586,9 @@ class PlotPlan:
                     prompt_ids=tuple([params[ExperimentHyperParams.prompt_idx]])
                 )
             elif self.experiment_name == ExperimentName.info_flow:
-                item = params[ExperimentHyperParams.filteration]
-                assert isinstance(item, BasePromptFilteration)
-                prompt_filterations = item
+                item = params[ExperimentHyperParams.filteration_factory]
+                assert isinstance(item, PromptFilterationFactory)
+                prompt_filterations = item.get_filteration(self.derive_model_arch_and_sizes_context())
             else:
                 raise NotImplementedError(f"Not implemented for {self.experiment_name}")
 
@@ -572,7 +624,7 @@ class PlotPlan:
         Union[
             VARIANT_PARAM_NAME,
             Literal[ExperimentHyperParams.prompt_idx],
-            Literal[ExperimentHyperParams.filteration],
+            Literal[ExperimentHyperParams.filteration_factory],
         ]
     ]:
         s = set()
