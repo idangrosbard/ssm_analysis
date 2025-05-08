@@ -11,7 +11,7 @@
 from dataclasses import dataclass
 from io import BytesIO
 from pathlib import Path
-from typing import Any, Iterator, Optional, Type, cast
+from typing import Any, Iterator, Optional, cast
 
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go
@@ -19,12 +19,11 @@ import streamlit as st
 import streamlit_antd_components as sac
 from more_itertools import unique_everseen
 from PIL import Image
-from pydantic import BaseModel
 
 from src.analysis.experiment_results.helpers import get_model_evaluations
 from src.analysis.experiment_results.plot_plan import Cell, PlotPlan, get_hyper_param_definition
 from src.analysis.plots.heatmaps import HeatmapPlotConfig, simple_diff_fixed
-from src.analysis.plots.image_combiner import ImageGridParams, combine_image_grid
+from src.analysis.plots.image_combiner import ImageGridParams, LegendItem, combine_image_grid
 from src.analysis.plots.info_flow_confidence import (
     InfoFlowPlotConfig,
     PlotMetadata,
@@ -34,7 +33,7 @@ from src.analysis.plots.info_flow_confidence import (
 from src.app.texts import FINAL_PLOTS_TEXTS
 from src.core.consts import MODEL_SIZES_PER_ARCH_TO_MODEL_ID
 from src.core.names import ExperimentName, FinalPlotsPlanOrientation, SummarizedDataFulfilledReqsCols
-from src.core.types import MODEL_ARCH_AND_SIZE, TInfoFlowOutput, TPromptData
+from src.core.types import MODEL_ARCH_AND_SIZE, TInfoFlowOutput, TLineStyle, TPromptData
 from src.data_ingestion.data_defs.data_defs import (
     DataReqs,
     PlotPlans,
@@ -124,7 +123,9 @@ class GridLayout:
         filtered_grid = [row for row in filtered_grid if row]  # Remove empty rows
 
         # Combine images into a grid
-        combined_image = combine_image_grid(filtered_grid, grid_params)
+        combined_image = combine_image_grid(
+            filtered_grid, grid_params, legend_items=self.plot_generator._get_legend_items()
+        )
         if combined_image:
             st.image(combined_image, width=combined_image.width)
 
@@ -192,6 +193,20 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
         cache_dir.mkdir(parents=True, exist_ok=True)
         return cache_dir / f"{self.plot_plan.plot_id}_{grid_name}.png"
 
+    def _get_legend_items(self) -> list[LegendItem]:
+        plot_config = self._get_config_for_experiment_name(self.plot_plan.experiment_name, None)
+        legend_items = []
+        if isinstance(plot_config, InfoFlowPlotConfig):
+            for line_id, color in plot_config.custom_colors.items():
+                legend_items.append(
+                    LegendItem(
+                        label=plot_config.custom_line_labels.get(line_id, line_id),
+                        color=color.as_hex(),
+                        linestyle=plot_config.custom_line_styles.get(line_id, TLineStyle.solid.value),
+                    )
+                )
+        return legend_items
+
     def _plot_data_reqs(self, data_reqs: DataReqs, cell_plot_config: dict[str, Any]):
         runners = _cache_get_runners(data_reqs, self.result_bank)
 
@@ -199,7 +214,8 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
         match self.plot_plan.experiment_name:
             case ExperimentName.info_flow:
                 # Convert dict to InfoFlowPlotConfig
-                config = InfoFlowPlotConfig.model_validate(cell_plot_config)
+                config = self._get_config_for_experiment_name(self.plot_plan.experiment_name, cell_plot_config)
+                assert isinstance(config, InfoFlowPlotConfig)
                 fig = self._generate_cell_knockout(runners, config)
             case ExperimentName.heatmap:
                 assert len(runners) == 1
@@ -229,7 +245,8 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
                 toks[-1] = toks[-1] + "*"
 
                 # Convert dict to HeatmapPlotConfig
-                config = HeatmapPlotConfig.model_validate(cell_plot_config)
+                config = self._get_config_for_experiment_name(self.plot_plan.experiment_name, cell_plot_config)
+                assert isinstance(config, HeatmapPlotConfig)
 
                 fig, _ = simple_diff_fixed(
                     prob_mat=prob_mat,
@@ -317,14 +334,14 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
         if TMetricType.ACC in cell_plot_config.metrics_to_show:
             plots_meta_data[TMetricType.ACC] = PlotMetadata(
                 title="Accuracy",
-                ylabel="% accuracy",
+                ylabel="% Accuracy",
                 axhline_value=100.0,
             )
 
         if TMetricType.DIFF in cell_plot_config.metrics_to_show:
             plots_meta_data[TMetricType.DIFF] = PlotMetadata(
                 title="Normalized change in prediction probability",
-                ylabel="% probability change",
+                ylabel="% Probability Change",
                 axhline_value=0.0,
             )
 
@@ -340,7 +357,7 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
 
         return fig
 
-    def _get_config_for_experiment_name(self, experiment_name: ExperimentName) -> Type[BaseModel]:
+    def _get_model_for_experiment_name(self, experiment_name: ExperimentName):
         """Get the appropriate configuration model based on experiment name."""
         if experiment_name == ExperimentName.info_flow:
             return InfoFlowPlotConfig.specify_config(
@@ -350,6 +367,12 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
             return HeatmapPlotConfig
         else:
             raise ValueError(f"Experiment name {experiment_name} is not implemented")
+
+    def _get_config_for_experiment_name(self, experiment_name: ExperimentName, config: Optional[dict[str, Any]]):
+        """Get the appropriate configuration model based on experiment name."""
+        if config is None:
+            config = self.plot_plan.cell_plot_config
+        return self._get_model_for_experiment_name(experiment_name).model_validate(config)
 
     def render(self) -> Optional[str]:
         """Generate and display a plot based on the plot plan."""
@@ -382,7 +405,7 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
             # Show customization UI
             st.write("### Cell Plot Configuration")
             save_configuration = st.button("Save Configuration")
-            config_model = self._get_config_for_experiment_name(self.plot_plan.experiment_name)
+            config_model = self._get_model_for_experiment_name(self.plot_plan.experiment_name)
             with st.sidebar:
                 with st.expander("Cell Plot Configuration"):
                     cell_config_dict = pydantic_ui(

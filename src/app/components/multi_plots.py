@@ -114,7 +114,7 @@ class HeatmapPlotGenerationComponent(StreamlitComponent):
                     # Remove None values from grid rows for display
                     non_none_grid = [[p for p in row if p is not None] for row in grid if any(row)]
                     if image_grid_params is not None:
-                        combined_image = combine_image_grid(non_none_grid, image_grid_params)
+                        combined_image = combine_image_grid(non_none_grid, image_grid_params, legend_items=[])
                         if combined_image is not None:
                             st.image(combined_image)
             except Exception as e:

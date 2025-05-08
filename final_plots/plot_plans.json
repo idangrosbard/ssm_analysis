@@ -450,12 +450,13 @@
                         "show_number_of_points": "auto",
                         "x_axis_margin": 0.0,
                         "x_tick_shift": {
-                            "-1": -1.5
+                            "-1": -2.5,
+                            "0": 1.0
                         },
                         "with_fixed_limits": true,
                         "acc_ylim_min": 60.0,
                         "acc_ylim_max": 105.0,
-                        "diff_ylim_min": -75.0,
+                        "diff_ylim_min": -70.0,
                         "diff_ylim_max": 40.0,
                         "sep1": null,
                         "figure_width": 5.0,
@@ -483,9 +484,12 @@
                         "title_height": 30,
                         "font_size": 25,
                         "padding": 0,
+                        "column_header_padding": -12.0,
                         "sep1": null,
                         "show_row_labels": false,
                         "show_col_labels": true,
+                        "row_prefix_style": "none",
+                        "column_prefix_style": "lowercase_letter_paren",
                         "rows_labels_override": {},
                         "columns_labels_override": {},
                         "label_font_size": 40,
@@ -493,9 +497,9 @@
                             "enable_crop": true,
                             "edge_crop": {
                                 "left": 0.004081632653061225,
-                                "top": 0.08282828282828283,
-                                "width": 0.9836734693877551,
-                                "height": 0.907
+                                "top": 0.08888888888888889,
+                                "width": 0.9897959183673469,
+                                "height": 0.9050505050505051
                             },
                             "standard_crop": {
                                 "left": 0.1683,
@@ -503,6 +507,15 @@
                                 "width": 0.8183673469387756,
                                 "height": 0.8202020202020202
                             }
+                        },
+                        "legend_params": {
+                            "width": 40,
+                            "height": 0.5,
+                            "spacing": 12,
+                            "font_size": 30,
+                            "anchor": "lt",
+                            "show_border": true,
+                            "border_width": 1
                         }
                     }
                 }
