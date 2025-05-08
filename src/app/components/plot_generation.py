@@ -8,7 +8,6 @@
 # - Add support for interactive plots
 # Outline Compatibility Issues:
 # - New file, outline will be implemented
-
 from dataclasses import dataclass
 from io import BytesIO
 from pathlib import Path
@@ -19,6 +18,7 @@ import plotly.graph_objects as go
 import streamlit as st
 import streamlit_antd_components as sac
 from more_itertools import unique_everseen
+from PIL import Image
 from pydantic import BaseModel
 
 from src.analysis.experiment_results.helpers import get_model_evaluations
@@ -108,7 +108,11 @@ class GridLayout:
                 cell = self.get_cell_at(row_value, col_value)
                 if cell:
                     img_path = self.plot_generator._plot_cell(
-                        self.data_reqs_per_cell[cell], cell, recreate_plots, show_plot=False
+                        self.data_reqs_per_cell[cell],
+                        cell,
+                        recreate_plots,
+                        show_plot=False,
+                        show_button=False,
                     )
                     row_images.append(img_path)
                 else:
@@ -126,7 +130,7 @@ class GridLayout:
 
         return combined_image
 
-    def render_separate(self, recreate_plots: bool = False) -> None:
+    def render_separate(self, recreate_plots: bool, show_button: bool) -> None:
         """Render plots in separate Streamlit columns."""
         has_row_labels = any(cell.rows is not None for cell in self.cells)
         has_col_labels = any(cell.cols is not None for cell in self.cells)
@@ -155,7 +159,9 @@ class GridLayout:
                 cell = self.get_cell_at(row_value, col_value)
                 if cell:
                     with col_col:
-                        self.plot_generator._plot_cell(self.data_reqs_per_cell[cell], cell, recreate_plots)
+                        self.plot_generator._plot_cell(
+                            self.data_reqs_per_cell[cell], cell, recreate_plots, show_button=show_button
+                        )
 
 
 class Tabs:
@@ -253,10 +259,11 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
         recreate: bool = False,
         with_plotly: bool = False,
         show_plot: bool = True,
+        show_button: bool = True,
     ) -> Path:
         """Plot a single cell with caching."""
         cache_path = cell.get_cache_path(self.plot_plan, PlotPlans.get_cache_dir(self.plot_plan.plot_id))
-
+        recreate = recreate or (show_button and st.button(f"Recreate_{cache_path.name}"))
         if not recreate and cache_path.exists():
             # Load and display cached plot if needed
             if show_plot:
@@ -438,6 +445,7 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
 
         else:
             recreate_plots = tab == Tabs.PLOT_INDIVIDUAL and st.button("Recreate all plots")
+            show_recreate_button = tab == Tabs.PLOT_INDIVIDUAL and st.checkbox("Show recreate buttons", value=False)
             save_combined_plot = tab == Tabs.PLOT_COMBINED and st.button("Save Combined Plot")
             save_configuration = tab == Tabs.PLOT_COMBINED and st.button("Save Configuration")
 
@@ -460,9 +468,19 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
             maybe_combined_image = None
             grid_params = None
             if combine_plots:
+                image_path = self._plot_cell(
+                    data_reqs_per_cell[cells_by_grid[grid_names[0]][0]],
+                    cells_by_grid[grid_names[0]][0],
+                    recreate_plots,
+                    show_plot=False,
+                    show_button=False,
+                )
+                image = Image.open(image_path)
+
                 specified_image_grid_params = ImageGridParams.specify_config(
-                    self.plot_plan.get_option_display_names_for_orientation(FinalPlotsPlanOrientation.rows),
-                    self.plot_plan.get_option_display_names_for_orientation(FinalPlotsPlanOrientation.cols),
+                    rows=self.plot_plan.get_option_display_names_for_orientation(FinalPlotsPlanOrientation.rows),
+                    columns=self.plot_plan.get_option_display_names_for_orientation(FinalPlotsPlanOrientation.cols),
+                    image=image,
                 )
                 # Get configuration from plot_plan
                 combine_config = specified_image_grid_params.model_validate(
@@ -495,7 +513,7 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
                         assert grid_params is not None
                         maybe_combined_image = grid_layout.render_combined(recreate_plots, grid_params)
                     else:
-                        grid_layout.render_separate(recreate_plots)
+                        grid_layout.render_separate(recreate_plots, show_button=show_recreate_button)
 
                 if maybe_combined_image and save_combined_plot:
                     path = self._get_combined_plot_cache_path(grid_name)

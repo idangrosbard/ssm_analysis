@@ -3,16 +3,18 @@ from __future__ import annotations
 from enum import Enum
 from math import ceil
 from pathlib import Path
-from typing import Annotated, Any, List, Literal, Optional, Sequence, Tuple, Union
+from typing import Annotated, Any, List, Literal, Optional, Tuple, Union
 
 from PIL import Image, ImageDraw, ImageFont
-from pydantic import BaseModel, Field, create_model, model_validator
+from pydantic import BaseModel, Field, create_model
+from pydantic.fields import FieldInfo
 
 from src.utils.streamlit.components.extended_streamlit_pydantic import (
     annotate_dict_with_literal_values,
     get_dict_key_literal_values,
 )
 from src.utils.streamlit.st_pydantic_v2.input import SpecialFieldKeys
+from src.utils.streamlit.ui_pydantic_v2.extra_types import Crop
 
 FONT_BASE = lambda suffix: f"/usr/share/fonts/truetype/liberation/LiberationSerif{suffix}.ttf"  # noqa: E731
 FONT_REGULAR = FONT_BASE("-Regular")
@@ -104,57 +106,55 @@ class CropParams(BaseModel):
 
     enable_crop: bool = Field(default=False, description="Enable image cropping")
 
-    # Edge parameters (base crop for all images)
-    edge_left: float = Field(
-        default=0.0,
-        ge=0.0,
-        description="Base crop from left for all images (0.0-1.0)",
-        json_schema_extra={SpecialFieldKeys.column_group: "crop_edge", **crop_kwargs},
-    )
-    edge_right: float = Field(
-        default=0.0,
-        ge=0.0,
-        description="Base crop from right for all images (0.0-1.0)",
-        json_schema_extra={SpecialFieldKeys.column_group: "crop_edge", **crop_kwargs},
-    )
-    edge_top: float = Field(
-        default=0.0,
-        ge=0.0,
-        description="Base crop from top for all images (0.0-1.0)",
-        json_schema_extra={SpecialFieldKeys.column_group: "crop_edge", **crop_kwargs},
-    )
-    edge_bottom: float = Field(
-        default=0.0,
-        ge=0.0,
-        description="Base crop from bottom for all images (0.0-1.0)",
-        json_schema_extra={SpecialFieldKeys.column_group: "crop_edge", **crop_kwargs},
+    # Replace numerical fields with Crop objects
+    edge_crop: Crop = Field(
+        default_factory=Crop,
+        description="Base crop for all images",
+        json_schema_extra={SpecialFieldKeys.column_group: "crop_edge"},
     )
 
-    # Standard crop parameters (additional crop for non-edge images)
-    crop_left: float = Field(
-        default=0.0,
-        ge=0.0,
-        description="Additional crop from left for non-edge images (0.0-1.0)",
-        json_schema_extra={SpecialFieldKeys.column_group: "crop_standard", **crop_kwargs},
+    standard_crop: Crop = Field(
+        default_factory=Crop,
+        description="Additional crop for non-edge images",
+        json_schema_extra={SpecialFieldKeys.column_group: "crop_standard"},
     )
-    crop_right: float = Field(
-        default=0.0,
-        ge=0.0,
-        description="Additional crop from right for non-edge images (0.0-1.0)",
-        json_schema_extra={SpecialFieldKeys.column_group: "crop_standard", **crop_kwargs},
-    )
-    crop_top: float = Field(
-        default=0.0,
-        ge=0.0,
-        description="Additional crop from top for non-edge images (0.0-1.0)",
-        json_schema_extra={SpecialFieldKeys.column_group: "crop_standard", **crop_kwargs},
-    )
-    crop_bottom: float = Field(
-        default=0.0,
-        ge=0.0,
-        description="Additional crop from bottom for non-edge images (0.0-1.0)",
-        json_schema_extra={SpecialFieldKeys.column_group: "crop_standard", **crop_kwargs},
-    )
+
+    @classmethod
+    def set_image(cls, image: Image.Image):
+        pass
+
+        def _attach(fi: FieldInfo):
+            """
+            Clone `fi`, merge the extra JSON‑schema metadata, and
+            return an Annotated type that Pydantic will pick up.
+            """
+            # Create a new dictionary with the desired values
+            json_schema_extra = {}
+            if fi.json_schema_extra is not None:
+                # Copy each key-value pair manually
+                if callable(fi.json_schema_extra):
+                    fi.json_schema_extra(json_schema_extra)
+                else:
+                    for key, value in fi.json_schema_extra.items():
+                        json_schema_extra[key] = value
+
+            # Add new key-value pairs
+            json_schema_extra["image"] = image
+            json_schema_extra["aspect_dict"] = "Free"
+
+            return Annotated[
+                Crop,
+                fi.merge_field_infos(json_schema_extra=json_schema_extra),
+            ]
+
+        # `create_model` gives us a fresh class that inherits every validator,
+        # config option, etc. from `cls`; we simply override the two fields.
+        return create_model(  # type: ignore[misc]
+            f"{cls.__name__}WithImage",
+            __base__=cls,
+            edge_crop=_attach(cls.model_fields["edge_crop"]),
+            standard_crop=_attach(cls.model_fields["standard_crop"]),
+        )
 
 
 class ImageGridParams(BaseModel):
@@ -173,18 +173,6 @@ class ImageGridParams(BaseModel):
         default=25, ge=0, description="Font size", json_schema_extra={SpecialFieldKeys.column_group: "titles"}
     )
 
-    img_width: int = Field(
-        default=-1,
-        ge=-1,
-        description="If -1, will use max width of images",
-        json_schema_extra={SpecialFieldKeys.column_group: "img_size"},
-    )
-    img_height: int = Field(
-        default=-1,
-        ge=-1,
-        description="If -1, will use max height of images",
-        json_schema_extra={SpecialFieldKeys.column_group: "img_size"},
-    )
     padding: int = Field(
         default=10,
         ge=0,
@@ -218,22 +206,19 @@ class ImageGridParams(BaseModel):
         json_schema_extra={SpecialFieldKeys.expander: "Crop Settings"},
     )
 
-    # --- derived helpers ---------------------------------------------------- #
-
-    @model_validator(mode="after")
-    def _validate_img_size(self):
-        if self.img_width == 0 or self.img_height == 0:
-            raise ValueError("``img_width`` and ``img_height`` may be ‒1 (auto) or ≥1.")
-        return self
-
     # Convenience constructor for static row/column names -------------------- #
     @classmethod
-    def specify_config(cls, rows: list[str], columns: list[str]) -> ImageGridParams:
+    def specify_config(
+        cls, rows: list[str], columns: list[str], image: Optional[Image.Image] = None
+    ) -> ImageGridParams:
         overrides = {}
         if not rows:
             overrides["show_row_labels"] = Annotated[Literal[False], Field(default=False)]
         if not columns:
             overrides["show_col_labels"] = Annotated[Literal[False], Field(default=False)]
+        if image is not None:
+            image_grid_params = CropParams.set_image(image)
+            overrides["crop_params"] = Annotated[image_grid_params, Field(default_factory=image_grid_params)]
         return create_model(  # type: ignore
             f"{cls.__name__}Config",
             __base__=cls,
@@ -253,124 +238,44 @@ def _safe_font(path: str, size: int) -> ImageFont.FreeTypeFont:
     return ImageFont.truetype(path, size)
 
 
+def _get_extra_crop(width: int, height: int, edge_crop: Crop, standard_crop: Crop) -> tuple[float, float, float, float]:
+    extra_left = standard_crop.left - edge_crop.left
+    extra_top = standard_crop.top - edge_crop.top
+    extra_right = (edge_crop.left + edge_crop.width) - (standard_crop.left + standard_crop.width)
+    extra_bottom = (edge_crop.top + edge_crop.height) - (standard_crop.top + standard_crop.height)
+    return extra_left * width, extra_top * height, extra_right * width, extra_bottom * height
+
+
 def _calculate_crop_box(
     width: int,
     height: int,
-    crop_params: CropParams,
+    edge_crop: Crop,
+    standard_crop: Crop,
     is_left_edge: bool,
     is_right_edge: bool,
     is_top_edge: bool,
     is_bottom_edge: bool,
-) -> tuple[int, int, int, int]:
-    """Calculate the crop box coordinates based on image position and crop parameters.
+) -> tuple[float, float, float, float]:
+    # base_crop
+    base = [
+        standard_crop.left,
+        standard_crop.top,
+        standard_crop.left + standard_crop.width,
+        standard_crop.top + standard_crop.height,
+    ]
 
-    Args:
-        width: Image width
-        height: Image height
-        crop_params: Cropping configuration
-        is_left_edge: Whether the image is on the left edge of the grid
-        is_right_edge: Whether the image is on the right edge of the grid
-        is_top_edge: Whether the image is on the top edge of the grid
-        is_bottom_edge: Whether the image is on the bottom edge of the grid
+    extras = _get_extra_crop(1, 1, edge_crop, standard_crop)
+    # apply diff_crop to base_crop
+    if is_left_edge:
+        base[0] -= extras[0]
+    if is_top_edge:
+        base[1] -= extras[1]
+    if is_right_edge:
+        base[2] += extras[2]
+    if is_bottom_edge:
+        base[3] += extras[3]
 
-    Returns:
-        Tuple of (left, top, right, bottom) crop box coordinates
-    """
-    # Apply base edge crop to all images
-    left = int(crop_params.edge_left * width)
-    top = int(crop_params.edge_top * height)
-    right = width - int(crop_params.edge_right * width)
-    bottom = height - int(crop_params.edge_bottom * height)
-
-    # Apply additional crop for non-edge images
-    if not is_left_edge:
-        additional_left = int(crop_params.crop_left * width)
-        left += additional_left
-
-    if not is_right_edge:
-        additional_right = int(crop_params.crop_right * width)
-        right -= additional_right
-
-    if not is_top_edge:
-        additional_top = int(crop_params.crop_top * height)
-        top += additional_top
-
-    if not is_bottom_edge:
-        additional_bottom = int(crop_params.crop_bottom * height)
-        bottom -= additional_bottom
-
-    # Ensure valid crop box (left < right, top < bottom)
-    left = min(left, right - 1)
-    top = min(top, bottom - 1)
-
-    return left, top, right, bottom
-
-
-def _auto_image_size_with_crop(
-    image_grid: Sequence[Sequence[Optional[Path]]], crop_params: CropParams, num_rows: int, num_cols: int
-) -> tuple[int, int]:
-    """Return maximal (width, height) across all non-None images after applying cropping.
-
-    This version applies cropping before determining the max dimensions.
-
-    Args:
-        image_grid: 2D grid of image paths
-        crop_params: Cropping configuration
-        num_rows: Number of rows in the grid
-        num_cols: Number of columns in the grid
-
-    Returns:
-        Tuple of (max_width, max_height) after cropping
-    """
-    max_w = max_h = 0
-
-    for row_idx, row in enumerate(image_grid):
-        for col_idx, pth in enumerate(row):
-            if pth is None:
-                continue
-
-            with Image.open(pth) as im:
-                if crop_params.enable_crop:
-                    # Determine if this image is on an edge
-                    is_left_edge = col_idx == 0
-                    is_right_edge = col_idx == num_cols - 1
-                    is_top_edge = row_idx == 0
-                    is_bottom_edge = row_idx == num_rows - 1
-
-                    # Calculate crop box
-                    left, top, right, bottom = _calculate_crop_box(
-                        im.width, im.height, crop_params, is_left_edge, is_right_edge, is_top_edge, is_bottom_edge
-                    )
-
-                    # Calculate dimensions after cropping
-                    crop_width = right - left
-                    crop_height = bottom - top
-
-                    max_w = max(max_w, crop_width)
-                    max_h = max(max_h, crop_height)
-                else:
-                    max_w = max(max_w, im.width)
-                    max_h = max(max_h, im.height)
-
-    if max_w == 0 or max_h == 0:
-        raise ValueError("At least one valid image is required when auto-sizing.")
-
-    return max_w, max_h
-
-
-def _auto_image_size(image_grid: Sequence[Sequence[Optional[Path]]]) -> tuple[int, int]:
-    """Return maximal (width, height) across all non-None images in the grid."""
-    max_w = max_h = 0
-    for row in image_grid:
-        for pth in row:
-            if pth is None:
-                continue
-            with Image.open(pth) as im:
-                max_w = max(max_w, im.width)
-                max_h = max(max_h, im.height)
-    if max_w == 0 or max_h == 0:
-        raise ValueError("At least one valid image is required when auto-sizing.")
-    return max_w, max_h
+    return base[0] * width, base[1] * height, base[2] * width, base[3] * height
 
 
 def _get_text_height(text: str, font: ImageFont.FreeTypeFont) -> int:
@@ -380,28 +285,13 @@ def _get_text_height(text: str, font: ImageFont.FreeTypeFont) -> int:
     return ceil(bbox[3] - bbox[1]) * 2
 
 
-def combine_image_grid(images: List[List[Path]], params: ImageGridParams) -> Image.Image:
+def combine_image_grid(images_paths_grid: List[List[Path]], params: ImageGridParams) -> Image.Image:
     # Fonts
     font_title = _safe_font(FONT_REGULAR, params.font_size)
     font_label = _safe_font(FONT_BOLD, params.label_font_size)
 
-    # --------------------------------------------------------------------- #
-    #  Normalise grid dimensions                                            #
-    # --------------------------------------------------------------------- #
-    num_rows = len(images)
-    num_cols = len(images[0])
-
-    # Auto-determine tile size if requested, applying cropping first if enabled
-    if params.img_width == -1 or params.img_height == -1:
-        if params.crop_params.enable_crop:
-            auto_w, auto_h = _auto_image_size_with_crop(images, params.crop_params, num_rows, num_cols)
-        else:
-            auto_w, auto_h = _auto_image_size(images)
-
-        img_w = auto_w if params.img_width == -1 else params.img_width
-        img_h = auto_h if params.img_height == -1 else params.img_height
-    else:
-        img_w, img_h = params.img_width, params.img_height
+    num_rows = len(images_paths_grid)
+    num_cols = len(images_paths_grid[0])
 
     # --------------------------------------------------------------------- #
     #  Calculate canvas size                                                #
@@ -414,11 +304,59 @@ def combine_image_grid(images: List[List[Path]], params: ImageGridParams) -> Ima
     #  Row-label column (optional)
     row_label_h = _get_text_height("TEST", font_label) if params.show_row_labels else 0
     left_margin = row_label_h
+    right_margin = bottom_margin = 0
+    # Load images
+    original_image_size = (0, 0)
+    images: list[list[Optional[Image.Image]]] = []
+    for i, row_images_paths in enumerate(images_paths_grid):
+        images.append([])
+        row_images = images[-1]
+        for j, img_path in enumerate(row_images_paths):
+            if img_path is None:
+                # Leave blank
+                row_images.append(None)
+                continue
+            with Image.open(img_path) as im:
+                if i == 0 and j == 0:
+                    original_image_size = im.size
+                else:
+                    assert im.size == original_image_size, f"Image {img_path} has a different size than the first image"
+                if params.crop_params.enable_crop:
+                    # Calculate and apply crop
+                    crop_box = _calculate_crop_box(
+                        im.width,
+                        im.height,
+                        params.crop_params.edge_crop,
+                        params.crop_params.standard_crop,
+                        is_left_edge=j == 0,
+                        is_right_edge=j == num_cols - 1,
+                        is_top_edge=i == 0,
+                        is_bottom_edge=i == num_rows - 1,
+                    )
+                    im = im.crop(crop_box)
+                row_images.append(im)
+
+    if params.crop_params.enable_crop:
+        img_w = params.crop_params.standard_crop.width * original_image_size[0]
+        img_h = params.crop_params.standard_crop.height * original_image_size[1]
+        extras = _get_extra_crop(
+            original_image_size[0],
+            original_image_size[1],
+            params.crop_params.edge_crop,
+            params.crop_params.standard_crop,
+        )
+        left_margin += extras[0]
+        right_margin += extras[2]
+        top_margin += extras[1]
+        bottom_margin += extras[3]
+    else:
+        extras = [0] * 4
+        img_w, img_h = original_image_size
 
     grid_w = num_cols * img_w + max(num_cols - 1, 0) * params.padding
     grid_h = num_rows * img_h + max(num_rows - 1, 0) * params.padding
-    canvas_w = left_margin + grid_w
-    canvas_h = top_margin + grid_h
+    canvas_w = int(left_margin + grid_w + right_margin)
+    canvas_h = int(top_margin + grid_h + bottom_margin)
 
     # --------------------------------------------------------------------- #
     #  Prepare drawing context                                              #
@@ -451,14 +389,14 @@ def combine_image_grid(images: List[List[Path]], params: ImageGridParams) -> Ima
             label = values[col_idx]
             label = params.columns_labels_override.get(label, label)
             w, h = img_w, col_label_h  # no rotation
-            label_img = Image.new("RGBA", (w, h), "white")
+            label_img = Image.new("RGBA", (int(w), h), "white")
             label_draw = ImageDraw.Draw(label_img)
 
             bb = label_draw.textbbox((0, 0), label, font=font_label)
             txt_w, txt_h = bb[2] - bb[0], bb[3] - bb[1]
 
             label_draw.text(((w - txt_w) // 2, 0), label, fill="black", font=font_label)
-            canvas.paste(label_img, (left_margin + col_idx * (img_w + params.padding), title_h), label_img)
+            canvas.paste(label_img, (int(left_margin + col_idx * (img_w + params.padding)), title_h), label_img)
 
     # --------------------------------------------------------------------- #
     #  Paint each tile & row labels                                         #
@@ -467,16 +405,18 @@ def combine_image_grid(images: List[List[Path]], params: ImageGridParams) -> Ima
     if params.show_row_labels:
         assert values is not None
         assert len(values) == num_rows
-    for row_idx, row in enumerate(images):
+    for row_idx, row_images in enumerate(images):
         y_top = top_margin + row_idx * (img_h + params.padding)
         # Row label (once per row)
+        if row_idx == 0:
+            y_top -= extras[1]
         if params.show_row_labels:
             assert values is not None
             label = values[row_idx]
             label = params.rows_labels_override.get(label, label)
             w, h = img_h, row_label_h  # width is the image height (after rotation), height is the label height
             # Draw label on its own small canvas, then rotate 90°
-            label_img = Image.new("RGBA", (w, h), "white")
+            label_img = Image.new("RGBA", (int(w), h), "white")
             label_draw = ImageDraw.Draw(label_img)
 
             bb = label_draw.textbbox((0, 0), label, font=font_label)
@@ -490,39 +430,16 @@ def combine_image_grid(images: List[List[Path]], params: ImageGridParams) -> Ima
             )
             label_img = label_img.rotate(90, expand=True)
             # Paste preserving alpha (row labels overlay the white canvas)
-            canvas.paste(label_img, (0, y_top), label_img)
+            canvas.paste(label_img, (0, int(y_top)), label_img)
 
         # Images
-        for col_idx, img_path in enumerate(row):
-            x_left = row_label_h + col_idx * (img_w + params.padding)
-            if img_path is None:
+        for col_idx, img in enumerate(row_images):
+            x_left = left_margin + col_idx * (img_w + params.padding)
+            if col_idx == 0:
+                x_left -= extras[0]
+            if img is None:
                 continue  # leave blank
 
-            with Image.open(img_path) as im:
-                # Apply cropping if enabled
-                if params.crop_params.enable_crop:
-                    # Determine if this image is on an edge
-                    is_left_edge = col_idx == 0
-                    is_right_edge = col_idx == num_cols - 1
-                    is_top_edge = row_idx == 0
-                    is_bottom_edge = row_idx == num_rows - 1
-
-                    # Calculate and apply crop
-                    crop_box = _calculate_crop_box(
-                        im.width,
-                        im.height,
-                        params.crop_params,
-                        is_left_edge,
-                        is_right_edge,
-                        is_top_edge,
-                        is_bottom_edge,
-                    )
-                    im = im.crop(crop_box)
-
-                # Resize if needed after cropping
-                if im.size != (img_w, img_h):
-                    im = im.resize((img_w, img_h), Image.Resampling.LANCZOS)
-
-                canvas.paste(im, (x_left, y_top))
+            canvas.paste(img, (int(x_left), int(y_top)))
 
     return canvas

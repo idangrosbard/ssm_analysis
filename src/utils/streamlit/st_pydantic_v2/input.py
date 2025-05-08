@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-# mypy: ignore-errors
 import datetime as _dt
 from dataclasses import dataclass
-from enum import Enum
+from enum import Enum, StrEnum
 from functools import singledispatch
 from typing import (
     Annotated,
@@ -22,11 +21,13 @@ from typing import (
 
 import streamlit as st
 from pydantic import BaseModel, Field, ValidationError
+from pydantic.fields import FieldInfo
 from pydantic.type_adapter import TypeAdapter
 from pydantic_extra_types.color import Color
 
 from src.utils.streamlit.helpers.allow_nested_expanders import decorator_allow_nested_st_elements
 from src.utils.streamlit.st_pydantic_v2.backend import BackendProtocol, StreamlitBackend
+from src.utils.streamlit.ui_pydantic_v2.extra_types import Crop
 
 # ────────────────────────────────────────────────────────────
 # Constants
@@ -183,7 +184,7 @@ def _default_value_for_type(typ: Any) -> Any:
 # Rendering context
 # ────────────────────────────────────────────────────────────
 class RenderCtx:
-    def __init__(self, backend: BackendProtocol, path: str, field_name: str, field_info):
+    def __init__(self, backend: BackendProtocol, path: str, field_name: str, field_info: FieldInfo):
         self.backend = backend
         self.path = path
         self.field_name = field_name
@@ -206,14 +207,14 @@ class RenderCtx:
             kwargs["help"] = self.field_info.description
         return kwargs
 
-    def get_json_schema_extra(self) -> Optional[Dict[str, Any]]:
+    def get_json_schema_extra(self) -> Dict[str, Any]:
         """Safely get json_schema_extra accounting for it being a function or dict."""
         if not hasattr(self.field_info, "json_schema_extra"):
-            return None
+            return {}
 
         extra = self.field_info.json_schema_extra
         if extra is None:
-            return None
+            return {}
 
         if callable(extra):
             # If it's a function, create a new dict and call the function with it
@@ -268,44 +269,42 @@ def render_field(typ: Any, ctx: RenderCtx, init_val: Any) -> Any:  # Change retu
     return None
 
 
-@render_field.register(str)
-def _(typ: Type[str], ctx: RenderCtx, init_val: Any) -> str:  # Updated return type
+@render_field.register
+def _(typ: str, ctx: RenderCtx, init_val: Any) -> str:
     # Use get_string_constraint to safely get max_length
+    if ctx.widget_key not in st.session_state:
+        st.session_state[ctx.widget_key] = init_val
     max_len = ctx.get_string_constraint("max_length", 0)
     if max_len and max_len > 120:
-        result = ctx.backend.text_area(ctx.label, key=ctx.widget_key, value=init_val or "", **ctx.extra_kwargs)
-        return str(result) if result is not None else ""
-    result = ctx.backend.text_input(ctx.label, key=ctx.widget_key, value=init_val or "", **ctx.extra_kwargs)
-    return str(result) if result is not None else ""
+        return ctx.backend.text_area(ctx.label, key=ctx.widget_key, **ctx.extra_kwargs)
+    return ctx.backend.text_input(ctx.label, key=ctx.widget_key, **ctx.extra_kwargs)
 
 
-@render_field.register(int)
-@render_field.register(float)
-def _(typ: Any, ctx: RenderCtx, init_val: Any) -> Union[int, float]:  # Updated return type
-    result = ctx.backend.number_input(ctx.label, key=ctx.widget_key, value=init_val, **ctx.extra_kwargs)
-    if result is None:
-        return 0 if typ is int else 0.0
-    return result
+@render_field.register
+def _(typ: int | float, ctx: RenderCtx, init_val: Any) -> int | float:
+    if ctx.widget_key not in st.session_state:
+        st.session_state[ctx.widget_key] = init_val
+    return ctx.backend.number_input(ctx.label, key=ctx.widget_key, **ctx.extra_kwargs)
 
 
-@render_field.register(bool)
-def _(typ: Type[bool], ctx: RenderCtx, init_val: Any) -> bool:  # Updated return type
-    result = ctx.backend.checkbox(ctx.label, key=ctx.widget_key, value=bool(init_val), **ctx.extra_kwargs)
+@render_field.register
+def _(typ: bool, ctx: RenderCtx, init_val: Any) -> bool:
+    if ctx.widget_key not in st.session_state:
+        st.session_state[ctx.widget_key] = init_val
+    result = ctx.backend.checkbox(ctx.label, key=ctx.widget_key, **ctx.extra_kwargs)
     return bool(result) if result is not None else False
 
 
-@render_field.register(_dt.date)
-@render_field.register(_dt.datetime)
-def _(typ: Any, ctx: RenderCtx, init_val: Any) -> Union[_dt.date, _dt.datetime]:  # Updated return type
-    if init_val is None:
-        init_val = _dt.date.today()
-    result = ctx.backend.date_input(ctx.label, key=ctx.widget_key, value=init_val, **ctx.extra_kwargs)
+@render_field.register
+def _(typ: _dt.date | _dt.datetime, ctx: RenderCtx, init_val: Any) -> _dt.date | _dt.datetime:
+    if ctx.widget_key not in st.session_state:
+        st.session_state[ctx.widget_key] = init_val
+    result = ctx.backend.date_input(ctx.label, key=ctx.widget_key, **ctx.extra_kwargs)
     return result if result is not None else _dt.date.today()
 
 
-# Color picker for pydantic_extra_types.color.Color
-@render_field.register(Color)
-def _(typ: Type[Color], ctx: RenderCtx, init_val: Any) -> Color:
+@render_field.register
+def _(typ: Color, ctx: RenderCtx, init_val: Any) -> Color:
     # Convert the Color object to a hex string or use default
     default_color = "#000000"
 
@@ -333,31 +332,32 @@ def _(typ: Type[Color], ctx: RenderCtx, init_val: Any) -> Color:
     return Color(default_color)  # Default to black if None
 
 
-# Enum ↔ selectbox ---------------------------------------------------------
-@render_field.register(Enum)
-def _(typ: Type[Enum], ctx: RenderCtx, init_val: Any) -> Enum:  # Updated return type
+@render_field.register(Enum | StrEnum)
+def _(typ: Type[Enum] | Type[StrEnum], ctx: RenderCtx, init_val: Any) -> Enum | StrEnum:
+    if init_val is not None and ctx.widget_key not in st.session_state:
+        if isinstance(init_val, typ):
+            st.session_state[ctx.widget_key] = init_val.name
+        else:
+            st.session_state[ctx.widget_key] = init_val
     options = [e.name for e in typ]
-    default = options.index(init_val.name) if init_val else 0
-    name = ctx.backend.selectbox(ctx.label, options=options, key=ctx.widget_key, index=default, **ctx.extra_kwargs)
-    if name is None:
-        # Fallback to first option if None is returned
-        name = options[0] if options else ""
+
+    name = ctx.backend.selectbox(
+        ctx.label, format_func=lambda x: typ[x], options=options, key=ctx.widget_key, **ctx.extra_kwargs
+    )
+    assert name is not None
     return typ[name]
 
 
-# BaseModel (recursive) ----------------------------------------------------
 @render_field.register(BaseModel)
-def _(typ: Type[BaseModel], ctx: RenderCtx, init_val: Any) -> Dict[str, Any]:  # Updated return type
+def _(typ: Type[BaseModel], ctx: RenderCtx, init_val: Any):
     return _render_model(typ, ctx.backend, ctx.path, init_val)
 
 
-# List editor --------------------------------------------------------------
-@render_field.register(list)
-@render_field.register(tuple)
-def _(typ: Any, ctx: RenderCtx, init_val: Any) -> List[Any]:  # Updated return type
+@render_field.register
+def _(typ: list | tuple, ctx: RenderCtx, init_val: Any) -> list | tuple:
     backend = ctx.backend
     elem_type = get_args(ctx.field_info.annotation)[0] if get_args(ctx.field_info.annotation) else Any
-    items: List[Any] = list(init_val or [])
+    items: list | tuple = list(init_val or [])
 
     enum_items = ctx.get_enum_values_from_field_info()
 
@@ -395,7 +395,7 @@ def _(typ: Any, ctx: RenderCtx, init_val: Any) -> List[Any]:  # Updated return t
 
 # Dict editor --------------------------------------------------------------
 @render_field.register(dict)
-def _(typ: Any, ctx: RenderCtx, init_val: Any) -> Dict[Any, Any]:  # Updated return type
+def _(typ, ctx: RenderCtx, init_val: Any) -> Dict[Any, Any]:
     backend = ctx.backend
     key_type, val_type = get_args(ctx.field_info.annotation) if get_args(ctx.field_info.annotation) else (str, Any)
 
@@ -447,12 +447,12 @@ def _(typ: Any, ctx: RenderCtx, init_val: Any) -> Dict[Any, Any]:  # Updated ret
                 if option not in data:
                     default_key = option
                     break
-            else:
-                # If all options are used, don't add a new key
-                backend.warning("All available keys are already in use.")
-                # Update session state before returning
-                st.session_state[keys.state_key] = data.copy()
-                return data
+                else:
+                    # If all options are used, don't add a new key
+                    backend.warning("All available keys are already in use.")
+                    # Update session state before returning
+                    st.session_state[keys.state_key] = data.copy()
+                    return data
         else:
             # For regular string keys
             default_key = "key"
@@ -486,6 +486,7 @@ def _(typ: Any, ctx: RenderCtx, init_val: Any) -> Dict[Any, Any]:  # Updated ret
                 options=enum_options,
                 key=keys.key_input_key(k),
                 index=current_index,
+                **ctx.extra_kwargs,
             )
         elif is_literal_type(key_type):
             # Handle Literal typed keys
@@ -499,6 +500,7 @@ def _(typ: Any, ctx: RenderCtx, init_val: Any) -> Dict[Any, Any]:  # Updated ret
                 options=literal_options,
                 key=keys.key_input_key(k),
                 index=current_index,
+                **ctx.extra_kwargs,
             )
         else:
             new_key = backend_cols[0].text_input("key", key=keys.key_input_key(k), value=str(k))
@@ -605,6 +607,27 @@ def handle_literal(typ, ctx: RenderCtx, init_val):
     return chosen_value
 
 
+@render_field.register(Crop)
+def _(typ: Type[Crop], ctx: RenderCtx, init_val: dict) -> Crop:
+    """Render a Crop field with streamlit-cropper if an image is available."""
+    for side in ["left", "top", "width", "height"]:
+        if f"{ctx.path}.{side}" not in st.session_state:
+            st.session_state[f"{ctx.path}.{side}"] = init_val[side]
+
+    # If an image is available, render the cropper
+    if (image := ctx.get_json_schema_extra().get("image")) is not None:
+        ctx.backend.cropper(image, key=ctx.path, is_relative_coords=True, **ctx.extra_kwargs)
+
+    pass
+    # Render regular fields for the crop values
+    for side, col in zip(["left", "top", "width", "height"], ctx.backend.columns([1] * 4)):
+        col.number_input(side, min_value=0.0, max_value=1.0, format="%.4f", key=f"{ctx.path}.{side}")
+
+    return Crop.model_validate(
+        {side: st.session_state[f"{ctx.path}.{side}"] for side in ["left", "top", "width", "height"]}
+    )
+
+
 # ────────────────────────────────────────────────────────────
 # Core recursive renderer
 # ────────────────────────────────────────────────────────────
@@ -682,9 +705,9 @@ def _render_model(
                 # Recursively render the sub-model inside the expander
                 assert init_val is not None
                 data[fname] = _render_model(anno, new_backend, f"{path_prefix}.{fname}", init_val)
-            elif is_literal_type(anno):
-                # Literal type with multiple options
-                data[fname] = handle_literal(anno, field_ctx, init_val)
+            # elif is_literal_type(anno):
+            #     # Literal type with multiple options
+            #     data[fname] = handle_literal(anno, field_ctx, init_val)
             else:
                 # Other types
                 origin_or_anno = origin or anno
@@ -784,7 +807,7 @@ def pydantic_ui(
         backend_impl.toast("Creating a new instance")
         instance_val = model_cls()
 
-    init_values = instance_val.model_dump(mode="json")
+    init_values = instance_val.model_dump()  # mode=json?
     st.session_state[bucket] = init_values
 
     # Handle the form context

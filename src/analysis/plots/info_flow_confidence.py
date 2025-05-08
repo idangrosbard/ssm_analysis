@@ -9,6 +9,7 @@ from matplotlib import pyplot as plt
 from matplotlib.axes import Axes
 from matplotlib.collections import PolyCollection
 from matplotlib.figure import Figure
+from matplotlib.ticker import FixedLocator
 from numpy.typing import NDArray
 from pydantic import BaseModel, Field, create_model
 from pydantic_extra_types.color import Color
@@ -84,6 +85,11 @@ class InfoFlowPlotConfig(BaseModel):
         description="Margin on the x-axis",
         ge=0.0,
         json_schema_extra={SpecialFieldKeys.column_group: "display_options"},
+    )
+
+    x_tick_shift: dict[int, float] = Field(
+        default_factory=lambda: {},
+        description="Shift the x-ticks for each line",
     )
 
     # Y-Axis Limits
@@ -588,7 +594,6 @@ def create_confidence_plot(
         ax.set_xlabel(x_axis_label, fontsize=config.axis_fontsize)
         ax.set_xticks(x_ticks)
         ax.set_xticklabels(x_ticks_labels, fontsize=config.axis_fontsize)
-
         ax.axhline(plot_metadata["axhline_value"], color="gray", linewidth=1)
         ax.set_ylabel(plot_metadata["ylabel"], fontsize=config.axis_fontsize)
         if config.with_fixed_limits:
@@ -599,6 +604,16 @@ def create_confidence_plot(
 
         # Adjust tick parameters
         ax.tick_params(axis="both", which="both", length=0, labelsize=config.axis_fontsize)
+
+        if config.x_tick_shift:
+            # Get current tick positions and labels
+            current_positions = ax.get_xticks()
+            current_labels = [t.get_text() for t in ax.get_xticklabels()]
+            modified_positions = current_positions.copy()
+            for tick_idx, tick_shift in config.x_tick_shift.items():
+                modified_positions[tick_idx] += tick_shift
+            ax.xaxis.set_major_locator(FixedLocator(modified_positions))
+            ax.set_xticklabels(current_labels)
 
     # Extract unique handles and labels
     all_handles, all_labels = zip(*unique_handles.values()) if unique_handles else ([], [])

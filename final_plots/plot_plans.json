@@ -179,8 +179,6 @@
                         "title": "",
                         "title_height": 30,
                         "font_size": 25,
-                        "img_width": -1,
-                        "img_height": -1,
                         "show_row_labels": false,
                         "rows_labels_override": {},
                         "show_col_labels": false,
@@ -310,7 +308,20 @@
                                                     "__JSONABLE_type__": "DatasetName",
                                                     "__JSONABLE_value__": "counter_fact"
                                                 },
-                                                "model_arch_and_size": null,
+                                                "model_arch_and_size": {
+                                                    "__JSONABLE_metadata__": "__JSONABLE_namedtuple__",
+                                                    "__JSONABLE_module__": "src.core.types",
+                                                    "__JSONABLE_type__": "MODEL_ARCH_AND_SIZE",
+                                                    "__JSONABLE_value__": [
+                                                        {
+                                                            "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                                                            "__JSONABLE_module__": "src.core.types",
+                                                            "__JSONABLE_type__": "MODEL_ARCH",
+                                                            "__JSONABLE_value__": "mamba1"
+                                                        },
+                                                        "2.8B"
+                                                    ]
+                                                },
                                                 "correctness": {
                                                     "__JSONABLE_metadata__": "__JSONABLE_enum__",
                                                     "__JSONABLE_module__": "src.analysis.prompt_filterations",
@@ -321,8 +332,100 @@
                                             }
                                         },
                                         {
-                                            "__JSONABLE_type__": "AnyExistingCompletePromptFilteration",
-                                            "__JSONABLE_value__": {}
+                                            "__JSONABLE_type__": "ModelCorrectPromptFilteration",
+                                            "__JSONABLE_value__": {
+                                                "dataset_name": {
+                                                    "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                                                    "__JSONABLE_module__": "src.core.names",
+                                                    "__JSONABLE_type__": "DatasetName",
+                                                    "__JSONABLE_value__": "counter_fact"
+                                                },
+                                                "model_arch_and_size": {
+                                                    "__JSONABLE_metadata__": "__JSONABLE_namedtuple__",
+                                                    "__JSONABLE_module__": "src.core.types",
+                                                    "__JSONABLE_type__": "MODEL_ARCH_AND_SIZE",
+                                                    "__JSONABLE_value__": [
+                                                        {
+                                                            "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                                                            "__JSONABLE_module__": "src.core.types",
+                                                            "__JSONABLE_type__": "MODEL_ARCH",
+                                                            "__JSONABLE_value__": "mamba2"
+                                                        },
+                                                        "2.7B"
+                                                    ]
+                                                },
+                                                "correctness": {
+                                                    "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                                                    "__JSONABLE_module__": "src.analysis.prompt_filterations",
+                                                    "__JSONABLE_type__": "Correctness",
+                                                    "__JSONABLE_value__": "correct"
+                                                },
+                                                "code_version": "v1"
+                                            }
+                                        },
+                                        {
+                                            "__JSONABLE_type__": "ModelCorrectPromptFilteration",
+                                            "__JSONABLE_value__": {
+                                                "dataset_name": {
+                                                    "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                                                    "__JSONABLE_module__": "src.core.names",
+                                                    "__JSONABLE_type__": "DatasetName",
+                                                    "__JSONABLE_value__": "counter_fact"
+                                                },
+                                                "model_arch_and_size": {
+                                                    "__JSONABLE_metadata__": "__JSONABLE_namedtuple__",
+                                                    "__JSONABLE_module__": "src.core.types",
+                                                    "__JSONABLE_type__": "MODEL_ARCH_AND_SIZE",
+                                                    "__JSONABLE_value__": [
+                                                        {
+                                                            "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                                                            "__JSONABLE_module__": "src.core.types",
+                                                            "__JSONABLE_type__": "MODEL_ARCH",
+                                                            "__JSONABLE_value__": "gpt2"
+                                                        },
+                                                        "1.5B"
+                                                    ]
+                                                },
+                                                "correctness": {
+                                                    "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                                                    "__JSONABLE_module__": "src.analysis.prompt_filterations",
+                                                    "__JSONABLE_type__": "Correctness",
+                                                    "__JSONABLE_value__": "correct"
+                                                },
+                                                "code_version": "v1"
+                                            }
+                                        },
+                                        {
+                                            "__JSONABLE_type__": "ModelCorrectPromptFilteration",
+                                            "__JSONABLE_value__": {
+                                                "dataset_name": {
+                                                    "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                                                    "__JSONABLE_module__": "src.core.names",
+                                                    "__JSONABLE_type__": "DatasetName",
+                                                    "__JSONABLE_value__": "counter_fact"
+                                                },
+                                                "model_arch_and_size": {
+                                                    "__JSONABLE_metadata__": "__JSONABLE_namedtuple__",
+                                                    "__JSONABLE_module__": "src.core.types",
+                                                    "__JSONABLE_type__": "MODEL_ARCH_AND_SIZE",
+                                                    "__JSONABLE_value__": [
+                                                        {
+                                                            "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                                                            "__JSONABLE_module__": "src.core.types",
+                                                            "__JSONABLE_type__": "MODEL_ARCH",
+                                                            "__JSONABLE_value__": "mamba1"
+                                                        },
+                                                        "7B-falcon"
+                                                    ]
+                                                },
+                                                "correctness": {
+                                                    "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                                                    "__JSONABLE_module__": "src.analysis.prompt_filterations",
+                                                    "__JSONABLE_type__": "Correctness",
+                                                    "__JSONABLE_value__": "correct"
+                                                },
+                                                "code_version": "v1"
+                                            }
                                         }
                                     ]
                                 },
@@ -344,22 +447,27 @@
                         ],
                         "x_axis_as_percentage": true,
                         "x_tick_count": 6,
-                        "show_number_of_points": "min",
+                        "show_number_of_points": "auto",
+                        "x_axis_margin": 0.0,
+                        "x_tick_shift": {
+                            "-1": -1.5
+                        },
                         "with_fixed_limits": true,
                         "acc_ylim_min": 60.0,
                         "acc_ylim_max": 105.0,
-                        "diff_ylim_min": -60.0,
+                        "diff_ylim_min": -75.0,
                         "diff_ylim_max": 40.0,
                         "sep1": null,
-                        "figure_width": 12.0,
+                        "figure_width": 5.0,
                         "figure_height": 5.0,
-                        "tight_layout": false,
+                        "tight_layout": true,
                         "title_fontsize": 12,
-                        "axis_fontsize": 10,
+                        "axis_fontsize": 16,
                         "legend_fontsize": 10,
                         "legend_loc": "upper center",
                         "legend_loc_y": 0.95,
                         "legend_loc_x": 0.5,
+                        "show_legend": false,
                         "sep2": null,
                         "custom_colors": {
                             "mamba1-7B-falcon": "#af7404",
@@ -374,8 +482,6 @@
                         "title": "",
                         "title_height": 30,
                         "font_size": 25,
-                        "img_width": -1,
-                        "img_height": -1,
                         "padding": 0,
                         "sep1": null,
                         "show_row_labels": false,
@@ -385,14 +491,18 @@
                         "label_font_size": 40,
                         "crop_params": {
                             "enable_crop": true,
-                            "edge_left": 0.0055,
-                            "edge_right": 0.0,
-                            "edge_top": 0.0,
-                            "edge_bottom": 0.0,
-                            "crop_left": 0.05,
-                            "crop_right": 0.0,
-                            "crop_top": 0.0,
-                            "crop_bottom": 0.0
+                            "edge_crop": {
+                                "left": 0.004081632653061225,
+                                "top": 0.08282828282828283,
+                                "width": 0.9836734693877551,
+                                "height": 0.907
+                            },
+                            "standard_crop": {
+                                "left": 0.1683,
+                                "top": 0.10707070707070707,
+                                "width": 0.8183673469387756,
+                                "height": 0.8202020202020202
+                            }
                         }
                     }
                 }
@@ -846,8 +956,6 @@
                         "title": "",
                         "title_height": 30,
                         "font_size": 25,
-                        "img_width": -1,
-                        "img_height": -1,
                         "padding": 0,
                         "sep1": null,
                         "show_row_labels": false,
@@ -857,14 +965,18 @@
                         "label_font_size": 40,
                         "crop_params": {
                             "enable_crop": true,
-                            "edge_left": 0.0055,
-                            "edge_right": 0.0,
-                            "edge_top": 0.0,
-                            "edge_bottom": 0.0,
-                            "crop_left": 0.05,
-                            "crop_right": 0.0,
-                            "crop_top": 0.0,
-                            "crop_bottom": 0.0
+                            "edge_crop": {
+                                "left": 0.0055,
+                                "top": 0.0,
+                                "width": 0.0,
+                                "height": 0.0
+                            },
+                            "standard_crop": {
+                                "left": 0.05,
+                                "top": 0.0,
+                                "width": 0.0,
+                                "height": 0.0
+                            }
                         }
                     }
                 }
@@ -1159,8 +1271,6 @@
                         "title": "",
                         "title_height": 30,
                         "font_size": 25,
-                        "img_width": -1,
-                        "img_height": -1,
                         "padding": 0,
                         "sep1": null,
                         "show_row_labels": false,
@@ -1170,14 +1280,18 @@
                         "label_font_size": 40,
                         "crop_params": {
                             "enable_crop": true,
-                            "edge_left": 0.0055,
-                            "edge_right": 0.0,
-                            "edge_top": 0.0,
-                            "edge_bottom": 0.0,
-                            "crop_left": 0.05,
-                            "crop_right": 0.0,
-                            "crop_top": 0.0,
-                            "crop_bottom": 0.0
+                            "edge_crop": {
+                                "left": 0.0055,
+                                "top": 0.0,
+                                "width": 0.0,
+                                "height": 0.0
+                            },
+                            "standard_crop": {
+                                "left": 0.05,
+                                "top": 0.0,
+                                "width": 0.0,
+                                "height": 0.0
+                            }
                         }
                     }
                 }
@@ -1426,8 +1540,6 @@
                         "title": "",
                         "title_height": 30,
                         "font_size": 25,
-                        "img_width": -1,
-                        "img_height": -1,
                         "padding": 0,
                         "sep1": null,
                         "show_row_labels": false,
@@ -1437,14 +1549,18 @@
                         "label_font_size": 40,
                         "crop_params": {
                             "enable_crop": true,
-                            "edge_left": 0.0055,
-                            "edge_right": 0.0,
-                            "edge_top": 0.0,
-                            "edge_bottom": 0.0,
-                            "crop_left": 0.05,
-                            "crop_right": 0.0,
-                            "crop_top": 0.0,
-                            "crop_bottom": 0.0
+                            "edge_crop": {
+                                "left": 0.0055,
+                                "top": 0.0,
+                                "width": 0.0,
+                                "height": 0.0
+                            },
+                            "standard_crop": {
+                                "left": 0.05,
+                                "top": 0.0,
+                                "width": 0.0,
+                                "height": 0.0
+                            }
                         }
                     }
                 }
@@ -1751,8 +1867,6 @@
                         "title": "",
                         "title_height": 30,
                         "font_size": 25,
-                        "img_width": -1,
-                        "img_height": -1,
                         "padding": 10,
                         "sep1": null,
                         "show_row_labels": false,
@@ -1762,14 +1876,18 @@
                         "label_font_size": 20,
                         "crop_params": {
                             "enable_crop": false,
-                            "edge_left": 0.0,
-                            "edge_right": 0.0,
-                            "edge_top": 0.0,
-                            "edge_bottom": 0.0,
-                            "crop_left": 0.0,
-                            "crop_right": 0.0,
-                            "crop_top": 0.0,
-                            "crop_bottom": 0.0
+                            "edge_crop": {
+                                "left": 0.0,
+                                "top": 0.0,
+                                "width": 0.0,
+                                "height": 0.0
+                            },
+                            "standard_crop": {
+                                "left": 0.0,
+                                "top": 0.0,
+                                "width": 0.0,
+                                "height": 0.0
+                            }
                         }
                     }
                 }
@@ -1920,131 +2038,19 @@
                                                     "__JSONABLE_type__": "DatasetName",
                                                     "__JSONABLE_value__": "counter_fact"
                                                 },
-                                                "model_arch_and_size": {
-                                                    "__JSONABLE_metadata__": "__JSONABLE_namedtuple__",
-                                                    "__JSONABLE_module__": "src.core.types",
-                                                    "__JSONABLE_type__": "MODEL_ARCH_AND_SIZE",
-                                                    "__JSONABLE_value__": [
-                                                        {
-                                                            "__JSONABLE_metadata__": "__JSONABLE_enum__",
-                                                            "__JSONABLE_module__": "src.core.types",
-                                                            "__JSONABLE_type__": "MODEL_ARCH",
-                                                            "__JSONABLE_value__": "mamba1"
-                                                        },
-                                                        "130M"
-                                                    ]
+                                                "model_arch_and_size": null,
+                                                "correctness": {
+                                                    "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                                                    "__JSONABLE_module__": "src.analysis.prompt_filterations",
+                                                    "__JSONABLE_type__": "Correctness",
+                                                    "__JSONABLE_value__": "correct"
                                                 },
-                                                "correctness": "correct",
                                                 "code_version": "v1"
                                             }
                                         },
                                         {
-                                            "__JSONABLE_type__": "ModelCorrectPromptFilteration",
-                                            "__JSONABLE_value__": {
-                                                "dataset_name": {
-                                                    "__JSONABLE_metadata__": "__JSONABLE_enum__",
-                                                    "__JSONABLE_module__": "src.core.names",
-                                                    "__JSONABLE_type__": "DatasetName",
-                                                    "__JSONABLE_value__": "counter_fact"
-                                                },
-                                                "model_arch_and_size": {
-                                                    "__JSONABLE_metadata__": "__JSONABLE_namedtuple__",
-                                                    "__JSONABLE_module__": "src.core.types",
-                                                    "__JSONABLE_type__": "MODEL_ARCH_AND_SIZE",
-                                                    "__JSONABLE_value__": [
-                                                        {
-                                                            "__JSONABLE_metadata__": "__JSONABLE_enum__",
-                                                            "__JSONABLE_module__": "src.core.types",
-                                                            "__JSONABLE_type__": "MODEL_ARCH",
-                                                            "__JSONABLE_value__": "mamba1"
-                                                        },
-                                                        "1.4B"
-                                                    ]
-                                                },
-                                                "correctness": "correct",
-                                                "code_version": "v1"
-                                            }
-                                        },
-                                        {
-                                            "__JSONABLE_type__": "ModelCorrectPromptFilteration",
-                                            "__JSONABLE_value__": {
-                                                "dataset_name": {
-                                                    "__JSONABLE_metadata__": "__JSONABLE_enum__",
-                                                    "__JSONABLE_module__": "src.core.names",
-                                                    "__JSONABLE_type__": "DatasetName",
-                                                    "__JSONABLE_value__": "counter_fact"
-                                                },
-                                                "model_arch_and_size": {
-                                                    "__JSONABLE_metadata__": "__JSONABLE_namedtuple__",
-                                                    "__JSONABLE_module__": "src.core.types",
-                                                    "__JSONABLE_type__": "MODEL_ARCH_AND_SIZE",
-                                                    "__JSONABLE_value__": [
-                                                        {
-                                                            "__JSONABLE_metadata__": "__JSONABLE_enum__",
-                                                            "__JSONABLE_module__": "src.core.types",
-                                                            "__JSONABLE_type__": "MODEL_ARCH",
-                                                            "__JSONABLE_value__": "mamba2"
-                                                        },
-                                                        "1.3B"
-                                                    ]
-                                                },
-                                                "correctness": "correct",
-                                                "code_version": "v1"
-                                            }
-                                        },
-                                        {
-                                            "__JSONABLE_type__": "ModelCorrectPromptFilteration",
-                                            "__JSONABLE_value__": {
-                                                "dataset_name": {
-                                                    "__JSONABLE_metadata__": "__JSONABLE_enum__",
-                                                    "__JSONABLE_module__": "src.core.names",
-                                                    "__JSONABLE_type__": "DatasetName",
-                                                    "__JSONABLE_value__": "counter_fact"
-                                                },
-                                                "model_arch_and_size": {
-                                                    "__JSONABLE_metadata__": "__JSONABLE_namedtuple__",
-                                                    "__JSONABLE_module__": "src.core.types",
-                                                    "__JSONABLE_type__": "MODEL_ARCH_AND_SIZE",
-                                                    "__JSONABLE_value__": [
-                                                        {
-                                                            "__JSONABLE_metadata__": "__JSONABLE_enum__",
-                                                            "__JSONABLE_module__": "src.core.types",
-                                                            "__JSONABLE_type__": "MODEL_ARCH",
-                                                            "__JSONABLE_value__": "mamba1"
-                                                        },
-                                                        "2.8B"
-                                                    ]
-                                                },
-                                                "correctness": "correct",
-                                                "code_version": "v1"
-                                            }
-                                        },
-                                        {
-                                            "__JSONABLE_type__": "ModelCorrectPromptFilteration",
-                                            "__JSONABLE_value__": {
-                                                "dataset_name": {
-                                                    "__JSONABLE_metadata__": "__JSONABLE_enum__",
-                                                    "__JSONABLE_module__": "src.core.names",
-                                                    "__JSONABLE_type__": "DatasetName",
-                                                    "__JSONABLE_value__": "counter_fact"
-                                                },
-                                                "model_arch_and_size": {
-                                                    "__JSONABLE_metadata__": "__JSONABLE_namedtuple__",
-                                                    "__JSONABLE_module__": "src.core.types",
-                                                    "__JSONABLE_type__": "MODEL_ARCH_AND_SIZE",
-                                                    "__JSONABLE_value__": [
-                                                        {
-                                                            "__JSONABLE_metadata__": "__JSONABLE_enum__",
-                                                            "__JSONABLE_module__": "src.core.types",
-                                                            "__JSONABLE_type__": "MODEL_ARCH",
-                                                            "__JSONABLE_value__": "mamba2"
-                                                        },
-                                                        "2.7B"
-                                                    ]
-                                                },
-                                                "correctness": "correct",
-                                                "code_version": "v1"
-                                            }
+                                            "__JSONABLE_type__": "AnyExistingCompletePromptFilteration",
+                                            "__JSONABLE_value__": {}
                                         }
                                     ]
                                 },
@@ -2052,30 +2058,79 @@
                             }
                         }
                     },
-                    "cell_plot_config": {},
+                    "cell_plot_config": {
+                        "title": "",
+                        "confidence_level": 0.95,
+                        "alpha": 0.2,
+                        "metrics_to_show": [
+                            {
+                                "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                                "__JSONABLE_module__": "src.analysis.plots.info_flow_confidence",
+                                "__JSONABLE_type__": "TMetricType",
+                                "__JSONABLE_value__": "acc"
+                            },
+                            {
+                                "__JSONABLE_metadata__": "__JSONABLE_enum__",
+                                "__JSONABLE_module__": "src.analysis.plots.info_flow_confidence",
+                                "__JSONABLE_type__": "TMetricType",
+                                "__JSONABLE_value__": "diff"
+                            }
+                        ],
+                        "x_axis_as_percentage": true,
+                        "x_tick_count": 6,
+                        "show_number_of_points": "per_line",
+                        "with_fixed_limits": false,
+                        "acc_ylim_min": 60.0,
+                        "acc_ylim_max": 105.0,
+                        "diff_ylim_min": -50.0,
+                        "diff_ylim_max": 50.0,
+                        "sep1": null,
+                        "figure_width": 12.0,
+                        "figure_height": 5.0,
+                        "tight_layout": true,
+                        "title_fontsize": 12,
+                        "axis_fontsize": 10,
+                        "legend_fontsize": 10,
+                        "legend_loc": "lower center",
+                        "legend_loc_y": 0.93,
+                        "legend_loc_x": 0.5,
+                        "sep2": null,
+                        "custom_colors": {
+                            "1": "#afcff3",
+                            "3": "#9ecae1",
+                            "5": "#6baed6",
+                            "9": "#4292c6",
+                            "12": "#2171b5",
+                            "15": "#084594"
+                        },
+                        "custom_line_styles": {},
+                        "custom_line_labels": {}
+                    },
                     "combine_plot_config": {
                         "title": "",
                         "title_height": 30,
-                        "font_size": 25,
-                        "img_width": -1,
-                        "img_height": -1,
+                        "font_size": 40,
                         "padding": 10,
                         "sep1": null,
-                        "show_row_labels": false,
-                        "show_col_labels": false,
+                        "show_row_labels": true,
+                        "show_col_labels": true,
                         "rows_labels_override": {},
                         "columns_labels_override": {},
-                        "label_font_size": 20,
+                        "label_font_size": 40,
                         "crop_params": {
                             "enable_crop": false,
-                            "edge_left": 0.0,
-                            "edge_right": 0.0,
-                            "edge_top": 0.0,
-                            "edge_bottom": 0.0,
-                            "crop_left": 0.0,
-                            "crop_right": 0.0,
-                            "crop_top": 0.0,
-                            "crop_bottom": 0.0
+                            "edge_crop": {
+                                "left": 0.0,
+                                "top": 0.0,
+                                "width": 0.0,
+                                "height": 0.0
+                            },
+                            "standard_crop": {
+                                "left": 0.0,
+                                "top": 0.0,
+                                "width": 0.0,
+                                "height": 0.0
+                            }
                         }
                     }
                 }

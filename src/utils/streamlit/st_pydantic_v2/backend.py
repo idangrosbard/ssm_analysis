@@ -56,6 +56,8 @@ class BackendProtocol(Protocol):
 
     def container(self, **kw) -> BackendProtocol: ...
 
+    def cropper(self, img, key, is_relative_coords: bool = False, **kw) -> Any: ...
+
     def __getattr__(self, item):
         # This is a fallback for unknown attributes
         pass
@@ -138,6 +140,53 @@ class StreamlitBackend(BackendProtocol):  # Implementation of BackendProtocol
 
     def toast(self, txt: str) -> None:
         self.dg.toast(txt)
+
+    def cropper(self, img, key, is_relative_coords: bool = False, **kw) -> Any:
+        """Render a streamlit-cropper component."""
+        try:
+            from streamlit_cropper import st_cropper
+
+        except ImportError:
+            self.warning("streamlit-cropper is not installed. Run 'pip install streamlit-cropper'.")
+            return
+
+        @st.dialog(title="Interactive Crop", width="large")
+        def _crop_dialog(img, key: str, **kw):
+            img_w, img_h = img.size
+
+            def box_algorithm(*args, **kwargs) -> dict[str, int]:
+                return {
+                    side: st.session_state[f"{key}.{side}"] * (img_w if side in ["left", "width"] else img_h)
+                    for side in ["left", "top", "width", "height"]
+                    if f"{key}.{side}" in st.session_state
+                }
+
+            box = st_cropper(
+                img,
+                box_algorithm=box_algorithm,
+                return_type="box",
+                key=f"{key}_cropper",
+                **kw,
+            )
+
+            # If save button is clicked, update the session state
+            if st.button("Close", key=f"{key}_close"):
+                assert isinstance(box, dict)
+                for side in ["left", "top", "width", "height"]:
+                    value = box[side]
+                    divide_by = 1
+                    if is_relative_coords:
+                        if side in ["left", "width"]:
+                            divide_by = img_w
+                        elif side in ["top", "height"]:
+                            divide_by = img_h
+
+                    val = value / divide_by
+                    st.session_state[f"{key}.{side}"] = val
+                st.rerun()  # Rerun to update the UI
+
+        if self.dg.button("Open Crop Dialog", key=f"{key}_open_crop_dialog"):
+            _crop_dialog(img, key, **kw)
 
     def __getattr__(self, item):
         try:
