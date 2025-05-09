@@ -9,8 +9,11 @@ from pandas import DataFrame
 from st_aggrid import AgGrid, DataReturnMode, GridUpdateMode
 from streamlit.delta_generator import DeltaGenerator
 
+from src.analysis.experiment_results.hyper_param_definition import (
+    EnumSelectFilterationContext,
+    PromptFilterationFactory,
+)
 from src.analysis.experiment_results.model_prompt_combination import ModelCombination
-from src.analysis.experiment_results.plot_plan import EnumSelectFilterationContext, PromptFilterationFactory
 from src.analysis.prompt_filterations import (
     Correctness,
     get_shared_models_correctness_prompt_filteration,

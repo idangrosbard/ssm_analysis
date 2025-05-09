@@ -344,41 +344,41 @@ class JSONAble(ABC):
                         return _init_cls_from_typehint(obj=obj, type_hint=type_hint)
                 elif _JSONAbleMarkers.METADATA_MARKER in obj:
                     if _JSONAbleMarkers.TYPE_MARKER in obj:
-                        if _JSONAbleMarkers.TYPE_MARKER in obj:
-                            if obj[_JSONAbleMarkers.TYPE_MARKER] in cls._registry:
-                                # This is a nested Serializable object
-                                serializable_cls = cls._registry[obj[_JSONAbleMarkers.TYPE_MARKER]]
+                        if obj[_JSONAbleMarkers.TYPE_MARKER] in cls._registry:
+                            # This is a nested Serializable object
+                            serializable_cls = cls._registry[obj[_JSONAbleMarkers.TYPE_MARKER]]
 
-                                # Get type hints for the class
-                                type_hints = get_type_hints(serializable_cls)
+                            # Get type hints for the class
+                            type_hints = get_type_hints(serializable_cls)
 
-                                # Recursively process attributes with type hints
-                                processed_params = {}
-                                for k, v in obj[_JSONAbleMarkers.VALUE_MARKER].items():
-                                    type_hint = type_hints.get(k)
-                                    processed_params[k] = _rec_from_dict(v, type_hint)
+                            # Recursively process attributes with type hints
+                            processed_params = {}
+                            for k, v in obj[_JSONAbleMarkers.VALUE_MARKER].items():
+                                type_hint = type_hints.get(k)
+                                processed_params[k] = _rec_from_dict(v, type_hint)
 
-                                # Special handling for dataclass-based JSONAble objects
-                                if hasattr(serializable_cls, "__dataclass_fields__"):
-                                    return serializable_cls(**processed_params)
-                                else:
-                                    new_obj = serializable_cls.__new__(serializable_cls)
-                                    new_obj.__dict__.update(processed_params)
-                                    if hasattr(new_obj, "__post_init__"):
-                                        getattr(new_obj, "__post_init__")()
-                                    return new_obj
-                            elif obj[_JSONAbleMarkers.METADATA_MARKER] == METADATA_TYPES.ENUM:
-                                # Import the enum class dynamically
-                                module = importlib.import_module(obj[_JSONAbleMarkers.MODULE_MARKER])
-                                enum_cls = getattr(module, obj[_JSONAbleMarkers.TYPE_MARKER])
-                                return enum_cls(obj[_JSONAbleMarkers.VALUE_MARKER])
+                            # Special handling for dataclass-based JSONAble objects
+                            if hasattr(serializable_cls, "__dataclass_fields__"):
+                                return serializable_cls(**processed_params)
+                            else:
+                                new_obj = serializable_cls.__new__(serializable_cls)
+                                new_obj.__dict__.update(processed_params)
+                                if hasattr(new_obj, "__post_init__"):
+                                    getattr(new_obj, "__post_init__")()
+                                return new_obj
+                        elif obj[_JSONAbleMarkers.METADATA_MARKER] == METADATA_TYPES.ENUM:
+                            # Import the enum class dynamically
+                            module = importlib.import_module(obj[_JSONAbleMarkers.MODULE_MARKER])
+                            enum_cls = getattr(module, obj[_JSONAbleMarkers.TYPE_MARKER])
+                            return enum_cls(obj[_JSONAbleMarkers.VALUE_MARKER])
                         elif obj[_JSONAbleMarkers.METADATA_MARKER] == METADATA_TYPES.DATACLASS:
                             # Import the dataclass dynamically
                             module = importlib.import_module(obj[_JSONAbleMarkers.MODULE_MARKER])
                             dataclass_cls = getattr(module, obj[_JSONAbleMarkers.TYPE_MARKER])
+                            type_hints = get_type_hints(dataclass_cls)
                             # Recursively process the dataclass fields
                             processed_data = {
-                                k: _rec_from_dict(v, type_hint=dataclass_cls.__annotations__.get(k))
+                                k: _rec_from_dict(v, type_hint=type_hints.get(k))
                                 for k, v in obj[_JSONAbleMarkers.VALUE_MARKER].items()
                             }
                             return dataclass_cls(**processed_data)
@@ -454,6 +454,9 @@ class JSONAble(ABC):
             target_cls = cls._registry[data[_JSONAbleMarkers.TYPE_MARKER]]
         else:
             target_cls = cls
+
+            if target_cls == JSONAble:
+                target_cls = None
         # Process parameters recursively
         deserialized = _rec_from_dict(data, type_hint=target_cls)
 

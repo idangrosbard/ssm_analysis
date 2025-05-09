@@ -512,13 +512,10 @@ def combine_image_grid(
     # --------------------------------------------------------------------- #
     #  Title row (optional) + column-label row (optional)
     title_h = params.title_height if params.title else 0
-    col_label_h = _get_text_height("TEST", font_label) if params.show_col_labels else 0
 
+    col_label_h = _get_text_height("TEST", font_label) if params.show_col_labels else 0
     # Ensure column header height is at least 1 if column labels are shown
-    if params.show_col_labels and col_label_h + params.column_header_padding <= 0:
-        col_label_h = 1
-    else:
-        col_label_h = max(0, col_label_h + params.column_header_padding)
+    padded_col_label_h = max(0, col_label_h + params.column_header_padding)
 
     legend_h = _get_text_height("TEST", font_legend) if legend_items else 0
 
@@ -527,7 +524,7 @@ def combine_image_grid(
         legend_h += params.legend_params.border_width
 
     # Add legend height to bottom margin instead of top margin
-    top_margin = title_h + col_label_h
+    top_margin = title_h + padded_col_label_h
     bottom_margin = legend_h if legend_items else 0
 
     #  Row-label column (optional)
@@ -669,9 +666,6 @@ def combine_image_grid(
         assert values is not None
         assert len(values) == num_cols
 
-        # Calculate actual column label height based on text height (padding only affects text position)
-        actual_col_label_h = _get_text_height("TEST", font_label)
-
         for col_idx in range(num_cols):
             prefix = generate_prefix(col_idx, params.column_prefix_style)
 
@@ -679,8 +673,8 @@ def combine_image_grid(
             label = params.columns_labels_override.get(label, label)
             if prefix:
                 label = f"{prefix} {label}"
-            w, h = img_w, actual_col_label_h  # no rotation
-            label_img = Image.new("RGBA", (int(w), h), "white")
+            w, h = img_w, col_label_h  # no rotation
+            label_img = Image.new("RGBA", (int(w), h), (255, 255, 255, 0))
             label_draw = ImageDraw.Draw(label_img)
 
             bb = label_draw.textbbox((0, 0), label, font=font_label)

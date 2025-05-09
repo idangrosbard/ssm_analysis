@@ -14,10 +14,11 @@ from typing import Any, List, Optional, Tuple, TypedDict, Union
 import streamlit as st
 import streamlit_antd_components as sac
 
+from src.analysis.experiment_results.hyper_param_definition import get_hyper_param_definition
 from src.analysis.experiment_results.plot_plan import (
+    ParamConfig,
     PlotPlan,
     get_experiment_orientations,
-    get_hyper_param_definition,
 )
 from src.analysis.plots.image_combiner import ImageGridParams
 from src.app.components.prompt_filter import SelectFilterationComponent
@@ -140,9 +141,12 @@ class PlotPlanDetailsSummary(StreamlitComponent[None]):
         for orientation in str_enum_values(FinalPlotsPlanOrientation):
             if orientation == FinalPlotsPlanOrientation.lines and plan.experiment_name != ExperimentName.info_flow:
                 continue
-            param = plan._get_orientation_value(orientation)
-            if param:
-                options = plan._get_param_options_col(orientation)
+
+            # Get param configuration directly
+            param_config = plan.get_param_config_by_orientation(orientation)
+            if param_config:
+                param = param_config.param
+                options = param_config.values
                 variation_option = get_hyper_param_definition(param)
                 if not options:
                     # get all options from result bank
@@ -249,8 +253,12 @@ class PlotPlanEditor(StreamlitComponent[Optional[PlotPlan]]):
         # Get currently selected options
         selected_options = []
         if existing_plan:
-            selected_options = existing_plan.get_options_for_param(param_type)
-            selected_display_names = self._get_display_names_for_options(selected_options, param_value)
+            param_config = existing_plan.get_param_config_by_orientation(param_type)
+            if param_config:
+                selected_options = param_config.values
+                selected_display_names = self._get_display_names_for_options(selected_options, param_value)
+            else:
+                selected_display_names = []
         else:
             selected_display_names = []
 
@@ -281,13 +289,17 @@ class PlotPlanEditor(StreamlitComponent[Optional[PlotPlan]]):
                 experiment_name=ExperimentName.info_flow,
                 is_appendix=False,
                 order=0,
-                fixed_values={},
                 cell_plot_config={},
                 combine_plot_config=ImageGridParams(),
             )
 
         # Form for editing/creating a plot plan
         st.subheader("New Plot Plan" if self.is_new else "Edit Plot Plan")
+
+        # Create data dictionaries to collect form values
+        orientation_data = {}
+        fixed_values_data = {}
+
         for i, col in enumerate(st.columns([3, 3, 1, 1])):
             with col:
                 if i == 0:
@@ -351,8 +363,8 @@ class PlotPlanEditor(StreamlitComponent[Optional[PlotPlan]]):
                 orientation = orientations[i]
                 param_name = orientation.value
                 current_index = 0
-                if current_value := existing_plan._get_orientation_value(orientation):
-                    current_index = hyperparams.index(current_value.name) + 1
+                if current_value := existing_plan.get_param_config_by_orientation(orientation):
+                    current_index = hyperparams.index(current_value.param.name) + 1
                 _orientation_input = st.selectbox(
                     orientation.value.capitalize(),
                     options=[NONE_STR] + hyperparams,
@@ -363,15 +375,19 @@ class PlotPlanEditor(StreamlitComponent[Optional[PlotPlan]]):
                 orientation_input = (
                     None if _orientation_input == NONE_STR else ExperimentHyperParams[_orientation_input]
                 )
-                existing_plan.set_orientation_value(orientation, orientation_input)
+
+                # Store orientation parameters
                 if orientation_input:
+                    orientation_data[orientation] = orientation_input
+
                     selected_options, has_options = self._display_option_selector(
                         orientation, existing_plan, existing_plan.experiment_name, orientation_input
                     )
                     if has_options:
-                        existing_plan.set_options_for_orientation(orientation, selected_options)
+                        # Store selected options for this orientation
+                        orientation_data[f"{orientation}_options"] = selected_options
 
-        derived_variant_params = existing_plan.get_derived_variants_params()
+        derived_variant_params = existing_plan.get_non_orientation_derived_params_params()
         missing_cols = [
             col
             for col in ExperimentName.get_variant_cols(existing_plan.experiment_name)
@@ -389,7 +405,8 @@ class PlotPlanEditor(StreamlitComponent[Optional[PlotPlan]]):
                 missing_no_default_cols.extend(hpd.derived_variants_params())
                 continue
             with st_col:
-                existing_plan.fixed_values[hpd_col] = st.selectbox(
+                # Store fixed values
+                fixed_values_data[hpd_col] = st.selectbox(
                     col_name.capitalize(),
                     options=options,
                     index=index,
@@ -401,7 +418,7 @@ class PlotPlanEditor(StreamlitComponent[Optional[PlotPlan]]):
             return
 
         if ExperimentHyperParams.filteration_factory not in derived_variant_params:
-            existing_plan.fixed_values[ExperimentHyperParams.filteration_factory] = SelectFilterationComponent(
+            fixed_values_data[ExperimentHyperParams.filteration_factory] = SelectFilterationComponent(
                 key=f"select_{ExperimentHyperParams.filteration_factory}",
                 context_model_arch_and_sizes=existing_plan.derive_model_arch_and_sizes_context(),
             ).render()
@@ -412,12 +429,18 @@ class PlotPlanEditor(StreamlitComponent[Optional[PlotPlan]]):
         # Display option selectors outside the form
         if not submit_button:
             # Display summary
-            if any(existing_plan.get_options_for_param(orientation) for orientation in orientations):
+            if any(existing_plan.get_param_config_by_orientation(orientation) for orientation in orientations):
                 st.subheader("Plot Summary")
-                rows_count = len(existing_plan.rows_options) or 1
-                cols_count = len(existing_plan.cols_options) or 1
-                grids_count = len(existing_plan.grids_options) or 1
-                lines_count = len(existing_plan.lines_options) or 1
+
+                rows_config = existing_plan.get_param_config_by_orientation(FinalPlotsPlanOrientation.rows)
+                cols_config = existing_plan.get_param_config_by_orientation(FinalPlotsPlanOrientation.cols)
+                grids_config = existing_plan.get_param_config_by_orientation(FinalPlotsPlanOrientation.grids)
+                lines_config = existing_plan.get_param_config_by_orientation(FinalPlotsPlanOrientation.lines)
+
+                rows_count = len(rows_config.values) if rows_config else 1
+                cols_count = len(cols_config.values) if cols_config else 1
+                grids_count = len(grids_config.values) if grids_config else 1
+                lines_count = len(lines_config.values) if lines_config else 1
 
                 total_plots = rows_count * cols_count * grids_count
 
@@ -427,6 +450,24 @@ class PlotPlanEditor(StreamlitComponent[Optional[PlotPlan]]):
                     st.markdown(f"**Lines per plot:** {lines_count}")
 
         if submit_button:
+            # Clear existing params to rebuild them
+            existing_plan.params = []
+
+            # Add orientation parameters
+            for orientation, param in orientation_data.items():
+                if isinstance(orientation, FinalPlotsPlanOrientation):
+                    existing_plan.params.append(
+                        ParamConfig(
+                            param=param,
+                            orientation=orientation,
+                            values=orientation_data.get(f"{orientation}_options", []),
+                        )
+                    )
+
+            # Add fixed values
+            for param, value in fixed_values_data.items():
+                existing_plan.params.append(ParamConfig(param=param, orientation=None, values=[value]))
+
             return existing_plan
 
         return None

@@ -21,7 +21,7 @@ from more_itertools import unique_everseen
 from PIL import Image
 
 from src.analysis.experiment_results.helpers import get_model_evaluations
-from src.analysis.experiment_results.plot_plan import Cell, PlotPlan, get_hyper_param_definition
+from src.analysis.experiment_results.plot_plan import Cell, PlotPlan
 from src.analysis.plots.heatmaps import HeatmapPlotConfig, simple_diff_fixed
 from src.analysis.plots.image_combiner import ImageGridParams, LegendItem, combine_image_grid
 from src.analysis.plots.info_flow_confidence import (
@@ -321,7 +321,7 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
         assert lines_hp_definition is not None
         line_ids = [
             lines_hp_definition.get_display_name(x)
-            for x in self.plot_plan.get_options_for_param(FinalPlotsPlanOrientation.lines)
+            for x in self.plot_plan.get_options_for_orientation(FinalPlotsPlanOrientation.lines, self.result_bank)
         ]
         for line_id, runner in zip(line_ids, runners):
             assert isinstance(runner, InfoFlowRunner)
@@ -482,11 +482,11 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
                 tabs = [st.empty()]
                 grid_names = [None]
             else:
-                grid_options = self.plot_plan.grids
-                assert grid_options is not None
-                grid_param_definition = get_hyper_param_definition(grid_options)
-                grid_names = sorted(cells_by_grid.keys())
-                tabs = st.tabs([grid_param_definition.get_display_name(grid) for grid in grid_names])
+                grid_names = self.plot_plan.get_options_for_param(FinalPlotsPlanOrientation.grids)
+                grid_display_names = self.plot_plan.get_option_display_names_for_orientation(
+                    FinalPlotsPlanOrientation.grids
+                )
+                tabs = st.tabs(grid_display_names)
 
             maybe_combined_image = None
             grid_params = None
