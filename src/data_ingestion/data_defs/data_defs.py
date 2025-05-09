@@ -238,67 +238,12 @@ class PlotPlans(IndexableDataObject[TPlotID, "PlotPlan"], JSONAble):
         if not json_text.strip():
             return PlotPlans({})
 
-        try:
-            # Try to parse as new format
-            json_data = json.loads(json_text)
+        # Try to parse as new format
+        json_data = json.loads(json_text)
 
-            # Check if it's in the old format (no nested structure for params)
-            if any("params" not in plan_data for plan_data in json_data.values()):
-                # If JSONAble is still available, try to use it
-                if hasattr(cls, "from_jsonable_json"):
-                    legacy_plans = JSONAble.from_jsonable_json(json_text)
-                    # Convert to new format and save
-                    new_plans = cls.convert_legacy_plot_plans(legacy_plans)
-                    new_plans.save()
-                    return new_plans
-
-            # Deserialize each plan using Pydantic
-            plans = {}
-            for plot_id_str, plan_data in json_data.items():
-                # Convert string plot_id back to TPlotID
-                plot_id = TPlotID(plot_id_str)
-                # Validate the data using Pydantic
-                try:
-                    plan = PlotPlan.model_validate(plan_data)
-                    plans[plot_id] = plan
-                except Exception as e:
-                    # Log error but continue with other plans
-                    import logging
-
-                    logging.error(f"Error loading plot plan {plot_id_str}: {e}")
-                    continue
-
-            return PlotPlans(plans)
-        except Exception as e:
-            # If parsing fails, try to convert from legacy format
-            import logging
-
-            logging.warning(f"Error loading plot plans in new format: {e}. Attempting to convert from legacy format.")
-
-            # Return empty plans as fallback
-            return PlotPlans({})
-
-    @classmethod
-    def convert_legacy_plot_plans(cls, legacy_data) -> PlotPlans:
-        """Convert legacy plot plans to the new format."""
-        from src.analysis.experiment_results.plot_plan import PlotPlan
-
-        plans = {}
-
-        for plot_id_str, plan_data in legacy_data.items():
-            try:
-                plot_id = TPlotID(plot_id_str)
-                plans[plot_id] = PlotPlan.from_legacy(plan_data)
-            except Exception as e:
-                import logging
-
-                logging.error(f"Error converting legacy plot plan {plot_id_str}: {e}")
-                continue
-
-        if not plans:
-            raise ValueError("No plans were converted")
-
-        return PlotPlans(plans)
+        return PlotPlans(
+            {TPlotID(plot_id_str): PlotPlan.model_validate(plan_data) for plot_id_str, plan_data in json_data.items()}
+        )
 
 
 class PromptFilterationsPresets(IndexableDataObject[TPresetID, BasePromptFilteration], JSONAble):

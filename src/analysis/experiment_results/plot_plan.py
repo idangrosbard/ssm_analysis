@@ -144,27 +144,6 @@ class Cell:
         return {FinalPlotsPlanOrientation[field]: getattr(self, field) for field in ["grids", "rows", "cols"]}
 
 
-@dataclass
-class LegacyPlotPlan:
-    plot_id: TPlotID
-    title: str
-    description: str
-    is_appendix: bool
-    order: int
-    experiment_name: ExperimentName
-    rows: Optional[ExperimentHyperParams]
-    cols: Optional[ExperimentHyperParams]
-    grids: Optional[ExperimentHyperParams]
-    lines: Optional[ExperimentHyperParams]
-    rows_options: list[PossibleHPDTypes]
-    cols_options: list[PossibleHPDTypes]
-    grids_options: list[PossibleHPDTypes]
-    lines_options: list[PossibleHPDTypes]
-    fixed_values: dict[ExperimentHyperParams, PossibleHPDTypes]
-    cell_plot_config: dict[str, Any]
-    combine_plot_config: ImageGridParams
-
-
 # Use ForwardRef for self-referential types in ParamConfig
 ParamConfigRef = ForwardRef("ParamConfig")
 
@@ -471,47 +450,6 @@ class PlotPlan(BaseModel):
         # Generate all combinations
         return [MODEL_ARCH_AND_SIZE(model, size) for model, size in product(models, sizes)]
 
-    @classmethod
-    def from_legacy(cls, legacy_plot_plan: LegacyPlotPlan) -> PlotPlan:
-        """Convert a legacy PlotPlan dataclass to the new structure."""
-        assert isinstance(legacy_plot_plan, LegacyPlotPlan)
-        params: List[ParamConfig] = []
-
-        # Convert orientation parameters
-        for orientation in str_enum_values(FinalPlotsPlanOrientation):
-            param_value = getattr(legacy_plot_plan, orientation, None)
-            if param_value is not None:
-                options = getattr(legacy_plot_plan, f"{orientation}_options", None)
-                values = options if options is not None else []
-                params.append(
-                    ParamConfig(
-                        param=param_value,
-                        orientation=orientation,
-                        values=values,
-                    )
-                )
-
-        # Convert fixed values
-        for param, value in legacy_plot_plan.fixed_values.items():
-            # Skip if this parameter is already configured as an orientation
-            if any(config.param == param for config in params):
-                continue
-
-            params.append(ParamConfig(param=param, orientation=None, values=[value]))
-
-        return cls(
-            plot_id=legacy_plot_plan.plot_id,
-            title=legacy_plot_plan.title,
-            description=legacy_plot_plan.description,
-            is_appendix=legacy_plot_plan.is_appendix,
-            order=legacy_plot_plan.order,
-            experiment_name=legacy_plot_plan.experiment_name,
-            params=params,
-            cell_plot_config=legacy_plot_plan.cell_plot_config,
-            combine_plot_config=legacy_plot_plan.combine_plot_config,
-        )
-
-    # Add compatibility methods for code that uses the old API
     def get_option_display_names_for_orientation(self, orientation: FinalPlotsPlanOrientation) -> list[str]:
         """Get display names for options for an orientation (compatibility method)."""
         config = self.get_param_config_by_orientation(orientation)
