@@ -7,7 +7,6 @@ from pathlib import Path
 from typing import (
     Any,
     Dict,
-    ForwardRef,
     List,
     Literal,
     Optional,
@@ -142,10 +141,6 @@ class Cell:
     def to_dict(self) -> dict[str, PossibleHPDTypes]:
         """Convert cell to dictionary for data requirements."""
         return {FinalPlotsPlanOrientation[field]: getattr(self, field) for field in ["grids", "rows", "cols"]}
-
-
-# Use ForwardRef for self-referential types in ParamConfig
-ParamConfigRef = ForwardRef("ParamConfig")
 
 
 class ParamConfig(BaseModel):
@@ -465,8 +460,3 @@ class PlotPlan(BaseModel):
         if config is None:
             return []
         return config.values or []
-
-
-# Add this after the PlotPlan class definition to update forward references
-ParamConfig.model_rebuild()
-PlotPlan.model_rebuild()

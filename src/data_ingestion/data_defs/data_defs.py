@@ -174,7 +174,7 @@ class SummarizedDataFulfilledReqs(IterableDataObject[dict[str, Any]]):
         return pd.DataFrame(self._items)
 
 
-class PlotPlans(IndexableDataObject[TPlotID, "PlotPlan"], JSONAble):
+class PlotPlans(IndexableDataObject[TPlotID, "PlotPlan"]):
     @staticmethod
     def get_plot_plan_dir(plot_id: TPlotID) -> Path:
         return PATHS.FINAL_PLOTS_DIR / plot_id
@@ -233,13 +233,7 @@ class PlotPlans(IndexableDataObject[TPlotID, "PlotPlan"], JSONAble):
             PlotPlans({}).save()
             return PlotPlans({})
 
-        # Read the JSON data
-        json_text = cls.get_json_path().read_text()
-        if not json_text.strip():
-            return PlotPlans({})
-
-        # Try to parse as new format
-        json_data = json.loads(json_text)
+        json_data = json.loads(cls.get_json_path().read_text())
 
         return PlotPlans(
             {TPlotID(plot_id_str): PlotPlan.model_validate(plan_data) for plot_id_str, plan_data in json_data.items()}
