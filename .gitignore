@@ -189,7 +189,7 @@ data/raw/
 *.code-workspace
 profile.pyspy
 .history/
-final_plots/*/cache/
+final_plots/cache/*
 .nfs*
 pyrightconfig.json
 scripts/outputs/

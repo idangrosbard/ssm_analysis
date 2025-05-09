@@ -176,8 +176,8 @@ class SummarizedDataFulfilledReqs(IterableDataObject[dict[str, Any]]):
 
 class PlotPlans(IndexableDataObject[TPlotID, "PlotPlan"]):
     @staticmethod
-    def get_plot_plan_dir(plot_id: TPlotID) -> Path:
-        return PATHS.FINAL_PLOTS_DIR / plot_id
+    def get_plot_plan_dir() -> Path:
+        return PATHS.FINAL_PLOTS_DIR / "combined_plots"
 
     @staticmethod
     def get_json_path() -> Path:
@@ -185,7 +185,7 @@ class PlotPlans(IndexableDataObject[TPlotID, "PlotPlan"]):
 
     @classmethod
     def get_cache_dir(cls, plot_id: TPlotID) -> Path:
-        return cls.get_plot_plan_dir(plot_id) / "cache"
+        return PATHS.FINAL_PLOTS_DIR / "cache" / plot_id
 
     def add_plan(self, plan: PlotPlan):
         if plan.plot_id in self._items:

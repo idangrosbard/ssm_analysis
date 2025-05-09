@@ -190,7 +190,7 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
 
     def _get_combined_plot_cache_path(self, grid_name: Any) -> Path:
         """Generate a unique cache path for the combined plot."""
-        cache_dir = PlotPlans.get_plot_plan_dir(self.plot_plan.plot_id)
+        cache_dir = PlotPlans.get_plot_plan_dir()
         cache_dir.mkdir(parents=True, exist_ok=True)
         grid_hpd = self.plot_plan.get_orientation_value_hpd(FinalPlotsPlanOrientation.grids)
         if grid_hpd is not None:
@@ -340,14 +340,14 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
         if TMetricType.ACC in cell_plot_config.metrics_to_show:
             plots_meta_data[TMetricType.ACC] = PlotMetadata(
                 title="Accuracy",
-                ylabel="% Accuracy",
+                ylabel="Accuracy (%)",
                 axhline_value=100.0,
             )
 
         if TMetricType.DIFF in cell_plot_config.metrics_to_show:
             plots_meta_data[TMetricType.DIFF] = PlotMetadata(
                 title="Normalized change in prediction probability",
-                ylabel="% Probability Change",
+                ylabel="Probability Change (%)",
                 axhline_value=0.0,
             )
 

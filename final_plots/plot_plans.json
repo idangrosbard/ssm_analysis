@@ -157,14 +157,6 @@
                     [
                         "mamba1",
                         "7B"
-                    ],
-                    [
-                        "mamba1",
-                        "7B-falcon-base"
-                    ],
-                    [
-                        "mamba1",
-                        "7B-falcon"
                     ]
                 ]
             },
@@ -211,13 +203,7 @@
                 "mamba1-130M": "#d1c4e9",
                 "mamba1-1.4B": "#b39ddb",
                 "mamba1-2.8B": "#8a63e2",
-                "mamba1-7B": "#522494",
-                "mamba1-7B-falcon-base": "#482094",
-                "mamba1-7B-falcon": "#281175"
-            },
-            "custom_line_styles": {
-                "mamba1-7B-falcon-base": "--",
-                "mamba1-7B-falcon": ":"
+                "mamba1-7B": "#281175"
             }
         },
         "combine_plot_config": {
@@ -832,44 +818,8 @@
                 "orientation": "lines",
                 "values": [
                     [
-                        "mamba1",
-                        "2.8B"
-                    ],
-                    [
-                        "mamba2",
-                        "2.7B"
-                    ],
-                    [
                         "gpt2",
                         "1.5B"
-                    ],
-                    [
-                        "mamba1",
-                        "7B-falcon"
-                    ],
-                    [
-                        "mamba1",
-                        "130M"
-                    ],
-                    [
-                        "mamba2",
-                        "130M"
-                    ],
-                    [
-                        "mamba1",
-                        "7B"
-                    ],
-                    [
-                        "mamba1",
-                        "7B-falcon-base"
-                    ],
-                    [
-                        "mistral0.1",
-                        "7B"
-                    ],
-                    [
-                        "mistral0.3",
-                        "7B"
                     ],
                     [
                         "qwen2",
@@ -886,14 +836,6 @@
                     [
                         "llama3.2",
                         "3B"
-                    ],
-                    [
-                        "mamba2",
-                        "1.3B"
-                    ],
-                    [
-                        "mamba1",
-                        "1.4B"
                     ],
                     [
                         "llama3.2",
@@ -953,20 +895,9 @@
         ],
         "cell_plot_config": {
             "custom_colors": {
-                "mamba1-130M": "#ede7f6",
-                "mamba1-1.4B": "#d1c4e9",
-                "mamba1-2.8B": "#b39ddc",
-                "mamba1-7B": "#9575cd",
-                "mamba1-7B-falcon-base": "#7e57c2",
-                "mamba1-7B-falcon": "#512da8",
-                "mamba2-130M": "#f3e5f5",
-                "mamba2-1.3B": "#e1bee7",
-                "mamba2-2.7B": "#ce93d8",
                 "gpt2-355M": "#e3f2fd",
                 "gpt2-774M": "#90caf9",
                 "gpt2-1.5B": "#1e88e5",
-                "mistral0.1-7B": "#ffe0b2",
-                "mistral0.3-7B": "#ffb74d",
                 "qwen2-0.5B": "#e0f2f1",
                 "qwen2.5-0.5B": "#b2dfdb",
                 "qwen2.5-7B": "#00796b",
@@ -975,12 +906,6 @@
                 "llama3-8B": "#388e3c"
             },
             "custom_line_styles": {
-                "mamba1-1.4B": "--",
-                "mamba1-2.8B": ":",
-                "mamba1-7B-falcon-base": "--",
-                "mamba1-7B-falcon": ":",
-                "mamba2-1.3B": "--",
-                "mamba2-2.7B": ":",
                 "gpt2-774M": "--",
                 "gpt2-1.5B": ":",
                 "qwen2.5-7B": "--",
