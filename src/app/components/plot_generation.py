@@ -19,6 +19,7 @@ import streamlit as st
 import streamlit_antd_components as sac
 from more_itertools import unique_everseen
 from PIL import Image
+from pydantic import BaseModel
 
 from src.analysis.experiment_results.helpers import get_model_evaluations
 from src.analysis.experiment_results.plot_plan import Cell, PlotPlan
@@ -85,13 +86,13 @@ class GridLayout:
         for row_value in self.row_values:
             if row_value is not None:
                 row_cell = next(cell for cell in self.cells if cell.rows == row_value)
-                row_labels.append(row_cell.get_display_name("rows", self.plot_plan))
+                row_labels.append(row_cell.get_field_display_name("rows", self.plot_plan))
 
         # Get column labels
         for col_value in self.col_values:
             if col_value is not None:
                 col_cell = next(cell for cell in self.cells if cell.cols == col_value)
-                col_labels.append(col_cell.get_display_name("cols", self.plot_plan))
+                col_labels.append(col_cell.get_field_display_name("cols", self.plot_plan))
 
         return row_labels, col_labels
 
@@ -191,7 +192,12 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
         """Generate a unique cache path for the combined plot."""
         cache_dir = PlotPlans.get_plot_plan_dir(self.plot_plan.plot_id)
         cache_dir.mkdir(parents=True, exist_ok=True)
-        return cache_dir / f"{self.plot_plan.plot_id}_{grid_name}.png"
+        grid_hpd = self.plot_plan.get_orientation_value_hpd(FinalPlotsPlanOrientation.grids)
+        if grid_hpd is not None:
+            grid_display_name = grid_hpd.get_display_name(grid_name)
+        else:
+            grid_display_name = grid_name
+        return cache_dir / f"{self.plot_plan.plot_id}_{grid_display_name}.png"
 
     def _get_legend_items(self) -> list[LegendItem]:
         plot_config = self._get_config_for_experiment_name(self.plot_plan.experiment_name, None)
@@ -287,7 +293,7 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
                 st.image(str(cache_path))
             return cache_path
 
-        fig = self._plot_data_reqs(data_reqs, self.plot_plan.cell_plot_config)
+        fig = self._plot_data_reqs(data_reqs, self.plot_plan.cell_plot_config.model_dump())
         if fig is not None:
             cache_path.parent.mkdir(parents=True, exist_ok=True)
             if isinstance(fig, go.Figure):
@@ -368,10 +374,14 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
         else:
             raise ValueError(f"Experiment name {experiment_name} is not implemented")
 
-    def _get_config_for_experiment_name(self, experiment_name: ExperimentName, config: Optional[dict[str, Any]]):
+    def _get_config_for_experiment_name(
+        self, experiment_name: ExperimentName, config: Optional[BaseModel | dict[str, Any]]
+    ):
         """Get the appropriate configuration model based on experiment name."""
         if config is None:
             config = self.plot_plan.cell_plot_config
+        if isinstance(config, BaseModel):
+            config = config.model_dump()
         return self._get_model_for_experiment_name(experiment_name).model_validate(config)
 
     def render(self) -> Optional[str]:
@@ -410,7 +420,7 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
                 with st.expander("Cell Plot Configuration"):
                     cell_config_dict = pydantic_ui(
                         key=f"cell_config_{self.plot_plan.plot_id}",
-                        model=config_model.model_validate(self.plot_plan.cell_plot_config),  # type: ignore
+                        model=config_model.model_validate(self.plot_plan.cell_plot_config.model_dump()),
                     ).model_dump()
 
             data_reqs_cells = list(data_reqs_per_cell.keys())
@@ -418,47 +428,50 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
             if data_reqs_per_cell:
                 select_col, sample_col = st.columns(2)
                 with select_col:
-                    i = st.selectbox(
+                    indcies = st.multiselect(
                         "Select cell to preview",
                         range(len(data_reqs_cells)),
-                        format_func=lambda i: data_reqs_cells[i],
+                        default=[0],
+                        format_func=lambda i: data_reqs_cells[i].get_display_name(self.plot_plan),
                     )
+
+                for i in indcies:
                     cell_to_show = data_reqs_cells[i]
 
-                runner = next(
-                    iter(data_reqs_per_cell[cell_to_show].to_fulfilled_reqs(self.result_bank).get_config().values())
-                )
-                prompt_filteration = runner.input_params.filteration
-                prompt_ids = prompt_filteration.get_prompt_ids()
-
-                if self.plot_plan.experiment_name == ExperimentName.info_flow:
-                    with sample_col:
-                        sample_results_count = st.slider(
-                            "Sample results count",
-                            min_value=50,
-                            max_value=len(prompt_ids),
-                            value=50,
-                        )
-
-                    data_req = DataReqs(
-                        {
-                            runner: SamplePromptFilteration(
-                                base_prompt_filteration=prompt_filteration,
-                                sample_size=sample_results_count,
-                                seed=42,
-                            )
-                            for runner, prompt_filteration in data_reqs_per_cell[cell_to_show].items()
-                        }
+                    runner = next(
+                        iter(data_reqs_per_cell[cell_to_show].to_fulfilled_reqs(self.result_bank).get_config().values())
                     )
-                else:
-                    data_req = data_reqs_per_cell[cell_to_show]
+                    prompt_filteration = runner.input_params.filteration
+                    prompt_ids = prompt_filteration.get_prompt_ids()
 
-                fig = self._plot_data_reqs(data_req, cell_config_dict)
-                # st.pyplot(fig, use_container_width=False)
-                buf = BytesIO()
-                fig.savefig(buf, format="png")
-                buf.seek(0)
-                st.image(buf)
+                    if self.plot_plan.experiment_name == ExperimentName.info_flow:
+                        with sample_col:
+                            sample_results_count = st.slider(
+                                "Sample results count",
+                                min_value=50,
+                                max_value=len(prompt_ids),
+                                value=50,
+                            )
+
+                        data_req = DataReqs(
+                            {
+                                runner: SamplePromptFilteration(
+                                    base_prompt_filteration=prompt_filteration,
+                                    sample_size=sample_results_count,
+                                    seed=42,
+                                )
+                                for runner, prompt_filteration in data_reqs_per_cell[cell_to_show].items()
+                            }
+                        )
+                    else:
+                        data_req = data_reqs_per_cell[cell_to_show]
+
+                    fig = self._plot_data_reqs(data_req, cell_config_dict)
+                    # st.pyplot(fig, use_container_width=False)
+                    buf = BytesIO()
+                    fig.savefig(buf, format="png")
+                    buf.seek(0)
+                    st.image(buf)
 
             # Add save button
             if save_configuration:

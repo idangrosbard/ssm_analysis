@@ -104,17 +104,27 @@ class CropParams(BaseModel):
     Regular crop parameters are ADDITIONAL crop amounts applied only to non-edge images.
     """
 
-    enable_crop: bool = Field(default=False, description="Enable image cropping")
+    enable_crop: bool = Field(default=True, description="Enable image cropping")
 
     # Replace numerical fields with Crop objects
     edge_crop: Crop = Field(
-        default_factory=Crop,
+        default_factory=lambda: Crop(
+            left=0.0020,
+            top=0.0084,
+            width=0.9959,
+            height=0.9915,
+        ),
         description="Base crop for all images",
         json_schema_extra={SpecialFieldKeys.column_group: "crop_edge"},
     )
 
     standard_crop: Crop = Field(
-        default_factory=Crop,
+        default_factory=lambda: Crop(
+            left=0.1683,
+            top=0.1070,
+            width=0.8183,
+            height=0.8202,
+        ),
         description="Additional crop for non-edge images",
         json_schema_extra={SpecialFieldKeys.column_group: "crop_standard"},
     )
@@ -172,29 +182,35 @@ class LegendParams(BaseModel):
     """Configuration for the legend appearance."""
 
     width: int = Field(
-        default=20,
+        default=40,
         ge=0,
         description="Width of color/line sample",
         json_schema_extra={SpecialFieldKeys.column_group: "line"},
     )
     height: float = Field(
-        default=0.6,
+        default=0.5,
         ge=0.0,
         le=1.0,
         description="Height of sample as ratio of legend height",
         json_schema_extra={SpecialFieldKeys.column_group: "line"},
     )
-    spacing: int = Field(
-        default=5,
+    rows: int = Field(
+        default=1,
+        ge=1,
+        description="Number of rows in the legend",
+        json_schema_extra={SpecialFieldKeys.column_group: "line"},
+    )
+    horizontal_spacing: int = Field(
+        default=12,
         ge=0,
         description="Spacing between sample and text",
         json_schema_extra={SpecialFieldKeys.column_group: "line"},
     )
     font_size: int = Field(
-        default=18, ge=0, description="Font size for legend", json_schema_extra={SpecialFieldKeys.column_group: "text"}
+        default=30, ge=0, description="Font size for legend", json_schema_extra={SpecialFieldKeys.column_group: "text"}
     )
     anchor: TAnchor = Field(
-        default="la", description="Anchor for legend", json_schema_extra={SpecialFieldKeys.column_group: "text"}
+        default="lt", description="Anchor for legend", json_schema_extra={SpecialFieldKeys.column_group: "text"}
     )
     show_border: bool = Field(
         default=True,
@@ -284,17 +300,21 @@ class ImageGridParams(BaseModel):
     )
 
     padding: int = Field(
-        default=10,
+        default=0,
         ge=0,
         description="Padding between images",
         json_schema_extra={SpecialFieldKeys.column_group: "img_size"},
+    )
+    allow_different_image_sizes: bool = Field(
+        default=False,
+        description="Allow different image sizes",
     )
 
     # Separator
     sep1: None = Field(default=None, json_schema_extra={SpecialFieldKeys.separator: True})
 
     column_header_padding: float = Field(
-        default=0,
+        default=-14.0,
         description="Additional padding for column headers (can be negative)",
         json_schema_extra={SpecialFieldKeys.column_group: "labels_display"},
     )
@@ -305,7 +325,7 @@ class ImageGridParams(BaseModel):
         json_schema_extra={SpecialFieldKeys.column_group: "labels_display"},
     )
     show_col_labels: bool = Field(
-        default=False,
+        default=True,
         description="Show column labels",
         json_schema_extra={SpecialFieldKeys.column_group: "labels_display"},
     )
@@ -317,7 +337,7 @@ class ImageGridParams(BaseModel):
     )
 
     column_prefix_style: PrefixStyle = Field(
-        default="none",
+        default="lowercase_letter_paren",
         description="Prefix style for column labels",
         json_schema_extra={SpecialFieldKeys.column_group: "labels_display"},
     )
@@ -325,7 +345,7 @@ class ImageGridParams(BaseModel):
     rows_labels_override: dict[str, str] = Field(default_factory=dict, description="Override labels for rows")
     columns_labels_override: dict[str, str] = Field(default_factory=dict, description="Override labels for columns")
 
-    label_font_size: int = Field(default=20, ge=0, description="Font size for labels")
+    label_font_size: int = Field(default=40, ge=0, description="Font size for labels")
 
     # Put crop params in an expander
     crop_params: CropParams = Field(
@@ -437,13 +457,29 @@ def _draw_legend(
     if legend_params.show_border:
         draw.line([(0, legend_y), (canvas_w, legend_y)], fill="black", width=legend_params.border_width)
 
-    # Calculate width per item
-    item_width = canvas_w / len(legend_items)
+    # Calculate row parameters
+    num_items = len(legend_items)
+    row_height = legend_h / legend_params.rows
+    items_per_row = ceil(num_items / legend_params.rows)
+
+    # If we have fewer items than requested rows, adjust
+    actual_rows = min(legend_params.rows, num_items)
+    if actual_rows < legend_params.rows:
+        items_per_row = 1
+        row_height = legend_h / actual_rows
+
+    # Calculate width per item based on items per row
+    item_width = canvas_w / items_per_row
 
     for i, item in enumerate(legend_items):
+        # Calculate row and column position
+        row_idx = i // items_per_row
+        col_idx = i % items_per_row
+
         # Calculate position for this legend item
-        x_start = i * item_width
+        x_start = col_idx * item_width
         x_center = x_start + (item_width / 2)
+        y_offset = row_idx * row_height
 
         # Get text dimensions for centering
         bb = draw.textbbox((0, 0), item.label, font=font_legend)
@@ -451,11 +487,11 @@ def _draw_legend(
 
         # Draw color sample based on linestyle
         sample_width = legend_params.width
-        sample_height = legend_h * legend_params.height
-        sample_y = legend_y + (legend_h - sample_height) / 2
+        sample_height = row_height * legend_params.height
+        sample_y = legend_y + y_offset + (row_height - sample_height) / 2
 
         # Center the text and color sample together
-        total_width = sample_width + legend_params.spacing + txt_w
+        total_width = sample_width + legend_params.horizontal_spacing + txt_w
         start_x = x_center - (total_width / 2)
 
         if item.linestyle in ["--", ":"]:
@@ -488,7 +524,7 @@ def _draw_legend(
             )
         # Draw text label
         draw.text(
-            (start_x + sample_width + legend_params.spacing, legend_y + (legend_h - txt_h) / 2),
+            (start_x + sample_width + legend_params.horizontal_spacing, legend_y + y_offset + (row_height - txt_h) / 2),
             item.label,
             fill="black",
             font=font_legend,
@@ -517,7 +553,15 @@ def combine_image_grid(
     # Ensure column header height is at least 1 if column labels are shown
     padded_col_label_h = max(0, col_label_h + params.column_header_padding)
 
-    legend_h = _get_text_height("TEST", font_legend) if legend_items else 0
+    # Calculate legend height based on single row height multiplied by number of rows
+    single_row_legend_h = _get_text_height("TEST", font_legend) if legend_items else 0
+
+    # Calculate total legend height with rows
+    legend_h = 0
+    if legend_items:
+        # Adjust for actual number of rows needed (minimum of specified rows or number of items)
+        actual_rows = min(params.legend_params.rows, len(legend_items))
+        legend_h = single_row_legend_h * actual_rows
 
     # Add border width to legend height if border is enabled
     if legend_items and params.legend_params.show_border:
@@ -546,7 +590,10 @@ def combine_image_grid(
                 if i == 0 and j == 0:
                     original_image_size = im.size
                 else:
-                    assert im.size == original_image_size, f"Image {img_path} has a different size than the first image"
+                    if not params.allow_different_image_sizes:
+                        assert im.size == original_image_size, (
+                            f"Image {img_path} has a different size than the first image"
+                        )
                 if params.crop_params.enable_crop:
                     # Calculate and apply crop
                     crop_box = _calculate_crop_box(

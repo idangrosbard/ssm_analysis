@@ -1,10 +1,9 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from enum import StrEnum
 from typing import Generic, Literal, Sequence, TypeVar, Union, assert_never, cast
-
-from pydantic import BaseModel
 
 from src.analysis.prompt_filterations import (
     AnyExistingCompletePromptFilteration,
@@ -225,7 +224,8 @@ class EnumSelectFilterationContext(StrEnum):
     context_models_intersect = "context_models_intersect"
 
 
-class PromptFilterationFactory(BaseModel):
+@dataclass(frozen=True)
+class PromptFilterationFactory:
     filteration_context: EnumSelectFilterationContext
     correctness: Correctness
 
@@ -273,7 +273,7 @@ class FilterationHPD(HyperParamDefinition[PromptFilterationFactory]):
         return self.get_static_options()
 
     def get_display_name(self, option: PromptFilterationFactory) -> str:
-        return f"{option.filteration_context} {option.correctness}"
+        return f"{option.filteration_context}-{option.correctness}"
 
     def derived_variants_params(self):
         return cast(

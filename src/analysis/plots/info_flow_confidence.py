@@ -1,7 +1,7 @@
 from collections import defaultdict
 from enum import StrEnum
 from pathlib import Path
-from typing import Dict, Literal, Optional, Type, TypedDict, cast
+from typing import Dict, Literal, Optional, Self, Type, TypedDict, cast
 
 import numpy as np
 import plotly.graph_objects as go
@@ -21,15 +21,11 @@ from src.core.types import TInfoFlowOutput, TLineStyle
 from src.utils.pydantic_utils import create_literal_value
 from src.utils.streamlit.components.extended_streamlit_pydantic import annotate_dict_with_literal_values
 from src.utils.streamlit.st_pydantic_v2.input import SpecialFieldKeys
-from src.utils.types_utils import str_enum_values
 
 
 class TMetricType(StrEnum):
     ACC = "acc"
     DIFF = "diff"
-
-
-LiteralMetricType = Literal[TMetricType.ACC, TMetricType.DIFF]
 
 
 class InfoFlowPlotConfig(BaseModel):
@@ -58,7 +54,7 @@ class InfoFlowPlotConfig(BaseModel):
         json_schema_extra={SpecialFieldKeys.column_group: "basic_config"},
     )
     metrics_to_show: list[TMetricType] = Field(
-        default=str_enum_values(TMetricType),
+        default=[TMetricType.DIFF],
         description="Which metrics to show in the plot",
     )
 
@@ -73,7 +69,7 @@ class InfoFlowPlotConfig(BaseModel):
         json_schema_extra={SpecialFieldKeys.column_group: "display_options"},
     )
     show_number_of_points: Literal["min", "per_line", "both", "none", "auto"] = Field(
-        default="auto",
+        default="per_line",
         title="\\# Points format",
         description="The way the points are displayed, per line will show on the legend",
         json_schema_extra={
@@ -88,13 +84,13 @@ class InfoFlowPlotConfig(BaseModel):
     )
 
     x_tick_shift: dict[int, float] = Field(
-        default_factory=lambda: {},
+        default_factory=lambda: {-1: -5.5, 0: 1.5},
         description="Shift the x-ticks for each line",
     )
 
     # Y-Axis Limits
     with_fixed_limits: bool = Field(
-        default=False,
+        default=True,
         description="Use fixed limits for y-axis",
     )
     acc_ylim_min: float = Field(
@@ -112,14 +108,14 @@ class InfoFlowPlotConfig(BaseModel):
         json_schema_extra={SpecialFieldKeys.column_group: "y_axis_limits"},
     )
     diff_ylim_min: float = Field(
-        default=-50.0,
+        default=-70.0,
         description="Minimum y value for difference plot",
         ge=-100.0,
         le=0.0,
         json_schema_extra={SpecialFieldKeys.column_group: "y_axis_limits"},
     )
     diff_ylim_max: float = Field(
-        default=50.0,
+        default=40.0,
         description="Maximum y value for difference plot",
         ge=0.0,
         le=100.0,
@@ -131,7 +127,7 @@ class InfoFlowPlotConfig(BaseModel):
 
     # Figure Settings
     figure_width: float = Field(
-        default=12.0,
+        default=5.0,
         description="Figure width in inches",
         ge=1.0,
         json_schema_extra={SpecialFieldKeys.column_group: "figure_settings"},
@@ -157,7 +153,7 @@ class InfoFlowPlotConfig(BaseModel):
         json_schema_extra={SpecialFieldKeys.column_group: "font_settings"},
     )
     axis_fontsize: int = Field(
-        default=10,
+        default=16,
         title="Axis",
         description="Font size for axis labels",
         ge=4,
@@ -173,12 +169,12 @@ class InfoFlowPlotConfig(BaseModel):
 
     # Legend Settings
     legend_loc: Literal["lower center", "upper center", "lower right", "upper right"] = Field(
-        default="lower center",
+        default="upper center",
         description="Location of legend",
         json_schema_extra={SpecialFieldKeys.column_group: "legend_settings"},
     )
     legend_loc_y: float = Field(
-        default=0.84,
+        default=0.95,
         description="Y-coordinate of legend location",
         json_schema_extra={SpecialFieldKeys.column_group: "legend_settings"},
     )
@@ -188,7 +184,7 @@ class InfoFlowPlotConfig(BaseModel):
         json_schema_extra={SpecialFieldKeys.column_group: "legend_settings"},
     )
     show_legend: bool = Field(
-        default=True,
+        default=False,
         description="Show legend",
     )
 
@@ -197,21 +193,21 @@ class InfoFlowPlotConfig(BaseModel):
 
     # Custom Colors
     custom_colors: Dict[str, Color] = Field(
-        default=None, description="Custom colors mapping token types to hex color codes"
+        default_factory=dict, description="Custom colors mapping token types to hex color codes"
     )
 
     # Custom Line Styles
     custom_line_styles: Dict[str, TLineStyle] = Field(
-        default=None, description="Custom line styles mapping feature categories to styles"
+        default_factory=dict, description="Custom line styles mapping feature categories to styles"
     )
 
     # Custom Line Labels
     custom_line_labels: Dict[str, str] = Field(
-        default=None, description="Custom line labels mapping feature categories to labels"
+        default_factory=dict, description="Custom line labels mapping feature categories to labels"
     )
 
     @classmethod
-    def specify_config(cls, lines_options: list[str]) -> Type[BaseModel]:
+    def specify_config(cls, lines_options: list[str]) -> Type[Self]:
         literal_lines_options = create_literal_value(lines_options)
         return create_model(
             f"{cls.__name__}Config",
@@ -609,9 +605,10 @@ def create_confidence_plot(
             # Get current tick positions and labels
             current_positions = ax.get_xticks()
             current_labels = [t.get_text() for t in ax.get_xticklabels()]
-            modified_positions = current_positions.copy()
+            d = (current_positions[-1] - current_positions[0]) / 1e2
+            modified_positions = [x for x in current_positions]
             for tick_idx, tick_shift in config.x_tick_shift.items():
-                modified_positions[tick_idx] += tick_shift
+                modified_positions[tick_idx] += d * tick_shift
             ax.xaxis.set_major_locator(FixedLocator(modified_positions))
             ax.set_xticklabels(current_labels)
 

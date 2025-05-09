@@ -16,7 +16,7 @@ from typing import (
     cast,
 )
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from src.analysis.experiment_results.helpers import init_variant_params_from_values
 from src.analysis.experiment_results.hyper_param_definition import (
@@ -25,7 +25,9 @@ from src.analysis.experiment_results.hyper_param_definition import (
     PromptFilterationFactory,
     get_hyper_param_definition,
 )
+from src.analysis.plots.heatmaps import HeatmapPlotConfig
 from src.analysis.plots.image_combiner import ImageGridParams
+from src.analysis.plots.info_flow_confidence import InfoFlowPlotConfig
 from src.core.consts import GRAPHS_ORDER
 from src.core.names import (
     VARIANT_PARAM_NAME,
@@ -115,7 +117,7 @@ class Cell:
             cols=orientation_combination.get(FinalPlotsPlanOrientation.cols),
         )
 
-    def get_display_name(self, field: str, plot_plan: PlotPlan) -> Optional[str]:
+    def get_field_display_name(self, field: str, plot_plan: PlotPlan) -> Optional[str]:
         """Get the display name for a field value using the plot plan's parameter definition."""
         value = getattr(self, field)
         if value is None:
@@ -131,7 +133,7 @@ class Cell:
         """Generate a unique cache path for this cell."""
         # Get display names for each field
         display_names = {
-            field: self.get_display_name(field, plot_plan) or "None" for field in ["grids", "rows", "cols"]
+            field: self.get_field_display_name(field, plot_plan) or "None" for field in ["grids", "rows", "cols"]
         }
 
         # Create a unique identifier for the cell
@@ -141,6 +143,10 @@ class Cell:
     def to_dict(self) -> dict[str, PossibleHPDTypes]:
         """Convert cell to dictionary for data requirements."""
         return {FinalPlotsPlanOrientation[field]: getattr(self, field) for field in ["grids", "rows", "cols"]}
+
+    def get_display_name(self, plot_plan: PlotPlan) -> str:
+        """Get the display name for the cell."""
+        return self.get_cache_path(plot_plan, Path(".")).stem
 
 
 class ParamConfig(BaseModel):
@@ -201,18 +207,22 @@ class ParamConfig(BaseModel):
 class PlotPlan(BaseModel):
     """A plan for plotting experiment results in a grid layout."""
 
+    model_config = ConfigDict(validate_assignment=True)
+
     plot_id: TPlotID
     title: str
     description: str
-    is_appendix: bool
     order: int
-    experiment_name: ExperimentName
+    observation: str = Field(default="")
+    notes: str = Field(default="")
+    is_appendix: bool = Field(default=False)
 
     # Use proper type annotation for params
+    experiment_name: ExperimentName
     params: List[ParamConfig] = Field(default_factory=list)
 
     # Plot configuration
-    cell_plot_config: Dict[str, Any] = Field(default_factory=dict)
+    cell_plot_config: InfoFlowPlotConfig | HeatmapPlotConfig = Field(default_factory=dict)
     combine_plot_config: ImageGridParams = Field(default_factory=ImageGridParams)
 
     @model_validator(mode="after")  # type: ignore

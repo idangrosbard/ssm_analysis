@@ -289,7 +289,6 @@ class PlotPlanEditor(StreamlitComponent[Optional[PlotPlan]]):
                 experiment_name=ExperimentName.info_flow,
                 is_appendix=False,
                 order=0,
-                cell_plot_config={},
                 combine_plot_config=ImageGridParams(),
             )
 

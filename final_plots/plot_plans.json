@@ -1,150 +1,11 @@
 {
-    "test": {
-        "plot_id": "test",
-        "title": "test",
-        "description": "test",
-        "is_appendix": false,
-        "order": 1,
-        "experiment_name": "info_flow",
-        "params": [
-            {
-                "param": "window_size",
-                "orientation": "grids",
-                "values": [
-                    9,
-                    15
-                ]
-            },
-            {
-                "param": "model_arch_and_size",
-                "orientation": "rows",
-                "values": [
-                    [
-                        "mamba2",
-                        "2.7B"
-                    ],
-                    [
-                        "mamba1",
-                        "7B-falcon"
-                    ],
-                    [
-                        "mamba1",
-                        "2.8B"
-                    ]
-                ]
-            },
-            {
-                "param": "source",
-                "orientation": "cols",
-                "values": [
-                    "subject",
-                    "relation",
-                    "last",
-                    "first"
-                ]
-            },
-            {
-                "param": "target",
-                "orientation": "lines",
-                "values": [
-                    "last"
-                ]
-            },
-            {
-                "param": "feature_category",
-                "orientation": null,
-                "values": [
-                    "ALL"
-                ]
-            },
-            {
-                "param": "filteration_factory",
-                "orientation": null,
-                "values": [
-                    {
-                        "filteration_context": "current_model_all",
-                        "correctness": "correct"
-                    }
-                ]
-            }
-        ],
-        "cell_plot_config": {
-            "with_fixed_limits": false,
-            "acc_ylim_min": 60.0,
-            "acc_ylim_max": 105.0,
-            "diff_ylim_min": -50.0,
-            "diff_ylim_max": 50.0,
-            "confidence_level": 0.95,
-            "title": "",
-            "metrics_to_show": [
-                "acc",
-                "diff"
-            ],
-            "figure_width": 12.0,
-            "figure_height": 5.0,
-            "title_fontsize": 12,
-            "axis_fontsize": 10,
-            "legend_fontsize": 10,
-            "legend_loc": "lower center",
-            "legend_loc_y": 0.84,
-            "legend_loc_x": 0.5,
-            "show_number_of_points": "auto",
-            "tight_layout": true,
-            "custom_colors": {
-                "last": "#110fde"
-            },
-            "custom_line_styles": {},
-            "custom_line_labels": {},
-            "alpha": 0.2,
-            "x_axis_as_percentage": true,
-            "x_tick_count": 6
-        },
-        "combine_plot_config": {
-            "title": "",
-            "title_height": 30,
-            "font_size": 25,
-            "padding": 10,
-            "sep1": null,
-            "column_header_padding": 0.0,
-            "show_row_labels": false,
-            "show_col_labels": false,
-            "row_prefix_style": "none",
-            "column_prefix_style": "none",
-            "rows_labels_override": {},
-            "columns_labels_override": {},
-            "label_font_size": 40,
-            "crop_params": {
-                "enable_crop": false,
-                "edge_crop": {
-                    "left": 0.0,
-                    "top": 0.0,
-                    "width": 0.9,
-                    "height": 0.9
-                },
-                "standard_crop": {
-                    "left": 0.0,
-                    "top": 0.0,
-                    "width": 0.9,
-                    "height": 0.9
-                }
-            },
-            "legend_params": {
-                "width": 20,
-                "height": 0.6,
-                "spacing": 5,
-                "font_size": 18,
-                "anchor": "la",
-                "show_border": true,
-                "border_width": 1
-            }
-        }
-    },
     "figure1": {
         "plot_id": "figure1",
-        "title": "Figure 1",
-        "description": "Figure 1 t",
-        "is_appendix": false,
+        "title": "Figure 1: Relative change in correct-token prediction probability when removing information flow to the $$source$$ token from various source tokens",
+        "description": "$$title$$. The x-axis represents the $$x_axis_label$$ of the first layer within the $$window_size$$-layer attention knockout window, while the y-axis indicates the resulting $$y_axis_label$$ change. The plots present model performance when knocking out $$enumerate(source_tokens)$$. $$observation$$. For ablations on ??dataset selection?? see Section A.2. See Section B for extended implementation details.",
         "order": 1,
+        "observation": "Notice that subject token knockout yields a consistent performance drop across models and similar layer-specific effects, highlighting the crucial role of subject tokens in LLMs. In contrast, knockouts of other tokens produce less robust and more variable outcomes.",
+        "notes": "dataset doesn't seem like the right word choise here",
         "experiment_name": "info_flow",
         "params": [
             {
@@ -181,28 +42,24 @@
             },
             {
                 "param": "window_size",
-                "orientation": null,
                 "values": [
                     9
                 ]
             },
             {
                 "param": "feature_category",
-                "orientation": null,
                 "values": [
                     "ALL"
                 ]
             },
             {
                 "param": "target",
-                "orientation": null,
                 "values": [
                     "last"
                 ]
             },
             {
                 "param": "filteration_factory",
-                "orientation": null,
                 "values": [
                     {
                         "filteration_context": "current_model_all",
@@ -212,83 +69,11 @@
             }
         ],
         "cell_plot_config": {
-            "title": "",
-            "confidence_level": 0.95,
-            "alpha": 0.2,
-            "metrics_to_show": [
-                "diff"
-            ],
-            "x_axis_as_percentage": true,
-            "x_tick_count": 6,
-            "show_number_of_points": "auto",
-            "x_axis_margin": 0.0,
-            "x_tick_shift": {
-                "-1": -2.5,
-                "0": 1.0
-            },
-            "with_fixed_limits": true,
-            "acc_ylim_min": 60.0,
-            "acc_ylim_max": 105.0,
-            "diff_ylim_min": -70.0,
-            "diff_ylim_max": 40.0,
-            "sep1": null,
-            "figure_width": 5.0,
-            "figure_height": 5.0,
-            "tight_layout": true,
-            "title_fontsize": 12,
-            "axis_fontsize": 16,
-            "legend_fontsize": 10,
-            "legend_loc": "upper center",
-            "legend_loc_y": 0.95,
-            "legend_loc_x": 0.5,
-            "show_legend": false,
-            "sep2": null,
             "custom_colors": {
                 "mamba1-7B-falcon": "#af7404",
                 "mamba1-2.8B": "#3e7316",
                 "mamba2-2.7B": "#1b00dc",
                 "gpt2-1.5B": "#0a9c8a"
-            },
-            "custom_line_styles": {},
-            "custom_line_labels": {}
-        },
-        "combine_plot_config": {
-            "title": "",
-            "title_height": 30,
-            "font_size": 25,
-            "padding": 0,
-            "sep1": null,
-            "column_header_padding": -14.0,
-            "show_row_labels": false,
-            "show_col_labels": true,
-            "row_prefix_style": "none",
-            "column_prefix_style": "lowercase_letter_paren",
-            "rows_labels_override": {},
-            "columns_labels_override": {},
-            "label_font_size": 40,
-            "crop_params": {
-                "enable_crop": true,
-                "edge_crop": {
-                    "left": 0.002044989775051125,
-                    "top": 0.008438818565400843,
-                    "width": 0.9959100204498977,
-                    "height": 0.9915611814345991
-                },
-                "standard_crop": {
-                    "left": 0.1683,
-                    "top": 0.10707070707070707,
-                    "width": 0.8183673469387756,
-                    "height": 0.8202020202020202
-                }
-            },
-            "legend_params": {
-                "width": 40,
-                "height": 0.5,
-                "spacing": 12,
-                "font_size": 30,
-                "anchor": "lt",
-                "show_border": true,
-                "border_width": 1
             }
         }
     },
@@ -296,8 +81,8 @@
         "plot_id": "heatmaps_per_sizes",
         "title": "Heatmaps Per sizes",
         "description": "Relative change in correct-token probability\nafter knocking out connection from each token to the last\ntoken.",
-        "is_appendix": true,
         "order": 11,
+        "is_appendix": true,
         "experiment_name": "heatmap",
         "params": [
             {
@@ -338,71 +123,21 @@
             },
             {
                 "param": "window_size",
-                "orientation": null,
                 "values": [
                     9
                 ]
             }
         ],
-        "cell_plot_config": {},
-        "combine_plot_config": {
-            "title": "",
-            "title_height": 30,
-            "font_size": 25,
-            "padding": 10,
-            "sep1": null,
-            "column_header_padding": 0.0,
-            "show_row_labels": false,
-            "show_col_labels": false,
-            "row_prefix_style": "none",
-            "column_prefix_style": "none",
-            "rows_labels_override": {},
-            "columns_labels_override": {},
-            "label_font_size": 20,
-            "crop_params": {
-                "enable_crop": false,
-                "edge_crop": {
-                    "left": 0.0,
-                    "top": 0.0,
-                    "width": 0.9,
-                    "height": 0.9
-                },
-                "standard_crop": {
-                    "left": 0.0,
-                    "top": 0.0,
-                    "width": 0.9,
-                    "height": 0.9
-                }
-            },
-            "legend_params": {
-                "width": 20,
-                "height": 0.6,
-                "spacing": 5,
-                "font_size": 18,
-                "anchor": "la",
-                "show_border": true,
-                "border_width": 1
-            }
-        }
+        "cell_plot_config": {}
     },
     "figure3": {
         "plot_id": "figure3",
-        "title": "Figure 3",
-        "description": "Figure 3",
-        "is_appendix": false,
+        "title": "Figure 3: Relative change in correct-token prediction probability when removing information flow to the final token from various source tokens across $$model_arch$$ models of varying sizes",
+        "description": "$$title$$. This figure is identical to Figure 1, but presents the performace of $$model_arch$$ models of sizes $$list(model_sizes)$$. $$observation$$. For further details see Figure 1 and Section B. For ablations on window size see Section 4.6.",
         "order": 30,
+        "observation": "As observed in other models, subject token knockout consistently reduces performance. Unique to Mamba-1, knockouts of relation tokens and of the final token in the ultimate layers initially lower the correct-token probability before a pronounced increase.",
         "experiment_name": "info_flow",
         "params": [
-            {
-                "param": "source",
-                "orientation": "cols",
-                "values": [
-                    "subject",
-                    "relation",
-                    "last",
-                    "first"
-                ]
-            },
             {
                 "param": "model_arch_and_size",
                 "orientation": "lines",
@@ -434,29 +169,35 @@
                 ]
             },
             {
+                "param": "source",
+                "orientation": "cols",
+                "values": [
+                    "subject",
+                    "relation",
+                    "last",
+                    "first"
+                ]
+            },
+            {
                 "param": "window_size",
-                "orientation": null,
                 "values": [
                     9
                 ]
             },
             {
                 "param": "feature_category",
-                "orientation": null,
                 "values": [
                     "ALL"
                 ]
             },
             {
                 "param": "target",
-                "orientation": null,
                 "values": [
                     "last"
                 ]
             },
             {
                 "param": "filteration_factory",
-                "orientation": null,
                 "values": [
                     {
                         "filteration_context": "current_model_all",
@@ -466,37 +207,6 @@
             }
         ],
         "cell_plot_config": {
-            "title": "",
-            "confidence_level": 0.95,
-            "alpha": 0.2,
-            "metrics_to_show": [
-                "diff"
-            ],
-            "x_axis_as_percentage": true,
-            "x_tick_count": 6,
-            "show_number_of_points": "auto",
-            "x_axis_margin": 0.0,
-            "x_tick_shift": {
-                "-1": -2.5,
-                "0": 1.0
-            },
-            "with_fixed_limits": true,
-            "acc_ylim_min": 60.0,
-            "acc_ylim_max": 105.0,
-            "diff_ylim_min": -70.0,
-            "diff_ylim_max": 40.0,
-            "sep1": null,
-            "figure_width": 5.0,
-            "figure_height": 5.0,
-            "tight_layout": true,
-            "title_fontsize": 12,
-            "axis_fontsize": 16,
-            "legend_fontsize": 10,
-            "legend_loc": "upper center",
-            "legend_loc_y": 0.95,
-            "legend_loc_x": 0.5,
-            "show_legend": false,
-            "sep2": null,
             "custom_colors": {
                 "mamba1-130M": "#d1c4e9",
                 "mamba1-1.4B": "#b39ddb",
@@ -508,55 +218,32 @@
             "custom_line_styles": {
                 "mamba1-7B-falcon-base": "--",
                 "mamba1-7B-falcon": ":"
-            },
-            "custom_line_labels": {}
+            }
         },
         "combine_plot_config": {
-            "title": "",
-            "title_height": 30,
-            "font_size": 25,
-            "padding": 0,
-            "sep1": null,
             "column_header_padding": -12.0,
-            "show_row_labels": false,
-            "show_col_labels": true,
-            "row_prefix_style": "none",
-            "column_prefix_style": "lowercase_letter_paren",
-            "rows_labels_override": {},
-            "columns_labels_override": {},
-            "label_font_size": 40,
             "crop_params": {
-                "enable_crop": true,
                 "edge_crop": {
                     "left": 0.004081632653061225,
-                    "top": 0.08888888888888889,
-                    "width": 0.9897959183673469,
-                    "height": 0.9050505050505051
+                    "top": 0.010548523206751054,
+                    "width": 0.9959183673469387,
+                    "height": 0.9789029535864979
                 },
                 "standard_crop": {
-                    "left": 0.1683,
-                    "top": 0.10707070707070707,
-                    "width": 0.8183673469387756,
-                    "height": 0.8202020202020202
+                    "left": 0.1673469387755102,
+                    "top": 0.029535864978902954,
+                    "width": 0.8224489795918367,
+                    "height": 0.8523206751054853
                 }
-            },
-            "legend_params": {
-                "width": 40,
-                "height": 0.5,
-                "spacing": 6,
-                "font_size": 22,
-                "anchor": "lt",
-                "show_border": true,
-                "border_width": 1
             }
         }
     },
     "figure4": {
         "plot_id": "figure4",
-        "title": "Figure 4",
-        "description": "Figure 4",
-        "is_appendix": false,
+        "title": "Figure 4: Relative change in correct-token prediction probability when removing information flow to the final token from various source tokens across $$model_arch$$ models of varying sizes",
+        "description": "This figure is identical to Figure 1, but presents the performace of $$model_arch$$ models of sizes $$list(model_sizes)$$. $$observation$$. For further details see Figure 1 and Section B. For ablations on window size see Section 4.6.",
         "order": 40,
+        "observation": "As observed in other models, subject token knockout consistently reduces performance. Unique to $$model_arch$$, knockout of relation tokens in the later layers initially lowers the correct-token probability before a pronounced increase.",
         "experiment_name": "info_flow",
         "params": [
             {
@@ -570,10 +257,6 @@
                     [
                         "mamba2",
                         "1.3B"
-                    ],
-                    [
-                        "mamba1",
-                        "2.8B"
                     ],
                     [
                         "mamba2",
@@ -593,28 +276,24 @@
             },
             {
                 "param": "window_size",
-                "orientation": null,
                 "values": [
                     9
                 ]
             },
             {
                 "param": "feature_category",
-                "orientation": null,
                 "values": [
                     "ALL"
                 ]
             },
             {
                 "param": "target",
-                "orientation": null,
                 "values": [
                     "last"
                 ]
             },
             {
                 "param": "filteration_factory",
-                "orientation": null,
                 "values": [
                     {
                         "filteration_context": "current_model_all",
@@ -624,86 +303,35 @@
             }
         ],
         "cell_plot_config": {
-            "title": "",
-            "confidence_level": 0.95,
-            "alpha": 0.2,
-            "metrics_to_show": [
-                "diff"
-            ],
-            "x_axis_as_percentage": true,
-            "x_tick_count": 6,
-            "show_number_of_points": "min",
-            "with_fixed_limits": true,
-            "acc_ylim_min": 60.0,
-            "acc_ylim_max": 105.0,
-            "diff_ylim_min": -60.0,
-            "diff_ylim_max": 40.0,
-            "sep1": null,
-            "figure_width": 12.0,
-            "figure_height": 5.0,
-            "tight_layout": false,
-            "title_fontsize": 12,
-            "axis_fontsize": 10,
-            "legend_fontsize": 10,
-            "legend_loc": "upper center",
-            "legend_loc_y": 0.95,
-            "legend_loc_x": 0.5,
-            "sep2": null,
             "custom_colors": {
-                "mamba1-7B-falcon": "#af7404",
-                "mamba1-2.8B": "#3e7316",
-                "mamba2-2.7B": "#1b00dc",
-                "gpt2-1.5B": "#0a9c8a"
-            },
-            "custom_line_styles": {},
-            "custom_line_labels": {}
+                "mamba2-130M": "#d1c4e9",
+                "mamba2-1.3B": "#b39ddb",
+                "mamba2-2.7B": "#8a63e2"
+            }
         },
         "combine_plot_config": {
-            "title": "",
-            "title_height": 30,
-            "font_size": 25,
-            "padding": 0,
-            "sep1": null,
-            "column_header_padding": 0.0,
-            "show_row_labels": false,
-            "show_col_labels": true,
-            "row_prefix_style": "none",
-            "column_prefix_style": "none",
-            "rows_labels_override": {},
-            "columns_labels_override": {},
-            "label_font_size": 40,
             "crop_params": {
-                "enable_crop": true,
                 "edge_crop": {
-                    "left": 0.0055,
-                    "top": 0.0,
-                    "width": 0.9,
-                    "height": 0.9
+                    "left": 0.00816326530612245,
+                    "top": 0.012658227848101266,
+                    "width": 0.9857142857142858,
+                    "height": 0.9746835443037974
                 },
                 "standard_crop": {
-                    "left": 0.05,
-                    "top": 0.0,
-                    "width": 0.9,
-                    "height": 0.9
+                    "left": 0.17551020408163265,
+                    "top": 0.027426160337552744,
+                    "width": 0.8224489795918367,
+                    "height": 0.8586497890295358
                 }
-            },
-            "legend_params": {
-                "width": 20,
-                "height": 0.6,
-                "spacing": 5,
-                "font_size": 18,
-                "anchor": "la",
-                "show_border": true,
-                "border_width": 1
             }
         }
     },
     "figure5": {
         "plot_id": "figure5",
-        "title": "Figure 5",
-        "description": "Figure 5",
-        "is_appendix": false,
+        "title": "Figure 5: Relative change in correct-token prediction probability when removing information flow to the final token from various source tokens across $$model_arch$$ models of varying sizes.",
+        "description": "This figure is identical to Figure 1, but presents the performace of $$model_arch$$ models of sizes $$list(model_sizes)$$. $$observation$$. For further details see Figure 1 and Section B.",
         "order": 50,
+        "observation": "As observed in other models, subject token knockout consistently reduces performance. Unique to $$model_arch$$, knockout of relation tokens in earlier layers profoundly lowers the correct-token probability. Additionally, $$model_arch$$ models exhibit a robust first token bias.",
         "experiment_name": "info_flow",
         "params": [
             {
@@ -736,28 +364,24 @@
             },
             {
                 "param": "window_size",
-                "orientation": null,
                 "values": [
                     9
                 ]
             },
             {
                 "param": "feature_category",
-                "orientation": null,
                 "values": [
                     "ALL"
                 ]
             },
             {
                 "param": "target",
-                "orientation": null,
                 "values": [
                     "last"
                 ]
             },
             {
                 "param": "filteration_factory",
-                "orientation": null,
                 "values": [
                     {
                         "filteration_context": "current_model_all",
@@ -767,86 +391,35 @@
             }
         ],
         "cell_plot_config": {
-            "title": "",
-            "confidence_level": 0.95,
-            "alpha": 0.2,
-            "metrics_to_show": [
-                "diff"
-            ],
-            "x_axis_as_percentage": true,
-            "x_tick_count": 6,
-            "show_number_of_points": "min",
-            "with_fixed_limits": true,
-            "acc_ylim_min": 60.0,
-            "acc_ylim_max": 105.0,
-            "diff_ylim_min": -60.0,
-            "diff_ylim_max": 40.0,
-            "sep1": null,
-            "figure_width": 12.0,
-            "figure_height": 5.0,
-            "tight_layout": false,
-            "title_fontsize": 12,
-            "axis_fontsize": 10,
-            "legend_fontsize": 10,
-            "legend_loc": "upper center",
-            "legend_loc_y": 0.95,
-            "legend_loc_x": 0.5,
-            "sep2": null,
             "custom_colors": {
-                "mamba1-7B-falcon": "#af7404",
-                "mamba1-2.8B": "#3e7316",
-                "mamba2-2.7B": "#1b00dc",
-                "gpt2-1.5B": "#0a9c8a"
-            },
-            "custom_line_styles": {},
-            "custom_line_labels": {}
+                "gpt2-355M": "#d1c4e9",
+                "gpt2-774M": "#b39ddb",
+                "gpt2-1.5B": "#8a63e2"
+            }
         },
         "combine_plot_config": {
-            "title": "",
-            "title_height": 30,
-            "font_size": 25,
-            "padding": 0,
-            "sep1": null,
-            "column_header_padding": 0.0,
-            "show_row_labels": false,
-            "show_col_labels": true,
-            "row_prefix_style": "none",
-            "column_prefix_style": "none",
-            "rows_labels_override": {},
-            "columns_labels_override": {},
-            "label_font_size": 40,
             "crop_params": {
-                "enable_crop": true,
                 "edge_crop": {
-                    "left": 0.0055,
-                    "top": 0.0,
-                    "width": 0.9,
-                    "height": 0.9
+                    "left": 0.00816326530612245,
+                    "top": 0.012658227848101266,
+                    "width": 0.9857142857142858,
+                    "height": 0.9746835443037974
                 },
                 "standard_crop": {
-                    "left": 0.05,
-                    "top": 0.0,
-                    "width": 0.9,
-                    "height": 0.9
+                    "left": 0.17551020408163265,
+                    "top": 0.027426160337552744,
+                    "width": 0.8224489795918367,
+                    "height": 0.8586497890295358
                 }
-            },
-            "legend_params": {
-                "width": 20,
-                "height": 0.6,
-                "spacing": 5,
-                "font_size": 18,
-                "anchor": "la",
-                "show_border": true,
-                "border_width": 1
             }
         }
     },
     "figure6": {
         "plot_id": "figure6",
-        "title": "Figure 6",
-        "description": "figure 6",
-        "is_appendix": false,
+        "title": "Figure 6: Relative change in correct-token probability when knocking out connections from subject tokens to the last token across different feature categories for $$enumerate(model_arch)$$.",
+        "description": "We compare knockout on the features in three settings: $$list(feature_categories + legend_color)$$. $$observation$$. For implemtation details see Section B.",
         "order": 60,
+        "observation": "Notably, knocking out context-dependent features alone closely mirrors the effect of removing all features.",
         "experiment_name": "info_flow",
         "params": [
             {
@@ -893,21 +466,18 @@
             },
             {
                 "param": "window_size",
-                "orientation": null,
                 "values": [
                     9
                 ]
             },
             {
                 "param": "target",
-                "orientation": null,
                 "values": [
                     "last"
                 ]
             },
             {
                 "param": "filteration_factory",
-                "orientation": null,
                 "values": [
                     {
                         "filteration_context": "current_model_all",
@@ -916,61 +486,55 @@
                 ]
             }
         ],
-        "cell_plot_config": {},
-        "combine_plot_config": {
-            "title": "",
-            "title_height": 30,
-            "font_size": 25,
-            "padding": 10,
-            "sep1": null,
-            "column_header_padding": 0.0,
-            "show_row_labels": false,
-            "show_col_labels": false,
-            "row_prefix_style": "none",
-            "column_prefix_style": "none",
-            "rows_labels_override": {},
-            "columns_labels_override": {},
-            "label_font_size": 20,
-            "crop_params": {
-                "enable_crop": false,
-                "edge_crop": {
-                    "left": 0.0,
-                    "top": 0.0,
-                    "width": 0.9,
-                    "height": 0.9
-                },
-                "standard_crop": {
-                    "left": 0.0,
-                    "top": 0.0,
-                    "width": 0.9,
-                    "height": 0.9
-                }
+        "cell_plot_config": {
+            "diff_ylim_min": -35.0,
+            "diff_ylim_max": 10.0,
+            "custom_colors": {
+                "ALL": "#0202da",
+                "FAST_DECAY": "#0f710f",
+                "SLOW_DECAY": "#a41908"
             },
-            "legend_params": {
-                "width": 20,
-                "height": 0.6,
-                "spacing": 5,
-                "font_size": 18,
-                "anchor": "la",
-                "show_border": true,
-                "border_width": 1
+            "custom_line_labels": {
+                "ALL": "All",
+                "FAST_DECAY": "Context-dependent",
+                "SLOW_DECAY": "Context-independent"
             }
+        },
+        "combine_plot_config": {
+            "label_font_size": 30
         }
     },
     "figure8": {
         "plot_id": "figure8",
-        "title": "Figure 8",
-        "description": "Figure 8",
-        "is_appendix": false,
+        "title": "Figure 8: Relative change in correct-token probability after removing the information flow to the final token from various source tokens for $$model_arch$$ $$model_size$$ across different window sizes.",
+        "description": "$$title$$ $$observation$$. This figure, which parallels Figure 1, displays performance for window sizes of $$list(window_sizes)$$. $$observation$$. For additional details, see Figure 1 and Section B.",
         "order": 80,
+        "observation": "The qualitative patterns observed for $$model_arch$$ $$model_size$$ remain consistent, with larger window sizes amplifying these effects. ",
+        "notes": "i think we should use the mamba1/2 2.8b",
         "experiment_name": "info_flow",
         "params": [
             {
+                "param": "window_size",
+                "orientation": "lines",
+                "values": [
+                    1,
+                    3,
+                    5,
+                    9,
+                    12,
+                    15
+                ]
+            },
+            {
                 "param": "model_arch_and_size",
-                "orientation": "rows",
+                "orientation": "grids",
                 "values": [
                     [
                         "mamba1",
+                        "130M"
+                    ],
+                    [
+                        "mamba2",
                         "130M"
                     ],
                     [
@@ -1002,6 +566,46 @@
                 ]
             },
             {
+                "param": "feature_category",
+                "values": [
+                    "ALL"
+                ]
+            },
+            {
+                "param": "target",
+                "values": [
+                    "last"
+                ]
+            },
+            {
+                "param": "filteration_factory",
+                "values": [
+                    {
+                        "filteration_context": "current_model_all",
+                        "correctness": "correct"
+                    }
+                ]
+            }
+        ],
+        "cell_plot_config": {
+            "custom_colors": {
+                "1": "#afcff3",
+                "3": "#9ecae1",
+                "5": "#6baed6",
+                "9": "#4292c6",
+                "12": "#2171b5",
+                "15": "#084594"
+            }
+        }
+    },
+    "figure8+": {
+        "plot_id": "figure8+",
+        "title": "Figure 8",
+        "description": "Figure 8",
+        "order": 81,
+        "experiment_name": "info_flow",
+        "params": [
+            {
                 "param": "window_size",
                 "orientation": "lines",
                 "values": [
@@ -1014,22 +618,59 @@
                 ]
             },
             {
+                "param": "model_arch_and_size",
+                "orientation": "rows",
+                "values": [
+                    [
+                        "mamba1",
+                        "130M"
+                    ],
+                    [
+                        "mamba2",
+                        "130M"
+                    ],
+                    [
+                        "mamba1",
+                        "1.4B"
+                    ],
+                    [
+                        "mamba2",
+                        "1.3B"
+                    ],
+                    [
+                        "mamba1",
+                        "2.8B"
+                    ],
+                    [
+                        "mamba2",
+                        "2.7B"
+                    ]
+                ]
+            },
+            {
+                "param": "source",
+                "orientation": "cols",
+                "values": [
+                    "subject",
+                    "relation",
+                    "last",
+                    "first"
+                ]
+            },
+            {
                 "param": "feature_category",
-                "orientation": null,
                 "values": [
                     "ALL"
                 ]
             },
             {
                 "param": "target",
-                "orientation": null,
                 "values": [
                     "last"
                 ]
             },
             {
                 "param": "filteration_factory",
-                "orientation": null,
                 "values": [
                     {
                         "filteration_context": "current_model_all",
@@ -1039,32 +680,6 @@
             }
         ],
         "cell_plot_config": {
-            "title": "",
-            "confidence_level": 0.95,
-            "alpha": 0.2,
-            "metrics_to_show": [
-                "acc",
-                "diff"
-            ],
-            "x_axis_as_percentage": true,
-            "x_tick_count": 6,
-            "show_number_of_points": "per_line",
-            "with_fixed_limits": false,
-            "acc_ylim_min": 60.0,
-            "acc_ylim_max": 105.0,
-            "diff_ylim_min": -50.0,
-            "diff_ylim_max": 50.0,
-            "sep1": null,
-            "figure_width": 12.0,
-            "figure_height": 5.0,
-            "tight_layout": true,
-            "title_fontsize": 12,
-            "axis_fontsize": 10,
-            "legend_fontsize": 10,
-            "legend_loc": "lower center",
-            "legend_loc_y": 0.93,
-            "legend_loc_x": 0.5,
-            "sep2": null,
             "custom_colors": {
                 "1": "#afcff3",
                 "3": "#9ecae1",
@@ -1072,47 +687,22 @@
                 "9": "#4292c6",
                 "12": "#2171b5",
                 "15": "#084594"
-            },
-            "custom_line_styles": {},
-            "custom_line_labels": {}
+            }
         },
         "combine_plot_config": {
-            "title": "",
-            "title_height": 30,
-            "font_size": 40,
-            "padding": 10,
-            "sep1": null,
-            "column_header_padding": 0.0,
             "show_row_labels": true,
-            "show_col_labels": true,
-            "row_prefix_style": "none",
-            "column_prefix_style": "none",
-            "rows_labels_override": {},
-            "columns_labels_override": {},
-            "label_font_size": 40,
             "crop_params": {
-                "enable_crop": false,
                 "edge_crop": {
-                    "left": 0.0,
-                    "top": 0.0,
-                    "width": 0.9,
-                    "height": 0.9
+                    "top": 0.010548523206751054,
+                    "width": 1.0,
+                    "height": 0.9810126582278481
                 },
                 "standard_crop": {
-                    "left": 0.0,
-                    "top": 0.0,
-                    "width": 0.9,
-                    "height": 0.9
+                    "left": 0.16938775510204082,
+                    "top": 0.014767932489451477,
+                    "width": 0.826530612244898,
+                    "height": 0.8670886075949367
                 }
-            },
-            "legend_params": {
-                "width": 20,
-                "height": 0.6,
-                "spacing": 5,
-                "font_size": 18,
-                "anchor": "la",
-                "show_border": true,
-                "border_width": 1
             }
         }
     },
@@ -1120,7 +710,6 @@
         "plot_id": "heatmap",
         "title": "Heatmap Plot",
         "description": "Heatmap visualization of information flow between tokens for specific prompts.",
-        "is_appendix": false,
         "order": 90,
         "experiment_name": "heatmap",
         "params": [
@@ -1228,92 +817,16 @@
                 ]
             }
         ],
-        "cell_plot_config": {
-            "title": "",
-            "minimal_title": false,
-            "is_base_prob_in_title": false,
-            "x_axis_as_percentage": true,
-            "x_tick_count": 6,
-            "sep1": null,
-            "figure_width": 4.0,
-            "figure_height": 3.0,
-            "is_tight_layout": true,
-            "title_position_x": 0.45,
-            "title_position_y": 0.95,
-            "fontsize": 12,
-            "title_fontsize": 12,
-            "tick_fontsize": 10,
-            "sep2": null,
-            "x_axis_label": "Depth %",
-            "y_axis_label": "",
-            "colorbar_nbins": 5,
-            "colormap": "RdYlGn",
-            "reverse_colormap": false,
-            "sep3": null,
-            "with_fixed_diff": true,
-            "fixed_diff": 0.3,
-            "is_diff_probs": true,
-            "two_slopes_normalization": false,
-            "is_robust_normalization": false
-        },
-        "combine_plot_config": {
-            "title": "",
-            "title_height": 30,
-            "font_size": 25,
-            "padding": 10,
-            "sep1": null,
-            "column_header_padding": 0.0,
-            "show_row_labels": false,
-            "show_col_labels": false,
-            "row_prefix_style": "none",
-            "column_prefix_style": "none",
-            "rows_labels_override": {},
-            "columns_labels_override": {},
-            "label_font_size": 20,
-            "crop_params": {
-                "enable_crop": false,
-                "edge_crop": {
-                    "left": 0.0,
-                    "top": 0.0,
-                    "width": 0.9,
-                    "height": 0.9
-                },
-                "standard_crop": {
-                    "left": 0.0,
-                    "top": 0.0,
-                    "width": 0.9,
-                    "height": 0.9
-                }
-            },
-            "legend_params": {
-                "width": 20,
-                "height": 0.6,
-                "spacing": 5,
-                "font_size": 18,
-                "anchor": "la",
-                "show_border": true,
-                "border_width": 1
-            }
-        }
+        "cell_plot_config": {}
     },
     "figure1+": {
         "plot_id": "figure1+",
         "title": "Figure 1+",
         "description": "Figure 1+ description",
-        "is_appendix": true,
         "order": 1,
+        "is_appendix": true,
         "experiment_name": "info_flow",
         "params": [
-            {
-                "param": "source",
-                "orientation": "cols",
-                "values": [
-                    "subject",
-                    "relation",
-                    "last",
-                    "first"
-                ]
-            },
             {
                 "param": "model_arch_and_size",
                 "orientation": "lines",
@@ -1363,20 +876,8 @@
                         "0.5B"
                     ],
                     [
-                        "qwen2",
-                        "7B"
-                    ],
-                    [
                         "qwen2.5",
                         "0.5B"
-                    ],
-                    [
-                        "qwen2.5",
-                        "1.5B"
-                    ],
-                    [
-                        "qwen2.5",
-                        "3B"
                     ],
                     [
                         "qwen2.5",
@@ -1405,33 +906,43 @@
                     [
                         "gpt2",
                         "355M"
+                    ],
+                    [
+                        "llama3",
+                        "8B"
                     ]
                 ]
             },
             {
+                "param": "source",
+                "orientation": "cols",
+                "values": [
+                    "subject",
+                    "relation",
+                    "last",
+                    "first"
+                ]
+            },
+            {
                 "param": "window_size",
-                "orientation": null,
                 "values": [
                     9
                 ]
             },
             {
                 "param": "feature_category",
-                "orientation": null,
                 "values": [
                     "ALL"
                 ]
             },
             {
                 "param": "target",
-                "orientation": null,
                 "values": [
                     "last"
                 ]
             },
             {
                 "param": "filteration_factory",
-                "orientation": null,
                 "values": [
                     {
                         "filteration_context": "current_model_all",
@@ -1441,83 +952,157 @@
             }
         ],
         "cell_plot_config": {
-            "title": "",
-            "confidence_level": 0.95,
-            "alpha": 0.2,
-            "metrics_to_show": [
-                "diff"
-            ],
-            "x_axis_as_percentage": true,
-            "x_tick_count": 6,
-            "show_number_of_points": "auto",
-            "x_axis_margin": 0.0,
-            "x_tick_shift": {
-                "-1": -2.5,
-                "0": 1.0
-            },
-            "with_fixed_limits": true,
-            "acc_ylim_min": 60.0,
-            "acc_ylim_max": 105.0,
-            "diff_ylim_min": -70.0,
-            "diff_ylim_max": 40.0,
-            "sep1": null,
-            "figure_width": 5.0,
-            "figure_height": 5.0,
-            "tight_layout": true,
-            "title_fontsize": 12,
-            "axis_fontsize": 16,
-            "legend_fontsize": 10,
-            "legend_loc": "upper center",
-            "legend_loc_y": 0.95,
-            "legend_loc_x": 0.5,
-            "show_legend": false,
-            "sep2": null,
             "custom_colors": {
-                "mamba1-7B-falcon": "#af7404",
-                "mamba1-2.8B": "#3e7316",
-                "mamba2-2.7B": "#1b00dc",
-                "gpt2-1.5B": "#0a9c8a"
+                "mamba1-130M": "#ede7f6",
+                "mamba1-1.4B": "#d1c4e9",
+                "mamba1-2.8B": "#b39ddc",
+                "mamba1-7B": "#9575cd",
+                "mamba1-7B-falcon-base": "#7e57c2",
+                "mamba1-7B-falcon": "#512da8",
+                "mamba2-130M": "#f3e5f5",
+                "mamba2-1.3B": "#e1bee7",
+                "mamba2-2.7B": "#ce93d8",
+                "gpt2-355M": "#e3f2fd",
+                "gpt2-774M": "#90caf9",
+                "gpt2-1.5B": "#1e88e5",
+                "mistral0.1-7B": "#ffe0b2",
+                "mistral0.3-7B": "#ffb74d",
+                "qwen2-0.5B": "#e0f2f1",
+                "qwen2.5-0.5B": "#b2dfdb",
+                "qwen2.5-7B": "#00796b",
+                "llama3.2-1B": "#e8f5e9",
+                "llama3.2-3B": "#66bb6a",
+                "llama3-8B": "#388e3c"
             },
-            "custom_line_styles": {},
-            "custom_line_labels": {}
+            "custom_line_styles": {
+                "mamba1-1.4B": "--",
+                "mamba1-2.8B": ":",
+                "mamba1-7B-falcon-base": "--",
+                "mamba1-7B-falcon": ":",
+                "mamba2-1.3B": "--",
+                "mamba2-2.7B": ":",
+                "gpt2-774M": "--",
+                "gpt2-1.5B": ":",
+                "qwen2.5-7B": "--",
+                "llama3.2-3B": "--"
+            }
         },
         "combine_plot_config": {
-            "title": "",
-            "title_height": 30,
-            "font_size": 25,
-            "padding": 0,
-            "sep1": null,
             "column_header_padding": -12.0,
-            "show_row_labels": false,
-            "show_col_labels": true,
-            "row_prefix_style": "none",
-            "column_prefix_style": "lowercase_letter_paren",
-            "rows_labels_override": {},
-            "columns_labels_override": {},
-            "label_font_size": 40,
             "crop_params": {
-                "enable_crop": true,
                 "edge_crop": {
                     "left": 0.004081632653061225,
                     "top": 0.08888888888888889,
                     "width": 0.9897959183673469,
                     "height": 0.9050505050505051
+                }
+            }
+        }
+    },
+    "figure14": {
+        "plot_id": "figure14",
+        "title": "Figure 14: Relative change in correct-token probability after knocking out connection from each token to the last token.",
+        "description": "on all the samples each model of $$enumerate(model_arch_and_size)$$ was correct on. X-axis indicates the relative depth of the layer we perform knockout on. Y-axis indicates the relative change in correct-token probability. Different colors indicate the source token.",
+        "order": 140,
+        "notes": "dataset doesn't seem like the right word choise here",
+        "is_appendix": true,
+        "experiment_name": "info_flow",
+        "params": [
+            {
+                "param": "model_arch_and_size",
+                "orientation": "cols",
+                "values": [
+                    [
+                        "mamba1",
+                        "2.8B"
+                    ],
+                    [
+                        "mamba2",
+                        "2.7B"
+                    ],
+                    [
+                        "gpt2",
+                        "1.5B"
+                    ],
+                    [
+                        "mamba1",
+                        "7B-falcon"
+                    ]
+                ]
+            },
+            {
+                "param": "source",
+                "orientation": "lines",
+                "values": [
+                    "subject",
+                    "relation",
+                    "last",
+                    "first"
+                ]
+            },
+            {
+                "param": "window_size",
+                "values": [
+                    9
+                ]
+            },
+            {
+                "param": "feature_category",
+                "values": [
+                    "ALL"
+                ]
+            },
+            {
+                "param": "target",
+                "values": [
+                    "last"
+                ]
+            },
+            {
+                "param": "filteration_factory",
+                "orientation": "rows",
+                "values": [
+                    {
+                        "filteration_context": "current_model_all",
+                        "correctness": "correct"
+                    },
+                    {
+                        "filteration_context": "context_models_intersect",
+                        "correctness": "correct"
+                    }
+                ]
+            }
+        ],
+        "cell_plot_config": {
+            "show_number_of_points": "auto",
+            "legend_loc_y": 0.98,
+            "show_legend": true,
+            "custom_colors": {
+                "subject": "#af7404",
+                "relation": "#3e7316",
+                "last": "#1b00dc",
+                "first": "#0a9c8a"
+            }
+        },
+        "combine_plot_config": {
+            "show_row_labels": true,
+            "rows_labels_override": {
+                "context_models_intersect-correct": "All Models Correct",
+                "current_model_all-correct": "Each Model Correct"
+            },
+            "crop_params": {
+                "edge_crop": {
+                    "left": 0.00816326530612245,
+                    "top": 0.08080808080808081,
+                    "width": 0.9918367346938776,
+                    "height": 0.9111111111111111
                 },
                 "standard_crop": {
-                    "left": 0.1683,
-                    "top": 0.10707070707070707,
-                    "width": 0.8183673469387756,
-                    "height": 0.8202020202020202
+                    "left": 0.17551020408163265,
+                    "top": 0.08484848484848485,
+                    "width": 0.8244897959183674,
+                    "height": 0.802020202020202
                 }
-            },
-            "legend_params": {
-                "width": 40,
-                "height": 0.5,
-                "spacing": 12,
-                "font_size": 30,
-                "anchor": "lt",
-                "show_border": true,
-                "border_width": 1
             }
         }
     }

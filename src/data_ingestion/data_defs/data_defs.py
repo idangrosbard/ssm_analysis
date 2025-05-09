@@ -216,8 +216,9 @@ class PlotPlans(IndexableDataObject[TPlotID, "PlotPlan"]):
         self.get_json_path().parent.mkdir(parents=True, exist_ok=True)
 
         # Create a dictionary mapping plot_id to serialized PlotPlan
-        serialized_data = {plot_id: plan.model_dump(mode="json") for plot_id, plan in self._items.items()}
-
+        serialized_data = {
+            plot_id: plan.model_dump(mode="json", exclude_defaults=True) for plot_id, plan in self._items.items()
+        }
         # Write the JSON to file
         self.get_json_path().write_text(json.dumps(serialized_data, indent=4))
 
