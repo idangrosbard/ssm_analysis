@@ -27,8 +27,6 @@ from src.analysis.plots.heatmaps import HeatmapPlotConfig, simple_diff_fixed
 from src.analysis.plots.image_combiner import ImageGridParams, LegendItem, combine_image_grid
 from src.analysis.plots.info_flow_confidence import (
     InfoFlowPlotConfig,
-    PlotMetadata,
-    TMetricType,
     create_confidence_plot,
 )
 from src.app.texts import FINAL_PLOTS_TEXTS
@@ -46,6 +44,7 @@ from src.experiments.infrastructure.base_runner import BaseRunner
 from src.experiments.infrastructure.setup_models import get_tokenizer
 from src.experiments.runners.heatmap import HeatmapRunner
 from src.experiments.runners.info_flow import InfoFlowRunner
+from src.utils.infra.image_utils import save_at_dpi
 from src.utils.streamlit.helpers.component import StreamlitComponent
 from src.utils.streamlit.st_pydantic_v2.input import pydantic_ui
 from src.utils.types_utils import class_values
@@ -300,7 +299,7 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
                 fig.write_image(str(cache_path), scale=4)
             else:
                 # Save the plot
-                plt.savefig(str(cache_path), bbox_inches="tight")
+                plt.savefig(str(cache_path), dpi=600)
                 plt.close(fig)
 
             # Display the plot if needed
@@ -334,30 +333,12 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
 
             data[line_id] = runner.get_outputs()
 
-        # Prepare metadata for plots based on selected metrics
-        plots_meta_data: dict[TMetricType, PlotMetadata] = {}
-
-        if TMetricType.ACC in cell_plot_config.metrics_to_show:
-            plots_meta_data[TMetricType.ACC] = PlotMetadata(
-                title="Accuracy",
-                ylabel="Accuracy (%)",
-                axhline_value=100.0,
-            )
-
-        if TMetricType.DIFF in cell_plot_config.metrics_to_show:
-            plots_meta_data[TMetricType.DIFF] = PlotMetadata(
-                title="Normalized change in prediction probability",
-                ylabel="Probability Change (%)",
-                axhline_value=0.0,
-            )
-
         # Use custom title if provided
         custom_title = cell_plot_config.title if cell_plot_config.title else title
         fig = create_confidence_plot(
             lines=data,
             confidence_level=cell_plot_config.confidence_level,
             title=custom_title,
-            plots_meta_data=plots_meta_data,
             config=cell_plot_config,
         )
 
@@ -554,5 +535,5 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
                 if maybe_combined_image and save_combined_plot:
                     path = self._get_combined_plot_cache_path(grid_name)
                     path.parent.mkdir(parents=True, exist_ok=True)
-                    maybe_combined_image.save(str(path))
+                    save_at_dpi(maybe_combined_image, str(path))
                     st.toast("Combined plot saved successfully!")

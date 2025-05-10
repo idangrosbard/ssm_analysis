@@ -1,15 +1,14 @@
 from collections import defaultdict
 from enum import StrEnum
-from pathlib import Path
-from typing import Dict, Literal, Optional, Self, Type, TypedDict, cast
+from typing import Dict, Literal, Self, Type, TypedDict, cast
 
 import numpy as np
 import plotly.graph_objects as go
 from matplotlib import pyplot as plt
 from matplotlib.axes import Axes
-from matplotlib.collections import PolyCollection
 from matplotlib.figure import Figure
-from matplotlib.ticker import FixedLocator
+from matplotlib.lines import Line2D
+from matplotlib.ticker import FixedLocator, MaxNLocator
 from numpy.typing import NDArray
 from pydantic import BaseModel, Field, create_model
 from pydantic_extra_types.color import Color
@@ -26,6 +25,34 @@ from src.utils.streamlit.st_pydantic_v2.input import SpecialFieldKeys
 class TMetricType(StrEnum):
     ACC = "acc"
     DIFF = "diff"
+
+
+class PlotMetadata(BaseModel):
+    title: str = Field(
+        description="Title of the plot",
+    )
+    ylabel: str = Field(
+        description="Label of the y-axis",
+    )
+    with_fixed_limits: bool = Field(
+        default=True,
+        description="Use fixed limits for y-axis",
+    )
+    axhline_value: float = Field(
+        description="Value of the horizontal line",
+    )
+    ylim_min: float = Field(
+        description="Minimum value of the y-axis",
+        json_schema_extra={SpecialFieldKeys.column_group: "y_axis_limits"},
+    )
+    ylim_max: float = Field(
+        description="Maximum value of the y-axis",
+        json_schema_extra={SpecialFieldKeys.column_group: "y_axis_limits"},
+    )
+
+    @property
+    def ylim(self) -> tuple[float, float]:
+        return self.ylim_min, self.ylim_max
 
 
 class InfoFlowPlotConfig(BaseModel):
@@ -68,6 +95,11 @@ class InfoFlowPlotConfig(BaseModel):
         description="Number of tick marks on the x-axis",
         json_schema_extra={SpecialFieldKeys.column_group: "display_options"},
     )
+    y_tick_count: int = Field(
+        default=5,
+        description="Number of tick marks on the y-axis",
+        json_schema_extra={SpecialFieldKeys.column_group: "display_options"},
+    )
     show_number_of_points: Literal["min", "per_line", "both", "none", "auto"] = Field(
         default="per_line",
         title="\\# Points format",
@@ -84,42 +116,31 @@ class InfoFlowPlotConfig(BaseModel):
     )
 
     x_tick_shift: dict[int, float] = Field(
-        default_factory=lambda: {-1: -5.5, 0: 1.5},
+        default_factory=dict,
         description="Shift the x-ticks for each line",
     )
 
-    # Y-Axis Limits
-    with_fixed_limits: bool = Field(
-        default=True,
-        description="Use fixed limits for y-axis",
+    diff_plot_meta_data: PlotMetadata = Field(
+        default_factory=lambda: PlotMetadata(
+            title="Probability Difference",
+            ylabel="Probability Diff. (%)",
+            axhline_value=0,
+            with_fixed_limits=True,
+            ylim_min=-70,
+            ylim_max=40,
+        ),
+        json_schema_extra={SpecialFieldKeys.expander: "diff plot"},
     )
-    acc_ylim_min: float = Field(
-        default=60.0,
-        description="Minimum y value for accuracy plot",
-        ge=0.0,
-        le=100.0,
-        json_schema_extra={SpecialFieldKeys.column_group: "y_axis_limits"},
-    )
-    acc_ylim_max: float = Field(
-        default=105.0,
-        description="Maximum y value for accuracy plot",
-        ge=0.0,
-        le=110.0,
-        json_schema_extra={SpecialFieldKeys.column_group: "y_axis_limits"},
-    )
-    diff_ylim_min: float = Field(
-        default=-70.0,
-        description="Minimum y value for difference plot",
-        ge=-100.0,
-        le=0.0,
-        json_schema_extra={SpecialFieldKeys.column_group: "y_axis_limits"},
-    )
-    diff_ylim_max: float = Field(
-        default=40.0,
-        description="Maximum y value for difference plot",
-        ge=0.0,
-        le=100.0,
-        json_schema_extra={SpecialFieldKeys.column_group: "y_axis_limits"},
+    acc_plot_meta_data: PlotMetadata = Field(
+        default_factory=lambda: PlotMetadata(
+            title="Accuracy",
+            ylabel="Accuracy (%)",
+            axhline_value=100,
+            with_fixed_limits=True,
+            ylim_min=60,
+            ylim_max=105,
+        ),
+        json_schema_extra={SpecialFieldKeys.expander: "acc plot"},
     )
 
     # Separator
@@ -127,13 +148,13 @@ class InfoFlowPlotConfig(BaseModel):
 
     # Figure Settings
     figure_width: float = Field(
-        default=5.0,
+        default=9.0,
         description="Figure width in inches",
         ge=1.0,
         json_schema_extra={SpecialFieldKeys.column_group: "figure_settings"},
     )
     figure_height: float = Field(
-        default=5.0,
+        default=6.0,
         description="Figure height in inches",
         ge=1.0,
         json_schema_extra={SpecialFieldKeys.column_group: "figure_settings"},
@@ -141,6 +162,16 @@ class InfoFlowPlotConfig(BaseModel):
     tight_layout: bool = Field(
         default=True,
         description="Tight layout for the figure",
+        json_schema_extra={SpecialFieldKeys.column_group: "figure_settings"},
+    )
+    ylabel_x_coord: float = Field(
+        default=-0.3,
+        description="X-coordinate of the y-axis label",
+        json_schema_extra={SpecialFieldKeys.column_group: "figure_settings"},
+    )
+    ylabel_y_coord: float = Field(
+        default=0.4,
+        description="Y-coordinate of the y-axis label",
         json_schema_extra={SpecialFieldKeys.column_group: "figure_settings"},
     )
 
@@ -153,7 +184,7 @@ class InfoFlowPlotConfig(BaseModel):
         json_schema_extra={SpecialFieldKeys.column_group: "font_settings"},
     )
     axis_fontsize: int = Field(
-        default=16,
+        default=38,
         title="Axis",
         description="Font size for axis labels",
         ge=4,
@@ -167,13 +198,40 @@ class InfoFlowPlotConfig(BaseModel):
         json_schema_extra={SpecialFieldKeys.column_group: "font_settings"},
     )
 
+    tick_pad: float = Field(
+        default=5,
+        description="Tick length",
+        ge=0.0,
+        json_schema_extra={SpecialFieldKeys.column_group: "_font_settings"},
+    )
+
+    x_label_pad: float = Field(
+        default=15,
+        description="Label pad",
+        ge=0.0,
+        json_schema_extra={SpecialFieldKeys.column_group: "_font_settings"},
+    )
+
+    grid_linewidth: float = Field(
+        default=1,
+        description="Grid line width",
+        ge=0.0,
+        json_schema_extra={SpecialFieldKeys.column_group: "grid_settings"},
+    )
+    border_width: float = Field(
+        default=2,
+        description="Border width",
+        ge=1,
+        json_schema_extra={SpecialFieldKeys.column_group: "grid_settings"},
+    )
+
     # Legend Settings
     legend_loc: Literal["lower center", "upper center", "lower right", "upper right"] = Field(
         default="upper center",
         description="Location of legend",
         json_schema_extra={SpecialFieldKeys.column_group: "legend_settings"},
     )
-    legend_loc_y: float = Field(
+    tight_layout_rect_y: float = Field(
         default=0.95,
         description="Y-coordinate of legend location",
         json_schema_extra={SpecialFieldKeys.column_group: "legend_settings"},
@@ -184,7 +242,7 @@ class InfoFlowPlotConfig(BaseModel):
         json_schema_extra={SpecialFieldKeys.column_group: "legend_settings"},
     )
     show_legend: bool = Field(
-        default=False,
+        default=True,
         description="Show legend",
     )
 
@@ -233,14 +291,6 @@ class InfoFlowPlotConfig(BaseModel):
             ),
         )
 
-    def get_ylim(self, metric_type: TMetricType) -> tuple[float, float]:
-        if metric_type == TMetricType.ACC:
-            return self.acc_ylim_min, self.acc_ylim_max
-        elif metric_type == TMetricType.DIFF:
-            return self.diff_ylim_min, self.diff_ylim_max
-        else:
-            raise ValueError(f"Invalid metric type: {metric_type}")
-
 
 class MetricData(TypedDict):
     mean: NDArray[np.float64]
@@ -255,12 +305,6 @@ class Confidence(TypedDict):
 
 
 type MetricsDict = dict[TMetricType, MetricData]
-
-
-class PlotMetadata(TypedDict):
-    title: str
-    ylabel: str
-    axhline_value: float
 
 
 # region Confidence Calculation
@@ -474,7 +518,6 @@ def create_confidence_plot(
     lines: dict[str, TInfoFlowOutput],
     confidence_level: float,
     title: str,
-    plots_meta_data: dict[TMetricType, PlotMetadata],
     config: InfoFlowPlotConfig,
 ) -> Figure:
     """Create plots with confidence intervals for all metrics.
@@ -489,6 +532,12 @@ def create_confidence_plot(
     Returns:
         The matplotlib figure containing the plots
     """
+    plots_meta_data: dict[TMetricType, PlotMetadata] = {}
+    if TMetricType.ACC in config.metrics_to_show:
+        plots_meta_data[TMetricType.ACC] = config.acc_plot_meta_data
+    if TMetricType.DIFF in config.metrics_to_show:
+        plots_meta_data[TMetricType.DIFF] = config.diff_plot_meta_data
+
     # Create figure with subplots side by side, with possibly different widths
     fig, axes = plt.subplots(
         1,
@@ -513,7 +562,7 @@ def create_confidence_plot(
     # Process each metric type (accuracy and diff)
     for i, metric_type in enumerate(config.metrics_to_show):
         plot_metadata = plots_meta_data[metric_type]
-        ax = axes[i]
+        ax: Axes = axes[i]
 
         if config.x_axis_as_percentage:
             x_axis_label = "Layer Depth (%)"
@@ -578,28 +627,47 @@ def create_confidence_plot(
             if i == 0:
                 handles, labels = ax.get_legend_handles_labels()
                 for handle, label in zip(handles, labels):
+                    assert isinstance(handle, Line2D)
                     # Create a unique key based on the handle's visual properties
                     key = (label, handle.get_color(), handle.get_linestyle())
                     if key not in unique_handles:
                         unique_handles[key] = (handle, label)
 
         # Customize subplot
-        ax.grid(True, which="both", linestyle="--", linewidth=0.5)
+        ax.grid(True, which="both", linestyle="-", linewidth=config.grid_linewidth)
 
         # Set X-axis label and ticks
-        ax.set_xlabel(x_axis_label, fontsize=config.axis_fontsize)
+        ax.set_xlabel(
+            x_axis_label,
+            fontsize=config.axis_fontsize,
+            labelpad=config.x_label_pad,
+        )
         ax.set_xticks(x_ticks)
-        ax.set_xticklabels(x_ticks_labels, fontsize=config.axis_fontsize)
-        ax.axhline(plot_metadata["axhline_value"], color="gray", linewidth=1)
-        ax.set_ylabel(plot_metadata["ylabel"], fontsize=config.axis_fontsize)
-        if config.with_fixed_limits:
-            ax.set_ylim(config.get_ylim(metric_type))
+        ax.set_xticklabels(
+            x_ticks_labels,
+            fontsize=config.axis_fontsize,
+        )
+        ax.axhline(plot_metadata.axhline_value, color="gray", linewidth=1)
+        ax.set_ylabel(
+            plot_metadata.ylabel,
+            fontsize=config.axis_fontsize,
+        )
+        ax.yaxis.set_label_coords(config.ylabel_x_coord, config.ylabel_y_coord)
+
+        ax.yaxis.set_major_locator(MaxNLocator(nbins=config.y_tick_count))  # Try to use 5 ticks
+        if plot_metadata.with_fixed_limits:
+            ax.set_ylim(plot_metadata.ylim)
         ax.margins(x=config.x_axis_margin)
-        ax.tick_params(axis="both", which="major", labelsize=config.axis_fontsize)
-        # ax.set_title(plot_metadata["title"], fontsize=config.title_fontsize)
 
         # Adjust tick parameters
-        ax.tick_params(axis="both", which="both", length=0, labelsize=config.axis_fontsize)
+        ax.tick_params(
+            axis="both",
+            which="both",
+            pad=config.tick_pad,
+            labelsize=config.axis_fontsize,
+        )
+        for spine in ax.spines.values():
+            spine.set_linewidth(config.border_width)  # Thicker border
 
         if config.x_tick_shift:
             # Get current tick positions and labels
@@ -613,18 +681,21 @@ def create_confidence_plot(
             ax.set_xticklabels(current_labels)
 
     # Extract unique handles and labels
-    all_handles, all_labels = zip(*unique_handles.values()) if unique_handles else ([], [])
-
     # Create a single legend for the entire figure
     if config.show_legend:
+        all_handles, all_labels = zip(*unique_handles.values()) if unique_handles else ([], [])
+        max_items_per_row = 2 if config.show_number_of_points in ["per_line", "both"] else 4
+        ncols = min(max_items_per_row, len(all_handles))
+
         fig.legend(
             all_handles,
             all_labels,
-            loc=config.legend_loc,
-            bbox_to_anchor=(config.legend_loc_x, config.legend_loc_y),
-            ncol=len(all_handles),
+            # loc=config.legend_loc,
+            # bbox_to_anchor=(config.legend_loc_x, config.legend_loc_y),
+            ncol=ncols,
             fontsize=config.legend_fontsize,
             frameon=False,
+            borderaxespad=0.3,  # space between legend and axes
         )
 
     # Set overall title
@@ -639,131 +710,7 @@ def create_confidence_plot(
     )
 
     if config.tight_layout:
-        fig.tight_layout()
-    return fig
-
-
-def combine_confidence_plots(
-    figs: dict[str, Figure],
-    output_path: Optional[Path] = None,
-    suptitle: Optional[str] = None,
-    figsize: tuple[float, float] = (15, 20),
-    show_fig: bool = True,
-) -> Figure:
-    """
-    Combine multiple confidence plots into a single comparison figure.
-
-    Args:
-        figs: Dictionary mapping model names to their figures
-        output_path: Optional path to save the combined figure
-        suptitle: Optional super title for the combined figure
-        figsize: Size of the combined figure (width, height)
-        show_fig: Whether to display the figure
-
-    Returns:
-        Combined matplotlib figure
-    """
-    n_models = len(figs)
-    fig, axes = plt.subplots(n_models, 2, figsize=figsize)
-
-    # If only one model, wrap axes in a list to make it 2D
-    if n_models == 1:
-        axes = np.array([axes])
-
-    for i, (model_name, model_fig) in enumerate(figs.items()):
-        # Extract the subplots from the original figure
-        for j, ax_orig in enumerate(model_fig.axes):
-            # Copy the plot data to the new axes
-            ax_new = axes[i, j]
-
-            # Copy lines (main plots and confidence intervals)
-            for line in ax_orig.lines:
-                ax_new.plot(
-                    line.get_xdata(),
-                    line.get_ydata(),
-                    color=line.get_color(),
-                    linestyle=line.get_linestyle(),
-                    label=line.get_label(),
-                    alpha=line.get_alpha() if line.get_alpha() is not None else 1.0,
-                )
-
-            # Copy filled regions (confidence intervals)
-            for collection in ax_orig.collections:
-                if isinstance(collection, PolyCollection):
-                    # Get the vertices of the filled region
-                    path = collection.get_paths()[0]
-                    verts = np.asarray(path.vertices)
-                    codes = path.codes
-
-                    # Find the indices where the path moves
-                    if codes is not None:
-                        move_idx = np.where(codes == path.MOVETO)[0]
-                        if len(move_idx) > 0:
-                            split_idx = int(move_idx[1]) if len(move_idx) > 1 else len(verts)
-                            lower = verts[:split_idx]
-                            upper = verts[split_idx:][::-1] if len(move_idx) > 1 else verts[::-1]
-
-                            # Extract coordinates as numpy arrays
-                            x = np.asarray(lower[:, 0])
-                            y1 = np.asarray(lower[:, 1])
-                            y2 = np.asarray(upper[:, 1])
-
-                            ax_new.fill_between(
-                                x,
-                                y1,
-                                y2,
-                                color=collection.get_facecolor()[0],
-                                alpha=collection.get_alpha(),
-                            )
-
-            # Copy axes properties
-            ax_new.set_xlabel(ax_orig.get_xlabel())
-            ax_new.set_ylabel(ax_orig.get_ylabel())
-            ax_new.set_title(ax_orig.get_title())
-            ax_new.grid(True, which="both", linestyle="--", linewidth=0.5)
-
-            # Copy limits
-            ax_new.set_xlim(ax_orig.get_xlim())
-            ax_new.set_ylim(ax_orig.get_ylim())
-
-            # Copy legend
-            if ax_orig.get_legend() is not None:
-                handles, _ = ax_orig.get_legend_handles_labels()
-                ax_new.legend(
-                    loc="upper center",
-                    bbox_to_anchor=(0.5, 1.2),
-                    ncol=len(handles),
-                    fontsize=10,
-                    frameon=False,
-                )
-
-            # Add model name to the left of the row
-            if j == 0:
-                ax_new.text(
-                    -0.2,
-                    0.5,
-                    model_name,
-                    transform=ax_new.transAxes,
-                    rotation=90,
-                    va="center",
-                    fontsize=12,
-                )
-
-    if suptitle:
-        fig.suptitle(suptitle, y=1.02, fontsize=14)
-
-    # Adjust layout to prevent overlapping
-    fig.tight_layout()
-
-    if output_path:
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        fig.savefig(output_path, bbox_inches="tight", dpi=300)
-
-    if show_fig:
-        plt.show()
-    else:
-        plt.close(fig)
-
+        fig.tight_layout(rect=(0, 0, 1, config.tight_layout_rect_y))
     return fig
 
 

@@ -578,16 +578,11 @@ def handle_literal(typ, ctx: RenderCtx, init_val):
     # Convert all options to strings for display
     str_options = [str(opt) for opt in options]
 
-    # Find the index of the current value
-    sel_idx = 0
-    if init_val is not None:
-        for i, opt in enumerate(options):
-            if init_val == opt:
-                sel_idx = i
-                break
+    if ctx.widget_key not in st.session_state:
+        st.session_state[ctx.widget_key] = init_val
 
     # Use selectbox for the user to choose
-    chosen_str = ctx.backend.selectbox(ctx.label, options=str_options, key=ctx.widget_key, index=sel_idx)
+    chosen_str = ctx.backend.selectbox(ctx.label, options=str_options, key=ctx.widget_key)
 
     # Convert back to the original type
     if chosen_str is None and str_options:

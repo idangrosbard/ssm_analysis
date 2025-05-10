@@ -5,10 +5,12 @@ from math import ceil
 from pathlib import Path
 from typing import Annotated, Any, List, Literal, Optional, Tuple, Union
 
+from matplotlib import font_manager
 from PIL import Image, ImageDraw, ImageFont
 from pydantic import BaseModel, Field, create_model
 from pydantic.fields import FieldInfo
 
+from src.utils.infra.image_utils import resize_image
 from src.utils.streamlit.components.extended_streamlit_pydantic import (
     annotate_dict_with_literal_values,
     get_dict_key_literal_values,
@@ -16,9 +18,10 @@ from src.utils.streamlit.components.extended_streamlit_pydantic import (
 from src.utils.streamlit.st_pydantic_v2.input import SpecialFieldKeys
 from src.utils.streamlit.ui_pydantic_v2.extra_types import PercentageCrop
 
+dejavu_path = font_manager.findfont("DejaVu Sans")
+bold_dejavu_path = font_manager.findfont(font_manager.FontProperties("DejaVu Sans", weight="bold"))
 FONT_BASE = lambda suffix: f"/usr/share/fonts/truetype/liberation/LiberationSerif{suffix}.ttf"  # noqa: E731
 FONT_REGULAR = FONT_BASE("-Regular")
-FONT_BOLD = FONT_BASE("-Bold")
 
 
 class GridOrganizer(BaseModel):
@@ -182,7 +185,7 @@ class LegendParams(BaseModel):
     """Configuration for the legend appearance."""
 
     width: int = Field(
-        default=40,
+        default=80,
         ge=0,
         description="Width of color/line sample",
         json_schema_extra={SpecialFieldKeys.column_group: "line"},
@@ -201,21 +204,27 @@ class LegendParams(BaseModel):
         json_schema_extra={SpecialFieldKeys.column_group: "line"},
     )
     horizontal_spacing: int = Field(
-        default=12,
+        default=50,
         ge=0,
         description="Spacing between sample and text",
         json_schema_extra={SpecialFieldKeys.column_group: "line"},
     )
     font_size: int = Field(
-        default=30, ge=0, description="Font size for legend", json_schema_extra={SpecialFieldKeys.column_group: "text"}
+        default=50, ge=0, description="Font size for legend", json_schema_extra={SpecialFieldKeys.column_group: "text"}
     )
     anchor: TAnchor = Field(
-        default="lt", description="Anchor for legend", json_schema_extra={SpecialFieldKeys.column_group: "text"}
+        default="lm", description="Anchor for legend", json_schema_extra={SpecialFieldKeys.column_group: "text"}
     )
     show_border: bool = Field(
         default=True,
         title="Show",
         description="Show border line above legend",
+        json_schema_extra={SpecialFieldKeys.column_group: "border"},
+    )
+    legend_padding: int = Field(
+        default=80,
+        ge=0,
+        description="Padding between legend and border",
         json_schema_extra={SpecialFieldKeys.column_group: "border"},
     )
     border_width: int = Field(
@@ -345,7 +354,7 @@ class ImageGridParams(BaseModel):
     rows_labels_override: dict[str, str] = Field(default_factory=dict, description="Override labels for rows")
     columns_labels_override: dict[str, str] = Field(default_factory=dict, description="Override labels for columns")
 
-    label_font_size: int = Field(default=40, ge=0, description="Font size for labels")
+    label_font_size: int = Field(default=70, ge=0, description="Font size for labels")
 
     # Put crop params in an expander
     crop_params: CropParams = Field(
@@ -402,94 +411,109 @@ def _get_text_height(text: str, font: ImageFont.FreeTypeFont) -> int:
 
 def _draw_legend(
     draw: ImageDraw.ImageDraw,
-    canvas_w: int,
-    legend_y: int,
-    legend_h: int,
+    canvas_w: float,
+    legend_y: float,
+    legend_h: float,
     legend_items: list[LegendItem],
     font_legend: ImageFont.FreeTypeFont,
     legend_params: LegendParams,
 ) -> None:
-    """Draw a legend with the given items at the specified position."""
+    """Draw a legend with the given items at the specified position.
+
+    Legend items are laid out one after another and the whole row is centred
+    horizontally; they are **not** stretched to fill the full canvas width.
+    Multiple rows are supported via ``legend_params.rows``.
+    """
     if not legend_items:
         return
 
-    # Draw border line if enabled
+    legend_padding = legend_params.legend_padding / 2
+
+    legend_y += legend_padding
+
+    # ── optional top border ────────────────────────────────────────────────
     if legend_params.show_border:
-        draw.line([(0, legend_y), (canvas_w, legend_y)], fill="black", width=legend_params.border_width)
+        draw.line(
+            [(0, legend_y), (canvas_w, legend_y)],
+            fill="black",
+            width=legend_params.border_width,
+        )
 
-    # Calculate row parameters
+    legend_y += legend_padding
+
+    # ── basic layout figures ───────────────────────────────────────────────
     num_items = len(legend_items)
-    row_height = legend_h / legend_params.rows
-    items_per_row = ceil(num_items / legend_params.rows)
-
-    # If we have fewer items than requested rows, adjust
     actual_rows = min(legend_params.rows, num_items)
-    if actual_rows < legend_params.rows:
-        items_per_row = 1
-        row_height = legend_h / actual_rows
+    items_per_row = ceil(num_items / actual_rows)
+    row_height = (legend_h - legend_params.legend_padding - legend_params.border_width) / actual_rows
 
-    # Calculate width per item based on items per row
-    item_width = canvas_w / items_per_row
+    sample_width = legend_params.width
+    sample_to_text = 10  # gap sample→text
+    inter_item_spacing = legend_params.horizontal_spacing  # gap item→item
 
-    for i, item in enumerate(legend_items):
-        # Calculate row and column position
-        row_idx = i // items_per_row
-        col_idx = i % items_per_row
+    item_index = 0
+    for row_idx in range(actual_rows):
+        # Items that belong to this row
+        row_items = legend_items[item_index : item_index + items_per_row]
+        item_index += items_per_row
 
-        # Calculate position for this legend item
-        x_start = col_idx * item_width
-        x_center = x_start + (item_width / 2)
-        y_offset = row_idx * row_height
+        # Compute per‑item widths (sample + gap + text)
+        per_item_widths: list[float] = []
+        for item in row_items:
+            bb = draw.textbbox((0, 0), item.label, font=font_legend)
+            txt_w = bb[2] - bb[0]
+            per_item_widths.append(sample_width + sample_to_text + txt_w)
 
-        # Get text dimensions for centering
-        bb = draw.textbbox((0, 0), item.label, font=font_legend)
-        txt_w, txt_h = bb[2] - bb[0], bb[3] - bb[1]
+        if not per_item_widths:
+            continue
 
-        # Draw color sample based on linestyle
-        sample_width = legend_params.width
-        sample_height = row_height * legend_params.height
-        sample_y = legend_y + y_offset + (row_height - sample_height) / 2
+        # Centre the entire row of items
+        row_total_w = sum(per_item_widths) + inter_item_spacing * (len(per_item_widths) - 1)
+        cur_x = (canvas_w - row_total_w) / 2
+        y_row_offset = row_idx * row_height
 
-        # Center the text and color sample together
-        total_width = sample_width + legend_params.horizontal_spacing + txt_w
-        start_x = x_center - (total_width / 2)
+        # ── draw each legend item ──────────────────────────────────────────
+        for item, item_w in zip(row_items, per_item_widths):
+            sample_h = row_height * legend_params.height
+            sample_y = legend_y + y_row_offset + (row_height - sample_h) / 2
 
-        if item.linestyle in ["--", ":"]:
-            if item.linestyle == "--":
-                # Draw a dashed line (longer dashes)
-                dash_length = 6
-                gap_length = 3
-            elif item.linestyle == ":":
-                dash_length = 2
-                gap_length = 6
+            # Draw the line sample
+            if item.linestyle in ("--", ":"):
+                dash_len, gap_len = (6, 3) if item.linestyle == "--" else (2, 6)
+                pos, end_x = cur_x, cur_x + sample_width
+                while pos < end_x:
+                    draw.line(
+                        [
+                            (pos, sample_y + sample_h / 2),
+                            (min(pos + dash_len, end_x), sample_y + sample_h / 2),
+                        ],
+                        fill=item.color,
+                        width=int(sample_h * 0.2),
+                    )
+                    pos += dash_len + gap_len
             else:
-                raise ValueError(f"Invalid linestyle: {item.linestyle}")
-            for j in range(0, int(sample_width), dash_length + gap_length):
                 draw.line(
                     [
-                        start_x + j,
-                        sample_y + sample_height / 2,
-                        start_x + j + dash_length,
-                        sample_y + sample_height / 2,
+                        (cur_x, sample_y + sample_h / 2),
+                        (cur_x + sample_width, sample_y + sample_h / 2),
                     ],
                     fill=item.color,
-                    width=int(sample_height * 0.2),
+                    width=int(sample_h * 0.4),
                 )
-        else:
-            # Default to solid line
-            draw.line(
-                [start_x, sample_y + sample_height / 2, start_x + sample_width, sample_y + sample_height / 2],
-                fill=item.color,
-                width=int(sample_height * 0.4),
+
+            # Draw the label text
+            text_x = cur_x + sample_width + sample_to_text
+            text_y = legend_y + y_row_offset + row_height / 2
+            draw.text(
+                (text_x, text_y),
+                item.label,
+                fill="black",
+                font=font_legend,
+                anchor=legend_params.anchor,
             )
-        # Draw text label
-        draw.text(
-            (start_x + sample_width + legend_params.horizontal_spacing, legend_y + y_offset + (row_height - txt_h) / 2),
-            item.label,
-            fill="black",
-            font=font_legend,
-            anchor=legend_params.anchor,
-        )
+
+            # Move cursor to start of next item
+            cur_x += item_w + inter_item_spacing
 
 
 TRANSPARENT_WHITE = (255, 255, 255, 0)
@@ -499,9 +523,9 @@ def combine_image_grid(
     images_paths_grid: List[List[Path]], params: ImageGridParams, legend_items: list[LegendItem]
 ) -> Image.Image:
     # Fonts
-    font_title = _safe_font(FONT_REGULAR, params.font_size)
-    font_label = _safe_font(FONT_BOLD, params.label_font_size)
-    font_legend = _safe_font(FONT_BOLD, params.legend_params.font_size)  # Use bold font like column labels
+    font_title = _safe_font(bold_dejavu_path, params.font_size)
+    font_label = _safe_font(dejavu_path, params.label_font_size)
+    font_legend = _safe_font(dejavu_path, params.legend_params.font_size)
 
     num_rows = len(images_paths_grid)
     num_cols = len(images_paths_grid[0])
@@ -526,14 +550,14 @@ def combine_image_grid(
         actual_rows = min(params.legend_params.rows, len(legend_items))
         legend_h = single_row_legend_h * actual_rows
 
-    # Add border width to legend height if border is enabled
-    if legend_items and params.legend_params.show_border:
-        legend_h += params.legend_params.border_width
+        # Add border width to legend height if border is enabled
+        if params.legend_params.show_border:
+            legend_h += params.legend_params.border_width + params.legend_params.legend_padding
 
     row_label_h = _get_text_height("TEST", font_label) if params.show_row_labels else 0
 
     top_margin = title_h + padded_col_label_h
-    bottom_margin = legend_h if legend_items else 0
+    bottom_margin = legend_h
 
     standard_crop = params.crop_params.standard_crop.box.to_unit("fraction")
     edge_crop = params.crop_params.edge_crop.box.to_unit("fraction")
@@ -552,6 +576,7 @@ def combine_image_grid(
                 row_images.append(None)
                 continue
             with Image.open(img_path) as im:
+                im = resize_image(im)
                 if i == 0 and j == 0:
                     original_image_size = im.size
                 else:
@@ -593,6 +618,7 @@ def combine_image_grid(
     # --------------------------------------------------------------------- #
     #  Prepare drawing context                                              #
     # --------------------------------------------------------------------- #
+    assert canvas_w + canvas_h < 1e4, f"Canvas size is too large: {canvas_w} + {canvas_h} = {canvas_w + canvas_h}"
     canvas = Image.new("RGBA", (canvas_w, canvas_h), "white")
     draw = ImageDraw.Draw(canvas)
 

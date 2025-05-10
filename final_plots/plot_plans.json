@@ -69,9 +69,6 @@
             }
         ],
         "cell_plot_config": {
-            "figure_width": 9.0,
-            "figure_height": 6.0,
-            "axis_fontsize": 30,
             "custom_colors": {
                 "mamba1-7B-falcon": "#af7404",
                 "mamba1-2.8B": "#3e7316",
@@ -83,71 +80,18 @@
             "crop_params": {
                 "edge_crop": {
                     "left": 0.29,
-                    "top": 0.48,
-                    "width": 99.41999999999999,
-                    "height": 98.81
+                    "top": 8.18,
+                    "width": 99.85,
+                    "height": 91.41
                 },
                 "standard_crop": {
-                    "left": 4.57,
-                    "top": 0.48,
-                    "width": 94.72,
-                    "height": 88.81
+                    "left": 11.43,
+                    "top": 8.59,
+                    "width": 88.0,
+                    "height": 79.34
                 }
             }
         }
-    },
-    "heatmaps_per_sizes": {
-        "plot_id": "heatmaps_per_sizes",
-        "title": "Heatmaps Per sizes",
-        "description": "Relative change in correct-token probability\nafter knocking out connection from each token to the last\ntoken.",
-        "order": 11,
-        "is_appendix": true,
-        "experiment_name": "heatmap",
-        "params": [
-            {
-                "param": "model_arch",
-                "orientation": "grids",
-                "values": [
-                    "mamba1",
-                    "mamba2"
-                ]
-            },
-            {
-                "param": "prompt_idx",
-                "orientation": "rows",
-                "values": [
-                    2080,
-                    9765,
-                    9255,
-                    6191,
-                    7222
-                ]
-            },
-            {
-                "param": "model_size",
-                "orientation": "cols",
-                "values": [
-                    "2.8B",
-                    "2.7B",
-                    "7B",
-                    "1.5B",
-                    "130M",
-                    "355M",
-                    "774M",
-                    "1.4B",
-                    "1.3B",
-                    "7B-falcon",
-                    "7B-falcon-base"
-                ]
-            },
-            {
-                "param": "window_size",
-                "values": [
-                    9
-                ]
-            }
-        ],
-        "cell_plot_config": {}
     },
     "figure3": {
         "plot_id": "figure3",
@@ -480,8 +424,13 @@
             }
         ],
         "cell_plot_config": {
-            "diff_ylim_min": -35.0,
-            "diff_ylim_max": 10.0,
+            "diff_plot_meta_data": {
+                "title": "Probability Difference",
+                "ylabel": "Probability Diff. (%)",
+                "axhline_value": 0.0,
+                "ylim_min": -35.0,
+                "ylim_max": 10.0
+            },
             "custom_colors": {
                 "ALL": "#0202da",
                 "FAST_DECAY": "#0f710f",
@@ -695,119 +644,6 @@
             }
         }
     },
-    "heatmap": {
-        "plot_id": "heatmap",
-        "title": "Heatmap Plot",
-        "description": "Heatmap visualization of information flow between tokens for specific prompts.",
-        "order": 90,
-        "experiment_name": "heatmap",
-        "params": [
-            {
-                "param": "window_size",
-                "orientation": "grids",
-                "values": [
-                    9
-                ]
-            },
-            {
-                "param": "prompt_idx",
-                "orientation": "rows",
-                "values": [
-                    17261,
-                    4561,
-                    17046,
-                    17617,
-                    20790,
-                    16431,
-                    21157,
-                    4712,
-                    4836,
-                    4915,
-                    4869,
-                    15672,
-                    13496,
-                    14671,
-                    17897,
-                    15508,
-                    18491,
-                    20825,
-                    18845,
-                    21485
-                ]
-            },
-            {
-                "param": "model_arch_and_size",
-                "orientation": "cols",
-                "values": [
-                    [
-                        "mamba1",
-                        "2.8B"
-                    ],
-                    [
-                        "mamba2",
-                        "2.7B"
-                    ],
-                    [
-                        "gpt2",
-                        "1.5B"
-                    ],
-                    [
-                        "mamba1",
-                        "7B-falcon"
-                    ],
-                    [
-                        "mamba1",
-                        "7B-falcon-base"
-                    ],
-                    [
-                        "mamba1",
-                        "7B"
-                    ],
-                    [
-                        "llama3.2",
-                        "1B"
-                    ],
-                    [
-                        "llama3.2",
-                        "3B"
-                    ],
-                    [
-                        "mistral0.1",
-                        "7B"
-                    ],
-                    [
-                        "mistral0.3",
-                        "7B"
-                    ],
-                    [
-                        "llama3",
-                        "8B"
-                    ],
-                    [
-                        "qwen2",
-                        "0.5B"
-                    ],
-                    [
-                        "qwen2",
-                        "1.5B"
-                    ],
-                    [
-                        "qwen2",
-                        "7B"
-                    ],
-                    [
-                        "qwen2.5",
-                        "0.5B"
-                    ],
-                    [
-                        "qwen2.5",
-                        "7B"
-                    ]
-                ]
-            }
-        ],
-        "cell_plot_config": {}
-    },
     "figure1+": {
         "plot_id": "figure1+",
         "title": "Figure 1+",
@@ -1001,8 +837,6 @@
         ],
         "cell_plot_config": {
             "show_number_of_points": "auto",
-            "legend_loc_y": 0.98,
-            "show_legend": true,
             "custom_colors": {
                 "subject": "#af7404",
                 "relation": "#3e7316",
@@ -1027,5 +861,171 @@
                 }
             }
         }
+    },
+    "heatmap": {
+        "plot_id": "heatmap",
+        "title": "Heatmap Plot",
+        "description": "Heatmap visualization of information flow between tokens for specific prompts.",
+        "order": 90,
+        "experiment_name": "heatmap",
+        "params": [
+            {
+                "param": "window_size",
+                "orientation": "grids",
+                "values": [
+                    9
+                ]
+            },
+            {
+                "param": "prompt_idx",
+                "orientation": "rows",
+                "values": [
+                    17261,
+                    4561,
+                    17046,
+                    17617,
+                    20790,
+                    16431,
+                    21157,
+                    4712,
+                    4836,
+                    4915,
+                    4869,
+                    15672,
+                    13496,
+                    14671,
+                    17897,
+                    15508,
+                    18491,
+                    20825,
+                    18845,
+                    21485
+                ]
+            },
+            {
+                "param": "model_arch_and_size",
+                "orientation": "cols",
+                "values": [
+                    [
+                        "mamba1",
+                        "2.8B"
+                    ],
+                    [
+                        "mamba2",
+                        "2.7B"
+                    ],
+                    [
+                        "gpt2",
+                        "1.5B"
+                    ],
+                    [
+                        "mamba1",
+                        "7B-falcon"
+                    ],
+                    [
+                        "mamba1",
+                        "7B-falcon-base"
+                    ],
+                    [
+                        "mamba1",
+                        "7B"
+                    ],
+                    [
+                        "llama3.2",
+                        "1B"
+                    ],
+                    [
+                        "llama3.2",
+                        "3B"
+                    ],
+                    [
+                        "mistral0.1",
+                        "7B"
+                    ],
+                    [
+                        "mistral0.3",
+                        "7B"
+                    ],
+                    [
+                        "llama3",
+                        "8B"
+                    ],
+                    [
+                        "qwen2",
+                        "0.5B"
+                    ],
+                    [
+                        "qwen2",
+                        "1.5B"
+                    ],
+                    [
+                        "qwen2",
+                        "7B"
+                    ],
+                    [
+                        "qwen2.5",
+                        "0.5B"
+                    ],
+                    [
+                        "qwen2.5",
+                        "7B"
+                    ]
+                ]
+            }
+        ],
+        "cell_plot_config": {}
+    },
+    "heatmaps_per_sizes": {
+        "plot_id": "heatmaps_per_sizes",
+        "title": "Heatmaps Per sizes",
+        "description": "Relative change in correct-token probability\nafter knocking out connection from each token to the last\ntoken.",
+        "order": 11,
+        "is_appendix": true,
+        "experiment_name": "heatmap",
+        "params": [
+            {
+                "param": "model_arch",
+                "orientation": "grids",
+                "values": [
+                    "mamba1",
+                    "mamba2"
+                ]
+            },
+            {
+                "param": "prompt_idx",
+                "orientation": "rows",
+                "values": [
+                    2080,
+                    9765,
+                    9255,
+                    6191,
+                    7222
+                ]
+            },
+            {
+                "param": "model_size",
+                "orientation": "cols",
+                "values": [
+                    "2.8B",
+                    "2.7B",
+                    "7B",
+                    "1.5B",
+                    "130M",
+                    "355M",
+                    "774M",
+                    "1.4B",
+                    "1.3B",
+                    "7B-falcon",
+                    "7B-falcon-base"
+                ]
+            },
+            {
+                "param": "window_size",
+                "values": [
+                    9
+                ]
+            }
+        ],
+        "cell_plot_config": {}
     }
 }

@@ -19,7 +19,6 @@ import matplotlib.pyplot as plt
 
 from src.analysis.plots.info_flow_confidence import (
     InfoFlowPlotConfig,
-    PlotMetadata,
     TMetricType,
     create_confidence_plot,
 )
@@ -173,27 +172,10 @@ def main_local(args: FullPipelineRunner):
                     lines=lines_metadata,
                     confidence_level=0.95,
                     title=title,
-                    plots_meta_data={
-                        TMetricType.ACC: PlotMetadata(
-                            title="Accuracy",
-                            ylabel="% accuracy",
-                            axhline_value=100.0,
-                        ),
-                        TMetricType.DIFF: PlotMetadata(
-                            title="Normalized change in prediction probability",
-                            ylabel="% probability change",
-                            axhline_value=0.0,
-                        ),
-                    },
                     config=InfoFlowPlotConfig(
-                        with_fixed_limits=with_fixed_limits,
                         custom_colors=dict(zip(labels, colors)),
                         custom_line_styles=dict(zip(labels, linestyles)),
                         metrics_to_show=[TMetricType.ACC, TMetricType.DIFF],
-                        acc_ylim_max=105.0,
-                        acc_ylim_min=60.0,
-                        diff_ylim_max=50.0,
-                        diff_ylim_min=-50.0,
                     ),
                 )
                 path = args.target_plot_path(target_token, plot_name)
