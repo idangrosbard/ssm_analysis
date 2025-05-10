@@ -14,7 +14,7 @@ from src.utils.streamlit.components.extended_streamlit_pydantic import (
     get_dict_key_literal_values,
 )
 from src.utils.streamlit.st_pydantic_v2.input import SpecialFieldKeys
-from src.utils.streamlit.ui_pydantic_v2.extra_types import Crop
+from src.utils.streamlit.ui_pydantic_v2.extra_types import PercentageCrop
 
 FONT_BASE = lambda suffix: f"/usr/share/fonts/truetype/liberation/LiberationSerif{suffix}.ttf"  # noqa: E731
 FONT_REGULAR = FONT_BASE("-Regular")
@@ -107,23 +107,23 @@ class CropParams(BaseModel):
     enable_crop: bool = Field(default=True, description="Enable image cropping")
 
     # Replace numerical fields with Crop objects
-    edge_crop: Crop = Field(
-        default_factory=lambda: Crop(
-            left=0.0020,
-            top=0.0084,
-            width=0.9959,
-            height=0.9915,
+    edge_crop: PercentageCrop = Field(
+        default_factory=lambda: PercentageCrop(
+            left=0.20,
+            top=0.84,
+            width=99.59,
+            height=99.15,
         ),
         description="Base crop for all images",
         json_schema_extra={SpecialFieldKeys.column_group: "crop_edge"},
     )
 
-    standard_crop: Crop = Field(
-        default_factory=lambda: Crop(
-            left=0.1683,
-            top=0.1070,
-            width=0.8183,
-            height=0.8202,
+    standard_crop: PercentageCrop = Field(
+        default_factory=lambda: PercentageCrop(
+            left=16.83,
+            top=10.70,
+            width=81.83,
+            height=82.02,
         ),
         description="Additional crop for non-edge images",
         json_schema_extra={SpecialFieldKeys.column_group: "crop_standard"},
@@ -153,7 +153,7 @@ class CropParams(BaseModel):
             json_schema_extra["aspect_dict"] = "Free"
 
             return Annotated[
-                Crop,
+                PercentageCrop,
                 fi.merge_field_infos(json_schema_extra=json_schema_extra),
             ]
 
@@ -393,46 +393,6 @@ def _safe_font(path: str, size: int) -> ImageFont.FreeTypeFont:
     return ImageFont.truetype(path, size)
 
 
-def _get_extra_crop(width: int, height: int, edge_crop: Crop, standard_crop: Crop) -> tuple[float, float, float, float]:
-    extra_left = standard_crop.left - edge_crop.left
-    extra_top = standard_crop.top - edge_crop.top
-    extra_right = (edge_crop.left + edge_crop.width) - (standard_crop.left + standard_crop.width)
-    extra_bottom = (edge_crop.top + edge_crop.height) - (standard_crop.top + standard_crop.height)
-    return extra_left * width, extra_top * height, extra_right * width, extra_bottom * height
-
-
-def _calculate_crop_box(
-    width: int,
-    height: int,
-    edge_crop: Crop,
-    standard_crop: Crop,
-    is_left_edge: bool,
-    is_right_edge: bool,
-    is_top_edge: bool,
-    is_bottom_edge: bool,
-) -> tuple[float, float, float, float]:
-    # base_crop
-    base = [
-        standard_crop.left,
-        standard_crop.top,
-        standard_crop.left + standard_crop.width,
-        standard_crop.top + standard_crop.height,
-    ]
-
-    crop_extras = _get_extra_crop(1, 1, edge_crop, standard_crop)
-    # apply diff_crop to base_crop
-    if is_left_edge:
-        base[0] -= crop_extras[0]
-    if is_top_edge:
-        base[1] -= crop_extras[1]
-    if is_right_edge:
-        base[2] += crop_extras[2]
-    if is_bottom_edge:
-        base[3] += crop_extras[3]
-
-    return base[0] * width, base[1] * height, base[2] * width, base[3] * height
-
-
 def _get_text_height(text: str, font: ImageFont.FreeTypeFont) -> int:
     dummy_img = Image.new("RGBA", (1, 1))
     draw = ImageDraw.Draw(dummy_img)
@@ -532,6 +492,9 @@ def _draw_legend(
         )
 
 
+TRANSPARENT_WHITE = (255, 255, 255, 0)
+
+
 def combine_image_grid(
     images_paths_grid: List[List[Path]], params: ImageGridParams, legend_items: list[LegendItem]
 ) -> Image.Image:
@@ -567,12 +530,14 @@ def combine_image_grid(
     if legend_items and params.legend_params.show_border:
         legend_h += params.legend_params.border_width
 
-    # Add legend height to bottom margin instead of top margin
+    row_label_h = _get_text_height("TEST", font_label) if params.show_row_labels else 0
+
     top_margin = title_h + padded_col_label_h
     bottom_margin = legend_h if legend_items else 0
 
-    #  Row-label column (optional)
-    row_label_h = _get_text_height("TEST", font_label) if params.show_row_labels else 0
+    standard_crop = params.crop_params.standard_crop.box.to_unit("fraction")
+    edge_crop = params.crop_params.edge_crop.box.to_unit("fraction")
+
     left_margin = row_label_h
     right_margin = 0
     # Load images
@@ -596,28 +561,22 @@ def combine_image_grid(
                         )
                 if params.crop_params.enable_crop:
                     # Calculate and apply crop
-                    crop_box = _calculate_crop_box(
-                        im.width,
-                        im.height,
-                        params.crop_params.edge_crop,
-                        params.crop_params.standard_crop,
-                        is_left_edge=j == 0,
-                        is_right_edge=j == num_cols - 1,
-                        is_top_edge=i == 0,
-                        is_bottom_edge=i == num_rows - 1,
-                    )
-                    im = im.crop(crop_box)
+                    crop_box = standard_crop.set_by_mask(
+                        edge_crop,
+                        {
+                            "left": j == 0,
+                            "right": j == num_cols - 1,
+                            "top": i == 0,
+                            "bottom": i == num_rows - 1,
+                        },
+                    ).to_unit(to_unit_type="absolute", dimensions=im.size)
+                    im = im.crop(crop_box.ltrb)
                 row_images.append(im)
 
     if params.crop_params.enable_crop:
-        img_w = params.crop_params.standard_crop.width * original_image_size[0]
-        img_h = params.crop_params.standard_crop.height * original_image_size[1]
-        extras = _get_extra_crop(
-            original_image_size[0],
-            original_image_size[1],
-            params.crop_params.edge_crop,
-            params.crop_params.standard_crop,
-        )
+        extras = edge_crop.gap(standard_crop).to_unit(to_unit_type="absolute", dimensions=original_image_size).ltrb
+        img_w = standard_crop.width * original_image_size[0]
+        img_h = standard_crop.height * original_image_size[1]
         left_margin += extras[0]
         right_margin += extras[2]
         top_margin += extras[1]
@@ -676,7 +635,7 @@ def combine_image_grid(
 
             w, h = img_h, row_label_h  # width is the image height (after rotation), height is the label height
             # Draw label on its own small canvas, then rotate 90°
-            label_img = Image.new("RGBA", (int(w), h), "white")
+            label_img = Image.new("RGBA", (int(w), h), TRANSPARENT_WHITE)
             label_draw = ImageDraw.Draw(label_img)
 
             bb = label_draw.textbbox((0, 0), label, font=font_label)
@@ -721,7 +680,7 @@ def combine_image_grid(
             if prefix:
                 label = f"{prefix} {label}"
             w, h = img_w, col_label_h  # no rotation
-            label_img = Image.new("RGBA", (int(w), h), (255, 255, 255, 0))
+            label_img = Image.new("RGBA", (int(w), h), TRANSPARENT_WHITE)
             label_draw = ImageDraw.Draw(label_img)
 
             bb = label_draw.textbbox((0, 0), label, font=font_label)

@@ -27,7 +27,7 @@ from pydantic_extra_types.color import Color
 
 from src.utils.streamlit.helpers.allow_nested_expanders import decorator_allow_nested_st_elements
 from src.utils.streamlit.st_pydantic_v2.backend import BackendProtocol, StreamlitBackend
-from src.utils.streamlit.ui_pydantic_v2.extra_types import Crop
+from src.utils.streamlit.ui_pydantic_v2.extra_types import PercentageCrop
 
 # ────────────────────────────────────────────────────────────
 # Constants
@@ -270,7 +270,7 @@ def render_field(typ: Any, ctx: RenderCtx, init_val: Any) -> Any:  # Change retu
 
 
 @render_field.register
-def _(typ: str, ctx: RenderCtx, init_val: Any) -> str:
+def _(typ: str, ctx: RenderCtx, init_val: Any) -> str | None:
     # Use get_string_constraint to safely get max_length
     if ctx.widget_key not in st.session_state:
         st.session_state[ctx.widget_key] = init_val
@@ -607,8 +607,8 @@ def handle_literal(typ, ctx: RenderCtx, init_val):
     return chosen_value
 
 
-@render_field.register(Crop)
-def _(typ: Type[Crop], ctx: RenderCtx, init_val: dict) -> Crop:
+@render_field.register(PercentageCrop)
+def _(typ: Type[PercentageCrop], ctx: RenderCtx, init_val: dict) -> PercentageCrop:
     """Render a Crop field with streamlit-cropper if an image is available."""
     for side in ["left", "top", "width", "height"]:
         if f"{ctx.path}.{side}" not in st.session_state:
@@ -616,14 +616,14 @@ def _(typ: Type[Crop], ctx: RenderCtx, init_val: dict) -> Crop:
 
     # If an image is available, render the cropper
     if (image := ctx.get_json_schema_extra().get("image")) is not None:
-        ctx.backend.cropper(image, key=ctx.path, is_relative_coords=True, **ctx.extra_kwargs)
+        ctx.backend.cropper(image, key=ctx.path, **ctx.extra_kwargs)
 
     pass
     # Render regular fields for the crop values
     for side, col in zip(["left", "top", "width", "height"], ctx.backend.columns([1] * 4)):
-        col.number_input(side, min_value=0.0, max_value=1.0, format="%.4f", key=f"{ctx.path}.{side}")
+        col.number_input(side, min_value=0.0, max_value=100.0, format="%.2f", key=f"{ctx.path}.{side}")
 
-    return Crop.model_validate(
+    return PercentageCrop.model_validate(
         {side: st.session_state[f"{ctx.path}.{side}"] for side in ["left", "top", "width", "height"]}
     )
 

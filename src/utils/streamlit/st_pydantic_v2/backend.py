@@ -9,16 +9,20 @@ from typing import (
     Protocol,
     Sequence,
     Union,
+    cast,
 )
 
 import streamlit as st
+from PIL import Image
 from streamlit.delta_generator import DeltaGenerator
+
+from src.utils.streamlit.ui_pydantic_v2.extra_types import XYWH_SIDES, Box
 
 
 class BackendProtocol(Protocol):
-    def text_input(self, label: str, key: str, **kw) -> str: ...
+    def text_input(self, label: str, key: str, **kw) -> str | None: ...
 
-    def text_area(self, label: str, key: str, **kw) -> str: ...
+    def text_area(self, label: str, key: str, **kw) -> str | None: ...
 
     def number_input(self, label: str, key: str, **kw) -> Union[int, float]: ...
 
@@ -56,7 +60,7 @@ class BackendProtocol(Protocol):
 
     def container(self, **kw) -> BackendProtocol: ...
 
-    def cropper(self, img, key, is_relative_coords: bool = False, **kw) -> Any: ...
+    def cropper(self, img: Image.Image, key: str, **kw) -> None: ...
 
     def __getattr__(self, item):
         # This is a fallback for unknown attributes
@@ -68,44 +72,35 @@ class StreamlitBackend(BackendProtocol):  # Implementation of BackendProtocol
         self.dg = container or st
 
     # input components
-    def text_input(self, label: str, key: str, **kw) -> str:
-        result = self.dg.text_input(label, key=key, **kw)
-        return str(result) if result is not None else ""
+    def text_input(self, label: str, key: str, **kw) -> str | None:
+        return self.dg.text_input(label, key=key, **kw)
 
-    def text_area(self, label: str, key: str, **kw) -> str:
-        result = self.dg.text_area(label, key=key, **kw)
-        return str(result) if result is not None else ""
+    def text_area(self, label: str, key: str, **kw) -> str | None:
+        return self.dg.text_area(label, key=key, **kw)
 
     def number_input(self, label: str, key: str, **kw) -> Union[int, float]:
-        result = self.dg.number_input(label, key=key, **kw)
-        return result if result is not None else 0
+        return self.dg.number_input(label, key=key, **kw)
 
     def checkbox(self, label: str, key: str, **kw) -> bool:
-        result = self.dg.checkbox(label, key=key, **kw)
-        return bool(result) if result is not None else False
+        return self.dg.checkbox(label, key=key, **kw)
 
     def button(self, label: str, key: Optional[str] = None, **kw) -> bool:
-        result = self.dg.button(label, key=key, **kw)
-        return bool(result) if result is not None else False
+        return self.dg.button(label, key=key, **kw)
 
     def selectbox(self, label: str, options: Sequence[str], key: str, **kw) -> Optional[str]:
         return self.dg.selectbox(label, options, key=key, **kw)
 
     def multiselect(self, label: str, options: Sequence[str], key: str, **kw) -> List[str]:
-        result = self.dg.multiselect(label, options, key=key, **kw)
-        return list(result) if result is not None else []
+        return self.dg.multiselect(label, options, key=key, **kw)
 
     def date_input(self, label: str, key: str, **kw) -> _dt.date:
-        result = self.dg.date_input(label, key=key, **kw)
-        return result if result is not None else _dt.date.today()
+        return self.dg.date_input(label, key=key, **kw)
 
     def color_picker(self, label: str, key: str, **kw) -> str:
-        result = self.dg.color_picker(label, key=key, **kw)
-        return result if result is not None else "#000000"
+        return self.dg.color_picker(label, key=key, **kw)
 
     def slider(self, label: str, min_value: float, max_value: float, key: str, **kw) -> float:
-        result = self.dg.slider(label, min_value=min_value, max_value=max_value, key=key, **kw)
-        return float(result) if result is not None else min_value
+        return self.dg.slider(label, min_value=min_value, max_value=max_value, key=key, **kw)
 
     # containers + other components
     def subheader(self, txt: str) -> None:
@@ -141,8 +136,13 @@ class StreamlitBackend(BackendProtocol):  # Implementation of BackendProtocol
     def toast(self, txt: str) -> None:
         self.dg.toast(txt)
 
-    def cropper(self, img, key, is_relative_coords: bool = False, **kw) -> Any:
+    def cropper(self, img: Image.Image, key: str, with_debug: bool = True, **kw) -> None:
         """Render a streamlit-cropper component."""
+
+        def write_debug(*args):
+            if with_debug:
+                st.write(*args)
+
         try:
             from streamlit_cropper import st_cropper
 
@@ -151,38 +151,49 @@ class StreamlitBackend(BackendProtocol):  # Implementation of BackendProtocol
             return
 
         @st.dialog(title="Interactive Crop", width="large")
-        def _crop_dialog(img, key: str, **kw):
-            img_w, img_h = img.size
+        def _crop_dialog(_, key: str, **kw):
+            # Need to resize to fit the screen, but need to keep it in the same aspect ratio
+            MAX_WIDTH = 700
+            resized_image = img.resize((MAX_WIDTH, round(img.height * MAX_WIDTH / img.width)))
 
-            def box_algorithm(*args, **kwargs) -> dict[str, int]:
-                return {
-                    side: st.session_state[f"{key}.{side}"] * (img_w if side in ["left", "width"] else img_h)
-                    for side in ["left", "top", "width", "height"]
-                    if f"{key}.{side}" in st.session_state
-                }
+            box = Box.from_xywh(
+                number_type="percentage",
+                **{side: st.session_state[f"{key}.{side}"] for side in XYWH_SIDES},
+            )
+            box = box.to_unit(to_unit_type="absolute", dimensions=resized_image.size)
 
             box = st_cropper(
-                img,
-                box_algorithm=box_algorithm,
+                cast(Any, resized_image),
+                default_coords=box.lrtb,
                 return_type="box",
                 key=f"{key}_cropper",
+                should_resize_image=False,
                 **kw,
             )
+            assert isinstance(box, dict)
+
+            def show_box(box: Box):
+                write_debug(",".join(f"{side}: {box.get_side(side)}" for side in XYWH_SIDES))
+
+            box = Box(
+                number_type="absolute",
+                left=box["left"],
+                top=box["top"],
+                right=box["left"] + box["width"],
+                bottom=box["top"] + box["height"],
+            )
+
+            write_debug("original", img.size)
+            write_debug("resized", resized_image.size)
+            show_box(box)
+            box = box.to_unit(to_unit_type="percentage", dimensions=resized_image.size)
+            show_box(box)
+            show_box(box.to_unit(to_unit_type="absolute", dimensions=resized_image.size))
 
             # If save button is clicked, update the session state
-            if st.button("Close", key=f"{key}_close"):
-                assert isinstance(box, dict)
-                for side in ["left", "top", "width", "height"]:
-                    value = box[side]
-                    divide_by = 1
-                    if is_relative_coords:
-                        if side in ["left", "width"]:
-                            divide_by = img_w
-                        elif side in ["top", "height"]:
-                            divide_by = img_h
-
-                    val = value / divide_by
-                    st.session_state[f"{key}.{side}"] = val
+            if st.button("Save", key=f"{key}_save"):
+                for side in XYWH_SIDES:
+                    st.session_state[f"{key}.{side}"] = getattr(box, side)
                 st.rerun()  # Rerun to update the UI
 
         if self.dg.button("Open Crop Dialog", key=f"{key}_open_crop_dialog"):
