@@ -22,6 +22,7 @@ from src.experiments.infrastructure.base_runner import (
     TDependencies,
 )
 from src.experiments.runners.evaluate_model import EvaluateModelParams, EvaluateModelRunner
+from src.experiments.runners.heatmap import HeatmapRunner
 
 
 @dataclass(frozen=True)
@@ -54,6 +55,8 @@ class AnyExistingCompletePromptFilteration(BasePromptFilteration):
             return base_runner.get_outputs()[COLS.ORIGINAL_IDX].tolist()
         elif isinstance(base_runner, InfoFlowRunner):
             return list(base_runner.output_file.get_computed_prompt_idx())
+        elif isinstance(base_runner, HeatmapRunner):
+            return list(base_runner.output_hdf5_path.get_existing_prompt_idx())
         else:
             raise NotImplementedError(f"Prompt filteration for {base_runner.__class__.__name__} not implemented")
 

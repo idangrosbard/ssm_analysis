@@ -92,6 +92,7 @@ def serialize_result_bank(result_bank: ResultBank) -> str:
     def rec_serialize_dependencies(item):
         if isinstance(item, BaseRunner):
             return [
+                item.variant_params.experiment_name,
                 rec_serialize_dependencies(asdict(item.variant_params)),
                 rec_serialize_dependencies(asdict(item.input_params)),
                 rec_serialize_dependencies(item.get_outputs()),
@@ -113,8 +114,9 @@ def serialize_result_bank(result_bank: ResultBank) -> str:
             return item
 
     def sort_key(item):
-        assert len(item) == 3
-        item = item[0]
-        return tuple([item[col] for col in ExperimentName.get_variant_cols(item[DataReqCols.experiment_name])])
+        assert len(item) == 4
+        experiment_name: ExperimentName = item[0]
+        variant_params = item[1]
+        return tuple([variant_params.get(col) for col in ExperimentName.get_variant_cols(experiment_name)])
 
     return json.dumps(sorted(rec_serialize_dependencies([item for item in result_bank]), key=sort_key), indent=4)
