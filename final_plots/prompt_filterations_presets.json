@@ -1686,6 +1686,40 @@
                         ]
                     }
                 }
+            },
+            "debug_mistral": {
+                "__JSONABLE_type__": "SelectivePromptFilteration",
+                "__JSONABLE_value__": {
+                    "prompt_ids": {
+                        "__JSONABLE_metadata__": "__JSONABLE_tuple__",
+                        "__JSONABLE_value__": [
+                            54,
+                            79,
+                            74
+                        ]
+                    }
+                }
+            },
+            "tests": {
+                "__JSONABLE_type__": "SelectivePromptFilteration",
+                "__JSONABLE_value__": {
+                    "prompt_ids": {
+                        "__JSONABLE_metadata__": "__JSONABLE_tuple__",
+                        "__JSONABLE_value__": [
+                            53,
+                            59,
+                            74,
+                            90,
+                            93,
+                            10594,
+                            6410,
+                            140,
+                            148,
+                            159,
+                            182
+                        ]
+                    }
+                }
             }
         }
     }

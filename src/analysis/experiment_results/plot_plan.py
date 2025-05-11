@@ -210,8 +210,8 @@ class PlotPlan(BaseModel):
     model_config = ConfigDict(validate_assignment=True)
 
     plot_id: TPlotID
-    title: str
-    description: str
+    title: str = Field(default="")
+    description: str = Field(default="")
     order: int
     observation: str = Field(default="")
     notes: str = Field(default="")

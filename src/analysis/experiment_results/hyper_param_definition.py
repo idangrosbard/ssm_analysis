@@ -1,16 +1,23 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
-from enum import StrEnum
-from typing import Generic, Literal, Sequence, TypeVar, Union, assert_never, cast
+from typing import Generic, Literal, Sequence, TypeVar, Union, cast
 
-from src.analysis.prompt_filterations import (
-    AnyExistingCompletePromptFilteration,
-    Correctness,
-    ModelCorrectPromptFilteration,
+from src.analysis.experiment_results.prompt_filteration_factory import (
+    AllImportantModelsFilterationFactory,
+    ContextModelsFilterationFactory,
+    CurrentModelFilterationFactory,
+    ExistingPromptsFilterationFactory,
+    PresetFilterationFactory,
+    PromptFilterationFactory,
+    PromptFilterationFactoryUnion,
 )
-from src.core.consts import DEFAULT_MODEL_CORRECT_DATASET_NAME, DEFAULT_MODEL_CORRECT_MODEL_CODE_VERSION, GRAPHS_ORDER
+from src.analysis.prompt_filterations import (
+    Correctness,
+)
+from src.core.consts import (
+    GRAPHS_ORDER,
+)
 from src.core.names import (
     VARIANT_PARAM_NAME,
     BaseVariantParamName,
@@ -27,8 +34,7 @@ from src.core.types import (
     TPromptOriginalIndex,
     TWindowSize,
 )
-from src.data_ingestion.data_defs.data_defs import ResultBank
-from src.experiments.infrastructure.base_prompt_filteration import BasePromptFilteration, LogicalPromptFilteration
+from src.data_ingestion.data_defs.data_defs import PromptFilterationsPresets, ResultBank
 from src.experiments.runners.heatmap import HeatmapRunner
 from src.experiments.runners.info_flow import InfoFlowRunner
 from src.utils.types_utils import str_enum_values
@@ -217,63 +223,42 @@ class PromptIdxHPD(HyperParamDefinition[TPromptOriginalIndex]):
         return cast(Sequence[Literal[ExperimentHyperParams.prompt_idx]], [ExperimentHyperParams.prompt_idx])
 
 
-class EnumSelectFilterationContext(StrEnum):
-    current_model_all = "current_model_all"
-    current_model_conditional_any_existing = "current_model_conditional_any_existing"
-    current_model_any_existing = "current_model_any_existing"
-    context_models_intersect = "context_models_intersect"
-
-
-@dataclass(frozen=True)
-class PromptFilterationFactory:
-    filteration_context: EnumSelectFilterationContext
-    correctness: Correctness
-
-    def get_filteration(self, context_model_arch_and_sizes: list[MODEL_ARCH_AND_SIZE]) -> BasePromptFilteration:
-        match self.filteration_context:
-            case (
-                EnumSelectFilterationContext.current_model_all
-                | EnumSelectFilterationContext.current_model_conditional_any_existing
-            ):
-                filteration = ModelCorrectPromptFilteration(
-                    dataset_name=DEFAULT_MODEL_CORRECT_DATASET_NAME,
-                    model_arch_and_size=None,
-                    correctness=self.correctness,
-                    code_version=DEFAULT_MODEL_CORRECT_MODEL_CODE_VERSION,
-                )
-                if self.filteration_context == EnumSelectFilterationContext.current_model_conditional_any_existing:
-                    filteration = filteration & AnyExistingCompletePromptFilteration()
-                return filteration
-            case EnumSelectFilterationContext.current_model_any_existing:
-                return AnyExistingCompletePromptFilteration()
-            case EnumSelectFilterationContext.context_models_intersect:
-                return LogicalPromptFilteration.create_and(
-                    [
-                        ModelCorrectPromptFilteration(
-                            dataset_name=DEFAULT_MODEL_CORRECT_DATASET_NAME,
-                            model_arch_and_size=model_arch_and_size,
-                            correctness=self.correctness,
-                            code_version=DEFAULT_MODEL_CORRECT_MODEL_CODE_VERSION,
-                        )
-                        for model_arch_and_size in context_model_arch_and_sizes
-                    ]
-                )
-            case _:
-                assert_never(self.filteration_context)
-
-
 class FilterationHPD(HyperParamDefinition[PromptFilterationFactory]):
     def get_result_bank_options(self, result_bank: ResultBank):
         raise NotImplementedError("FilterationHPD does not have result bank options")
 
-    def get_static_options(self):
-        raise NotImplementedError("FilterationHPD does not have result bank options")
+    def get_static_options(self) -> Sequence[PromptFilterationFactory]:
+        options = []
+
+        # Add preset options
+        presets = PromptFilterationsPresets.load()
+        for preset_id in presets:
+            options.append(PresetFilterationFactory(preset_id=preset_id))
+
+        # Add model correctness options
+        for correctness in Correctness:
+            # Current model
+            options.append(CurrentModelFilterationFactory(correctness=correctness, combine_with_existing=False))
+            options.append(CurrentModelFilterationFactory(correctness=correctness, combine_with_existing=True))
+
+            # Context models
+            options.append(ContextModelsFilterationFactory(correctness=correctness, combine_with_existing=False))
+            options.append(ContextModelsFilterationFactory(correctness=correctness, combine_with_existing=True))
+
+            # All important models
+            options.append(AllImportantModelsFilterationFactory(correctness=correctness, combine_with_existing=False))
+            options.append(AllImportantModelsFilterationFactory(correctness=correctness, combine_with_existing=True))
+
+        # Add existing prompts option
+        options.append(ExistingPromptsFilterationFactory())
+
+        return options
 
     def get_options(self, result_bank: ResultBank):
         return self.get_static_options()
 
     def get_display_name(self, option: PromptFilterationFactory) -> str:
-        return f"{option.filteration_context}-{option.correctness}"
+        return option.display_name
 
     def derived_variants_params(self):
         return cast(
@@ -313,5 +298,5 @@ PossibleHPDTypes = Union[
     FeatureCategory,
     TWindowSize,
     TPromptOriginalIndex,
-    PromptFilterationFactory,
+    PromptFilterationFactoryUnion,
 ]

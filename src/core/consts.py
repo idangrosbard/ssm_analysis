@@ -354,7 +354,7 @@ TOKEN_TYPE_LINE_STYLES: dict[FeatureCategory, TLineStyle] = {
 }
 
 CONVERT_TO_PLOTLY_LINE_STYLE = {
-    **{line_style.name: line_style for line_style in TLineStyle},
+    **{line_style: line_style.name for line_style in TLineStyle},
 }
 
 

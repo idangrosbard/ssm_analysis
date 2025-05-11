@@ -9,11 +9,16 @@ from pandas import DataFrame
 from st_aggrid import AgGrid, DataReturnMode, GridUpdateMode
 from streamlit.delta_generator import DeltaGenerator
 
-from src.analysis.experiment_results.hyper_param_definition import (
-    EnumSelectFilterationContext,
+from src.analysis.experiment_results.model_prompt_combination import ModelCombination
+from src.analysis.experiment_results.prompt_filteration_factory import (
+    AllImportantModelsFilterationFactory,
+    ContextModelsFilterationFactory,
+    CurrentModelFilterationFactory,
+    ExistingPromptsFilterationFactory,
+    FilterationSource,
+    PresetFilterationFactory,
     PromptFilterationFactory,
 )
-from src.analysis.experiment_results.model_prompt_combination import ModelCombination
 from src.analysis.prompt_filterations import (
     Correctness,
     get_shared_models_correctness_prompt_filteration,
@@ -359,28 +364,73 @@ class SelectFilterationComponent(StreamlitComponent[PromptFilterationFactory]):
         self.context_model_arch_and_sizes = context_model_arch_and_sizes
 
     def render(self) -> PromptFilterationFactory:
-        selected_context_sk = SessionKey[EnumSelectFilterationContext](f"{self.key}_select_filteration_context")
+        selected_source_sk = SessionKey[FilterationSource](f"{self.key}_select_filteration_source")
+        selected_source_sk.init_default()
         select_correctness_filteration_sk = SessionKey[Correctness](f"{self.key}_select_correctness_filteration")
+        select_correctness_filteration_sk.init_default()
+        combine_with_existing_sk = SessionKey[bool](f"{self.key}_combine_with_existing")
+        combine_with_existing_sk.init(False)
+        preset_id_sk = SessionKey[str](f"{self.key}_preset_id")
+        preset_id_sk.init("all")
 
-        for i, col in enumerate(st.columns(2)):
-            with col:
-                if i == 0:
-                    select_enum(
-                        "Select Filteration Context",
-                        EnumSelectFilterationContext,
-                        session_key=selected_context_sk,
-                    )
-                else:
-                    select_enum(
-                        "Select Correctness Filteration",
-                        Correctness,
-                        session_key=select_correctness_filteration_sk,
-                    )
-
-        return PromptFilterationFactory(
-            filteration_context=selected_context_sk.value,
-            correctness=select_correctness_filteration_sk.value,
+        selected_source = select_enum(
+            "Select Filteration Source",
+            FilterationSource,
+            session_key=selected_source_sk,
         )
+        if selected_source == FilterationSource.preset:
+            # For preset source, show preset selector
+            presets = PromptFilterationsPresets.load()
+            preset_options = list(presets.keys())
+
+            selected_preset = st.selectbox(
+                "Select Preset",
+                preset_options,
+                index=preset_options.index(preset_id_sk.value) if preset_id_sk.value in preset_options else 0,
+                key=f"{self.key}_preset_selector",
+            )
+            preset_id_sk.value = selected_preset
+
+            return PresetFilterationFactory(preset_id=selected_preset)
+
+        elif selected_source == FilterationSource.existing_prompts:
+            # For existing prompts, no additional options needed
+            return ExistingPromptsFilterationFactory()
+
+        else:
+            # For model correctness sources, show correctness selector and combine option
+            correctness = select_enum(
+                "Select Correctness",
+                Correctness,
+                session_key=select_correctness_filteration_sk,
+            )
+
+            combine_with_existing = st.checkbox(
+                "Filter to existing prompts only",
+                value=combine_with_existing_sk.value,
+                key=f"{self.key}_combine_with_existing",
+            )
+
+            # Create the appropriate factory based on selected source
+            match selected_source:
+                case FilterationSource.current_model:
+                    return CurrentModelFilterationFactory(
+                        correctness=correctness,
+                        combine_with_existing=combine_with_existing,
+                    )
+                case FilterationSource.context_models:
+                    return ContextModelsFilterationFactory(
+                        correctness=correctness,
+                        combine_with_existing=combine_with_existing,
+                    )
+                case FilterationSource.all_important_models:
+                    return AllImportantModelsFilterationFactory(
+                        correctness=correctness,
+                        combine_with_existing=combine_with_existing,
+                    )
+                case _:
+                    # This shouldn't happen with proper enum handling
+                    raise ValueError(f"Unsupported source: {selected_source}")
 
 
 class FilterPromptsComponent(StreamlitComponent[BasePromptFilteration]):
@@ -463,7 +513,7 @@ class FilterPromptsComponent(StreamlitComponent[BasePromptFilteration]):
                     value=min(50, total_prompt_count),
                     min_value=1,
                     max_value=total_prompt_count,
-                    step=10,
+                    step=1,
                     key=f"{self.customized_filteration_sk.key}_sample_size",
                 )
 

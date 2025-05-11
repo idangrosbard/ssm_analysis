@@ -34,6 +34,7 @@ from src.core.names import (
     ModelCombinationCols,
     ResultBankParamNames,
     SummarizedDataFulfilledReqsCols,
+    ToClassifyNames,
 )
 from src.core.types import (
     MODEL_ARCH_AND_SIZE,
@@ -390,10 +391,15 @@ class ResultBank(IterableDataObject[T_RUNNER_TYPE]):
         all_keys: Set[str] = set()
         for result in self:
             all_keys.update(asdict(result.variant_params).keys())
+            all_keys.add(ToClassifyNames.code_version)
 
         for key in all_keys:
-            values = [getattr(result.variant_params, key, None) for result in self]
-            unique_values = set(values)
+            unique_values = {
+                result.metadata_params.code_version
+                if key == ToClassifyNames.code_version
+                else (getattr(result.variant_params, key, None))
+                for result in self
+            }
 
             if len(unique_values) == 1:
                 common_params[key] = next(iter(unique_values))
@@ -401,9 +407,12 @@ class ResultBank(IterableDataObject[T_RUNNER_TYPE]):
                 for i, result in enumerate(self):
                     if i >= len(different_params_list):
                         different_params_list.append({})
-                    variant_params = asdict(result.variant_params)
-                    if key in variant_params:
-                        different_params_list[i][key] = variant_params[key]
+                    if key == ToClassifyNames.code_version:
+                        different_params_list[i][key] = result.metadata_params.code_version
+                    else:
+                        variant_params = asdict(result.variant_params)
+                        if key in variant_params:
+                            different_params_list[i][key] = variant_params[key]
 
         return common_params, different_params_list
 

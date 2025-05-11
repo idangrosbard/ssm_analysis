@@ -1,13 +1,14 @@
+from __future__ import annotations
+
 import json
 from dataclasses import asdict
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 import pandas as pd
 
 from src.analysis.prompt_filterations import AllPromptFilteration
 from src.core.names import DataReqCols, DatasetName, ExperimentName
 from src.core.types import MODEL_ARCH_AND_SIZE, TCodeVersionName, TPromptData
-from src.data_ingestion.data_defs.data_defs import ResultBank
 from src.data_ingestion.datasets.download_dataset import flat_to_indexed_prompt_data
 from src.experiments.infrastructure.base_prompt_filteration import BasePromptFilteration
 from src.experiments.infrastructure.base_runner import (
@@ -19,6 +20,9 @@ from src.experiments.infrastructure.base_runner import (
 from src.experiments.runners.evaluate_model import EvaluateModelParams, EvaluateModelRunner
 from src.experiments.runners.heatmap import HeatmapParams, HeatmapRunner
 from src.experiments.runners.info_flow import InfoFlowParams, InfoFlowRunner
+
+if TYPE_CHECKING:
+    from src.data_ingestion.data_defs.data_defs import ResultBank
 
 
 def get_model_evaluations(

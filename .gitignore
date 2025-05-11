@@ -194,3 +194,4 @@ final_plots/cache/*
 pyrightconfig.json
 scripts/outputs/
 .DS_Store
+temp/

@@ -212,6 +212,7 @@ class InfoFlowAnalysisComponent(StreamlitComponent):
 
         # Prepare hover data with additional information from model_evaluations
         hover_columns = [
+            COLS.ORIGINAL_IDX,
             COLS.COUNTER_FACT.SUBJECT,
             COLS.COUNTER_FACT.RELATION,
             COLS.COUNTER_FACT.TARGET_TRUE,
@@ -237,6 +238,7 @@ class InfoFlowAnalysisComponent(StreamlitComponent):
             for _, row in self.info_flow_results[selected_info_flow_indices[0]]
             .get_runner_dependencies()["evaluate_model"]
             .get_prompt_data()
+            .reset_index()
             .iterrows()
         ]
         if not all_window_indices:

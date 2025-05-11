@@ -431,6 +431,7 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
                                 "Sample results count",
                                 min_value=50,
                                 max_value=len(prompt_ids),
+                                key=f"sample_results_count_{cell_to_show.get_display_name(self.plot_plan)}",
                                 value=50,
                             )
 

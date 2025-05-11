@@ -13,7 +13,7 @@ from src.utils.streamlit.helpers.session_keys import SessionKey
 T = TypeVar("T", bound=StrEnum)
 
 
-def select_enum(label: str, enum_class: Type[T], session_key: SessionKey[T]):
+def select_enum(label: str, enum_class: Type[T], session_key: SessionKey[T]) -> T:
     """Display a selection widget for a StrEnum.
 
     Args:
@@ -24,7 +24,7 @@ def select_enum(label: str, enum_class: Type[T], session_key: SessionKey[T]):
     Returns:
         The selected value(s) from the enum, or None if none is selected
     """
-    st.selectbox(
+    return st.selectbox(
         label,
         options=enum_class,
         key=session_key.key_for_component,

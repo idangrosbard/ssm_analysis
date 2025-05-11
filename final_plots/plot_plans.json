@@ -62,7 +62,6 @@
                 "param": "filteration_factory",
                 "values": [
                     {
-                        "filteration_context": "current_model_all",
                         "correctness": "correct"
                     }
                 ]
@@ -155,7 +154,6 @@
                 "param": "filteration_factory",
                 "values": [
                     {
-                        "filteration_context": "current_model_all",
                         "correctness": "correct"
                     }
                 ]
@@ -167,6 +165,96 @@
                 "mamba1-1.4B": "#b39ddb",
                 "mamba1-2.8B": "#8a63e2",
                 "mamba1-7B": "#281175"
+            }
+        },
+        "combine_plot_config": {
+            "column_header_padding": -12.0,
+            "crop_params": {
+                "edge_crop": {
+                    "left": 0.004081632653061225,
+                    "top": 0.010548523206751054
+                },
+                "standard_crop": {
+                    "left": 0.1673469387755102,
+                    "top": 0.029535864978902954
+                }
+            }
+        }
+    },
+    "figure3-mistral": {
+        "plot_id": "figure3-mistral",
+        "order": 31,
+        "experiment_name": "info_flow",
+        "params": [
+            {
+                "param": "window_size",
+                "orientation": "lines",
+                "values": [
+                    15,
+                    9
+                ]
+            },
+            {
+                "param": "model_arch_and_size",
+                "orientation": "rows",
+                "values": [
+                    [
+                        "mistral0.3",
+                        "7B"
+                    ],
+                    [
+                        "mistral0.1",
+                        "7B"
+                    ]
+                ]
+            },
+            {
+                "param": "source",
+                "orientation": "cols",
+                "values": [
+                    "subject",
+                    "relation",
+                    "last",
+                    "first"
+                ]
+            },
+            {
+                "param": "feature_category",
+                "values": [
+                    "ALL"
+                ]
+            },
+            {
+                "param": "target",
+                "values": [
+                    "last"
+                ]
+            },
+            {
+                "param": "filteration_factory",
+                "values": [
+                    {
+                        "preset_id": "debug_mistral"
+                    }
+                ]
+            }
+        ],
+        "cell_plot_config": {
+            "diff_plot_meta_data": {
+                "title": "Probability Difference",
+                "ylabel": "Probability Diff. (%)",
+                "with_fixed_limits": false,
+                "axhline_value": 0.0,
+                "ylim_min": -70.0,
+                "ylim_max": 40.0
+            },
+            "acc_plot_meta_data": {
+                "title": "Accuracy",
+                "ylabel": "Accuracy (%)",
+                "with_fixed_limits": false,
+                "axhline_value": 100.0,
+                "ylim_min": 60.0,
+                "ylim_max": 105.0
             }
         },
         "combine_plot_config": {
@@ -241,7 +329,6 @@
                 "param": "filteration_factory",
                 "values": [
                     {
-                        "filteration_context": "current_model_all",
                         "correctness": "correct"
                     }
                 ]
@@ -325,7 +412,6 @@
                 "param": "filteration_factory",
                 "values": [
                     {
-                        "filteration_context": "current_model_all",
                         "correctness": "correct"
                     }
                 ]
@@ -417,7 +503,6 @@
                 "param": "filteration_factory",
                 "values": [
                     {
-                        "filteration_context": "current_model_all",
                         "correctness": "correct"
                     }
                 ]
@@ -523,7 +608,6 @@
                 "param": "filteration_factory",
                 "values": [
                     {
-                        "filteration_context": "current_model_all",
                         "correctness": "correct"
                     }
                 ]
@@ -615,7 +699,6 @@
                 "param": "filteration_factory",
                 "values": [
                     {
-                        "filteration_context": "current_model_all",
                         "correctness": "correct"
                     }
                 ]
@@ -653,45 +736,39 @@
         "experiment_name": "info_flow",
         "params": [
             {
-                "param": "model_arch_and_size",
+                "param": "model_size",
                 "orientation": "lines",
                 "values": [
-                    [
-                        "gpt2",
-                        "1.5B"
-                    ],
-                    [
-                        "qwen2",
-                        "0.5B"
-                    ],
-                    [
-                        "qwen2.5",
-                        "0.5B"
-                    ],
-                    [
-                        "qwen2.5",
-                        "7B"
-                    ],
-                    [
-                        "llama3.2",
-                        "3B"
-                    ],
-                    [
-                        "llama3.2",
-                        "1B"
-                    ],
-                    [
-                        "gpt2",
-                        "774M"
-                    ],
-                    [
-                        "gpt2",
-                        "355M"
-                    ],
-                    [
-                        "llama3",
-                        "8B"
-                    ]
+                    "130M",
+                    "355M",
+                    "774M",
+                    "1B",
+                    "1.4B",
+                    "1.3B",
+                    "2.8B",
+                    "2.7B",
+                    "3B",
+                    "7B",
+                    "1.5B",
+                    "7B-falcon",
+                    "7B-falcon-base",
+                    "8B",
+                    "0.5B"
+                ]
+            },
+            {
+                "param": "model_arch",
+                "orientation": "rows",
+                "values": [
+                    "mamba1",
+                    "mamba2",
+                    "gpt2",
+                    "mistral0.1",
+                    "mistral0.3",
+                    "qwen2",
+                    "qwen2.5",
+                    "llama3",
+                    "llama3.2"
                 ]
             },
             {
@@ -726,31 +803,12 @@
                 "param": "filteration_factory",
                 "values": [
                     {
-                        "filteration_context": "current_model_all",
                         "correctness": "correct"
                     }
                 ]
             }
         ],
-        "cell_plot_config": {
-            "custom_colors": {
-                "gpt2-355M": "#e3f2fd",
-                "gpt2-774M": "#90caf9",
-                "gpt2-1.5B": "#1e88e5",
-                "qwen2-0.5B": "#e0f2f1",
-                "qwen2.5-0.5B": "#b2dfdb",
-                "qwen2.5-7B": "#00796b",
-                "llama3.2-1B": "#e8f5e9",
-                "llama3.2-3B": "#66bb6a",
-                "llama3-8B": "#388e3c"
-            },
-            "custom_line_styles": {
-                "gpt2-774M": "--",
-                "gpt2-1.5B": ":",
-                "qwen2.5-7B": "--",
-                "llama3.2-3B": "--"
-            }
-        },
+        "cell_plot_config": {},
         "combine_plot_config": {
             "column_header_padding": -12.0,
             "crop_params": {
@@ -825,11 +883,9 @@
                 "orientation": "rows",
                 "values": [
                     {
-                        "filteration_context": "current_model_all",
                         "correctness": "correct"
                     },
                     {
-                        "filteration_context": "context_models_intersect",
                         "correctness": "correct"
                     }
                 ]

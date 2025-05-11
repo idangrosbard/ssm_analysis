@@ -69,8 +69,8 @@ class InfoFlowAnalysisPage(StreamlitPage):
                     ],
                     ResultBankParamNames.window_size: ["9"],
                     ResultBankParamNames.target: ["last"],
-                    ResultBankParamNames.source: ["subject", "relation", "last", "first"],
-                    ResultBankParamNames.model_arch: ["mamba1", "mamba2", "gpt2"],
+                    ResultBankParamNames.source: ["subject"],
+                    ResultBankParamNames.model_arch: ["gpt2"],
                     ResultBankParamNames.feature_category: [FeatureCategory.ALL],
                 },
                 hide_columns=[
@@ -87,7 +87,7 @@ class InfoFlowAnalysisPage(StreamlitPage):
             prompt_filteration = FilterPromptsComponent(
                 key="info_flow_analysis_prompt_filteration",
                 base_prompt_filteration=LogicalPromptFilteration.create_and(
-                    [AnyExistingCompletePromptFilteration() for runner in result_bank]
+                    [AnyExistingCompletePromptFilteration().contextualize(runner) for runner in result_bank]
                 ),
             ).render()
 

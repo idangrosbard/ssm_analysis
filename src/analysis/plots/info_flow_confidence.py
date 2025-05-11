@@ -718,7 +718,7 @@ def create_plotly_confidence_chart(
     targets_window_outputs: list[TInfoFlowOutput],
     metric_type: TMetricType,
     colors: list[str],
-    line_styles: list[str],
+    line_styles: list[TLineStyle],
     legend_labels: list[str],
     confidence_level: float = 0.95,
 ) -> go.Figure:

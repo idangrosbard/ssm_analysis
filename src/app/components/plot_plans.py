@@ -94,7 +94,7 @@ class PlotPlanSelector(StreamlitComponent[None]):
         sac.menu(
             items=menu_items,
             size="xs",
-            format_func=lambda x: self.plot_plans.get_plan(x).title if self.plot_plans.is_plan_exists(x) else x,
+            format_func=lambda x: self.plot_plans.get_plan(x).plot_id if self.plot_plans.is_plan_exists(x) else x,
             key=self.selected_plot_id_sk.key_for_component,
             return_index=False,
         )
