@@ -2,7 +2,6 @@
     "variant_params": {
         "model_arch": "qwen2.5",
         "model_size": "1.5B",
-        "experiment_name": "info_flow",
         "window_size": 3,
         "source": "last",
         "feature_category": "ALL",
@@ -11,9 +10,12 @@
     },
     "input_params": {
         "filteration": {
+            "_context": null,
             "dataset_name": "counter_fact",
-            "model_arch": "qwen2.5",
-            "model_size": "1.5B",
+            "model_arch_and_size": [
+                "qwen2.5",
+                "1.5B"
+            ],
             "correctness": "correct",
             "code_version": "test_baseline"
         },

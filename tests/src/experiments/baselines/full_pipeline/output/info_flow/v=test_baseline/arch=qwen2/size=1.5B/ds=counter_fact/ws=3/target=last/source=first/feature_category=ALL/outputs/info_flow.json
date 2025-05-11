@@ -1,7 +1,7 @@
 {
-    "metadata": {
-        "layers_amount": 26,
-        "banned_prompts": {}
-    },
-    "data": {}
+  "metadata": {
+    "layers_amount": 26,
+    "banned_prompts": {}
+  },
+  "data": {}
 }

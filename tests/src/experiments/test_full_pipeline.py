@@ -59,8 +59,8 @@ ORIGINAL_IDS = cast(
 PATHS_PROJECT_DIR_PATH = "src.core.consts.PATHS.PROJECT_DIR"
 INFO_FLOW_FORWARD_EVAL_PATH = "src.experiments.runners.info_flow.forward_eval"
 INFO_FLOW_PRINT_INTERVAL_PATH = "src.experiments.runners.info_flow.PRINT_INTERVAL"
-GET_COMMIT_HASH_PATH = "src.experiments.infrastructure.base_config.get_git_commit_hash"
-CREATE_RUN_ID_PATH = "src.experiments.infrastructure.base_config.create_run_id"
+GET_COMMIT_HASH_PATH = "src.experiments.infrastructure.base_runner.get_git_commit_hash"
+CREATE_RUN_ID_PATH = "src.experiments.infrastructure.base_runner.create_run_id"
 
 
 def get_test_full_pipeline_config(

@@ -187,16 +187,8 @@
         "experiment_name": "info_flow",
         "params": [
             {
-                "param": "window_size",
-                "orientation": "lines",
-                "values": [
-                    15,
-                    9
-                ]
-            },
-            {
                 "param": "model_arch_and_size",
-                "orientation": "rows",
+                "orientation": "lines",
                 "values": [
                     [
                         "mistral0.3",
@@ -206,6 +198,12 @@
                         "mistral0.1",
                         "7B"
                     ]
+                ]
+            },
+            {
+                "param": "window_size",
+                "values": [
+                    9
                 ]
             },
             {

@@ -2,11 +2,11 @@
     "variant_params": {
         "model_arch": "mamba2",
         "model_size": "130M",
-        "experiment_name": "heatmap",
         "window_size": 15
     },
     "input_params": {
         "filteration": {
+            "_context": null,
             "prompt_ids": [
                 53,
                 59,

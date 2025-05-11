@@ -2,11 +2,11 @@
     "variant_params": {
         "model_arch": "llama3.2",
         "model_size": "1B",
-        "experiment_name": "heatmap",
         "window_size": 15
     },
     "input_params": {
         "filteration": {
+            "_context": null,
             "prompt_ids": [
                 53,
                 59,

@@ -2,11 +2,11 @@
     "variant_params": {
         "model_arch": "qwen2",
         "model_size": "1.5B",
-        "experiment_name": "heatmap",
         "window_size": 3
     },
     "input_params": {
         "filteration": {
+            "_context": null,
             "prompt_ids": [
                 53,
                 59,

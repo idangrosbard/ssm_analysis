@@ -2,7 +2,6 @@
     "variant_params": {
         "model_arch": "llama3.2",
         "model_size": "1B",
-        "experiment_name": "info_flow",
         "window_size": 15,
         "source": "relation",
         "feature_category": "ALL",
@@ -11,9 +10,12 @@
     },
     "input_params": {
         "filteration": {
+            "_context": null,
             "dataset_name": "counter_fact",
-            "model_arch": "llama3.2",
-            "model_size": "1B",
+            "model_arch_and_size": [
+                "llama3.2",
+                "1B"
+            ],
             "correctness": "correct",
             "code_version": "test_baseline"
         },

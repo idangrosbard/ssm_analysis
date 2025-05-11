@@ -2,7 +2,6 @@
     "variant_params": {
         "model_arch": "mamba1",
         "model_size": "130M",
-        "experiment_name": "info_flow",
         "window_size": 15,
         "source": "first",
         "feature_category": "ALL",
@@ -11,9 +10,12 @@
     },
     "input_params": {
         "filteration": {
+            "_context": null,
             "dataset_name": "counter_fact",
-            "model_arch": "mamba1",
-            "model_size": "130M",
+            "model_arch_and_size": [
+                "mamba1",
+                "130M"
+            ],
             "correctness": "correct",
             "code_version": "test_baseline"
         },

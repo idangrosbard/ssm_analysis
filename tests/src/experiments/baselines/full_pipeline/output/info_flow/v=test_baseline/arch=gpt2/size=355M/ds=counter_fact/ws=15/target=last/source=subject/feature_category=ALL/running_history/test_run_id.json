@@ -2,7 +2,6 @@
     "variant_params": {
         "model_arch": "gpt2",
         "model_size": "355M",
-        "experiment_name": "info_flow",
         "window_size": 15,
         "source": "subject",
         "feature_category": "ALL",
@@ -11,9 +10,12 @@
     },
     "input_params": {
         "filteration": {
+            "_context": null,
             "dataset_name": "counter_fact",
-            "model_arch": "gpt2",
-            "model_size": "355M",
+            "model_arch_and_size": [
+                "gpt2",
+                "355M"
+            ],
             "correctness": "correct",
             "code_version": "test_baseline"
         },
