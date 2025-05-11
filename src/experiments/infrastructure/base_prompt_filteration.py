@@ -30,6 +30,8 @@ class BasePromptFilteration(BaseParams, JSONAble):
 
     @final
     def contextualize(self, context: Any):
+        if self._context is not None:
+            return self
         new_self = self.modify()
         object.__setattr__(new_self, "_context", context)
         return new_self
