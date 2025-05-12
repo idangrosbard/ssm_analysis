@@ -1,5 +1,7 @@
+import pandas as pd
 import streamlit as st
 import streamlit_antd_components as sac
+from more_itertools import unique_everseen
 
 from src.app.components.inputs import select_enum
 from src.app.components.prompt_filter import FilterPromptsComponent
@@ -37,9 +39,25 @@ class PromptsComparisonPage(StreamlitPage):
             st.warning("Please select at least one model to view tokenization.")
             return
 
+        selected_models = results_bank.model_arch_and_sizes
         tab = sac.tabs([sac.TabsItem(label=tab_name) for tab_name in class_values(PROMPTS_COMPARISON_TEXTS.TABS)])
+        unique_tokenizers = load_unique_tokenizers.call_and_render(list(unique_everseen(selected_models)))
+        if tab == PROMPTS_COMPARISON_TEXTS.TABS.SHOW_UNIQUE_TOKENIZERS:
+            # Create a table showing the mapping between tokenizers and models
+            st.write("# Tokenizer to Models Mapping")
 
-        if tab == PROMPTS_COMPARISON_TEXTS.TABS.SHOW_METRICS:
+            tokenizer_models_data = []
+            for tokenizer_info in unique_tokenizers:
+                tokenizer_models_data.append(
+                    {
+                        "Tokenizer": tokenizer_info.display_name,
+                        "Number of Models": len(tokenizer_info.model_arch_and_sizes),
+                        "Models": [str(model.model_name) for model in tokenizer_info.model_arch_and_sizes],
+                    }
+                )
+
+            st.dataframe(pd.DataFrame(tokenizer_models_data))
+        elif tab == PROMPTS_COMPARISON_TEXTS.TABS.SHOW_METRICS:
             select_enum(
                 "Select Metric",
                 EvaluateModelMetricName,
@@ -49,13 +67,9 @@ class PromptsComparisonPage(StreamlitPage):
             with st.spinner("Loading data...", show_time=True):
                 st.write(results_bank.get_hit_per_prompt(PromptsComparisonSessionKeys.evaluate_model_metric_name.value))
         elif tab == PROMPTS_COMPARISON_TEXTS.TABS.SHOW_TOKENIZATION:
-            selected_models = results_bank.model_arch_and_sizes
-
             # Load prompts
             st.subheader("Select Prompt")
             prompts = load_prompts.call_and_render().filter_by_prompt_filteration(prompt_filteration)
-
-            unique_tokenizers = load_unique_tokenizers.call_and_render(selected_models)
 
             # Show tokenization visualizer
             TokenizationVisualizerComponent(

@@ -126,11 +126,22 @@ class Prompt:
         return cast(Any, self.prompt_row[column])
 
     def true_id(self, tokenizer, device: TDevice) -> torch.Tensor:
-        toks = tokenizer(self.true_word, return_tensors="pt", padding=True).input_ids.to(device=device)
+        toks = tokenizer(self.true_word, add_special_tokens=False, return_tensors="pt", padding=True).input_ids.to(
+            device=device
+        )
         # if toks.shape[1] == 1:
         return toks
         # else:
         # return toks[:, 1:]
+
+    def true_id_v2(self, tokenizer: TTokenizer, device: TDevice) -> torch.Tensor:
+        # compute by the difference between the prompt and the prompt + true_word
+        prompt_ids = self.input_ids(tokenizer, device)
+        prompt_plus_true_ids = tokenizer(self.prompt + self.true_word, return_tensors="pt", padding=True).input_ids.to(
+            device=device
+        )
+        assert (prompt_ids == prompt_plus_true_ids[:, : len(prompt_ids[0])]).all()
+        return prompt_plus_true_ids[:, len(prompt_ids[0]) :]
 
     def input_ids(self, tokenizer: TTokenizer, device: TDevice) -> torch.Tensor:
         return tokenizer(self.prompt, return_tensors="pt", padding=True).input_ids.to(device=device)

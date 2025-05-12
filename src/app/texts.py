@@ -161,6 +161,7 @@ class PROMPTS_COMPARISON_TEXTS:
     icon = "🔤"
 
     class TABS:
+        SHOW_UNIQUE_TOKENIZERS = "Show Unique Tokenizers"
         SHOW_METRICS = "Show Metrics"
         SHOW_TOKENIZATION = "Show Tokenization"
 

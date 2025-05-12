@@ -176,8 +176,8 @@ def run_test_experiment(test_base_path: Path, normalizing_outputs: bool, with_pl
             (MODEL_ARCH.MAMBA2, "130M"),
             (MODEL_ARCH.GPT2, "355M"),
             (MODEL_ARCH.LLAMA3_2, "1B"),
-            (MODEL_ARCH.QWEN2_5, "1.5B"),
-            (MODEL_ARCH.QWEN2, "1.5B"),
+            (MODEL_ARCH.QWEN2, "0.5B"),
+            (MODEL_ARCH.QWEN2_5, "0.5B"),
         ]:
             config = get_test_full_pipeline_config_per_model_arch(
                 code_version_name="test_baseline",

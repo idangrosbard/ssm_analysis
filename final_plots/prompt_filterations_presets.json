@@ -1687,19 +1687,6 @@
                     }
                 }
             },
-            "debug_mistral": {
-                "__JSONABLE_type__": "SelectivePromptFilteration",
-                "__JSONABLE_value__": {
-                    "prompt_ids": {
-                        "__JSONABLE_metadata__": "__JSONABLE_tuple__",
-                        "__JSONABLE_value__": [
-                            59,
-                            74,
-                            79
-                        ]
-                    }
-                }
-            },
             "tests": {
                 "__JSONABLE_type__": "SelectivePromptFilteration",
                 "__JSONABLE_value__": {

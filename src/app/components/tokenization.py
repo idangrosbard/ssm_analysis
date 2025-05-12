@@ -2,11 +2,12 @@ import functools
 import threading
 from collections import defaultdict
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 import pandas as pd
 import plotly.express as px
 import streamlit as st
+import torch
 
 from src.app.components.prompt_filter import SelectPromptsComponent, show_prompt
 from src.core.types import TErrorMessage, TokenType, TPromptOriginalIndex, TTokenIndex
@@ -40,6 +41,10 @@ class PromptTokenizationStats:
     token_type_error_msg: Dict[TokenType, Optional[TErrorMessage]] = field(default_factory=dict)
     token_type_edges: Dict[TokenType, Optional[Tuple[TTokenIndex, TTokenIndex]]] = field(default_factory=dict)
     subject_token_edges: Optional[Tuple[TTokenIndex, TTokenIndex]] = None
+    # Comparison between true_id and true_id_v2
+    true_id_match: Optional[bool] = None  # True if both methods return same result, False if different, None if error
+    true_id_error_msg: Optional[TErrorMessage] = None  # Error message if comparison failed
+    true_id_values: Dict[str, Any] = field(default_factory=dict)  # Store actual values when they differ
 
 
 @dataclass
@@ -118,6 +123,42 @@ def tokenize_prompts_task(
                     stats.token_type_error_msg[token_type] = TErrorMessage(str(e_type))
 
             stats.subject_token_edges = find_token_range(tokenizer_info.tokenizer, input_ids[0], prompt.subject)
+
+            # Compare true_id and true_id_v2
+            try:
+                # Get results from both methods
+                true_id_tokens = prompt.true_id(tokenizer_info.tokenizer, "cpu")
+                true_id_v2_tokens = prompt.true_id_v2(tokenizer_info.tokenizer, "cpu")
+
+                # Compare the tensors
+                same_shape = true_id_tokens.shape == true_id_v2_tokens.shape
+                if same_shape:
+                    tokens_match = torch.equal(true_id_tokens, true_id_v2_tokens)
+                else:
+                    tokens_match = False
+
+                stats.true_id_match = tokens_match
+
+                # If tokens don't match, store the actual values
+                if not tokens_match:
+                    stats.true_id_values = {
+                        "true_id": {
+                            "tokens": true_id_tokens.tolist(),
+                            "decoded": tokenizer_info.tokenizer.decode(true_id_tokens[0]),
+                            "shape": list(true_id_tokens.shape),
+                        },
+                        "true_id_v2": {
+                            "tokens": true_id_v2_tokens.tolist(),
+                            "decoded": tokenizer_info.tokenizer.decode(true_id_v2_tokens[0]),
+                            "shape": list(true_id_v2_tokens.shape),
+                        },
+                        "prompt": prompt.prompt,
+                        "true_word": prompt.true_word,
+                    }
+            except Exception as e_true_id:
+                stats.true_id_match = None  # Mark as error
+                stats.true_id_error_msg = TErrorMessage(str(e_true_id))
+
         except Exception as e_main:
             stats.error_msg = TErrorMessage(str(e_main))
 
@@ -254,6 +295,7 @@ class TokenizationResultsVisualizer(StreamlitComponent):
                 "📏 Token Counts",
                 "🔄 Token Type Analysis",
                 "🔍 Disagreement Analysis",
+                "⚖️ true_id Comparison",
             ]
         )
 
@@ -276,6 +318,10 @@ class TokenizationResultsVisualizer(StreamlitComponent):
         # 5. Tokenization disagreement analysis
         with analysis_tabs[4]:
             self._render_disagreement_analysis()
+
+        # 6. true_id comparison analysis
+        with analysis_tabs[5]:
+            self._render_true_id_comparison()
 
     def _render_overall_statistics(self):
         """Render overall statistics section based on the new structure."""
@@ -562,6 +608,161 @@ class TokenizationResultsVisualizer(StreamlitComponent):
             st.info(
                 "Not enough comparable data across tokenizers for the prompts in this subset to calculate disagreement."
             )
+
+    def _render_true_id_comparison(self):
+        """Render a detailed comparison between true_id and true_id_v2 methods across tokenizers.
+
+        This tab analyzes whether the two methods for generating true token IDs produce the same results:
+        1. true_id: directly tokenizes the true_word
+        2. true_id_v2: computes the difference between prompt and prompt+true_word tokenization
+
+        The analysis includes:
+        - Mapping of tokenizers to their associated models
+        - Statistics on matching vs differing cases per tokenizer
+        - Visualization of comparison results
+        - Detailed examples of cases where the methods produce different results
+        """
+        if not self.results.processed_pairs:
+            st.info("No prompts processed yet to compare true_id.")
+            return
+
+        # Add analysis for tokenizers with differences
+        st.subheader("true_id vs true_id_v2 Comparison")
+
+        @dataclass
+        class TrueIdComparisonStats:
+            matching: int = 0
+            different: int = 0
+            errors: int = 0
+            unique_errors: Set[TErrorMessage] = field(default_factory=set)
+            total: int = 0
+
+        # First, gather stats on matching vs differing cases per tokenizer
+        match_stats = defaultdict(TrueIdComparisonStats)
+        diff_examples = defaultdict(list)
+
+        # Process all prompt/tokenizer combinations
+        for tokenizer_name, prompts_dict in self.results.data.items():
+            for prompt_idx, stats in prompts_dict.items():
+                match_stats[tokenizer_name].total += 1
+
+                if stats.true_id_match is None:
+                    match_stats[tokenizer_name].errors += 1
+                    assert stats.true_id_error_msg is not None
+                    match_stats[tokenizer_name].unique_errors.add(stats.true_id_error_msg)
+                elif stats.true_id_match:
+                    match_stats[tokenizer_name].matching += 1
+                else:
+                    match_stats[tokenizer_name].different += 1
+                    # Store examples where they differ
+                    if stats.true_id_values:
+                        diff_examples[tokenizer_name].append({"prompt_idx": prompt_idx, "values": stats.true_id_values})
+
+        # Convert to DataFrame for display
+        if not match_stats:
+            st.info("No true_id comparison data available yet.")
+            return
+
+        match_stats_list = []
+        for tokenizer, counts in match_stats.items():
+            match_stats_list.append(
+                {
+                    "Tokenizer": tokenizer,
+                    "Matching": counts.matching,
+                    "Different": counts.different,
+                    "Errors": counts.errors,
+                    "Unique Errors": len(counts.unique_errors),
+                    "Total": counts.total,
+                    "Match Rate (%)": round(counts.matching / counts.total * 100, 2) if counts.total > 0 else 0,
+                }
+            )
+
+        match_stats_df = pd.DataFrame(match_stats_list)
+        st.write("### true_id Match Statistics by Tokenizer")
+        st.dataframe(match_stats_df.sort_values("Match Rate (%)", ascending=False))
+
+        # Visualize the comparison
+        fig = px.bar(
+            match_stats_df,
+            x="Tokenizer",
+            y=["Matching", "Different", "Errors"],
+            title="true_id vs true_id_v2 Comparison Results by Tokenizer",
+            barmode="stack",
+        )
+        st.plotly_chart(fig)
+
+        # Show examples where true_id and true_id_v2 differ
+        st.write("### Examples Where true_id and true_id_v2 Differ")
+
+        # Let user select a tokenizer to see examples
+        tokenizers_with_diffs = [tk for tk, examples in diff_examples.items() if examples]
+
+        if tokenizers_with_diffs:
+            selected_tokenizer = st.selectbox(
+                "Select Tokenizer to See Examples", tokenizers_with_diffs, key="diff_tokenizer_select"
+            )
+
+            for i, example in enumerate(diff_examples[selected_tokenizer]):
+                with st.expander(f"Example {i + 1}: Prompt {example['prompt_idx']}"):
+                    values = example["values"]
+                    # Display prompt and true_word
+                    st.write(f"**Prompt:** {values['prompt']}")
+                    st.write(f"**True Word:** {values['true_word']}")
+
+                    # Display true_id results
+                    st.write("**true_id results:**")
+                    st.json(
+                        {
+                            "tokens": values["true_id"]["tokens"],
+                            "decoded": values["true_id"]["decoded"],
+                            "shape": values["true_id"]["shape"],
+                        }
+                    )
+
+                    # Display true_id_v2 results
+                    st.write("**true_id_v2 results:**")
+                    st.json(
+                        {
+                            "tokens": values["true_id_v2"]["tokens"],
+                            "decoded": values["true_id_v2"]["decoded"],
+                            "shape": values["true_id_v2"]["shape"],
+                        }
+                    )
+        else:
+            st.info("No examples found where true_id and true_id_v2 differ for any tokenizer.")
+
+        # if stats.true_id_match is not None:
+        #     st.write("### true_id vs true_id_v2 Comparison")
+        #     if stats.true_id_match:
+        #         st.success("✅ true_id and true_id_v2 methods produce matching results")
+        #     else:
+        #         st.error("❌ true_id and true_id_v2 methods produce different results")
+
+        #         if stats.true_id_values:
+        #             values = stats.true_id_values
+        #             col1, col2 = st.columns(2)
+
+        #             with col1:
+        #                 st.write("**true_id results:**")
+        #                 st.json(
+        #                     {
+        #                         "tokens": values["true_id"]["tokens"],
+        #                         "decoded": values["true_id"]["decoded"],
+        #                         "shape": values["true_id"]["shape"],
+        #                     }
+        #                 )
+
+        #             with col2:
+        #                 st.write("**true_id_v2 results:**")
+        #                 st.json(
+        #                     {
+        #                         "tokens": values["true_id_v2"]["tokens"],
+        #                         "decoded": values["true_id_v2"]["decoded"],
+        #                         "shape": values["true_id_v2"]["shape"],
+        #                     }
+        #                 )
+        # elif stats.true_id_error_msg:
+        #     st.error(f"Error during true_id comparison: {stats.true_id_error_msg}")
 
 
 class SinglePromptAnalyzer(StreamlitComponent):
