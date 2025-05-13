@@ -33,7 +33,7 @@ from src.analysis.prompt_filterations import (
 from src.app.components.prompt_filter import (
     ShowPromptFilterationComponent,
 )
-from src.core.consts import DEFAULT_MODEL_CORRECT_MODEL_CODE_VERSION
+from src.core.consts import DEFAULT_MODEL_CORRECT_MODEL_CODE_VERSION, MODEL_SIZES_PER_ARCH_TO_MODEL_ID
 from src.core.names import DatasetName
 from src.core.types import (
     MODEL_ARCH,
@@ -113,10 +113,12 @@ class FilterationCreator(StreamlitComponent[BasePromptFilteration]):
             with col1:
                 dataset = st.selectbox("Dataset", list(DatasetName), key=f"{self.key}_mc_dataset")
                 model_arch = st.selectbox(
-                    "Model Architecture", [arch.value for arch in MODEL_ARCH], key=f"{self.key}_mc_arch"
+                    "Model Architecture",
+                    [arch for arch in MODEL_SIZES_PER_ARCH_TO_MODEL_ID.keys()],
+                    key=f"{self.key}_mc_arch",
                 )
             with col2:
-                model_sizes: List[str] = ["1b", "2b", "3b", "7b"]  # These are the valid TModelSize values
+                model_sizes: List[str] = list(MODEL_SIZES_PER_ARCH_TO_MODEL_ID[model_arch].keys())
                 model_size = st.selectbox("Model Size", model_sizes, key=f"{self.key}_mc_size")
                 correctness = st.selectbox("Correctness Type", list(Correctness), key=f"{self.key}_mc_correctness")
 
@@ -204,6 +206,8 @@ class FilterationCreator(StreamlitComponent[BasePromptFilteration]):
 class PromptFilterationPresetsPage(StreamlitPage):
     """Page for managing prompt filteration presets."""
 
+    NEW_PRESET_LABEL = "Create New Preset"
+
     def render(self) -> None:
         """Main function to render the preset management page."""
         st.title("Prompt Filteration Presets Management")
@@ -219,16 +223,32 @@ class PromptFilterationPresetsPage(StreamlitPage):
             # Create menu items for each preset
             menu_items: List[Union[str, Dict, sac.MenuItem]] = [
                 sac.MenuItem(
-                    label=preset_name,
-                    icon="filter",  # Using filter icon for presets
-                )
-                for preset_name in presets.keys()
+                    label=self.NEW_PRESET_LABEL,
+                    icon="plus",
+                ),
+                *[
+                    sac.MenuItem(
+                        label=preset_name,
+                        icon="filter",  # Using filter icon for presets
+                    )
+                    for preset_name in presets.keys()
+                ],
             ]
 
             selected_preset = sac.menu(items=menu_items, format_func="title", open_all=True, key="preset_menu")
 
         with col2:
-            if selected_preset:
+            if selected_preset == self.NEW_PRESET_LABEL:
+                new_preset_name = st.text_input("New Preset Name", key="new_preset_name")
+                new_preset = FilterationCreator(key="new_preset").render()
+                if st.button("Create Preset"):
+                    if new_preset_name in presets:
+                        st.error(f"Preset name '{new_preset_name}' already exists!")
+                    else:
+                        presets.add_preset(new_preset_name, new_preset)
+                        st.success(f"Created new preset '{new_preset_name}'")
+                        st.rerun()
+            elif selected_preset:
                 selected_preset_str = cast(str, selected_preset)
                 st.subheader(f"Manage Preset: {selected_preset_str}")
 
@@ -278,23 +298,6 @@ class PromptFilterationPresetsPage(StreamlitPage):
                             presets.save()
                             st.success(f"Duplicated preset '{selected_preset_str}' to '{new_name}'")
                             st.rerun()
-
-        # Create new preset section
-        st.divider()
-        st.subheader("Create New Preset")
-
-        new_preset_name = st.text_input("New Preset Name", key="new_preset_name")
-        if new_preset_name:
-            new_preset = FilterationCreator(key=f"new_preset_{new_preset_name}").render()
-
-            if st.button("Create Preset"):
-                if new_preset_name in presets:
-                    st.error(f"Preset name '{new_preset_name}' already exists!")
-                else:
-                    presets._items[cast(TPresetID, new_preset_name)] = new_preset
-                    presets.save()
-                    st.success(f"Created new preset '{new_preset_name}'")
-                    st.rerun()
 
 
 # endregion

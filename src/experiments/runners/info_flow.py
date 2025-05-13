@@ -461,7 +461,7 @@ def run(args: InfoFlowRunner):
         mininterval=PRINT_INTERVAL,
     ):
         if prompt_id not in content[InfoFlowJSONFileCols.data]:
-            content[InfoFlowJSONFileCols.data][prompt_id] = {}
+            content[InfoFlowJSONFileCols.data][prompt_id] = {}  # TODO: remove this line if banned
         if prompt_id in content[InfoFlowJSONFileCols.metadata][InfoFlowJSONMetadataCols.banned_prompts]:
             continue
         for layer_idx in layer_idx:

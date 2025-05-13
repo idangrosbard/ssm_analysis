@@ -294,6 +294,16 @@ class PromptFilterationsPresets(IndexableDataObject[TPresetID, BasePromptFiltera
         self.get_json_path().parent.mkdir(parents=True, exist_ok=True)
         self.get_json_path().write_text(self.to_jsonable_json(indent=4))
 
+    def add_preset(self, preset_name: TPresetID, preset: BasePromptFilteration):
+        new_presets = PromptFilterationsPresets(
+            prompt_filterations={
+                **self._items,
+                preset_name: preset,
+            }
+        )
+        new_presets.save()
+        return new_presets
+
     @classmethod
     def load(cls) -> PromptFilterationsPresets:
         if not cls.get_json_path().exists():
