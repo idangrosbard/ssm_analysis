@@ -148,6 +148,9 @@ class PercentageCrop(BaseModel):
         if self.height < 5.0:
             self.height = 90.0
 
+        self.width = min(self.width, 100.0 - self.left)
+        self.height = min(self.height, 100.0 - self.top)
+
         return self
 
     @property

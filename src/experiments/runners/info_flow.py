@@ -2,12 +2,12 @@ import json
 import time
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import ClassVar, Literal, Optional, TypedDict
+from typing import ClassVar, Literal, Optional, Sequence, TypedDict
 
 import numpy as np
 import orjson
 import torch
-from cachetools import LRUCache, cached
+from cachetools import LRUCache, TTLCache, cached
 from frozendict import frozendict
 from tqdm import tqdm
 
@@ -112,6 +112,7 @@ class InfoFlowFileStatistics:
 
 OUTPUTS_CACHE = LRUCache(maxsize=10)
 STATISTICS_CACHE = LRUCache(maxsize=10)
+TTL_info_flow_output_cache = TTLCache(maxsize=10, ttl=60)
 
 
 @dataclass(frozen=True)
@@ -189,15 +190,16 @@ class JSONInfoFlowFile:
             #     del OUTPUTS_CACHE[(self,)]
         return content
 
+    @cached(TTL_info_flow_output_cache)
     def load_to_info_flow_output(
         self,
-        prompt_idx_subset: Optional[list[TPromptOriginalIndex]] = None,
+        prompt_idx_subset: Optional[tuple[TPromptOriginalIndex, ...]] = None,
         layer_idx_subset: Optional[TWindowLayerStartIndex] = None,
     ) -> TInfoFlowOutput:
         content = self.load()
         info_flow_data = content[InfoFlowJSONFileCols.data]
 
-        prompt_idx: list[TPromptOriginalIndex] = (
+        prompt_idx: Sequence[TPromptOriginalIndex] = (
             list(info_flow_data.keys()) if prompt_idx_subset is None else prompt_idx_subset
         )
 
@@ -358,7 +360,7 @@ class InfoFlowRunner(BaseRunner[InfoFlowParams]):
 
     def get_outputs(self) -> TInfoFlowOutput:
         return self.output_file.load_to_info_flow_output(
-            prompt_idx_subset=self.input_params.filteration.contextualize(self).get_prompt_ids(),
+            prompt_idx_subset=tuple(self.input_params.filteration.contextualize(self).get_prompt_ids()),
         )
 
     def _compute_impl(self) -> None:

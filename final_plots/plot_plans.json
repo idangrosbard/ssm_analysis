@@ -68,6 +68,10 @@
             }
         ],
         "cell_plot_config": {
+            "figure_width": 6.0,
+            "ylabel_y_coord": 0.5,
+            "axis_fontsize": 25,
+            "tight_layout_rect_y": 0.85,
             "custom_colors": {
                 "mamba1-7B-falcon": "#af7404",
                 "mamba1-2.8B": "#3e7316",
@@ -76,19 +80,23 @@
             }
         },
         "combine_plot_config": {
+            "column_header_padding": -25.0,
             "crop_params": {
                 "edge_crop": {
-                    "left": 0.29,
-                    "top": 8.18,
-                    "width": 99.85,
-                    "height": 91.41
+                    "left": 3.43,
+                    "top": 20.5,
+                    "width": 96.27999999999999,
+                    "height": 79.5
                 },
                 "standard_crop": {
-                    "left": 11.43,
-                    "top": 8.59,
-                    "width": 88.0,
-                    "height": 79.34
+                    "left": 14.57,
+                    "top": 19.29,
+                    "width": 84.72,
+                    "height": 69.41999999999999
                 }
+            },
+            "legend_params": {
+                "legend_padding": 30
             }
         }
     },

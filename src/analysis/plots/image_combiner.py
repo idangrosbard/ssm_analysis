@@ -228,7 +228,7 @@ class LegendParams(BaseModel):
         json_schema_extra={SpecialFieldKeys.column_group: "border"},
     )
     border_width: int = Field(
-        default=1, ge=1, description="Width of border line", json_schema_extra={SpecialFieldKeys.column_group: "border"}
+        default=1, ge=0, description="Width of border line", json_schema_extra={SpecialFieldKeys.column_group: "border"}
     )
 
 
@@ -548,11 +548,11 @@ def combine_image_grid(
     if legend_items:
         # Adjust for actual number of rows needed (minimum of specified rows or number of items)
         actual_rows = min(params.legend_params.rows, len(legend_items))
-        legend_h = single_row_legend_h * actual_rows
+        legend_h = single_row_legend_h * actual_rows + params.legend_params.legend_padding
 
         # Add border width to legend height if border is enabled
         if params.legend_params.show_border:
-            legend_h += params.legend_params.border_width + params.legend_params.legend_padding
+            legend_h += params.legend_params.border_width
 
     row_label_h = _get_text_height("TEST", font_label) if params.show_row_labels else 0
 
