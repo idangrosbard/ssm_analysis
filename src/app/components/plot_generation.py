@@ -8,6 +8,7 @@
 # - Add support for interactive plots
 # Outline Compatibility Issues:
 # - New file, outline will be implemented
+import contextlib
 from dataclasses import dataclass
 from io import BytesIO
 from pathlib import Path
@@ -171,12 +172,12 @@ class Tabs:
     CUSTOMIZE_PLOT = "Customize Plot"
 
 
+@dataclass
 class PlotGenerator(StreamlitComponent[Optional[str]]):
     """Component for generating plots based on plot plans."""
 
-    def __init__(self, plot_plan: PlotPlan, result_bank: ResultBank):
-        self.plot_plan = plot_plan
-        self.result_bank = result_bank
+    plot_plan: PlotPlan
+    result_bank: ResultBank
 
     def _get_cell_cache_path(self, grid_name: Any, row_name: Any, col_name: Any) -> Path:
         """Generate a unique cache path for a cell's plot."""
@@ -270,9 +271,7 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
         return fig
 
     def _save_plot_plan(self):
-        plot_plans = PlotPlans.load()
-        plot_plans._items[self.plot_plan.plot_id] = self.plot_plan
-        plot_plans.save()
+        PlotPlans.save_plot_plan(self.plot_plan)
 
     def _plot_cell(
         self,
@@ -284,7 +283,7 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
         show_button: bool = True,
     ) -> Path:
         """Plot a single cell with caching."""
-        cache_path = cell.get_cache_path(self.plot_plan, PlotPlans.get_cache_dir(self.plot_plan.plot_id))
+        cache_path = PlotPlans.get_cell_cache_path(self.plot_plan, cell)
         recreate = recreate or (show_button and st.button(f"Recreate_{cache_path.name}"))
         if not recreate and cache_path.exists():
             # Load and display cached plot if needed
@@ -474,7 +473,7 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
 
             # Create tabs for different plot views
             if len(cells_by_grid) == 1 and None in cells_by_grid:
-                tabs = [st.empty()]
+                tabs = [contextlib.nullcontext()]
                 grid_names = [None]
             else:
                 grid_names = self.plot_plan.get_options_for_param(FinalPlotsPlanOrientation.grids)

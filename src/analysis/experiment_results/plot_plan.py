@@ -3,7 +3,6 @@ from __future__ import annotations
 from collections import defaultdict
 from dataclasses import dataclass
 from itertools import product
-from pathlib import Path
 from typing import (
     Any,
     Dict,
@@ -45,6 +44,7 @@ from src.core.types import (
 from src.data_ingestion.data_defs.data_defs import (
     DataReqiermentCollection,
     DataReqs,
+    PlotPlans,
     ResultBank,
 )
 from src.experiments.infrastructure.base_prompt_filteration import (
@@ -129,24 +129,18 @@ class Cell:
 
         return get_hyper_param_definition(param_config.param).get_display_name(value)
 
-    def get_cache_path(self, plot_plan: PlotPlan, cache_dir: Path) -> Path:
-        """Generate a unique cache path for this cell."""
-        # Get display names for each field
-        display_names = {
-            field: self.get_field_display_name(field, plot_plan) or "None" for field in ["grids", "rows", "cols"]
-        }
-
-        # Create a unique identifier for the cell
-        cell_id = "_".join(f"{value}" for key, value in display_names.items()).replace(" ", "_")
-        return cache_dir / f"{cell_id}.png"
-
     def to_dict(self) -> dict[str, PossibleHPDTypes]:
         """Convert cell to dictionary for data requirements."""
         return {FinalPlotsPlanOrientation[field]: getattr(self, field) for field in ["grids", "rows", "cols"]}
 
     def get_display_name(self, plot_plan: PlotPlan) -> str:
         """Get the display name for the cell."""
-        return self.get_cache_path(plot_plan, Path(".")).stem
+        display_names = {
+            field: self.get_field_display_name(field, plot_plan) or "None" for field in ["grids", "rows", "cols"]
+        }
+
+        # Create a unique identifier for the cell
+        return "_".join(f"{value}" for key, value in display_names.items()).replace(" ", "_")
 
 
 class ParamConfig(BaseModel):
@@ -470,3 +464,7 @@ class PlotPlan(BaseModel):
         if config is None:
             return []
         return config.values or []
+
+    def save(self) -> None:
+        """Save the parameter configuration."""
+        PlotPlans.save_plot_plan(self)

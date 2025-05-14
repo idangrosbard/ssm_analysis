@@ -105,8 +105,6 @@ class PlotPlanRequirements(StreamlitComponent[None]):
         self.result_bank = result_bank
 
     def render(self):
-        st.subheader("Data Requirements")
-
         # Get data requirements for the plot plan
         data_reqs = self.plot_plan.get_data_requirements(self.result_bank)
         fulfilled_reqs = data_reqs.to_fulfilled_reqs(self.result_bank).summarize()

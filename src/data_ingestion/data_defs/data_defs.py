@@ -188,6 +188,16 @@ class PlotPlans(IndexableDataObject[TPlotID, "PlotPlan"]):
     def get_cache_dir(cls, plot_id: TPlotID) -> Path:
         return PATHS.FINAL_PLOTS_DIR / "cache" / plot_id
 
+    @classmethod
+    def get_cell_cache_path(cls, plot_plan: PlotPlan, cell: Cell) -> Path:
+        return cls.get_cache_dir(plot_plan.plot_id) / f"{cell.get_display_name(plot_plan)}.png"
+
+    @classmethod
+    def save_plot_plan(cls, plot_plan: PlotPlan) -> None:
+        plot_plans = cls.load()
+        plot_plans._items[plot_plan.plot_id] = plot_plan
+        plot_plans.save()
+
     def add_plan(self, plan: PlotPlan):
         if plan.plot_id in self._items:
             raise ValueError(f"Plot plan with title {plan.plot_id} already exists")
@@ -610,4 +620,4 @@ class Prompts(IndexableDataObject[TPromptOriginalIndex, PromptNew]):
 # Forward References
 
 from src.analysis.experiment_results.model_prompt_combination import ModelCombination  # noqa: E402
-from src.analysis.experiment_results.plot_plan import PlotPlan  # noqa: E402
+from src.analysis.experiment_results.plot_plan import Cell, PlotPlan  # noqa: E402
