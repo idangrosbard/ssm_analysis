@@ -11,7 +11,7 @@ from src.core.names import (
     DatasetName,
     ExperimentName,
     InfoFlowVariantParam,
-    ResultBankParamNames,
+    ToClassifyNames,
     WindowedVariantParam,
 )
 from src.core.types import (
@@ -363,28 +363,28 @@ def format_params_for_title(params: dict) -> str:
 
     parts_remaining = set(params.keys())
     ordered_parts = []
-    for param in ResultBankParamNames:
+    for param in BaseVariantParamName:
         if param in parts_remaining:
             parts_remaining.remove(param)
             match param:
-                case ResultBankParamNames.experiment_name | ResultBankParamNames.code_version:
+                case BaseVariantParamName.experiment_name | ToClassifyNames.code_version:
                     ordered_parts.append(params[param])
-                case ResultBankParamNames.model_arch:
-                    if ResultBankParamNames.model_size in parts_remaining:
+                case BaseVariantParamName.model_arch:
+                    if BaseVariantParamName.model_size in parts_remaining:
                         ordered_parts.append(
-                            f"{params[ResultBankParamNames.model_arch]} {params[ResultBankParamNames.model_size]}"
+                            f"{params[BaseVariantParamName.model_arch]} {params[BaseVariantParamName.model_size]}"
                         )
-                        parts_remaining.remove(ResultBankParamNames.model_size)
+                        parts_remaining.remove(BaseVariantParamName.model_size)
                     else:
-                        ordered_parts.append(params[ResultBankParamNames.model_arch])
-                case ResultBankParamNames.window_size:
-                    ordered_parts.append(f"ws={params[ResultBankParamNames.window_size]}")
-                case ResultBankParamNames.source:
-                    base_str = f"From {params[ResultBankParamNames.source]}"
-                    if ResultBankParamNames.feature_category in parts_remaining:
-                        if params[ResultBankParamNames.feature_category] is not None:
-                            base_str = f"{base_str} - {params[ResultBankParamNames.feature_category]}"
-                        parts_remaining.remove(ResultBankParamNames.feature_category)
+                        ordered_parts.append(params[BaseVariantParamName.model_arch])
+                case WindowedVariantParam.window_size:
+                    ordered_parts.append(f"ws={params[WindowedVariantParam.window_size]}")
+                case InfoFlowVariantParam.source:
+                    base_str = f"From {params[InfoFlowVariantParam.source]}"
+                    if InfoFlowVariantParam.feature_category in parts_remaining:
+                        if params[InfoFlowVariantParam.feature_category] is not None:
+                            base_str = f"{base_str} - {params[InfoFlowVariantParam.feature_category]}"
+                        parts_remaining.remove(InfoFlowVariantParam.feature_category)
                     ordered_parts.append(base_str)
                 case _:
                     ordered_parts.append(f"{param}={params[param]}")

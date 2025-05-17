@@ -3,8 +3,20 @@ import json
 from abc import ABC
 from collections import defaultdict
 from dataclasses import asdict, dataclass, replace
-from enum import StrEnum
-from typing import Any, Callable, ContextManager, Optional, Type, TypeVar, cast
+from enum import Enum, StrEnum
+from typing import (
+    Any,
+    Callable,
+    ContextManager,
+    Literal,
+    Optional,
+    Type,
+    TypeVar,
+    Union,
+    cast,
+    get_args,
+    get_origin,
+)
 
 import pyrallis
 
@@ -20,6 +32,25 @@ _T_STR_ENUM = TypeVar("_T_STR_ENUM", bound=StrEnum)
 
 def str_enum_values(cls: Type[_T_STR_ENUM]) -> list[_T_STR_ENUM]:
     return cast(list[_T_STR_ENUM], class_values(cls))
+
+
+def get_enum_or_literal_options(typ: Any) -> list[str]:
+    origin = get_origin(typ)
+    args = get_args(typ)
+
+    if origin is Literal:
+        return [str(a) for a in args]
+
+    elif isinstance(typ, type) and issubclass(typ, Enum):
+        return [e.name if isinstance(e, StrEnum) else e.name for e in typ]
+
+    elif origin is Union:
+        values = []
+        for arg in args:
+            values += get_enum_or_literal_options(arg)
+        return values
+
+    return []
 
 
 def init_str_enum_from_value(cls: Type[_T_STR_ENUM], value: str) -> _T_STR_ENUM:

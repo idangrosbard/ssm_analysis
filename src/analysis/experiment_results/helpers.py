@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, cast
 import pandas as pd
 
 from src.analysis.prompt_filterations import AllPromptFilteration
-from src.core.names import DataReqCols, DatasetName, ExperimentName
+from src.core.names import BaseVariantParamName, DatasetName, ExperimentName
 from src.core.types import MODEL_ARCH_AND_SIZE, TCodeVersionName, TPromptData
 from src.data_ingestion.datasets.download_dataset import flat_to_indexed_prompt_data
 from src.experiments.infrastructure.base_prompt_filteration import BasePromptFilteration
@@ -48,7 +48,7 @@ def get_model_evaluations(
 
 
 def init_variant_params_from_values(dict_values: dict) -> BaseVariantParams:
-    experiment_name = cast(ExperimentName, dict_values.pop(DataReqCols.experiment_name))
+    experiment_name = cast(ExperimentName, dict_values.pop(BaseVariantParamName.experiment_name))
     match experiment_name:
         case ExperimentName.evaluate_model:
             return EvaluateModelParams(**dict_values)

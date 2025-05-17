@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from abc import abstractmethod
 from enum import StrEnum
-from typing import Any, List, Literal, Optional, Union
+from typing import List, Union
 
 from pydantic import BaseModel
 
@@ -40,7 +40,7 @@ class PromptFilterationFactory(BaseModel):
     """
 
     # Type field (discriminator for serialization/deserialization)
-    type: str | Any
+    type: FilterationSource
 
     # Optional flag for combining with existing prompts
     combine_with_existing: bool = False
@@ -70,7 +70,7 @@ class PromptFilterationFactory(BaseModel):
 class PresetFilterationFactory(PromptFilterationFactory):
     """Factory for creating prompt filterations from presets."""
 
-    type: Literal["preset"] = "preset"
+    type: FilterationSource = FilterationSource.preset
     preset_id: TPresetID
 
     def _get_base_filteration(self, context_model_arch_and_sizes: List[MODEL_ARCH_AND_SIZE]) -> BasePromptFilteration:
@@ -89,7 +89,7 @@ class PresetFilterationFactory(PromptFilterationFactory):
 class ModelCorrectnessFilterationFactory(PromptFilterationFactory):
     """Base class for factories that filter based on model correctness."""
 
-    correctness: Optional[Correctness] = None
+    correctness: Correctness
 
     @property
     def display_name(self) -> str:
@@ -105,11 +105,9 @@ class ModelCorrectnessFilterationFactory(PromptFilterationFactory):
 class CurrentModelFilterationFactory(ModelCorrectnessFilterationFactory):
     """Factory for creating filterations based on the current model's correctness."""
 
-    type: Literal["current_model"] = "current_model"
+    type: FilterationSource = FilterationSource.current_model
 
     def _get_base_filteration(self, context_model_arch_and_sizes: List[MODEL_ARCH_AND_SIZE]) -> BasePromptFilteration:
-        if not self.correctness:
-            raise ValueError("Correctness must be set for CurrentModelFilterationFactory")
         return ModelCorrectPromptFilteration(
             dataset_name=DEFAULT_MODEL_CORRECT_DATASET_NAME,
             model_arch_and_size=None,  # Will be contextualized
@@ -122,11 +120,9 @@ class CurrentModelFilterationFactory(ModelCorrectnessFilterationFactory):
 class ContextModelsFilterationFactory(ModelCorrectnessFilterationFactory):
     """Factory for creating filterations based on correctness across context models."""
 
-    type: Literal["context_models"] = "context_models"
+    type: FilterationSource = FilterationSource.context_models
 
     def _get_base_filteration(self, context_model_arch_and_sizes: List[MODEL_ARCH_AND_SIZE]) -> BasePromptFilteration:
-        if not self.correctness:
-            raise ValueError("Correctness must be set for ContextModelsFilterationFactory")
         return LogicalPromptFilteration.create_and(
             [
                 ModelCorrectPromptFilteration(
@@ -144,11 +140,9 @@ class ContextModelsFilterationFactory(ModelCorrectnessFilterationFactory):
 class AllImportantModelsFilterationFactory(ModelCorrectnessFilterationFactory):
     """Factory for creating filterations based on correctness across all important models."""
 
-    type: Literal["all_important_models"] = "all_important_models"
+    type: FilterationSource = FilterationSource.all_important_models
 
     def _get_base_filteration(self, context_model_arch_and_sizes: List[MODEL_ARCH_AND_SIZE]) -> BasePromptFilteration:
-        if not self.correctness:
-            raise ValueError("Correctness must be set for AllImportantModelsFilterationFactory")
         return LogicalPromptFilteration.create_and(
             [
                 ModelCorrectPromptFilteration(
@@ -166,7 +160,7 @@ class AllImportantModelsFilterationFactory(ModelCorrectnessFilterationFactory):
 class ExistingPromptsFilterationFactory(PromptFilterationFactory):
     """Factory for creating filterations that select only existing/computed prompts."""
 
-    type: Literal["existing_prompts"] = "existing_prompts"
+    type: FilterationSource = FilterationSource.existing_prompts
 
     def _get_base_filteration(self, context_model_arch_and_sizes: List[MODEL_ARCH_AND_SIZE]) -> BasePromptFilteration:
         return AnyExistingCompletePromptFilteration()

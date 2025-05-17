@@ -8,6 +8,7 @@ from src.core.consts import (
     PATHS,
 )
 from src.core.names import (
+    BaseVariantParamName,
     ExperimentName,
     ResultBankParamNames,
     ToClassifyNames,
@@ -59,7 +60,7 @@ class ValueResolver(ABC, Generic[_Runner]):
         return OutputPath(
             base_path=results_base_path,
             path_components=cls.get_experiment_runner_cls().get_variant_output_keys(),
-        ).enforce_value(ResultBankParamNames.experiment_name, cls.get_experiment_name())
+        ).enforce_value(BaseVariantParamName.experiment_name, cls.get_experiment_name())
 
     @classmethod
     def process_values(cls, values: dict[str, Any]) -> dict[str, Any]:

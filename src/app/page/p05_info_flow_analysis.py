@@ -25,7 +25,7 @@ from src.app.components.result_bank import SelectionMode, ShowResultsBank
 from src.app.data_store import load_prompts, load_results_bank
 from src.app.texts import INFO_FLOW_ANALYSIS_TEXTS
 from src.core.consts import GRAPHS_ORDER
-from src.core.names import COLS, InfoFlowMetricName, ResultBankParamNames
+from src.core.names import COLS, BaseVariantParamName, InfoFlowMetricName, InfoFlowVariantParam, WindowedVariantParam
 from src.core.types import (
     MODEL_SIZE_CAT,
     FeatureCategory,
@@ -62,19 +62,19 @@ class InfoFlowAnalysisPage(StreamlitPage):
                 height=300,
                 filters={
                     # ResultBankParamNames.code_version: [GLOBAL_APP_CONSTS.DEFAULT_CODE_VERSION],
-                    ResultBankParamNames.model_size: [
+                    BaseVariantParamName.model_size: [
                         model_arch_and_size.size
                         for model_arch_and_size, size_cat in GRAPHS_ORDER.items()
                         if size_cat.value > MODEL_SIZE_CAT.MEDIUM.value
                     ],
-                    ResultBankParamNames.window_size: ["9"],
-                    ResultBankParamNames.target: ["last"],
-                    ResultBankParamNames.source: ["subject"],
-                    ResultBankParamNames.model_arch: ["gpt2"],
-                    ResultBankParamNames.feature_category: [FeatureCategory.ALL],
+                    WindowedVariantParam.window_size: ["9"],
+                    InfoFlowVariantParam.target: ["last"],
+                    InfoFlowVariantParam.source: ["subject"],
+                    BaseVariantParamName.model_arch: ["gpt2"],
+                    InfoFlowVariantParam.feature_category: [FeatureCategory.ALL],
                 },
                 hide_columns=[
-                    ResultBankParamNames.experiment_name,
+                    BaseVariantParamName.experiment_name,
                 ],
                 key="info_flow_results_bank3",
             ).render()

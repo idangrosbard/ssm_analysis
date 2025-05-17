@@ -37,11 +37,11 @@ class SessionKey(Generic[TSessionKey]):
             self.delete()
 
     def init(self, value: TSessionKey):
-        if not self.exists():
+        if not self.exists() or (not self._allow_none and self.value is None):
             st.session_state[self.key] = value
 
     def init_default(self):
-        if not self.exists():
+        if not self.exists() or (not self._allow_none and self.value is None):
             self.reset_value()
 
     @property

@@ -8,7 +8,7 @@ import streamlit as st
 from st_aggrid import AgGrid, DataReturnMode, GridUpdateMode
 
 from src.app.data_store import load_results_bank
-from src.core.names import ResultBankParamNames
+from src.core.names import WindowedVariantParam
 from src.data_ingestion.data_defs.data_defs import EvaluateModelResults, ResultBank
 from src.experiments.infrastructure.base_runner import BaseRunner
 from src.utils.streamlit.components.aagrid import (
@@ -58,7 +58,7 @@ class ShowResultsBank(StreamlitComponent[T_RESULT_BANK_TYPE]):
                 grid_builder,
                 self.filters,
             )
-        for col in [ResultBankParamNames.window_size]:
+        for col in [WindowedVariantParam.window_size]:
             if col not in self.hide_columns:
                 grid_builder.configure_column(col, type=["textColumn"])
 

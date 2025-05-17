@@ -28,6 +28,7 @@ import tqdm
 from src.core.consts import PATHS
 from src.core.names import (
     COLS,
+    VARIANT_PARAM_NAME,
     EvaluateModelMetricName,
     ExperimentName,
     HeatmapCols,
@@ -66,6 +67,7 @@ from src.utils.jsonable import JSONAble
 from src.utils.types_utils import (
     compare_dicts,
     get_dict_keys_by_condition,
+    get_enum_or_literal_options,
     select_indexes_from_list,
     subset_dict_by_keys,
 )
@@ -147,7 +149,7 @@ class SummarizedDataFulfilledReqs(IterableDataObject[dict[str, Any]]):
             row = {
                 **{
                     param: getattr(req, param, None)
-                    for param in ResultBankParamNames
+                    for param in get_enum_or_literal_options(VARIANT_PARAM_NAME)
                     if param
                     not in [
                         ResultBankParamNames.path,

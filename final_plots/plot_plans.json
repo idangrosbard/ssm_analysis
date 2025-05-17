@@ -47,6 +47,14 @@
                 ]
             },
             {
+                "param": "filteration_factory",
+                "values": [
+                    {
+                        "correctness": "correct"
+                    }
+                ]
+            },
+            {
                 "param": "feature_category",
                 "values": [
                     "ALL"
@@ -56,14 +64,6 @@
                 "param": "target",
                 "values": [
                     "last"
-                ]
-            },
-            {
-                "param": "filteration_factory",
-                "values": [
-                    {
-                        "correctness": "correct"
-                    }
                 ]
             }
         ],

@@ -1,5 +1,5 @@
 from enum import StrEnum
-from typing import Literal, Sequence, Union, cast
+from typing import Literal, Sequence, Union
 
 from src.utils.types_utils import literal_guard, str_enum_values
 
@@ -121,39 +121,9 @@ class InfoFlowMetricName:
     true_probs: Literal["true_probs"] = literal_guard(COLS.INFO_FLOW.TRUE_PROBS, "true_probs")
 
 
-class DataReqCols(StrEnum):
-    experiment_name = BaseVariantParamName.experiment_name
-    model_arch = BaseVariantParamName.model_arch
-    model_size = BaseVariantParamName.model_size
-    # prompt_filteration = BASE_CONFIG_HP_COLS.prompt_filteration
-    window_size = WindowedVariantParam.window_size
-    source = InfoFlowVariantParam.source
-    feature_category = InfoFlowVariantParam.feature_category
-    target = InfoFlowVariantParam.target
-
-
 class ResultBankParamNames(StrEnum):
-    experiment_name = DataReqCols.experiment_name
-    model_arch = DataReqCols.model_arch
-    model_size = DataReqCols.model_size
-    window_size = DataReqCols.window_size
-    source = DataReqCols.source
-    feature_category = DataReqCols.feature_category
-    target = DataReqCols.target
     code_version = ToClassifyNames.code_version
     path = "path"
-
-
-class ExperimentHyperParams(StrEnum):
-    model_arch = DataReqCols.model_arch
-    model_size = DataReqCols.model_size
-    model_arch_and_size = "model_arch_and_size"
-    window_size = DataReqCols.window_size
-    source = DataReqCols.source
-    feature_category = DataReqCols.feature_category
-    target = DataReqCols.target
-    prompt_idx = "prompt_idx"
-    filteration_factory = "filteration_factory"
 
 
 class HeatmapCols:
@@ -167,34 +137,6 @@ class FinalPlotsPlanOrientation(StrEnum):
     rows = "rows"
     cols = "cols"
     lines = "lines"
-
-
-def map_final_plots_plan_orientation_to_options(orientation: FinalPlotsPlanOrientation) -> "PlotPlanOptionCols":
-    return cast("PlotPlanOptionCols", f"{orientation}_options")
-
-
-class PlotPlanCols(StrEnum):
-    plot_id = "plot_id"
-    TITLE = "title"
-    description = "description"
-    is_appendix = "is_appendix"
-    order = "order"
-    experiment_name = "experiment_name"
-    rows = FinalPlotsPlanOrientation.rows
-    cols = FinalPlotsPlanOrientation.cols
-    grids = FinalPlotsPlanOrientation.grids
-    lines = FinalPlotsPlanOrientation.lines
-    rows_options = map_final_plots_plan_orientation_to_options(FinalPlotsPlanOrientation.rows)
-    cols_options = map_final_plots_plan_orientation_to_options(FinalPlotsPlanOrientation.cols)
-    grids_options = map_final_plots_plan_orientation_to_options(FinalPlotsPlanOrientation.grids)
-    lines_options = map_final_plots_plan_orientation_to_options(FinalPlotsPlanOrientation.lines)
-
-
-class PlotPlanOptionCols(StrEnum):
-    rows_options = PlotPlanCols.rows_options
-    cols_options = PlotPlanCols.cols_options
-    grids_options = PlotPlanCols.grids_options
-    lines_options = PlotPlanCols.lines_options
 
 
 class SummarizedDataFulfilledReqsCols:

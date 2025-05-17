@@ -16,8 +16,10 @@ from src.analysis.experiment_results.prompt_filteration_factory import (
     CurrentModelFilterationFactory,
     ExistingPromptsFilterationFactory,
     FilterationSource,
+    ModelCorrectnessFilterationFactory,
     PresetFilterationFactory,
     PromptFilterationFactory,
+    PromptFilterationFactoryUnion,
 )
 from src.analysis.prompt_filterations import (
     Correctness,
@@ -354,36 +356,50 @@ def get_default_prompt_filteration() -> dict[TPresetID, Callable[[list[MODEL_ARC
     return default_prompt_filteration
 
 
-class SelectFilterationComponent(StreamlitComponent[PromptFilterationFactory]):
+class SelectFilterationFactoryComponent(StreamlitComponent[PromptFilterationFactoryUnion]):
     def __init__(
         self,
         key: str,
-        context_model_arch_and_sizes: list[MODEL_ARCH_AND_SIZE],
+        default_filteration_factory: Optional[PromptFilterationFactory] = None,
     ):
         self.key = key
-        self.context_model_arch_and_sizes = context_model_arch_and_sizes
+        if default_filteration_factory is None:
+            self.default_filteration_factory = CurrentModelFilterationFactory(
+                correctness=Correctness.correct,
+                combine_with_existing=False,
+            )
+        else:
+            self.default_filteration_factory = default_filteration_factory
 
-    def render(self) -> PromptFilterationFactory:
-        selected_source_sk = SessionKey[FilterationSource](f"{self.key}_select_filteration_source")
+    def render(self):
+        selected_source_sk = SessionKey[FilterationSource](
+            f"{self.key}_select_filteration_source",
+            self.default_filteration_factory.type,
+        )
         selected_source_sk.init_default()
-        select_correctness_filteration_sk = SessionKey[Correctness](f"{self.key}_select_correctness_filteration")
-        select_correctness_filteration_sk.init_default()
+        select_correctness_filteration_sk = SessionKey[Correctness](
+            f"{self.key}_select_correctness_filteration", allow_none=False
+        )
+        if isinstance(self.default_filteration_factory, ModelCorrectnessFilterationFactory):
+            select_correctness_filteration_sk.init(self.default_filteration_factory.correctness)
         combine_with_existing_sk = SessionKey[bool](f"{self.key}_combine_with_existing")
         combine_with_existing_sk.init(False)
         preset_id_sk = SessionKey[str](f"{self.key}_preset_id")
         preset_id_sk.init("all")
 
-        selected_source = select_enum(
-            "Select Filteration Source",
-            FilterationSource,
-            session_key=selected_source_sk,
-        )
+        cols = st.columns([3, 3, 1])
+        with cols[0]:
+            selected_source = select_enum(
+                "Select Filteration Source",
+                FilterationSource,
+                session_key=selected_source_sk,
+            )
         if selected_source == FilterationSource.preset:
             # For preset source, show preset selector
             presets = PromptFilterationsPresets.load()
             preset_options = list(presets.keys())
 
-            selected_preset = st.selectbox(
+            selected_preset = cols[1].selectbox(
                 "Select Preset",
                 preset_options,
                 index=preset_options.index(preset_id_sk.value) if preset_id_sk.value in preset_options else 0,
@@ -398,14 +414,15 @@ class SelectFilterationComponent(StreamlitComponent[PromptFilterationFactory]):
             return ExistingPromptsFilterationFactory()
 
         else:
-            # For model correctness sources, show correctness selector and combine option
-            correctness = select_enum(
-                "Select Correctness",
-                Correctness,
-                session_key=select_correctness_filteration_sk,
-            )
+            with cols[1]:
+                # For model correctness sources, show correctness selector and combine option
+                correctness = select_enum(
+                    "Select Correctness",
+                    Correctness,
+                    session_key=select_correctness_filteration_sk,
+                )
 
-            combine_with_existing = st.checkbox(
+            combine_with_existing = cols[2].checkbox(
                 "Filter to existing prompts only",
                 value=combine_with_existing_sk.value,
                 key=f"{self.key}_combine_with_existing",

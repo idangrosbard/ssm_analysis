@@ -9,33 +9,37 @@
 # Outline Compatibility Issues:
 # - New file, outline will be implemented
 
-from typing import Any, List, Optional, Tuple, TypedDict, Union
+from typing import Any, List, Literal, Optional, Tuple, TypedDict, Union, cast
 
 import streamlit as st
 import streamlit_antd_components as sac
 
-from src.analysis.experiment_results.hyper_param_definition import get_hyper_param_definition
+from src.analysis.experiment_results.hyper_param_definition import (
+    PossibleHPDTypes,
+    TExperimentHyperParams,
+    VirtualExperimentHyperParams,
+    get_hyper_param_definition,
+)
 from src.analysis.experiment_results.plot_plan import (
     ParamConfig,
     PlotPlan,
     get_experiment_orientations,
 )
+from src.analysis.experiment_results.prompt_filteration_factory import PromptFilterationFactory
 from src.analysis.plots.image_combiner import ImageGridParams
-from src.app.components.prompt_filter import SelectFilterationComponent
+from src.app.components.prompt_filter import SelectFilterationFactoryComponent
 from src.app.texts import FINAL_PLOTS_TEXTS
 from src.core.names import (
     BaseVariantParamName,
-    ExperimentHyperParams,
     ExperimentName,
     FinalPlotsPlanOrientation,
-    PlotPlanCols,
-    PlotPlanOptionCols,
+    ToClassifyNames,
 )
 from src.core.types import TPlotID
 from src.data_ingestion.data_defs.data_defs import PlotPlans, ResultBank
 from src.utils.streamlit.helpers.component import StreamlitComponent
 from src.utils.streamlit.helpers.session_keys import SessionKey
-from src.utils.types_utils import str_enum_values
+from src.utils.types_utils import get_enum_or_literal_options, str_enum_values
 
 # Session keys for plot plans
 
@@ -74,7 +78,6 @@ class PlotPlanSelector(StreamlitComponent[None]):
                     sac.MenuItem(
                         plan.plot_id,
                         icon="file-earmark-bar-graph",
-                        # description=plan.plot_type.name,
                         tag=plan.experiment_name.name,
                     )
                 )
@@ -86,7 +89,6 @@ class PlotPlanSelector(StreamlitComponent[None]):
                     sac.MenuItem(
                         plan.plot_id,
                         icon="file-earmark-bar-graph",
-                        # description=plan.plot_type.name,
                         tag=plan.experiment_name.name,
                     )
                 )
@@ -120,12 +122,18 @@ class PlotPlanDetailsSummary(StreamlitComponent[None]):
             st.dataframe(
                 {
                     col: str(getattr(plan, col))
-                    for col in str_enum_values(PlotPlanCols)
-                    if col not in str_enum_values(FinalPlotsPlanOrientation) + str_enum_values(PlotPlanOptionCols)
+                    for col in [
+                        "plot_id",
+                        "title",
+                        "description",
+                        "experiment_name",
+                        "is_appendix",
+                        "order",
+                    ]
                 },
                 use_container_width=True,
                 column_config={
-                    PlotPlanCols.description: st.column_config.TextColumn(
+                    "description": st.column_config.TextColumn(
                         width="medium",
                     ),
                 },
@@ -133,7 +141,7 @@ class PlotPlanDetailsSummary(StreamlitComponent[None]):
 
         class SummaryRow(TypedDict):
             orientation: FinalPlotsPlanOrientation
-            param: ExperimentHyperParams
+            param: TExperimentHyperParams
             options_count: int
             options: list[str]
 
@@ -150,7 +158,7 @@ class PlotPlanDetailsSummary(StreamlitComponent[None]):
                 variation_option = get_hyper_param_definition(param)
                 if not options:
                     # get all options from result bank
-                    options = variation_option.get_result_bank_options(self.result_bank)
+                    options = variation_option.get_options()
                 configuration_data.append(
                     {
                         "orientation": orientation,
@@ -208,15 +216,15 @@ class PlotPlanEditor(StreamlitComponent[Optional[PlotPlan]]):
     def is_new(self) -> bool:
         return self.plan_id is None
 
-    def _get_options_for_param(self, param_type: Optional[ExperimentHyperParams]) -> List[Any]:
+    def _get_options_for_param(self, param_type: Optional[TExperimentHyperParams]) -> List[Any]:
         """Get available options for a parameter type."""
         if not param_type:
             return []
 
-        return list(get_hyper_param_definition(param_type).get_options(self.result_bank))
+        return list(get_hyper_param_definition(param_type).get_options())
 
     def _get_display_names_for_options(
-        self, options: List[Any], param_type: Optional[ExperimentHyperParams]
+        self, options: List[Any], param_type: Optional[TExperimentHyperParams]
     ) -> List[str]:
         """Get display names for options."""
         if not param_type or not options:
@@ -230,7 +238,7 @@ class PlotPlanEditor(StreamlitComponent[Optional[PlotPlan]]):
         param_type: FinalPlotsPlanOrientation,
         existing_plan: Optional[PlotPlan],
         experiment_name: ExperimentName,
-        param_value: Optional[ExperimentHyperParams],
+        param_value: Optional[TExperimentHyperParams],
     ) -> Tuple[List[Any], bool]:
         """Display a multi-select for parameter options."""
         if not param_value:
@@ -265,11 +273,11 @@ class PlotPlanEditor(StreamlitComponent[Optional[PlotPlan]]):
         # Display multi-select
         st.markdown(f"**Select {param_type.value.capitalize()} Options:**")
         selected_names = st.multiselect(
-            f"Available {param_value.name} options",
+            f"Available {param_value} options",
             options=display_names,
             default=selected_display_names,
-            help=f"Select specific {param_value.name} values to include in the plot",
-            key=f"multiselect_{param_type.value}_{param_value.name}",
+            help=f"Select specific {param_value} values to include in the plot",
+            key=f"multiselect_{param_type}",
         )
 
         # Convert selected names back to actual options
@@ -284,8 +292,6 @@ class PlotPlanEditor(StreamlitComponent[Optional[PlotPlan]]):
         else:
             existing_plan = PlotPlan(
                 plot_id=TPlotID(""),
-                title="",
-                description="",
                 experiment_name=ExperimentName.info_flow,
                 is_appendix=False,
                 order=0,
@@ -297,9 +303,9 @@ class PlotPlanEditor(StreamlitComponent[Optional[PlotPlan]]):
 
         # Create data dictionaries to collect form values
         orientation_data = {}
-        fixed_values_data = {}
+        fixed_values_data: dict[TExperimentHyperParams, PossibleHPDTypes] = {}
 
-        for i, col in enumerate(st.columns([3, 3, 1, 1])):
+        for i, col in enumerate(st.columns([2, 5, 1, 1])):
             with col:
                 if i == 0:
                     existing_plan.plot_id = TPlotID(
@@ -311,12 +317,15 @@ class PlotPlanEditor(StreamlitComponent[Optional[PlotPlan]]):
                         )
                     )
                 elif i == 1:
-                    # Basic information
-                    existing_plan.title = st.text_input(
-                        "Title",
-                        value=existing_plan.title,
-                        help="Display title for the plot plan",
+                    existing_plan.experiment_name = ExperimentName(
+                        st.selectbox(
+                            "Experiment",
+                            options=[exp.name for exp in ExperimentName],
+                            index=list(ExperimentName).index(existing_plan.experiment_name),
+                            help="Experiment type for the plot",
+                        )
                     )
+
                 elif i == 2:
                     existing_plan.order = st.number_input(
                         "Order",
@@ -330,27 +339,13 @@ class PlotPlanEditor(StreamlitComponent[Optional[PlotPlan]]):
                         help="Whether this plot should be included in the appendix",
                     )
 
-        existing_plan.description = st.text_area(
-            "Description",
-            value=existing_plan.description,
-            help="Detailed description of the plot plan",
-        )
-
-        # Plot type and experiment
-        for i, col in enumerate(st.columns(2)):
-            with col:
-                if i == 0:
-                    existing_plan.experiment_name = ExperimentName(
-                        st.selectbox(
-                            "Experiment",
-                            options=[exp.name for exp in ExperimentName],
-                            index=list(ExperimentName).index(existing_plan.experiment_name),
-                            help="Experiment type for the plot",
-                        )
-                    )
-
         # Get all available hyperparameters
-        hyperparams = [hp.name for hp in ExperimentHyperParams]
+        hyperparams_options = get_enum_or_literal_options(TExperimentHyperParams)
+        missing_cols: set[TExperimentHyperParams | Literal[ToClassifyNames.prompt_filteration]] = set(
+            ExperimentName.get_variant_cols(existing_plan.experiment_name)
+        )
+        missing_cols.remove(BaseVariantParamName.experiment_name)
+        missing_cols.add(ToClassifyNames.prompt_filteration)
 
         # Get experiment-specific parameters
         orientations = get_experiment_orientations(existing_plan.experiment_name)
@@ -363,22 +358,23 @@ class PlotPlanEditor(StreamlitComponent[Optional[PlotPlan]]):
                 param_name = orientation.value
                 current_index = 0
                 if current_value := existing_plan.get_param_config_by_orientation(orientation):
-                    current_index = hyperparams.index(current_value.param.name) + 1
+                    current_index = hyperparams_options.index(current_value.param.name) + 1
                 _orientation_input = st.selectbox(
                     orientation.value.capitalize(),
-                    options=[NONE_STR] + hyperparams,
+                    options=[NONE_STR] + hyperparams_options,
                     index=current_index,
                     help="Parameter to vary across rows",
                     key=f"select_{param_name}",
                 )
                 orientation_input = (
-                    None if _orientation_input == NONE_STR else ExperimentHyperParams[_orientation_input]
+                    None if _orientation_input == NONE_STR else cast(TExperimentHyperParams, _orientation_input)
                 )
 
                 # Store orientation parameters
                 if orientation_input:
                     orientation_data[orientation] = orientation_input
-
+                    hpd = get_hyper_param_definition(orientation_input)
+                    missing_cols -= set(hpd.derived_variants_params())
                     selected_options, has_options = self._display_option_selector(
                         orientation, existing_plan, existing_plan.experiment_name, orientation_input
                     )
@@ -386,22 +382,31 @@ class PlotPlanEditor(StreamlitComponent[Optional[PlotPlan]]):
                         # Store selected options for this orientation
                         orientation_data[f"{orientation}_options"] = selected_options
 
-        derived_variant_params = existing_plan.get_non_orientation_derived_params_params()
-        missing_cols = [
-            col
-            for col in ExperimentName.get_variant_cols(existing_plan.experiment_name)
-            if (col not in [BaseVariantParamName.experiment_name] and col not in derived_variant_params)
-        ]
-
         missing_no_default_cols = []
+
         for col_name, st_col in zip(missing_cols, st.columns(len(missing_cols))):
-            hpd_col = ExperimentHyperParams(col_name)
+            if col_name == ToClassifyNames.prompt_filteration:
+                if existing_plan.experiment_name == ExperimentName.info_flow:
+                    col_name = VirtualExperimentHyperParams.filteration_factory
+            col_name = cast(TExperimentHyperParams, col_name)
+            hpd_col = cast(TExperimentHyperParams, col_name)
             hpd = get_hyper_param_definition(hpd_col)
-            options = hpd.get_options(self.result_bank)
+            param_config = existing_plan.get_param_config(hpd_col)
+            original_value = param_config and param_config.fixed_value
+
+            if col_name == VirtualExperimentHyperParams.filteration_factory:
+                assert original_value is None or isinstance(original_value, PromptFilterationFactory)
+                fixed_values_data[col_name] = SelectFilterationFactoryComponent(
+                    key=f"select_{col_name}",
+                    default_filteration_factory=original_value,
+                ).render()
+                continue
+
+            options = hpd.get_options()
             try:
-                index = options.index(hpd.default_fix_value())
+                index = options.index(original_value or hpd.default_fix_value())
             except NotImplementedError:
-                missing_no_default_cols.extend(hpd.derived_variants_params())
+                missing_no_default_cols.append(col_name)
                 continue
             with st_col:
                 # Store fixed values
@@ -413,14 +418,8 @@ class PlotPlanEditor(StreamlitComponent[Optional[PlotPlan]]):
                 )
 
         if missing_no_default_cols:
-            st.error(f"Missing column: {[ExperimentHyperParams(col).name for col in missing_no_default_cols]}")
+            st.error(f"Missing column: {missing_no_default_cols}")
             return
-
-        if ExperimentHyperParams.filteration_factory not in derived_variant_params:
-            fixed_values_data[ExperimentHyperParams.filteration_factory] = SelectFilterationComponent(
-                key=f"select_{ExperimentHyperParams.filteration_factory}",
-                context_model_arch_and_sizes=existing_plan.derive_model_arch_and_sizes_context(),
-            ).render()
 
         # Submit button
         submit_button = st.button("Save Plot Plan")
@@ -465,7 +464,13 @@ class PlotPlanEditor(StreamlitComponent[Optional[PlotPlan]]):
 
             # Add fixed values
             for param, value in fixed_values_data.items():
-                existing_plan.params.append(ParamConfig(param=param, orientation=None, values=[value]))
+                existing_plan.params.append(
+                    ParamConfig(
+                        param=param,
+                        orientation=None,
+                        values=[value],
+                    )
+                )
 
             return existing_plan
 

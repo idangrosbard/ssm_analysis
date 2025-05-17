@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Generic, Literal, Sequence, TypeVar, Union, cast
+from enum import StrEnum
+from typing import Generic, Sequence, TypeVar, Union
 
 from src.analysis.experiment_results.prompt_filteration_factory import (
     AllImportantModelsFilterationFactory,
@@ -13,6 +14,7 @@ from src.analysis.experiment_results.prompt_filteration_factory import (
     PromptFilterationFactoryUnion,
 )
 from src.analysis.prompt_filterations import (
+    AllPromptFilteration,
     Correctness,
 )
 from src.core.consts import (
@@ -21,7 +23,6 @@ from src.core.consts import (
 from src.core.names import (
     VARIANT_PARAM_NAME,
     BaseVariantParamName,
-    ExperimentHyperParams,
     InfoFlowVariantParam,
     WindowedVariantParam,
 )
@@ -34,25 +35,42 @@ from src.core.types import (
     TPromptOriginalIndex,
     TWindowSize,
 )
-from src.data_ingestion.data_defs.data_defs import PromptFilterationsPresets, ResultBank
-from src.experiments.runners.heatmap import HeatmapRunner
-from src.experiments.runners.info_flow import InfoFlowRunner
+from src.experiments.infrastructure.base_prompt_filteration import BasePromptFilteration, SelectivePromptFilteration
 from src.utils.types_utils import str_enum_values
 
 _T = TypeVar("_T")
 
 
+PossibleHPDTypes = Union[
+    MODEL_ARCH_AND_SIZE,
+    MODEL_ARCH,
+    TModelSize,
+    TokenType,
+    FeatureCategory,
+    TWindowSize,
+    TPromptOriginalIndex,
+    PromptFilterationFactoryUnion,
+]
+
+PossibleDerivedHPDTypes = Union[MODEL_ARCH, TModelSize, TokenType, FeatureCategory, TWindowSize, BasePromptFilteration]
+
+
+class VirtualExperimentHyperParams(StrEnum):
+    model_arch_and_size = "model_arch_and_size"
+    filteration_factory = "filteration_factory"
+    prompt_idx = "prompt_idx"
+
+
+TExperimentHyperParams = Union[
+    VARIANT_PARAM_NAME,
+    VirtualExperimentHyperParams,
+]
+
+
 class HyperParamDefinition(ABC, Generic[_T]):
     @abstractmethod
-    def get_result_bank_options(self, result_bank: ResultBank) -> Sequence[_T]:
+    def get_options(self) -> Sequence[_T]:
         pass
-
-    @abstractmethod
-    def get_static_options(self) -> Sequence[_T]:
-        pass
-
-    def get_options(self, result_bank: ResultBank) -> Sequence[_T]:
-        return self.get_static_options()
 
     @abstractmethod
     def get_display_name(self, option: _T) -> str:
@@ -64,40 +82,36 @@ class HyperParamDefinition(ABC, Generic[_T]):
     @abstractmethod
     def derived_variants_params(
         self,
-    ) -> Sequence[
-        Union[
-            VARIANT_PARAM_NAME,
-            Literal[ExperimentHyperParams.prompt_idx],
-            Literal[ExperimentHyperParams.filteration_factory],
-        ]
-    ]:
+    ) -> Sequence[VARIANT_PARAM_NAME]:
+        pass
+
+    @abstractmethod
+    def get_derived_hpds(self, option: _T) -> dict[VARIANT_PARAM_NAME, PossibleDerivedHPDTypes]:
         pass
 
 
-class ModelArchAndSizeHPD(HyperParamDefinition[MODEL_ARCH_AND_SIZE]):
-    def get_result_bank_options(self, result_bank: ResultBank) -> list[MODEL_ARCH_AND_SIZE]:
-        return list(
-            [
-                MODEL_ARCH_AND_SIZE(result.variant_params.model_arch, result.variant_params.model_size)
-                for result in result_bank
-            ]
-        )
+_T_BaseVariant = TypeVar("_T_BaseVariant", bound=PossibleDerivedHPDTypes)
 
-    def get_static_options(self) -> Sequence[MODEL_ARCH_AND_SIZE]:
-        return list(GRAPHS_ORDER.keys())
 
-    def get_display_name(self, option: MODEL_ARCH_AND_SIZE) -> str:
-        return option.model_name
+class BaseVariantHPD(HyperParamDefinition[_T_BaseVariant]):
+    def get_display_name(self, option: _T_BaseVariant) -> str:
+        return str(option)
 
+    @abstractmethod
     def derived_variants_params(self) -> Sequence[VARIANT_PARAM_NAME]:
-        return [BaseVariantParamName.model_arch, BaseVariantParamName.model_size]
+        pass
+
+    def get_derived_hpds(self, option: _T_BaseVariant) -> dict[VARIANT_PARAM_NAME, PossibleDerivedHPDTypes]:
+        return {
+            self.derived_variants_params()[0]: option,
+        }
 
 
-class ModelArchHPD(HyperParamDefinition[MODEL_ARCH]):
-    def get_result_bank_options(self, result_bank: ResultBank):
-        return list(set([result.variant_params.model_arch for result in result_bank]))
+# region Variant HPDs
 
-    def get_static_options(self):
+
+class ModelArchHPD(BaseVariantHPD[MODEL_ARCH]):
+    def get_options(self):
         return str_enum_values(MODEL_ARCH)
 
     def get_display_name(self, option):
@@ -107,11 +121,8 @@ class ModelArchHPD(HyperParamDefinition[MODEL_ARCH]):
         return [BaseVariantParamName.model_arch]
 
 
-class ModelSizeHPD(HyperParamDefinition[TModelSize]):
-    def get_result_bank_options(self, result_bank: ResultBank):
-        return list(set([result.variant_params.model_size for result in result_bank]))
-
-    def get_static_options(self):
+class ModelSizeHPD(BaseVariantHPD[TModelSize]):
+    def get_options(self):
         return list({size: size for _, size in GRAPHS_ORDER.keys()}.keys())
 
     def get_display_name(self, option):
@@ -121,15 +132,8 @@ class ModelSizeHPD(HyperParamDefinition[TModelSize]):
         return [BaseVariantParamName.model_size]
 
 
-class SourceHPD(HyperParamDefinition[TokenType]):
-    def get_result_bank_options(self, result_bank):
-        sources = set()
-        for result in result_bank:
-            if isinstance(result, InfoFlowRunner):
-                sources.add(result.variant_params.source)
-        return list(sources)
-
-    def get_static_options(self):
+class SourceHPD(BaseVariantHPD[TokenType]):
+    def get_options(self):
         return str_enum_values(TokenType)
 
     def get_display_name(self, option: TokenType) -> str:
@@ -139,15 +143,8 @@ class SourceHPD(HyperParamDefinition[TokenType]):
         return [InfoFlowVariantParam.source]
 
 
-class TargetHPD(HyperParamDefinition[TokenType]):
-    def get_result_bank_options(self, result_bank):
-        targets = set()
-        for result in result_bank:
-            if isinstance(result, InfoFlowRunner):
-                targets.add(result.variant_params.target)
-        return list(targets)
-
-    def get_static_options(self):
+class TargetHPD(BaseVariantHPD[TokenType]):
+    def get_options(self):
         return str_enum_values(TokenType)
 
     def get_display_name(self, option: TokenType) -> str:
@@ -160,15 +157,8 @@ class TargetHPD(HyperParamDefinition[TokenType]):
         return [InfoFlowVariantParam.target]
 
 
-class FeatureCategoryHPD(HyperParamDefinition[FeatureCategory]):
-    def get_result_bank_options(self, result_bank):
-        features = set()
-        for result in result_bank:
-            if isinstance(result, InfoFlowRunner):
-                features.add(result.variant_params.feature_category)
-        return list(features)
-
-    def get_static_options(self):
+class FeatureCategoryHPD(BaseVariantHPD[FeatureCategory]):
+    def get_options(self):
         return str_enum_values(FeatureCategory)
 
     def get_display_name(self, option: FeatureCategory) -> str:
@@ -181,15 +171,8 @@ class FeatureCategoryHPD(HyperParamDefinition[FeatureCategory]):
         return [InfoFlowVariantParam.feature_category]
 
 
-class WindowSizeHPD(HyperParamDefinition[TWindowSize]):
-    def get_result_bank_options(self, result_bank):
-        window_sizes = set()
-        for result in result_bank:
-            if isinstance(result, InfoFlowRunner) or isinstance(result, HeatmapRunner):
-                window_sizes.add(result.variant_params.window_size)
-        return list(window_sizes)
-
-    def get_static_options(self):
+class WindowSizeHPD(BaseVariantHPD[TWindowSize]):
+    def get_options(self):
         return list([TWindowSize(i) for i in range(1, 20)])
 
     def get_display_name(self, option: TWindowSize) -> str:
@@ -202,32 +185,58 @@ class WindowSizeHPD(HyperParamDefinition[TWindowSize]):
         return [WindowedVariantParam.window_size]
 
 
-class PromptIdxHPD(HyperParamDefinition[TPromptOriginalIndex]):
-    def get_result_bank_options(self, result_bank: ResultBank) -> Sequence[TPromptOriginalIndex]:
-        prompts: set[TPromptOriginalIndex] = set()
-        for result in result_bank:
-            if isinstance(result, HeatmapRunner):
-                prompts.update(set(result.output_hdf5_path.get_existing_prompt_idx()))
-        return sorted(prompts)
+# endregion
 
-    def get_static_options(self):
-        raise NotImplementedError("PromptIdxVariationOption does not have static options")
+# region Virtual HPDs
 
-    def get_options(self, result_bank: ResultBank) -> Sequence[TPromptOriginalIndex]:
-        return self.get_result_bank_options(result_bank)
+
+class ModelArchAndSizeHPD(HyperParamDefinition[MODEL_ARCH_AND_SIZE]):
+    def get_options(self) -> Sequence[MODEL_ARCH_AND_SIZE]:
+        return list(GRAPHS_ORDER.keys())
+
+    def get_display_name(self, option: MODEL_ARCH_AND_SIZE) -> str:
+        return option.model_name
+
+    def derived_variants_params(self) -> Sequence[VARIANT_PARAM_NAME]:
+        return [BaseVariantParamName.model_arch, BaseVariantParamName.model_size]
+
+    def get_derived_hpds(self, option: MODEL_ARCH_AND_SIZE) -> dict[VARIANT_PARAM_NAME, PossibleDerivedHPDTypes]:
+        return {
+            BaseVariantParamName.model_arch: option.arch,
+            BaseVariantParamName.model_size: option.size,
+        }
+
+
+class PromptFilterationHPD(HyperParamDefinition[_T]):
+    def get_derived_hpds(self, option):
+        raise NotImplementedError("Only get_derived_hpd_with_context should be called")
+
+    @abstractmethod
+    def get_derived_hpd_with_context(
+        self, option: _T, context_model_arch_and_sizes: list[MODEL_ARCH_AND_SIZE]
+    ) -> tuple[BasePromptFilteration, dict[VARIANT_PARAM_NAME, PossibleDerivedHPDTypes]]: ...
+
+
+class PromptIdxHPD(PromptFilterationHPD[TPromptOriginalIndex]):
+    def get_options(self):
+        return AllPromptFilteration().get_prompt_ids()
 
     def get_display_name(self, option: TPromptOriginalIndex) -> str:
         return f"{option}"
 
-    def derived_variants_params(self):
-        return cast(Sequence[Literal[ExperimentHyperParams.prompt_idx]], [ExperimentHyperParams.prompt_idx])
+    def derived_variants_params(self) -> Sequence[VARIANT_PARAM_NAME]:
+        return []
+
+    def get_derived_hpd_with_context(
+        self, option: TPromptOriginalIndex, context_model_arch_and_sizes
+    ) -> tuple[BasePromptFilteration, dict[VARIANT_PARAM_NAME, PossibleDerivedHPDTypes]]:
+        return SelectivePromptFilteration(prompt_ids=(option,)), {}
 
 
-class FilterationHPD(HyperParamDefinition[PromptFilterationFactory]):
-    def get_result_bank_options(self, result_bank: ResultBank):
-        raise NotImplementedError("FilterationHPD does not have result bank options")
+class FilterationFactoryHPD(PromptFilterationHPD[PromptFilterationFactory]):
+    def get_options(self) -> Sequence[PromptFilterationFactory]:
+        from src.data_ingestion.data_defs.data_defs import PromptFilterationsPresets
 
-    def get_static_options(self) -> Sequence[PromptFilterationFactory]:
         options = []
 
         # Add preset options
@@ -254,49 +263,42 @@ class FilterationHPD(HyperParamDefinition[PromptFilterationFactory]):
 
         return options
 
-    def get_options(self, result_bank: ResultBank):
-        return self.get_static_options()
-
     def get_display_name(self, option: PromptFilterationFactory) -> str:
         return option.display_name
 
-    def derived_variants_params(self):
-        return cast(
-            Sequence[Literal[ExperimentHyperParams.filteration_factory]], [ExperimentHyperParams.filteration_factory]
-        )
+    def derived_variants_params(self) -> Sequence[VARIANT_PARAM_NAME]:
+        return []
+
+    def get_derived_hpd_with_context(
+        self, option: PromptFilterationFactory, context_model_arch_and_sizes: list[MODEL_ARCH_AND_SIZE]
+    ) -> tuple[BasePromptFilteration, dict[VARIANT_PARAM_NAME, PossibleDerivedHPDTypes]]:
+        return option.get_filteration(context_model_arch_and_sizes), {}
 
 
-def get_hyper_param_definition(option: ExperimentHyperParams) -> HyperParamDefinition:
+# endregion
+
+# region Experiment Hyper Params
+
+
+def get_hyper_param_definition(option: TExperimentHyperParams) -> HyperParamDefinition:
     match option:
-        case ExperimentHyperParams.model_arch_and_size:
+        case VirtualExperimentHyperParams.model_arch_and_size:
             return ModelArchAndSizeHPD()
-        case ExperimentHyperParams.model_arch:
+        case BaseVariantParamName.model_arch:
             return ModelArchHPD()
-        case ExperimentHyperParams.model_size:
+        case BaseVariantParamName.model_size:
             return ModelSizeHPD()
-        case ExperimentHyperParams.source:
+        case InfoFlowVariantParam.source:
             return SourceHPD()
-        case ExperimentHyperParams.target:
+        case InfoFlowVariantParam.target:
             return TargetHPD()
-        case ExperimentHyperParams.feature_category:
+        case InfoFlowVariantParam.feature_category:
             return FeatureCategoryHPD()
-        case ExperimentHyperParams.window_size:
+        case WindowedVariantParam.window_size:
             return WindowSizeHPD()
-        case ExperimentHyperParams.prompt_idx:
+        case VirtualExperimentHyperParams.prompt_idx:
             return PromptIdxHPD()
-        case ExperimentHyperParams.filteration_factory:
-            return FilterationHPD()
+        case VirtualExperimentHyperParams.filteration_factory:
+            return FilterationFactoryHPD()
         case _:
             raise ValueError(f"Unsupported variation option: {option}")
-
-
-PossibleHPDTypes = Union[
-    MODEL_ARCH_AND_SIZE,
-    MODEL_ARCH,
-    TModelSize,
-    TokenType,
-    FeatureCategory,
-    TWindowSize,
-    TPromptOriginalIndex,
-    PromptFilterationFactoryUnion,
-]
