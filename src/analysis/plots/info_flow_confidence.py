@@ -148,7 +148,7 @@ class InfoFlowPlotConfig(BaseModel):
 
     # Figure Settings
     figure_width: float = Field(
-        default=9.0,
+        default=6.0,
         description="Figure width in inches",
         ge=1.0,
         json_schema_extra={SpecialFieldKeys.column_group: "figure_settings"},
@@ -170,7 +170,7 @@ class InfoFlowPlotConfig(BaseModel):
         json_schema_extra={SpecialFieldKeys.column_group: "figure_settings"},
     )
     ylabel_y_coord: float = Field(
-        default=0.4,
+        default=0.5,
         description="Y-coordinate of the y-axis label",
         json_schema_extra={SpecialFieldKeys.column_group: "figure_settings"},
     )
@@ -184,7 +184,7 @@ class InfoFlowPlotConfig(BaseModel):
         json_schema_extra={SpecialFieldKeys.column_group: "font_settings"},
     )
     axis_fontsize: int = Field(
-        default=38,
+        default=25,
         title="Axis",
         description="Font size for axis labels",
         ge=4,
@@ -232,7 +232,7 @@ class InfoFlowPlotConfig(BaseModel):
         json_schema_extra={SpecialFieldKeys.column_group: "legend_settings"},
     )
     tight_layout_rect_y: float = Field(
-        default=0.95,
+        default=0.85,
         description="Y-coordinate of legend location",
         json_schema_extra={SpecialFieldKeys.column_group: "legend_settings"},
     )
@@ -517,7 +517,6 @@ def plot_with_confidence(
 def create_confidence_plot(
     lines: dict[str, TInfoFlowOutput],
     confidence_level: float,
-    title: str,
     config: InfoFlowPlotConfig,
 ) -> Figure:
     """Create plots with confidence intervals for all metrics.
@@ -699,7 +698,7 @@ def create_confidence_plot(
         )
 
     # Set overall title
-    custom_title = config.title if hasattr(config, "title") and config.title else title
+    custom_title = config.title
     if config.show_number_of_points == "min" or config.show_number_of_points == "both":
         custom_title += f" {min_points} Points"
         if diff_points > 0:

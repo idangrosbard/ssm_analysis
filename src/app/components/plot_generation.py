@@ -14,6 +14,7 @@ from io import BytesIO
 from pathlib import Path
 from typing import Any, Iterator, Optional, cast
 
+import matplotlib.figure
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go
 import streamlit as st
@@ -32,7 +33,11 @@ from src.analysis.plots.info_flow_confidence import (
 )
 from src.app.texts import FINAL_PLOTS_TEXTS
 from src.core.consts import MODEL_SIZES_PER_ARCH_TO_MODEL_ID
-from src.core.names import ExperimentName, FinalPlotsPlanOrientation, SummarizedDataFulfilledReqsCols
+from src.core.names import (
+    ExperimentName,
+    FinalPlotsPlanOrientation,
+    SummarizedDataFulfilledReqsCols,
+)
 from src.core.types import MODEL_ARCH_AND_SIZE, TInfoFlowOutput, TLineStyle, TPromptData
 from src.data_ingestion.data_defs.data_defs import (
     DataReqs,
@@ -123,9 +128,16 @@ class GridLayout:
         filtered_grid = [[path for path in row if path is not None] for row in image_grid]
         filtered_grid = [row for row in filtered_grid if row]  # Remove empty rows
 
+        # Prepare grid-specific DataReqs for legend items
+        grid_specific_data_reqs = [
+            self.data_reqs_per_cell[cell] for cell in self.cells if cell in self.data_reqs_per_cell
+        ]
+
         # Combine images into a grid
         combined_image = combine_image_grid(
-            filtered_grid, grid_params, legend_items=self.plot_generator._get_legend_items()
+            filtered_grid,
+            grid_params,
+            legend_items=self.plot_generator._get_legend_items(relevant_data_reqs_list=grid_specific_data_reqs),
         )
         if combined_image:
             st.image(combined_image, width=combined_image.width)
@@ -199,18 +211,33 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
             grid_display_name = grid_name
         return cache_dir / f"{self.plot_plan.plot_id}_{grid_display_name}.png"
 
-    def _get_legend_items(self) -> list[LegendItem]:
+    def _get_legend_items(self, relevant_data_reqs_list: Optional[list[DataReqs]] = None) -> list[LegendItem]:
         plot_config = self._get_config_for_experiment_name(self.plot_plan.experiment_name, None)
         legend_items = []
         if isinstance(plot_config, InfoFlowPlotConfig):
+            relevant_line_ids: Optional[set[str]] = None
+            if relevant_data_reqs_list:
+                relevant_line_ids = set()
+                lines_param_config = self.plot_plan.get_param_config_by_orientation(FinalPlotsPlanOrientation.lines)
+                assert lines_param_config is not None
+                original_lines_hpd = lines_param_config.get_param_def()
+
+                for data_reqs in relevant_data_reqs_list:
+                    runners = _cache_get_runners(data_reqs, self.result_bank)
+                    for runner_instance in runners:
+                        if isinstance(runner_instance, InfoFlowRunner):
+                            line_id_str = original_lines_hpd.get_line_id_from_runner(runner_instance.variant_params)
+                            relevant_line_ids.add(line_id_str)
+
             for line_id, color in plot_config.custom_colors.items():
-                legend_items.append(
-                    LegendItem(
-                        label=plot_config.custom_line_labels.get(line_id, line_id),
-                        color=color.as_hex(),
-                        linestyle=plot_config.custom_line_styles.get(line_id, TLineStyle.solid.value),
+                if relevant_line_ids is None or line_id in relevant_line_ids:
+                    legend_items.append(
+                        LegendItem(
+                            label=plot_config.custom_line_labels.get(line_id, line_id),
+                            color=color.as_hex(),
+                            linestyle=plot_config.custom_line_styles.get(line_id, TLineStyle.solid.value),
+                        )
                     )
-                )
         return legend_items
 
     def _plot_data_reqs(self, data_reqs: DataReqs, cell_plot_config: dict[str, Any]):
@@ -260,6 +287,7 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
                     window_size=runner.variant_params.window_size,
                     last_tok=last_tok,
                     base_prob=prompt.base_prob,
+                    target_rank=prompt.target_rank,
                     true_word=prompt.true_word,
                     toks=toks,
                     config=config,
@@ -296,10 +324,14 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
             cache_path.parent.mkdir(parents=True, exist_ok=True)
             if isinstance(fig, go.Figure):
                 fig.write_image(str(cache_path), scale=4)
-            else:
-                # Save the plot
-                plt.savefig(str(cache_path), dpi=600)
+            elif isinstance(fig, matplotlib.figure.Figure):
+                fig.savefig(str(cache_path), dpi=600)
                 plt.close(fig)
+            else:
+                st.warning(
+                    f"Plot for {cache_path.name} was of unexpected type {type(fig)}"
+                    "and could not be saved as a known image type."
+                )
 
             # Display the plot if needed
             if show_plot:
@@ -312,32 +344,21 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
 
     def _generate_cell_knockout(self, runners: list[BaseRunner], cell_plot_config: InfoFlowPlotConfig):
         """Generate knockout plot for a single cell."""
-        # Create the base figure
         data: dict[str, TInfoFlowOutput] = {}
-        title = "-".join(
-            [
-                # config.common_params.model_arch,
-                # config.common_params.model_size,
-                # str(config.runner_params.window_size),
-            ]
-        )
-        lines_hp_definition = self.plot_plan.get_orientation_value_hpd(FinalPlotsPlanOrientation.lines)
-        assert lines_hp_definition is not None
-        line_ids = [
-            lines_hp_definition.get_display_name(x)
-            for x in self.plot_plan.get_options_for_orientation(FinalPlotsPlanOrientation.lines, self.result_bank)
-        ]
-        for line_id, runner in zip(line_ids, runners):
-            assert isinstance(runner, InfoFlowRunner)
 
-            data[line_id] = runner.get_outputs()
+        lines_param_config = self.plot_plan.get_param_config_by_orientation(FinalPlotsPlanOrientation.lines)
+        assert lines_param_config is not None
+        original_lines_hpd = lines_param_config.get_param_def()
 
-        # Use custom title if provided
-        custom_title = cell_plot_config.title if cell_plot_config.title else title
+        for i, runner_instance in enumerate(runners):
+            assert isinstance(runner_instance, InfoFlowRunner), f"Expected InfoFlowRunner, got {type(runner_instance)}"
+
+            line_id_str = original_lines_hpd.get_line_id_from_runner(runner_instance.variant_params)
+            data[line_id_str] = runner_instance.get_outputs()
+
         fig = create_confidence_plot(
             lines=data,
             confidence_level=cell_plot_config.confidence_level,
-            title=custom_title,
             config=cell_plot_config,
         )
 

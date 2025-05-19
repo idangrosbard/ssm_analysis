@@ -112,10 +112,10 @@ class CropParams(BaseModel):
     # Replace numerical fields with Crop objects
     edge_crop: PercentageCrop = Field(
         default_factory=lambda: PercentageCrop(
-            left=0.20,
-            top=0.84,
-            width=99.59,
-            height=99.15,
+            left=3.43,
+            top=20.5,
+            width=96.3,
+            height=79.5,
         ),
         description="Base crop for all images",
         json_schema_extra={SpecialFieldKeys.column_group: "crop_edge"},
@@ -123,10 +123,10 @@ class CropParams(BaseModel):
 
     standard_crop: PercentageCrop = Field(
         default_factory=lambda: PercentageCrop(
-            left=16.83,
-            top=10.70,
-            width=81.83,
-            height=82.02,
+            left=14.57,
+            top=19.29,
+            width=84.72,
+            height=69.5,
         ),
         description="Additional crop for non-edge images",
         json_schema_extra={SpecialFieldKeys.column_group: "crop_standard"},
@@ -222,7 +222,7 @@ class LegendParams(BaseModel):
         json_schema_extra={SpecialFieldKeys.column_group: "border"},
     )
     legend_padding: int = Field(
-        default=80,
+        default=30,
         ge=0,
         description="Padding between legend and border",
         json_schema_extra={SpecialFieldKeys.column_group: "border"},
@@ -323,7 +323,7 @@ class ImageGridParams(BaseModel):
     sep1: None = Field(default=None, json_schema_extra={SpecialFieldKeys.separator: True})
 
     column_header_padding: float = Field(
-        default=-14.0,
+        default=-25.0,
         description="Additional padding for column headers (can be negative)",
         json_schema_extra={SpecialFieldKeys.column_group: "labels_display"},
     )
@@ -696,7 +696,6 @@ def combine_image_grid(
     if params.show_col_labels:
         values = get_dict_key_literal_values(params, "columns_labels_override")
         assert values is not None
-        assert len(values) == num_cols
 
         for col_idx in range(num_cols):
             prefix = generate_prefix(col_idx, params.column_prefix_style)

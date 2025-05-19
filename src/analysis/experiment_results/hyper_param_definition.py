@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from enum import StrEnum
-from typing import Generic, Sequence, TypeVar, Union
+from typing import Generic, Iterator, Literal, Sequence, TypeVar, Union, final
 
 from src.analysis.experiment_results.prompt_filteration_factory import (
     AllImportantModelsFilterationFactory,
@@ -18,12 +18,15 @@ from src.analysis.prompt_filterations import (
     Correctness,
 )
 from src.core.consts import (
+    ARCH_FAMILY,
     GRAPHS_ORDER,
+    MODEL_FAMILY_TO_ARCH,
 )
 from src.core.names import (
     VARIANT_PARAM_NAME,
     BaseVariantParamName,
     InfoFlowVariantParam,
+    ToClassifyNames,
     WindowedVariantParam,
 )
 from src.core.types import (
@@ -36,6 +39,7 @@ from src.core.types import (
     TWindowSize,
 )
 from src.experiments.infrastructure.base_prompt_filteration import BasePromptFilteration, SelectivePromptFilteration
+from src.experiments.infrastructure.base_runner import BaseVariantParams
 from src.utils.types_utils import str_enum_values
 
 _T = TypeVar("_T")
@@ -59,12 +63,15 @@ class VirtualExperimentHyperParams(StrEnum):
     model_arch_and_size = "model_arch_and_size"
     filteration_factory = "filteration_factory"
     prompt_idx = "prompt_idx"
+    model_family = "model_family"
 
 
 TExperimentHyperParams = Union[
     VARIANT_PARAM_NAME,
     VirtualExperimentHyperParams,
 ]
+
+T_VARIANT_PARAM_AND_FILTERATION = Union[VARIANT_PARAM_NAME, Literal[ToClassifyNames.prompt_filteration]]
 
 
 class HyperParamDefinition(ABC, Generic[_T]):
@@ -82,12 +89,43 @@ class HyperParamDefinition(ABC, Generic[_T]):
     @abstractmethod
     def derived_variants_params(
         self,
-    ) -> Sequence[VARIANT_PARAM_NAME]:
+    ) -> Sequence[T_VARIANT_PARAM_AND_FILTERATION]:
         pass
 
     @abstractmethod
     def get_derived_hpds(self, option: _T) -> dict[VARIANT_PARAM_NAME, PossibleDerivedHPDTypes]:
         pass
+
+    def _expand_value(self, option: _T) -> Iterator[dict[VARIANT_PARAM_NAME, PossibleDerivedHPDTypes]]:
+        yield self.get_derived_hpds(option)
+
+    @final
+    def expand_values(self, values: list[_T]) -> Iterator[dict[VARIANT_PARAM_NAME, PossibleDerivedHPDTypes]]:
+        for value in values:
+            for expanded_value in self._expand_value(value):
+                yield expanded_value
+
+    def get_line_id_from_runner(self, runner_variant_params: BaseVariantParams) -> str:
+        """
+        Generates a line ID string for a plot, based on the provided runner's variant parameters.
+        This method is called when this HPD instance is the one defining the 'lines' orientation.
+        'plot_plan' is provided for context if needed.
+        """
+        derived_params = self.derived_variants_params()
+        if derived_params:
+            derived_vp_name = derived_params[0]
+            attr_name = derived_vp_name.value
+
+            actual_derived_value = getattr(runner_variant_params, attr_name)
+            assert derived_vp_name != ToClassifyNames.prompt_filteration
+
+            hpd_for_derived_display = get_hyper_param_definition(derived_vp_name)
+            return hpd_for_derived_display.get_display_name(actual_derived_value)
+        else:
+            raise NotImplementedError(
+                f"HPD {self.__class__.__name__} used for lines but derives no variant params "
+                f"and does not override get_line_id_from_runner. Runner params: {runner_variant_params}"
+            )
 
 
 _T_BaseVariant = TypeVar("_T_BaseVariant", bound=PossibleDerivedHPDTypes)
@@ -98,12 +136,19 @@ class BaseVariantHPD(HyperParamDefinition[_T_BaseVariant]):
         return str(option)
 
     @abstractmethod
-    def derived_variants_params(self) -> Sequence[VARIANT_PARAM_NAME]:
+    def derived_variants_params(self) -> Sequence[T_VARIANT_PARAM_AND_FILTERATION]:
         pass
 
     def get_derived_hpds(self, option: _T_BaseVariant) -> dict[VARIANT_PARAM_NAME, PossibleDerivedHPDTypes]:
+        derived_params = self.derived_variants_params()
+        assert len(derived_params) == 1, (
+            f"BaseVariantHPD.get_derived_hpds expects exactly one derived param, but got {derived_params}"
+        )
+        derived_param = derived_params[0]
+        assert derived_param != ToClassifyNames.prompt_filteration
+
         return {
-            self.derived_variants_params()[0]: option,
+            derived_param: option,
         }
 
 
@@ -117,7 +162,7 @@ class ModelArchHPD(BaseVariantHPD[MODEL_ARCH]):
     def get_display_name(self, option):
         return option
 
-    def derived_variants_params(self) -> Sequence[VARIANT_PARAM_NAME]:
+    def derived_variants_params(self) -> Sequence[T_VARIANT_PARAM_AND_FILTERATION]:
         return [BaseVariantParamName.model_arch]
 
 
@@ -128,7 +173,7 @@ class ModelSizeHPD(BaseVariantHPD[TModelSize]):
     def get_display_name(self, option):
         return option
 
-    def derived_variants_params(self) -> Sequence[VARIANT_PARAM_NAME]:
+    def derived_variants_params(self) -> Sequence[T_VARIANT_PARAM_AND_FILTERATION]:
         return [BaseVariantParamName.model_size]
 
 
@@ -139,7 +184,7 @@ class SourceHPD(BaseVariantHPD[TokenType]):
     def get_display_name(self, option: TokenType) -> str:
         return option
 
-    def derived_variants_params(self) -> Sequence[VARIANT_PARAM_NAME]:
+    def derived_variants_params(self) -> Sequence[T_VARIANT_PARAM_AND_FILTERATION]:
         return [InfoFlowVariantParam.source]
 
 
@@ -153,7 +198,7 @@ class TargetHPD(BaseVariantHPD[TokenType]):
     def default_fix_value(self) -> TokenType:
         return TokenType.last
 
-    def derived_variants_params(self) -> Sequence[VARIANT_PARAM_NAME]:
+    def derived_variants_params(self) -> Sequence[T_VARIANT_PARAM_AND_FILTERATION]:
         return [InfoFlowVariantParam.target]
 
 
@@ -167,7 +212,7 @@ class FeatureCategoryHPD(BaseVariantHPD[FeatureCategory]):
     def default_fix_value(self) -> FeatureCategory:
         return FeatureCategory.ALL
 
-    def derived_variants_params(self) -> Sequence[VARIANT_PARAM_NAME]:
+    def derived_variants_params(self) -> Sequence[T_VARIANT_PARAM_AND_FILTERATION]:
         return [InfoFlowVariantParam.feature_category]
 
 
@@ -181,7 +226,7 @@ class WindowSizeHPD(BaseVariantHPD[TWindowSize]):
     def default_fix_value(self) -> TWindowSize:
         return TWindowSize(9)
 
-    def derived_variants_params(self) -> Sequence[VARIANT_PARAM_NAME]:
+    def derived_variants_params(self) -> Sequence[T_VARIANT_PARAM_AND_FILTERATION]:
         return [WindowedVariantParam.window_size]
 
 
@@ -197,7 +242,7 @@ class ModelArchAndSizeHPD(HyperParamDefinition[MODEL_ARCH_AND_SIZE]):
     def get_display_name(self, option: MODEL_ARCH_AND_SIZE) -> str:
         return option.model_name
 
-    def derived_variants_params(self) -> Sequence[VARIANT_PARAM_NAME]:
+    def derived_variants_params(self) -> Sequence[T_VARIANT_PARAM_AND_FILTERATION]:
         return [BaseVariantParamName.model_arch, BaseVariantParamName.model_size]
 
     def get_derived_hpds(self, option: MODEL_ARCH_AND_SIZE) -> dict[VARIANT_PARAM_NAME, PossibleDerivedHPDTypes]:
@@ -206,10 +251,37 @@ class ModelArchAndSizeHPD(HyperParamDefinition[MODEL_ARCH_AND_SIZE]):
             BaseVariantParamName.model_size: option.size,
         }
 
+    def get_line_id_from_runner(self, runner_variant_params: BaseVariantParams) -> str:
+        model_arch = runner_variant_params.model_arch
+        model_size = runner_variant_params.model_size
+        arch_and_size_tuple = MODEL_ARCH_AND_SIZE(model_arch, model_size)
+        return self.get_display_name(arch_and_size_tuple)
+
+
+class ModelFamilyHPD(HyperParamDefinition[ARCH_FAMILY]):
+    def get_options(self) -> Sequence[ARCH_FAMILY]:
+        return str_enum_values(ARCH_FAMILY)
+
+    def get_display_name(self, option: ARCH_FAMILY) -> str:
+        return option
+
+    def derived_variants_params(self) -> Sequence[T_VARIANT_PARAM_AND_FILTERATION]:
+        return [BaseVariantParamName.model_arch]
+
+    def get_derived_hpds(self, option: ARCH_FAMILY) -> dict[VARIANT_PARAM_NAME, PossibleDerivedHPDTypes]:
+        raise RuntimeError("Should not be called")
+
+    def _expand_value(self, option: ARCH_FAMILY) -> Iterator[dict[VARIANT_PARAM_NAME, PossibleDerivedHPDTypes]]:
+        for arch in MODEL_FAMILY_TO_ARCH[option]:
+            yield {BaseVariantParamName.model_arch: arch}
+
 
 class PromptFilterationHPD(HyperParamDefinition[_T]):
     def get_derived_hpds(self, option):
         raise NotImplementedError("Only get_derived_hpd_with_context should be called")
+
+    def derived_variants_params(self) -> Sequence[T_VARIANT_PARAM_AND_FILTERATION]:
+        return [ToClassifyNames.prompt_filteration]
 
     @abstractmethod
     def get_derived_hpd_with_context(
@@ -223,9 +295,6 @@ class PromptIdxHPD(PromptFilterationHPD[TPromptOriginalIndex]):
 
     def get_display_name(self, option: TPromptOriginalIndex) -> str:
         return f"{option}"
-
-    def derived_variants_params(self) -> Sequence[VARIANT_PARAM_NAME]:
-        return []
 
     def get_derived_hpd_with_context(
         self, option: TPromptOriginalIndex, context_model_arch_and_sizes
@@ -266,9 +335,6 @@ class FilterationFactoryHPD(PromptFilterationHPD[PromptFilterationFactory]):
     def get_display_name(self, option: PromptFilterationFactory) -> str:
         return option.display_name
 
-    def derived_variants_params(self) -> Sequence[VARIANT_PARAM_NAME]:
-        return []
-
     def get_derived_hpd_with_context(
         self, option: PromptFilterationFactory, context_model_arch_and_sizes: list[MODEL_ARCH_AND_SIZE]
     ) -> tuple[BasePromptFilteration, dict[VARIANT_PARAM_NAME, PossibleDerivedHPDTypes]]:
@@ -300,5 +366,7 @@ def get_hyper_param_definition(option: TExperimentHyperParams) -> HyperParamDefi
             return PromptIdxHPD()
         case VirtualExperimentHyperParams.filteration_factory:
             return FilterationFactoryHPD()
+        case VirtualExperimentHyperParams.model_family:
+            return ModelFamilyHPD()
         case _:
             raise ValueError(f"Unsupported variation option: {option}")

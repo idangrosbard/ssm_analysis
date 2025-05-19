@@ -68,35 +68,11 @@
             }
         ],
         "cell_plot_config": {
-            "figure_width": 6.0,
-            "ylabel_y_coord": 0.5,
-            "axis_fontsize": 25,
-            "tight_layout_rect_y": 0.85,
             "custom_colors": {
                 "mamba1-7B-falcon": "#af7404",
                 "mamba1-2.8B": "#3e7316",
                 "mamba2-2.7B": "#1b00dc",
                 "gpt2-1.5B": "#0a9c8a"
-            }
-        },
-        "combine_plot_config": {
-            "column_header_padding": -25.0,
-            "crop_params": {
-                "edge_crop": {
-                    "left": 3.43,
-                    "top": 20.5,
-                    "width": 96.27999999999999,
-                    "height": 79.5
-                },
-                "standard_crop": {
-                    "left": 14.57,
-                    "top": 19.29,
-                    "width": 84.72,
-                    "height": 69.41999999999999
-                }
-            },
-            "legend_params": {
-                "legend_padding": 30
             }
         }
     },
@@ -742,39 +718,97 @@
         "experiment_name": "info_flow",
         "params": [
             {
-                "param": "model_size",
+                "param": "model_arch_and_size",
                 "orientation": "lines",
                 "values": [
-                    "130M",
-                    "355M",
-                    "774M",
-                    "1B",
-                    "1.4B",
-                    "1.3B",
-                    "2.8B",
-                    "2.7B",
-                    "3B",
-                    "7B",
-                    "1.5B",
-                    "7B-falcon",
-                    "7B-falcon-base",
-                    "8B",
-                    "0.5B"
+                    [
+                        "mamba1",
+                        "130M"
+                    ],
+                    [
+                        "mamba2",
+                        "130M"
+                    ],
+                    [
+                        "gpt2",
+                        "355M"
+                    ],
+                    [
+                        "mamba2",
+                        "1.3B"
+                    ],
+                    [
+                        "mamba1",
+                        "1.4B"
+                    ],
+                    [
+                        "mamba1",
+                        "2.8B"
+                    ],
+                    [
+                        "gpt2",
+                        "774M"
+                    ],
+                    [
+                        "gpt2",
+                        "1.5B"
+                    ],
+                    [
+                        "llama3.2",
+                        "3B"
+                    ],
+                    [
+                        "mamba2",
+                        "2.7B"
+                    ],
+                    [
+                        "mamba1",
+                        "7B"
+                    ],
+                    [
+                        "mamba1",
+                        "7B-falcon-base"
+                    ],
+                    [
+                        "mistral0.1",
+                        "7B"
+                    ],
+                    [
+                        "mistral0.3",
+                        "7B"
+                    ],
+                    [
+                        "llama3",
+                        "8B"
+                    ],
+                    [
+                        "qwen2",
+                        "0.5B"
+                    ],
+                    [
+                        "mamba1",
+                        "7B-falcon"
+                    ],
+                    [
+                        "qwen2.5",
+                        "0.5B"
+                    ],
+                    [
+                        "llama3.2",
+                        "1B"
+                    ]
                 ]
             },
             {
-                "param": "model_arch",
+                "param": "model_family",
                 "orientation": "rows",
                 "values": [
                     "mamba1",
                     "mamba2",
-                    "gpt2",
-                    "mistral0.1",
-                    "mistral0.3",
-                    "qwen2",
-                    "qwen2.5",
-                    "llama3",
-                    "llama3.2"
+                    "llama",
+                    "mistral",
+                    "qwen",
+                    "gpt2"
                 ]
             },
             {
@@ -788,21 +822,9 @@
                 ]
             },
             {
-                "param": "window_size",
-                "values": [
-                    9
-                ]
-            },
-            {
                 "param": "feature_category",
                 "values": [
                     "ALL"
-                ]
-            },
-            {
-                "param": "target",
-                "values": [
-                    "last"
                 ]
             },
             {
@@ -812,16 +834,217 @@
                         "correctness": "correct"
                     }
                 ]
+            },
+            {
+                "param": "target",
+                "values": [
+                    "last"
+                ]
+            },
+            {
+                "param": "window_size",
+                "values": [
+                    9
+                ]
             }
         ],
-        "cell_plot_config": {},
+        "cell_plot_config": {
+            "custom_colors": {
+                "mamba1-130M": "#af7404",
+                "mamba1-1.4B": "#3e7316",
+                "mamba1-2.8B": "#1b00dc",
+                "mamba1-7B": "#c90808",
+                "mamba1-7B-falcon-base": "#8a63e2",
+                "mamba1-7B-falcon": "#0a9c8a",
+                "mamba2-130M": "#af7404",
+                "mamba2-1.3B": "#3e7316",
+                "mamba2-2.7B": "#1b00dc",
+                "gpt2-355M": "#af7404",
+                "gpt2-774M": "#3e7316",
+                "gpt2-1.5B": "#1b00dc",
+                "llama3.2-1B": "#af7404",
+                "llama3.2-3B": "#3e7316",
+                "llama3-8B": "#1b00dc",
+                "mistral0.1-7B": "#af7404",
+                "mistral0.3-7B": "#1b00dc",
+                "qwen2-0.5B": "#af7404",
+                "qwen2.5-0.5B": "#1b00dc"
+            }
+        },
         "combine_plot_config": {
             "column_header_padding": -12.0,
-            "crop_params": {
-                "edge_crop": {
-                    "left": 0.004081632653061225,
-                    "top": 0.08888888888888889
-                }
+            "show_row_labels": true,
+            "legend_params": {
+                "rows": 4
+            }
+        }
+    },
+    "figure1+_grids": {
+        "plot_id": "figure1+_grids",
+        "title": "Figure 1+",
+        "description": "Figure 1+ description",
+        "order": 1,
+        "is_appendix": true,
+        "experiment_name": "info_flow",
+        "params": [
+            {
+                "param": "model_arch_and_size",
+                "orientation": "lines",
+                "values": [
+                    [
+                        "mamba1",
+                        "130M"
+                    ],
+                    [
+                        "mamba2",
+                        "130M"
+                    ],
+                    [
+                        "gpt2",
+                        "355M"
+                    ],
+                    [
+                        "mamba2",
+                        "1.3B"
+                    ],
+                    [
+                        "mamba1",
+                        "1.4B"
+                    ],
+                    [
+                        "mamba1",
+                        "2.8B"
+                    ],
+                    [
+                        "gpt2",
+                        "774M"
+                    ],
+                    [
+                        "gpt2",
+                        "1.5B"
+                    ],
+                    [
+                        "llama3.2",
+                        "3B"
+                    ],
+                    [
+                        "mamba2",
+                        "2.7B"
+                    ],
+                    [
+                        "mamba1",
+                        "7B"
+                    ],
+                    [
+                        "mamba1",
+                        "7B-falcon-base"
+                    ],
+                    [
+                        "mistral0.1",
+                        "7B"
+                    ],
+                    [
+                        "mistral0.3",
+                        "7B"
+                    ],
+                    [
+                        "llama3",
+                        "8B"
+                    ],
+                    [
+                        "qwen2",
+                        "0.5B"
+                    ],
+                    [
+                        "mamba1",
+                        "7B-falcon"
+                    ],
+                    [
+                        "qwen2.5",
+                        "0.5B"
+                    ],
+                    [
+                        "llama3.2",
+                        "1B"
+                    ]
+                ]
+            },
+            {
+                "param": "model_family",
+                "orientation": "grids",
+                "values": [
+                    "mamba1",
+                    "mamba2",
+                    "llama",
+                    "mistral",
+                    "qwen",
+                    "gpt2"
+                ]
+            },
+            {
+                "param": "source",
+                "orientation": "cols",
+                "values": [
+                    "subject",
+                    "relation",
+                    "last",
+                    "first"
+                ]
+            },
+            {
+                "param": "feature_category",
+                "values": [
+                    "ALL"
+                ]
+            },
+            {
+                "param": "filteration_factory",
+                "values": [
+                    {
+                        "correctness": "correct"
+                    }
+                ]
+            },
+            {
+                "param": "target",
+                "values": [
+                    "last"
+                ]
+            },
+            {
+                "param": "window_size",
+                "values": [
+                    9
+                ]
+            }
+        ],
+        "cell_plot_config": {
+            "custom_colors": {
+                "mamba1-130M": "#af7404",
+                "mamba1-1.4B": "#3e7316",
+                "mamba1-2.8B": "#1b00dc",
+                "mamba1-7B": "#c90808",
+                "mamba1-7B-falcon-base": "#8a63e2",
+                "mamba1-7B-falcon": "#0a9c8a",
+                "mamba2-130M": "#af7404",
+                "mamba2-1.3B": "#3e7316",
+                "mamba2-2.7B": "#1b00dc",
+                "gpt2-355M": "#af7404",
+                "gpt2-774M": "#3e7316",
+                "gpt2-1.5B": "#1b00dc",
+                "llama3.2-1B": "#af7404",
+                "llama3.2-3B": "#3e7316",
+                "llama3-8B": "#1b00dc",
+                "mistral0.1-7B": "#af7404",
+                "mistral0.3-7B": "#1b00dc",
+                "qwen2-0.5B": "#af7404",
+                "qwen2.5-0.5B": "#1b00dc"
+            }
+        },
+        "combine_plot_config": {
+            "column_header_padding": -12.0,
+            "legend_params": {
+                "rows": 2
             }
         }
     },
@@ -1076,6 +1299,167 @@
                 ]
             }
         ],
-        "cell_plot_config": {}
+        "cell_plot_config": {
+            "figure_width": 6.0,
+            "figure_height": 5.0,
+            "fontsize": 20,
+            "tick_fontsize": 18
+        },
+        "combine_plot_config": {
+            "crop_params": {
+                "edge_crop": {
+                    "top": 16.98,
+                    "width": 100.0,
+                    "height": 81.13
+                },
+                "standard_crop": {
+                    "top": 17.32,
+                    "width": 100.0,
+                    "height": 73.88999999999999
+                }
+            }
+        }
+    },
+    "heatmaps_per_sizes2": {
+        "plot_id": "heatmaps_per_sizes2",
+        "title": "Heatmaps Per sizes",
+        "description": "Relative change in correct-token probability\nafter knocking out connection from each token to the last\ntoken.",
+        "order": 12,
+        "is_appendix": true,
+        "experiment_name": "heatmap",
+        "params": [
+            {
+                "param": "model_arch_and_size",
+                "orientation": "cols",
+                "values": [
+                    [
+                        "mamba1",
+                        "130M"
+                    ],
+                    [
+                        "mamba2",
+                        "130M"
+                    ],
+                    [
+                        "gpt2",
+                        "355M"
+                    ],
+                    [
+                        "mamba1",
+                        "2.8B"
+                    ],
+                    [
+                        "gpt2",
+                        "1.5B"
+                    ],
+                    [
+                        "mamba2",
+                        "1.3B"
+                    ],
+                    [
+                        "mamba1",
+                        "1.4B"
+                    ],
+                    [
+                        "llama3.2",
+                        "3B"
+                    ],
+                    [
+                        "mamba2",
+                        "2.7B"
+                    ],
+                    [
+                        "mamba1",
+                        "7B"
+                    ],
+                    [
+                        "mamba1",
+                        "7B-falcon-base"
+                    ],
+                    [
+                        "mistral0.1",
+                        "7B"
+                    ],
+                    [
+                        "mistral0.3",
+                        "7B"
+                    ],
+                    [
+                        "llama3",
+                        "8B"
+                    ],
+                    [
+                        "qwen2",
+                        "0.5B"
+                    ],
+                    [
+                        "mamba1",
+                        "7B-falcon"
+                    ],
+                    [
+                        "qwen2.5",
+                        "0.5B"
+                    ],
+                    [
+                        "llama3.2",
+                        "1B"
+                    ],
+                    [
+                        "gpt2",
+                        "774M"
+                    ]
+                ]
+            },
+            {
+                "param": "model_family",
+                "orientation": "grids",
+                "values": [
+                    "mamba1",
+                    "mamba2",
+                    "llama",
+                    "mistral",
+                    "qwen",
+                    "gpt2"
+                ]
+            },
+            {
+                "param": "prompt_idx",
+                "orientation": "rows",
+                "values": [
+                    18566,
+                    2720,
+                    12354,
+                    16634,
+                    13846,
+                    140
+                ]
+            },
+            {
+                "param": "window_size",
+                "values": [
+                    9
+                ]
+            }
+        ],
+        "cell_plot_config": {
+            "figure_width": 6.0,
+            "figure_height": 5.0,
+            "fontsize": 20,
+            "tick_fontsize": 18
+        },
+        "combine_plot_config": {
+            "crop_params": {
+                "edge_crop": {
+                    "top": 16.98,
+                    "width": 100.0,
+                    "height": 81.13
+                },
+                "standard_crop": {
+                    "top": 17.32,
+                    "width": 100.0,
+                    "height": 73.88999999999999
+                }
+            }
+        }
     }
 }

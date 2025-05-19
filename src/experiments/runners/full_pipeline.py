@@ -171,10 +171,10 @@ def main_local(args: FullPipelineRunner):
                 fig = create_confidence_plot(
                     lines=lines_metadata,
                     confidence_level=0.95,
-                    title=title,
                     config=InfoFlowPlotConfig(
                         custom_colors=dict(zip(labels, colors)),
                         custom_line_styles=dict(zip(labels, linestyles)),
+                        title=title,
                         metrics_to_show=[TMetricType.ACC, TMetricType.DIFF],
                     ),
                 )

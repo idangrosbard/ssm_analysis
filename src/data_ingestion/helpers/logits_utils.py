@@ -119,6 +119,10 @@ class Prompt:
         return cast(float, self.prompt_row[COLS.EVALUATE_MODEL.TARGET_PROBS])
 
     @property
+    def target_rank(self) -> int:
+        return cast(int, self.prompt_row[COLS.EVALUATE_MODEL.TARGET_RANK])
+
+    @property
     def relation(self) -> str:
         return cast(str, self.prompt_row[COLS.COUNTER_FACT.RELATION])
 

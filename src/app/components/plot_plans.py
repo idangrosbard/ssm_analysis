@@ -388,6 +388,10 @@ class PlotPlanEditor(StreamlitComponent[Optional[PlotPlan]]):
             if col_name == ToClassifyNames.prompt_filteration:
                 if existing_plan.experiment_name == ExperimentName.info_flow:
                     col_name = VirtualExperimentHyperParams.filteration_factory
+                elif existing_plan.experiment_name == ExperimentName.heatmap:
+                    col_name = VirtualExperimentHyperParams.prompt_idx
+                else:
+                    raise NotImplementedError(f"Experiment {existing_plan.experiment_name} not implemented")
             col_name = cast(TExperimentHyperParams, col_name)
             hpd_col = cast(TExperimentHyperParams, col_name)
             hpd = get_hyper_param_definition(hpd_col)

@@ -377,8 +377,12 @@ class ResultBank(IterableDataObject[T_RUNNER_TYPE]):
 
     def to_experiment_results_df(self) -> pd.DataFrame:
         results_data = []
+        params_to_include = [
+            *get_enum_or_literal_options(VARIANT_PARAM_NAME),
+            *get_enum_or_literal_options(ResultBankParamNames),
+        ]
         for i, result in enumerate(self._items):
-            result_dict: dict = {param: getattr(result.variant_params, param, None) for param in ResultBankParamNames}
+            result_dict: dict = {param: getattr(result.variant_params, param, None) for param in params_to_include}
             result_dict[ResultBankParamNames.path] = str(result.variation_relative_path)
             result_dict[ResultBankParamNames.code_version] = result.metadata_params.code_version
             result_dict[ResultBank._KEY] = i

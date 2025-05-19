@@ -179,6 +179,7 @@ def plot(args: HeatmapRunner, plot_name: HEATMAP_PLOT_FUNCS):
             window_size=args.variant_params.window_size,
             last_tok=last_tok,
             base_prob=prompt.base_prob,
+            target_rank=prompt.target_rank,
             true_word=prompt.true_word,
             toks=toks,
         )

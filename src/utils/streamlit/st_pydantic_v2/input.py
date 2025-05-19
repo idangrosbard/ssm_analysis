@@ -308,7 +308,7 @@ def _(typ: Color, ctx: RenderCtx, init_val: Any) -> Color:
     # Convert the Color object to a hex string or use default
     default_color = "#000000"
 
-    if init_val is not None:
+    if init_val:
         try:
             if hasattr(init_val, "as_hex") and callable(getattr(init_val, "as_hex")):
                 hex_value = init_val.as_hex()

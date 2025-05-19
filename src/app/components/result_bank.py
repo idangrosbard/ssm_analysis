@@ -8,7 +8,8 @@ import streamlit as st
 from st_aggrid import AgGrid, DataReturnMode, GridUpdateMode
 
 from src.app.data_store import load_results_bank
-from src.core.names import WindowedVariantParam
+from src.core.consts import ALL_IMPORTANT_MODELS
+from src.core.names import BaseVariantParamName, WindowedVariantParam
 from src.data_ingestion.data_defs.data_defs import EvaluateModelResults, ResultBank
 from src.experiments.infrastructure.base_runner import BaseRunner
 from src.utils.streamlit.components.aagrid import (
@@ -86,7 +87,7 @@ class ShowResultsBank(StreamlitComponent[T_RESULT_BANK_TYPE]):
 def select_model_evaluations(
     base_results: Optional[EvaluateModelResults] = None,
     key: str = "select_model_evaluations",
-    pre_select_all_rows: bool = True,
+    pre_select_all_rows: bool = False,
 ) -> EvaluateModelResults:
     if base_results is None:
         base_results = load_results_bank.call_and_render().to_evaluate_model_results()
@@ -96,6 +97,14 @@ def select_model_evaluations(
         height=300,
         hide_singular_columns=True,
         key=key,
+        filters={
+            BaseVariantParamName.model_arch: [
+                model_arch_and_size.arch for model_arch_and_size in ALL_IMPORTANT_MODELS.keys()
+            ],
+            BaseVariantParamName.model_size: [
+                model_arch_and_size.size for model_arch_and_size in ALL_IMPORTANT_MODELS.keys()
+            ],
+        },
         pre_select_all_rows=pre_select_all_rows,
     ).render()
 
