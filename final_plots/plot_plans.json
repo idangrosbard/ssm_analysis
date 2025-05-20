@@ -782,16 +782,8 @@
                         "8B"
                     ],
                     [
-                        "qwen2",
-                        "0.5B"
-                    ],
-                    [
                         "mamba1",
                         "7B-falcon"
-                    ],
-                    [
-                        "qwen2.5",
-                        "0.5B"
                     ],
                     [
                         "llama3.2",
@@ -807,7 +799,6 @@
                     "mamba2",
                     "llama",
                     "mistral",
-                    "qwen",
                     "gpt2"
                 ]
             },
@@ -866,9 +857,7 @@
                 "llama3.2-3B": "#3e7316",
                 "llama3-8B": "#1b00dc",
                 "mistral0.1-7B": "#af7404",
-                "mistral0.3-7B": "#1b00dc",
-                "qwen2-0.5B": "#af7404",
-                "qwen2.5-0.5B": "#1b00dc"
+                "mistral0.3-7B": "#1b00dc"
             }
         },
         "combine_plot_config": {
@@ -952,16 +941,8 @@
                         "8B"
                     ],
                     [
-                        "qwen2",
-                        "0.5B"
-                    ],
-                    [
                         "mamba1",
                         "7B-falcon"
-                    ],
-                    [
-                        "qwen2.5",
-                        "0.5B"
                     ],
                     [
                         "llama3.2",
@@ -977,7 +958,6 @@
                     "mamba2",
                     "llama",
                     "mistral",
-                    "qwen",
                     "gpt2"
                 ]
             },
@@ -1036,9 +1016,7 @@
                 "llama3.2-3B": "#3e7316",
                 "llama3-8B": "#1b00dc",
                 "mistral0.1-7B": "#af7404",
-                "mistral0.3-7B": "#1b00dc",
-                "qwen2-0.5B": "#af7404",
-                "qwen2.5-0.5B": "#1b00dc"
+                "mistral0.3-7B": "#1b00dc"
             }
         },
         "combine_plot_config": {
@@ -1234,14 +1212,6 @@
                     [
                         "llama3",
                         "8B"
-                    ],
-                    [
-                        "qwen2",
-                        "0.5B"
-                    ],
-                    [
-                        "qwen2.5",
-                        "0.5B"
                     ]
                 ]
             }
@@ -1389,16 +1359,8 @@
                         "8B"
                     ],
                     [
-                        "qwen2",
-                        "0.5B"
-                    ],
-                    [
                         "mamba1",
                         "7B-falcon"
-                    ],
-                    [
-                        "qwen2.5",
-                        "0.5B"
                     ],
                     [
                         "llama3.2",
@@ -1418,7 +1380,6 @@
                     "mamba2",
                     "llama",
                     "mistral",
-                    "qwen",
                     "gpt2"
                 ]
             },

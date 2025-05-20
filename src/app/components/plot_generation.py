@@ -138,6 +138,8 @@ class GridLayout:
             filtered_grid,
             grid_params,
             legend_items=self.plot_generator._get_legend_items(relevant_data_reqs_list=grid_specific_data_reqs),
+            col_labels=col_labels,
+            row_labels=row_labels,
         )
         if combined_image:
             st.image(combined_image, width=combined_image.width)
@@ -274,6 +276,11 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
                 prompt = get_prompt_row_index(data, prompt_id)
                 input_ids = prompt.input_ids(tokenizer, "cpu")
                 toks = cast(list[str], decode_tokens(tokenizer, input_ids[0]))
+                for i, tok in enumerate(toks):
+                    if input_ids[0][i] == tokenizer.bos_token_id:
+                        toks[i] = "<BOS>"
+                    if input_ids[0][i] == tokenizer.eos_token_id:
+                        toks[i] = "<EOS>"
                 last_tok = toks[-1]
                 toks[-1] = toks[-1] + "*"
 

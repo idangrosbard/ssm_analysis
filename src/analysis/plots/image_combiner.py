@@ -13,7 +13,6 @@ from pydantic.fields import FieldInfo
 from src.utils.infra.image_utils import resize_image
 from src.utils.streamlit.components.extended_streamlit_pydantic import (
     annotate_dict_with_literal_values,
-    get_dict_key_literal_values,
 )
 from src.utils.streamlit.st_pydantic_v2.input import SpecialFieldKeys
 from src.utils.streamlit.ui_pydantic_v2.extra_types import PercentageCrop
@@ -520,7 +519,11 @@ TRANSPARENT_WHITE = (255, 255, 255, 0)
 
 
 def combine_image_grid(
-    images_paths_grid: List[List[Path]], params: ImageGridParams, legend_items: list[LegendItem]
+    images_paths_grid: List[List[Path]],
+    params: ImageGridParams,
+    legend_items: list[LegendItem],
+    row_labels: list[str],
+    col_labels: list[str],
 ) -> Image.Image:
     # Fonts
     font_title = _safe_font(bold_dejavu_path, params.font_size)
@@ -638,19 +641,15 @@ def combine_image_grid(
     # --------------------------------------------------------------------- #
     #  Paint each tile & row labels                                         #
     # --------------------------------------------------------------------- #
-    values = get_dict_key_literal_values(params, "rows_labels_override")
     if params.show_row_labels:
-        assert values is not None
-        assert len(values) == num_rows
+        assert len(row_labels) == num_rows
     for row_idx, row_images in enumerate(images):
         y_top = top_margin + row_idx * (img_h + params.padding)
         # Row label (once per row)
         if row_idx == 0:
             y_top -= extras[1]
         if params.show_row_labels:
-            assert values is not None
-            label = values[row_idx]
-            label = params.rows_labels_override.get(label, label)
+            label = row_labels[row_idx]
 
             # Generate prefix based on style
             prefix = generate_prefix(row_idx, params.row_prefix_style)
@@ -694,14 +693,12 @@ def combine_image_grid(
     #  Draw column labels                                                   #
     # --------------------------------------------------------------------- #
     if params.show_col_labels:
-        values = get_dict_key_literal_values(params, "columns_labels_override")
-        assert values is not None
+        assert len(col_labels) == num_cols
 
         for col_idx in range(num_cols):
             prefix = generate_prefix(col_idx, params.column_prefix_style)
 
-            label = values[col_idx]
-            label = params.columns_labels_override.get(label, label)
+            label = col_labels[col_idx]
             if prefix:
                 label = f"{prefix} {label}"
             w, h = img_w, col_label_h  # no rotation
