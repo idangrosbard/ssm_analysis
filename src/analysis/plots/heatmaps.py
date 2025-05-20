@@ -5,6 +5,7 @@ import numpy as np
 import seaborn as sns
 from matplotlib.colors import TwoSlopeNorm
 from matplotlib.ticker import MaxNLocator
+from matplotlib.transforms import Bbox
 from pydantic import BaseModel, Field
 
 from src.core.consts import reverse_model_id
@@ -27,6 +28,11 @@ class HeatmapPlotConfig(BaseModel):
     is_base_prob_in_title: bool = Field(
         default=True,
         description="Show the base probability in the title",
+        json_schema_extra={SpecialFieldKeys.column_group: "basic_config"},
+    )
+    show_base_prob_annotation: bool = Field(
+        default=True,
+        description="Show the base probability as a text annotation on the plot",
         json_schema_extra={SpecialFieldKeys.column_group: "basic_config"},
     )
 
@@ -104,6 +110,12 @@ class HeatmapPlotConfig(BaseModel):
         ge=6,
         json_schema_extra={SpecialFieldKeys.column_group: "font_settings"},
     )
+    base_prob_text_fontsize: int = Field(
+        default=10,
+        description="Font size for the base probability text annotation",
+        ge=6,
+        json_schema_extra={SpecialFieldKeys.column_group: "font_settings"},
+    )
 
     # Separator
     sep2: None = Field(default=None, json_schema_extra={SpecialFieldKeys.separator: True})
@@ -141,6 +153,22 @@ class HeatmapPlotConfig(BaseModel):
 
     # Separator
     sep3: None = Field(default=None, json_schema_extra={SpecialFieldKeys.separator: True})
+
+    # Annotation Settings
+    base_prob_text_x_pos: float = Field(
+        default=0.7,  # Adjusted to be to the left of a typical colorbar
+        description="X position of the base probability text annotation (figure coordinates)",
+        ge=0.0,
+        le=1.0,
+        json_schema_extra={SpecialFieldKeys.column_group: "annotation_settings"},
+    )
+    base_prob_text_y_pos: float = Field(
+        default=0.5,
+        description="Y position of the base probability text annotation (figure coordinates)",
+        ge=0.0,
+        le=1.0,
+        json_schema_extra={SpecialFieldKeys.column_group: "annotation_settings"},
+    )
 
     # Normalization Settings
     with_fixed_diff: bool = Field(
@@ -239,10 +267,6 @@ def simple_diff_fixed(
     title = "Knockout to last token '" r"$\bf{" f"{last_tok}" r"}$" "'"
     if not config.minimal_title:
         title += f"\n{model_arch_and_size.model_name} - Window Size: {window_size}"
-    if config.is_base_prob_in_title:
-        title += f"\nbase probability: {round(base_prob, 4)}"
-        if target_rank != 1:
-            title += f" (target rank: {target_rank})"
 
     # Set title with appropriate formatting
     plt.suptitle(
@@ -283,16 +307,50 @@ def simple_diff_fixed(
     # Adjust tick parameters
     ax.tick_params(axis="both", which="both", length=0, labelsize=config.tick_fontsize)
 
+    # fig.subplots_adjust(top=0.8)
+
+    if config.is_tight_layout:
+        cbar = ax.collections[0].colorbar
+        if cbar is not None:
+            bbox = cbar.ax.get_position()
+            pad = (config.base_prob_text_fontsize / 72) / config.figure_width
+            fig.tight_layout(rect=(0, 0, bbox.x1 + pad, config.tight_layout_rect_y))
+        else:
+            fig.tight_layout(rect=(0, 0, 1, config.tight_layout_rect_y))
+
     # Customize colorbar
     cbar = ax.collections[0].colorbar
     if cbar:
         cbar.locator = MaxNLocator(nbins=config.colorbar_nbins)
         cbar.update_ticks()
         cbar.ax.tick_params(labelsize=config.tick_fontsize)
+        # Shift colorbar right based on base probability text font size
+        # Convert font size (points) to figure-coordinate offset: (pts/72in) / figure width in inches
+        offset_x = (config.base_prob_text_fontsize / 72) / config.figure_width
+        orig = cbar.ax.get_position()
+        new_pos = Bbox.from_bounds(orig.x0 + offset_x, orig.y0, orig.width, orig.height)
+        cbar.ax.set_position(new_pos)
 
-    # fig.subplots_adjust(top=0.8)
-
-    if config.is_tight_layout:
-        fig.tight_layout(rect=(0, 0, 1, config.tight_layout_rect_y))
+    # Add base probability text annotation
+    if config.show_base_prob_annotation:
+        annotation_text = f"Base Prob: {round(base_prob, 2)}"
+        if target_rank != 1:
+            annotation_text += f"\n(Rank: {target_rank})"
+        # Position base probability annotation between plot and colorbar
+        cbar = ax.collections[0].colorbar
+        if cbar is not None:
+            ax_pos = ax.get_position()
+            cb_pos = cbar.ax.get_position()
+            text_x = (ax_pos.x1 + cb_pos.x0) / 2
+            text_y = ax_pos.y0 + ax_pos.height * config.base_prob_text_y_pos
+            fig.text(
+                text_x,
+                text_y,
+                annotation_text,
+                fontsize=config.base_prob_text_fontsize,
+                ha="center",
+                va="center",
+                rotation=-90,
+            )
 
     return fig, ax

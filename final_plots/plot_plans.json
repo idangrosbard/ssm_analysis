@@ -1406,7 +1406,9 @@
             "figure_width": 6.0,
             "figure_height": 5.0,
             "fontsize": 20,
-            "tick_fontsize": 18
+            "tick_fontsize": 18,
+            "base_prob_text_fontsize": 15,
+            "base_prob_text_x_pos": 0.92
         },
         "combine_plot_config": {
             "crop_params": {
