@@ -154,6 +154,9 @@ class GridLayout:
 
         columns_count = ([0.5] if has_row_labels else []) + [1] * len(col_labels)
 
+        progress_bar = st.progress(0, text="Generating plots...")
+        total_plots = len(self.cells)
+        total_plots_completed = 0
         # Create rows
         for i, row_value in enumerate(self.row_values):
             st_cols = st.columns(columns_count)
@@ -175,9 +178,19 @@ class GridLayout:
                 cell = self.get_cell_at(row_value, col_value)
                 if cell:
                     with col_col:
+                        progress_bar.progress(
+                            total_plots_completed / total_plots,
+                            text=f"Generating plots... {total_plots_completed}/{total_plots}",
+                        )
                         self.plot_generator._plot_cell(
                             self.data_reqs_per_cell[cell], cell, recreate_plots, show_button=show_button
                         )
+                        total_plots_completed += 1
+                        progress_bar.progress(
+                            total_plots_completed / total_plots,
+                            text=f"Generating plots... {total_plots_completed}/{total_plots}",
+                        )
+        progress_bar.empty()
 
 
 class Tabs:
@@ -493,6 +506,7 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
             show_recreate_button = tab == Tabs.PLOT_INDIVIDUAL and st.checkbox("Show recreate buttons", value=False)
             save_combined_plot = tab == Tabs.PLOT_COMBINED and st.button("Save Combined Plot")
             save_configuration = tab == Tabs.PLOT_COMBINED and st.button("Save Configuration")
+            grid_progress_bar = st.progress(0, text="Generating Grids...")
 
             # Group cells by grid
             cells_by_grid: dict[Any, list[Cell]] = {}
@@ -546,6 +560,8 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
                         self._save_plot_plan()
                         st.toast("Configuration saved successfully!")
             # Render each grid
+            total_grid_plots = len(grid_names)
+            total_grid_plots_completed = 0
             for grid_name, tab in zip(grid_names, tabs):
                 grid_layout = GridLayout(
                     plot_plan=self.plot_plan,
@@ -559,9 +575,15 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
                         maybe_combined_image = grid_layout.render_combined(recreate_plots, grid_params)
                     else:
                         grid_layout.render_separate(recreate_plots, show_button=show_recreate_button)
+                    total_grid_plots_completed += 1
+                    grid_progress_bar.progress(
+                        total_grid_plots_completed,
+                        text=f"Generating plots... {total_grid_plots_completed}/{total_grid_plots}",
+                    )
 
                 if maybe_combined_image and save_combined_plot:
                     path = self._get_combined_plot_cache_path(grid_name)
                     path.parent.mkdir(parents=True, exist_ok=True)
                     save_at_dpi(maybe_combined_image, str(path))
                     st.toast("Combined plot saved successfully!")
+            grid_progress_bar.empty()

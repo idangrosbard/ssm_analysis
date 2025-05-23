@@ -650,6 +650,8 @@ def combine_image_grid(
             y_top -= extras[1]
         if params.show_row_labels:
             label = row_labels[row_idx]
+            if label in params.rows_labels_override:
+                label = params.rows_labels_override[label]
 
             # Generate prefix based on style
             prefix = generate_prefix(row_idx, params.row_prefix_style)
@@ -699,6 +701,8 @@ def combine_image_grid(
             prefix = generate_prefix(col_idx, params.column_prefix_style)
 
             label = col_labels[col_idx]
+            if label in params.columns_labels_override:
+                label = params.columns_labels_override[label]
             if prefix:
                 label = f"{prefix} {label}"
             w, h = img_w, col_label_h  # no rotation

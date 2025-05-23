@@ -18,7 +18,6 @@ from src.analysis.experiment_results.prompt_filteration_factory import (
     FilterationSource,
     ModelCorrectnessFilterationFactory,
     PresetFilterationFactory,
-    PromptFilterationFactory,
     PromptFilterationFactoryUnion,
 )
 from src.analysis.prompt_filterations import (
@@ -360,11 +359,12 @@ class SelectFilterationFactoryComponent(StreamlitComponent[PromptFilterationFact
     def __init__(
         self,
         key: str,
-        default_filteration_factory: Optional[PromptFilterationFactory] = None,
+        default_filteration_factory: Optional[PromptFilterationFactoryUnion] = None,
     ):
         self.key = key
         if default_filteration_factory is None:
             self.default_filteration_factory = CurrentModelFilterationFactory(
+                type=FilterationSource.current_model,
                 correctness=Correctness.correct,
                 combine_with_existing=False,
             )
@@ -407,11 +407,11 @@ class SelectFilterationFactoryComponent(StreamlitComponent[PromptFilterationFact
             )
             preset_id_sk.value = selected_preset
 
-            return PresetFilterationFactory(preset_id=selected_preset)
+            return PresetFilterationFactory(type=FilterationSource.preset, preset_id=selected_preset)
 
         elif selected_source == FilterationSource.existing_prompts:
             # For existing prompts, no additional options needed
-            return ExistingPromptsFilterationFactory()
+            return ExistingPromptsFilterationFactory(type=FilterationSource.existing_prompts)
 
         else:
             with cols[1]:
@@ -432,16 +432,19 @@ class SelectFilterationFactoryComponent(StreamlitComponent[PromptFilterationFact
             match selected_source:
                 case FilterationSource.current_model:
                     return CurrentModelFilterationFactory(
+                        type=FilterationSource.current_model,
                         correctness=correctness,
                         combine_with_existing=combine_with_existing,
                     )
                 case FilterationSource.context_models:
                     return ContextModelsFilterationFactory(
+                        type=FilterationSource.context_models,
                         correctness=correctness,
                         combine_with_existing=combine_with_existing,
                     )
                 case FilterationSource.all_important_models:
                     return AllImportantModelsFilterationFactory(
+                        type=FilterationSource.all_important_models,
                         correctness=correctness,
                         combine_with_existing=combine_with_existing,
                     )

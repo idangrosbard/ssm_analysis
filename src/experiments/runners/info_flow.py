@@ -183,11 +183,6 @@ class JSONInfoFlowFile:
         if corrupted_prompt_ids:
             print("Debug: Saving", self.path)
             self.save(content)
-            # self.statistics_path.unlink(missing_ok=True)
-            # if (self,) in STATISTICS_CACHE:
-            #     del STATISTICS_CACHE[(self,)]
-            # if (self,) in OUTPUTS_CACHE:
-            #     del OUTPUTS_CACHE[(self,)]
         return content
 
     @cached(TTL_info_flow_output_cache)
@@ -462,10 +457,10 @@ def run(args: InfoFlowRunner):
         total=len(missing_prompt_layer_values),
         mininterval=PRINT_INTERVAL,
     ):
-        if prompt_id not in content[InfoFlowJSONFileCols.data]:
-            content[InfoFlowJSONFileCols.data][prompt_id] = {}  # TODO: remove this line if banned
         if prompt_id in content[InfoFlowJSONFileCols.metadata][InfoFlowJSONMetadataCols.banned_prompts]:
             continue
+        if prompt_id not in content[InfoFlowJSONFileCols.data]:
+            content[InfoFlowJSONFileCols.data][prompt_id] = {}  # TODO: remove this line if banned
         for layer_idx in layer_idx:
             window = windows[layer_idx]
             model_interface.setup(layers=window)
@@ -487,8 +482,14 @@ def run(args: InfoFlowRunner):
                 is_known_error = any(known_error in str(e) for known_error in known_errors)
                 print(f" Error evaluating {prompt_id = }: {e}")
                 if is_known_id or is_known_error:
-                    # print(f" Error evaluating {prompt_id = }: {e}")
+                    print(f" Error evaluating {prompt_id = }: {e}")
+                    if is_known_id:
+                        print(known_ids)
+                    if is_known_error:
+                        print(known_errors)
+
                     content[InfoFlowJSONFileCols.metadata][InfoFlowJSONMetadataCols.banned_prompts][prompt_id] = str(e)
+                    del content[InfoFlowJSONFileCols.data][prompt_id]
                     break
                 else:
                     raise e

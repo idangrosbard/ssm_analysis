@@ -46,6 +46,8 @@ def get_tokenizer_and_model(
 ) -> tuple[TTokenizer, TModel]:
     if os.getenv("HUGGINGFACE_TOKEN") is not None:
         login(token=os.getenv("HUGGINGFACE_TOKEN"))
+    else:
+        print("No HuggingFace token found")
 
     minimal_kwargs = {
         "device": device,

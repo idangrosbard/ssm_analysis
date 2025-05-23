@@ -47,7 +47,7 @@ class EvaluateModelParams(BaseVariantParams):
     top_k_tokens: int = 5
 
 
-@lru_cache(maxsize=20)
+@lru_cache(maxsize=100)
 def _get_output_path(evaluate_runner: EvaluateModelRunner) -> TPromptDataFlat:
     df = pd.read_csv(evaluate_runner.output_result_path, index_col=False)
     for (

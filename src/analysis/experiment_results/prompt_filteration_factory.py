@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from abc import abstractmethod
+from abc import ABCMeta, abstractmethod
 from enum import StrEnum
-from typing import List, Union
+from typing import Annotated, List, Literal, Union
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field
 
 from src.analysis.prompt_filterations import (
     AnyExistingCompletePromptFilteration,
@@ -32,7 +32,7 @@ class FilterationSource(StrEnum):
 
 
 # Base class
-class PromptFilterationFactory(BaseModel):
+class PromptFilterationFactory(BaseModel, metaclass=ABCMeta):
     """Base class for prompt filteration factories.
 
     This class defines the interface for creating prompt filterations. Subclasses
@@ -40,10 +40,11 @@ class PromptFilterationFactory(BaseModel):
     """
 
     # Type field (discriminator for serialization/deserialization)
-    type: FilterationSource
+    type: str
 
     # Optional flag for combining with existing prompts
     combine_with_existing: bool = False
+    model_config = ConfigDict(frozen=True)
 
     def get_filteration(self, context_model_arch_and_sizes: List[MODEL_ARCH_AND_SIZE]) -> BasePromptFilteration:
         """Get filteration, potentially combined with existing prompts."""
@@ -70,7 +71,7 @@ class PromptFilterationFactory(BaseModel):
 class PresetFilterationFactory(PromptFilterationFactory):
     """Factory for creating prompt filterations from presets."""
 
-    type: FilterationSource = FilterationSource.preset
+    type: Literal[FilterationSource.preset]
     preset_id: TPresetID
 
     def _get_base_filteration(self, context_model_arch_and_sizes: List[MODEL_ARCH_AND_SIZE]) -> BasePromptFilteration:
@@ -105,7 +106,7 @@ class ModelCorrectnessFilterationFactory(PromptFilterationFactory):
 class CurrentModelFilterationFactory(ModelCorrectnessFilterationFactory):
     """Factory for creating filterations based on the current model's correctness."""
 
-    type: FilterationSource = FilterationSource.current_model
+    type: Literal[FilterationSource.current_model]
 
     def _get_base_filteration(self, context_model_arch_and_sizes: List[MODEL_ARCH_AND_SIZE]) -> BasePromptFilteration:
         return ModelCorrectPromptFilteration(
@@ -120,7 +121,7 @@ class CurrentModelFilterationFactory(ModelCorrectnessFilterationFactory):
 class ContextModelsFilterationFactory(ModelCorrectnessFilterationFactory):
     """Factory for creating filterations based on correctness across context models."""
 
-    type: FilterationSource = FilterationSource.context_models
+    type: Literal[FilterationSource.context_models]
 
     def _get_base_filteration(self, context_model_arch_and_sizes: List[MODEL_ARCH_AND_SIZE]) -> BasePromptFilteration:
         return LogicalPromptFilteration.create_and(
@@ -140,7 +141,7 @@ class ContextModelsFilterationFactory(ModelCorrectnessFilterationFactory):
 class AllImportantModelsFilterationFactory(ModelCorrectnessFilterationFactory):
     """Factory for creating filterations based on correctness across all important models."""
 
-    type: FilterationSource = FilterationSource.all_important_models
+    type: Literal[FilterationSource.all_important_models]
 
     def _get_base_filteration(self, context_model_arch_and_sizes: List[MODEL_ARCH_AND_SIZE]) -> BasePromptFilteration:
         return LogicalPromptFilteration.create_and(
@@ -160,7 +161,7 @@ class AllImportantModelsFilterationFactory(ModelCorrectnessFilterationFactory):
 class ExistingPromptsFilterationFactory(PromptFilterationFactory):
     """Factory for creating filterations that select only existing/computed prompts."""
 
-    type: FilterationSource = FilterationSource.existing_prompts
+    type: Literal[FilterationSource.existing_prompts]
 
     def _get_base_filteration(self, context_model_arch_and_sizes: List[MODEL_ARCH_AND_SIZE]) -> BasePromptFilteration:
         return AnyExistingCompletePromptFilteration()
@@ -171,10 +172,13 @@ class ExistingPromptsFilterationFactory(PromptFilterationFactory):
 
 
 # Union type for type hints
-PromptFilterationFactoryUnion = Union[
-    PresetFilterationFactory,
-    CurrentModelFilterationFactory,
-    ContextModelsFilterationFactory,
-    AllImportantModelsFilterationFactory,
-    ExistingPromptsFilterationFactory,
+PromptFilterationFactoryUnion = Annotated[
+    Union[
+        PresetFilterationFactory,
+        CurrentModelFilterationFactory,
+        ContextModelsFilterationFactory,
+        AllImportantModelsFilterationFactory,
+        ExistingPromptsFilterationFactory,
+    ],
+    Field(discriminator="type"),
 ]

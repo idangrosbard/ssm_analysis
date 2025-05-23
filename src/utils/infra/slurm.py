@@ -1,4 +1,9 @@
+import os
+import re
+import subprocess
+from collections import defaultdict
 from enum import StrEnum
+from functools import cache
 
 import submitit
 
@@ -21,15 +26,16 @@ from src.utils.types_utils import ommit_none
 
 
 class SLURM_GPU_TYPE(StrEnum):
-    TITAN_XP_STUDENTRUN = "titan_xp-studentrun"
-    L40S = "l40s"
-    A100 = "a100"
     H100 = "h100"
-    GEFORCE_RTX_3090 = "geforce_rtx_3090"
-    V100 = "v100"
-    A5000 = "a5000"
+    A100 = "a100"
+    L40S = "l40s"
     A6000 = "a6000"
     QUADRO_RTX_8000 = "quadro_rtx_8000"
+    GEFORCE_RTX_3090 = "geforce_rtx_3090"
+    A5000 = "a5000"
+    V100 = "v100"
+    GEFORCE_RTX_2080 = "geforce_rtx_2080"
+    TITAN_XP_STUDENTRUN = "titan_xp-studentrun"
     TESLA_V100_SXM2_32GB = "tesla_v100_sxm2_32gb"
     TITAN_XP_STUDENTRUN_BATCH = "titan_xp-studentrun-batch"
     TITAN_XP_STUDENTRUN_KILLABLE = "titan_xp-studentrun-killable"
@@ -47,6 +53,96 @@ class SLURM_GPU_TYPE(StrEnum):
                 return self.value
 
 
+# ------------------------------------------------------------
+# Dynamic, cached lookup built from `sacctmgr` + `sinfo`
+# ------------------------------------------------------------
+GPU_RE = re.compile(r"gpu:([\w\-]+):")
+
+
+@cache
+def _partition_to_accounts() -> dict[str, set[str]]:
+    """
+    Query sacctmgr once and return {partition -> {account1, …}} for the
+    *current* user.  Requires sacctmgr in $PATH and sufficient perms.
+    """
+    cmd = [
+        "sacctmgr",
+        "show",
+        "assoc",
+        "--parsable2",
+        "--noheader",
+        f"user={os.environ.get('USER', '')}",
+        "format=partition,account",
+    ]
+    out = subprocess.check_output(cmd, text=True, stderr=subprocess.DEVNULL).splitlines()
+    table: dict[str, set[str]] = defaultdict(set)
+    for line in out:
+        part, acct = line.strip().split("|")
+        table[part].add(acct)
+    return table
+
+
+@cache
+def _partition_to_gpus() -> dict[str, set[str]]:
+    """
+    Query sinfo once and map {partition -> {gpu_constraint1, …}}.
+    """
+    parts = subprocess.check_output(
+        ["sinfo", "--noheader", "--format=%P"], text=True, stderr=subprocess.DEVNULL
+    ).split()
+    mapping: dict[str, set[str]] = defaultdict(set)
+    for p in parts:
+        # strip trailing * from default partition
+        p_clean = p.rstrip("*")
+        gres_lines = subprocess.check_output(
+            ["sinfo", "-h", "-o", "%G", "-p", p_clean],
+            text=True,
+            stderr=subprocess.DEVNULL,
+        ).split()
+        for gres in gres_lines:
+            m = GPU_RE.search(gres)
+            if m:
+                mapping[p_clean].add(m.group(1))
+    return mapping
+
+
+@cache
+def get_partition_account(gpu_type: "SLURM_GPU_TYPE") -> dict[str, str]:
+    """
+    Return a dict with at least {'partition', 'account'} so that the user
+    can submit a job requesting `gpu_type`.  The function consults live
+    sacctmgr/sinfo output and is cached for subsequent calls.
+    """
+    part_to_accts = _partition_to_accounts()
+    part_to_gpus = _partition_to_gpus()
+    wanted_gpu = gpu_type.gpu_name
+
+    # Prefer partitions in this order if multiple match
+    preferred_order = [
+        "gpu-h100-killable",
+        "killable",
+        "gpu-wolf",
+        "studentrun",
+        "studentbatch",
+        "studentkillable",
+    ]
+
+    # Build list of candidate partitions that both advertise the GPU AND we have an account on
+    candidates = [(p, part_to_accts[p]) for p in part_to_gpus if wanted_gpu in part_to_gpus[p] and p in part_to_accts]
+
+    # Sort by preference list, fallback alphabetical
+    candidates.sort(key=lambda x: (preferred_order.index(x[0]) if x[0] in preferred_order else 99, x[0]))
+
+    if not candidates:
+        raise ValueError(f"No partition advertises GPU '{wanted_gpu}' that you have access to.")
+
+    chosen_partition, accounts = candidates[0]
+    # Pick first account (deterministic order via sorted)
+    chosen_account = sorted(accounts)[0]
+
+    return {"partition": chosen_partition, "account": chosen_account}
+
+
 def submit_job(
     func,
     *args,
@@ -61,38 +157,11 @@ def submit_job(
     slurm_gpus_per_node=1,
     slurm_nodelist=None,
 ):
-    # Map GPU type and account type to partition and account options based on `sinfo` data
-    partition_account_map = {
-        SLURM_GPU_TYPE.GEFORCE_RTX_3090: {"partition": "killable", "account": "gpu-students"},
-        SLURM_GPU_TYPE.V100: {"partition": "killable", "account": "gpu-students"},
-        SLURM_GPU_TYPE.A5000: {"partition": "killable", "account": "gpu-students"},
-        SLURM_GPU_TYPE.A6000: {"partition": "killable", "account": "gpu-research"},
-        SLURM_GPU_TYPE.L40S: {"partition": "killable", "account": "gpu-research"},
-        SLURM_GPU_TYPE.A100: {"partition": "gpu-a100-killable", "account": "gpu-research"},
-        # SLURM_GPU_TYPE.H100: {"partition": "gpu-h100-killable", "account": "gpu-research"},
-        SLURM_GPU_TYPE.H100: {"partition": "gpu-ai", "account": "gpu-research"},
-        SLURM_GPU_TYPE.TITAN_XP_STUDENTRUN: {
-            "partition": "studentrun",
-            "account": "gpu-students",
-            "nodelist": "s-003, s-004, s-005",
-        },
-        SLURM_GPU_TYPE.TITAN_XP_STUDENTRUN_BATCH: {
-            "partition": "studentbatch",
-            "account": "gpu-students",
-            "nodelist": "s-003, s-004, s-005",
-        },
-        SLURM_GPU_TYPE.TITAN_XP_STUDENTRUN_KILLABLE: {
-            "partition": "studentkillable",
-            "account": "gpu-students",
-            "nodelist": "s-003, s-004, s-005",
-        },
-    }
-
     if gpu_type == SLURM_GPU_TYPE.TITAN_XP_STUDENTRUN:
         timeout_min = 150
 
     # Determine the appropriate partition and account based on `gpu_type`
-    partition_account = partition_account_map[gpu_type]
+    partition_account = get_partition_account(gpu_type)
     slurm_partition = partition_account["partition"]
     slurm_account = partition_account["account"]
     slurm_nodelist = slurm_nodelist or partition_account.get("nodelist", slurm_nodelist)

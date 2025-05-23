@@ -9,6 +9,7 @@ from src.analysis.experiment_results.prompt_filteration_factory import (
     ContextModelsFilterationFactory,
     CurrentModelFilterationFactory,
     ExistingPromptsFilterationFactory,
+    FilterationSource,
     PresetFilterationFactory,
     PromptFilterationFactory,
     PromptFilterationFactoryUnion,
@@ -311,24 +312,48 @@ class FilterationFactoryHPD(PromptFilterationHPD[PromptFilterationFactory]):
         # Add preset options
         presets = PromptFilterationsPresets.load()
         for preset_id in presets:
-            options.append(PresetFilterationFactory(preset_id=preset_id))
+            options.append(PresetFilterationFactory(type=FilterationSource.preset, preset_id=preset_id))
 
         # Add model correctness options
         for correctness in Correctness:
             # Current model
-            options.append(CurrentModelFilterationFactory(correctness=correctness, combine_with_existing=False))
-            options.append(CurrentModelFilterationFactory(correctness=correctness, combine_with_existing=True))
+            options.append(
+                CurrentModelFilterationFactory(
+                    type=FilterationSource.current_model, correctness=correctness, combine_with_existing=False
+                )
+            )
+            options.append(
+                CurrentModelFilterationFactory(
+                    type=FilterationSource.current_model, correctness=correctness, combine_with_existing=True
+                )
+            )
 
             # Context models
-            options.append(ContextModelsFilterationFactory(correctness=correctness, combine_with_existing=False))
-            options.append(ContextModelsFilterationFactory(correctness=correctness, combine_with_existing=True))
+            options.append(
+                ContextModelsFilterationFactory(
+                    type=FilterationSource.context_models, correctness=correctness, combine_with_existing=False
+                )
+            )
+            options.append(
+                ContextModelsFilterationFactory(
+                    type=FilterationSource.context_models, correctness=correctness, combine_with_existing=True
+                )
+            )
 
             # All important models
-            options.append(AllImportantModelsFilterationFactory(correctness=correctness, combine_with_existing=False))
-            options.append(AllImportantModelsFilterationFactory(correctness=correctness, combine_with_existing=True))
+            options.append(
+                AllImportantModelsFilterationFactory(
+                    type=FilterationSource.all_important_models, correctness=correctness, combine_with_existing=False
+                )
+            )
+            options.append(
+                AllImportantModelsFilterationFactory(
+                    type=FilterationSource.all_important_models, correctness=correctness, combine_with_existing=True
+                )
+            )
 
         # Add existing prompts option
-        options.append(ExistingPromptsFilterationFactory())
+        options.append(ExistingPromptsFilterationFactory(type=FilterationSource.existing_prompts))
 
         return options
 

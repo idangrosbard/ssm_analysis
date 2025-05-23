@@ -47,7 +47,16 @@ def get_page(page_order: PAGE_ORDER) -> StreamlitPage:
 pg = st.navigation(
     {
         "Pages": [
-            st.Page(page=get_page(page).render, title=page.title, icon=page.icon, url_path=page.name.lower())
+            st.Page(
+                page=(
+                    get_page(page)
+                    # .profile_render
+                    .render
+                ),
+                title=page.title,
+                icon=page.icon,
+                url_path=page.name.lower(),
+            )
             for page in PAGE_ORDER
         ]
     },

@@ -108,6 +108,10 @@ class InfoFlowPlotConfig(BaseModel):
             SpecialFieldKeys.column_group: "display_options",
         },
     )
+    add_number_of_points_in_box: bool = Field(
+        default=False,
+        description="Add the number of points in the box",
+    )
     x_axis_margin: float = Field(
         default=0.0,
         description="Margin on the x-axis",
@@ -697,12 +701,26 @@ def create_confidence_plot(
             borderaxespad=0.3,  # space between legend and axes
         )
 
-    # Set overall title
-    custom_title = config.title
+    points_label = ""
     if config.show_number_of_points == "min" or config.show_number_of_points == "both":
-        custom_title += f" {min_points} Points"
+        points_label = f" {min_points} Points"
         if diff_points > 0:
-            custom_title += " (Min)"
+            points_label += " (Min)"
+
+    if config.add_number_of_points_in_box:
+        for ax in axes:
+            ax.text(
+                0.01,
+                0.95,
+                points_label,
+                transform=ax.transAxes,
+                fontsize=config.axis_fontsize,
+                verticalalignment="top",
+                # bbox=dict(boxstyle="round", facecolor="white", alpha=0.5),
+            )
+
+    # Set overall title
+    custom_title = config.title + points_label
     fig.suptitle(
         f"{custom_title}",
         fontsize=config.title_fontsize,
