@@ -5,22 +5,27 @@ from math import ceil
 from pathlib import Path
 from typing import Annotated, Any, List, Literal, Optional, Tuple, Union
 
-from matplotlib import font_manager
 from PIL import Image, ImageDraw, ImageFont
 from pydantic import BaseModel, Field, create_model
 from pydantic.fields import FieldInfo
 
 from src.utils.infra.image_utils import resize_image
+from src.utils.PIL_utils import (
+    TRANSPARENT_WHITE,
+    LegendItem,
+    PrefixStyle,
+    TAnchor,
+    _get_text_height,
+    _safe_font,
+    bold_dejavu_path,
+    dejavu_path,
+    generate_prefix,
+)
 from src.utils.streamlit.components.extended_streamlit_pydantic import (
     annotate_dict_with_literal_values,
 )
 from src.utils.streamlit.st_pydantic_v2.input import SpecialFieldKeys
 from src.utils.streamlit.ui_pydantic_v2.extra_types import PercentageCrop
-
-dejavu_path = font_manager.findfont("DejaVu Sans")
-bold_dejavu_path = font_manager.findfont(font_manager.FontProperties("DejaVu Sans", weight="bold"))
-FONT_BASE = lambda suffix: f"/usr/share/fonts/truetype/liberation/LiberationSerif{suffix}.ttf"  # noqa: E731
-FONT_REGULAR = FONT_BASE("-Regular")
 
 
 class GridOrganizer(BaseModel):
@@ -169,17 +174,6 @@ class CropParams(BaseModel):
         )
 
 
-class LegendItem(BaseModel):
-    label: str
-    color: str
-    linestyle: str
-
-
-TAnchor = Literal[
-    "la", "lt", "lm", "ls", "lb", "ld", "ma", "mt", "mm", "ms", "mb", "md", "ra", "rt", "rm", "rs", "rb", "rd"
-]
-
-
 class LegendParams(BaseModel):
     """Configuration for the legend appearance."""
 
@@ -208,87 +202,35 @@ class LegendParams(BaseModel):
         description="Spacing between sample and text",
         json_schema_extra={SpecialFieldKeys.column_group: "line"},
     )
+    position: Literal["top", "bottom"] = Field(
+        default="bottom",
+        description="Position of legend items.",
+        json_schema_extra={SpecialFieldKeys.column_group: "_position"},
+    )
     font_size: int = Field(
         default=50, ge=0, description="Font size for legend", json_schema_extra={SpecialFieldKeys.column_group: "text"}
     )
     anchor: TAnchor = Field(
         default="lm", description="Anchor for legend", json_schema_extra={SpecialFieldKeys.column_group: "text"}
     )
-    show_border: bool = Field(
+    show_divider: bool = Field(
         default=True,
         title="Show",
-        description="Show border line above legend",
-        json_schema_extra={SpecialFieldKeys.column_group: "border"},
+        description="Show divider line above legend",
+        json_schema_extra={SpecialFieldKeys.column_group: "divider"},
     )
     legend_padding: int = Field(
         default=30,
         ge=0,
-        description="Padding between legend and border",
-        json_schema_extra={SpecialFieldKeys.column_group: "border"},
+        description="Padding around the divider line",
+        json_schema_extra={SpecialFieldKeys.column_group: "divider"},
     )
-    border_width: int = Field(
-        default=1, ge=0, description="Width of border line", json_schema_extra={SpecialFieldKeys.column_group: "border"}
+    divider_width: int = Field(
+        default=1,
+        ge=0,
+        description="Width of divider line",
+        json_schema_extra={SpecialFieldKeys.column_group: "divider"},
     )
-
-
-# Prefix styles for row and column labels
-PrefixStyle = Literal[
-    "none",  # No prefix
-    "lowercase_letter_paren",  # (a), (b), ...
-    "uppercase_letter_paren",  # (A), (B), ...
-    "number_paren",  # (1), (2), ...
-    "lowercase_roman_paren",  # (i), (ii), ...
-    "uppercase_roman_paren",  # (I), (II), ...
-    "lowercase_letter_dot",  # a., b., ...
-    "uppercase_letter_dot",  # A., B., ...
-    "number_dot",  # 1., 2., ...
-]
-
-
-def to_roman(num: int) -> str:
-    """Convert an integer to a Roman numeral."""
-    val = [1000, 900, 500, 400, 100, 90, 50, 40, 10, 9, 5, 4, 1]
-    syms = ["M", "CM", "D", "CD", "C", "XC", "L", "XL", "X", "IX", "V", "IV", "I"]
-    roman_num = ""
-    i = 0
-    while num > 0:
-        for _ in range(num // val[i]):
-            roman_num += syms[i]
-            num -= val[i]
-        i += 1
-    return roman_num
-
-
-def generate_prefix(index: int, style: PrefixStyle) -> str:
-    """Generate a prefix based on the index (0-based) and style."""
-    if style == "none":
-        return ""
-
-    # Handle letter styles
-    if style.startswith("lowercase_letter"):
-        char = chr(97 + index)  # 'a' starts at ASCII 97
-    elif style.startswith("uppercase_letter"):
-        char = chr(65 + index)  # 'A' starts at ASCII 65
-
-    # Handle number styles
-    elif style.startswith("number"):
-        char = str(index + 1)  # 1-based numbering for human readability
-
-    # Handle roman numeral styles
-    elif style.startswith("lowercase_roman"):
-        char = to_roman(index + 1).lower()
-    elif style.startswith("uppercase_roman"):
-        char = to_roman(index + 1)
-    else:
-        return ""
-
-    # Format with parentheses or dot
-    if style.endswith("_paren"):
-        return f"({char})"
-    elif style.endswith("_dot"):
-        return f"{char}."
-
-    return char
 
 
 class ImageGridParams(BaseModel):
@@ -322,7 +264,7 @@ class ImageGridParams(BaseModel):
     sep1: None = Field(default=None, json_schema_extra={SpecialFieldKeys.separator: True})
 
     column_header_padding: float = Field(
-        default=-25.0,
+        default=-10.0,
         description="Additional padding for column headers (can be negative)",
         json_schema_extra={SpecialFieldKeys.column_group: "labels_display"},
     )
@@ -396,335 +338,504 @@ class ImageGridParams(BaseModel):
 # --------------------------------------------------------------------------- #
 
 
-def _safe_font(path: str, size: int) -> ImageFont.FreeTypeFont:
-    """Attempt to load the requested font; gracefully fall back to Pillow default."""
-    return ImageFont.truetype(path, size)
+class ImageGridGenerator:
+    def __init__(
+        self,
+        images_paths_grid: List[List[Path]],
+        params: ImageGridParams,
+        legend_items: list[LegendItem] | dict[int, list[LegendItem]],
+        row_labels: list[str],
+        col_labels: list[str],
+    ):
+        self.images_paths_grid = images_paths_grid
+        self.params = params
+        self.row_labels = row_labels
+        self.col_labels = col_labels
 
+        self.font_title: ImageFont.FreeTypeFont | ImageFont.ImageFont
+        self.font_label: ImageFont.FreeTypeFont | ImageFont.ImageFont
+        self.font_legend: ImageFont.FreeTypeFont | ImageFont.ImageFont
 
-def _get_text_height(text: str, font: ImageFont.FreeTypeFont) -> int:
-    dummy_img = Image.new("RGBA", (1, 1))
-    draw = ImageDraw.Draw(dummy_img)
-    bbox = draw.textbbox((0, 0), text, font=font)
-    return ceil(bbox[3] - bbox[1]) * 2
+        self.num_rows: int = len(images_paths_grid)
+        self.num_cols: int = len(images_paths_grid[0]) if images_paths_grid else 0
 
+        if isinstance(legend_items, dict):
+            self.is_multi_row_legend = True
+            self.legend_items_dict: dict[int, list[LegendItem]] = legend_items
+        else:
+            self.is_multi_row_legend = False
+            if self.params.legend_params.position == "top":
+                self.legend_items_dict = {0: legend_items}
+            else:
+                self.legend_items_dict = {self.num_rows - 1: legend_items}
 
-def _draw_legend(
-    draw: ImageDraw.ImageDraw,
-    canvas_w: float,
-    legend_y: float,
-    legend_h: float,
-    legend_items: list[LegendItem],
-    font_legend: ImageFont.FreeTypeFont,
-    legend_params: LegendParams,
-) -> None:
-    """Draw a legend with the given items at the specified position.
+        self.img_w: float = 0.0
+        self.img_h: float = 0.0
+        self.original_image_size: Tuple[int, int] = (0, 0)
+        self.processed_images: list[list[Optional[Image.Image]]] = []
 
-    Legend items are laid out one after another and the whole row is centred
-    horizontally; they are **not** stretched to fill the full canvas width.
-    Multiple rows are supported via ``legend_params.rows``.
-    """
-    if not legend_items:
-        return
+        self.canvas_w: int = 0
+        self.canvas_h: int = 0
+        self.top_margin: float = 0.0
+        self.bottom_margin: float = 0.0
+        self.left_margin: float = 0.0
+        self.right_margin: float = 0.0
+        self.row_legend_h: float = 0.0
+        self.crop_extras: list[float] = [0.0] * 4  # ltrb
 
-    legend_padding = legend_params.legend_padding / 2
+        self.canvas: Optional[Image.Image] = None
+        self.draw: Optional[ImageDraw.ImageDraw] = None
 
-    legend_y += legend_padding
+    def _initialize_fonts(self) -> None:
+        self.font_title = _safe_font(bold_dejavu_path, self.params.font_size)
+        self.font_label = _safe_font(dejavu_path, self.params.label_font_size)
+        self.font_legend = _safe_font(dejavu_path, self.params.legend_params.font_size)
 
-    # ── optional top border ────────────────────────────────────────────────
-    if legend_params.show_border:
-        draw.line(
-            [(0, legend_y), (canvas_w, legend_y)],
-            fill="black",
-            width=legend_params.border_width,
+    def _calculate_dimensions(self) -> None:
+        # Title row (optional) + column-label row (optional)
+        title_h = self.params.title_height if self.params.title else 0
+        col_label_h = _get_text_height("TEST", self.font_label) if self.params.show_col_labels else 0
+        padded_col_label_h = max(0, col_label_h + self.params.column_header_padding)
+
+        legend_line_h = _get_text_height("TEST", self.font_legend) if self.legend_items_dict else 0
+
+        self.row_legend_h = 0
+        if self.legend_items_dict:
+            self.row_legend_h = (
+                legend_line_h * self.params.legend_params.rows + self.params.legend_params.legend_padding
+            )
+            if self.params.legend_params.show_divider:  # This is for a single legend block's internal structure
+                self.row_legend_h += self.params.legend_params.divider_width
+
+        row_label_w = (
+            _get_text_height("TEST", self.font_label) if self.params.show_row_labels else 0
+        )  # Width of row label is text height
+
+        # Initialize margins
+        self.top_margin = title_h + padded_col_label_h
+        self.bottom_margin = 0
+        self.left_margin = row_label_w
+        self.right_margin = 0
+
+        standard_crop = self.params.crop_params.standard_crop.box.to_unit("fraction")
+        edge_crop = self.params.crop_params.edge_crop.box.to_unit("fraction")
+
+        # Temporarily load the first image to get its size for calculations
+        # This part will be re-done in _load_and_process_images, but needed here for dimensions
+        first_image_path = None
+        for row in self.images_paths_grid:
+            for img_path in row:
+                if img_path:
+                    first_image_path = img_path
+                    break
+            if first_image_path:
+                break
+
+        assert first_image_path is not None, "No images found"
+        with Image.open(first_image_path) as im_temp:
+            im_temp = resize_image(im_temp)
+            self.original_image_size = im_temp.size
+
+        if self.params.crop_params.enable_crop:
+            self.crop_extras = list(
+                edge_crop.gap(standard_crop).to_unit(to_unit_type="absolute", dimensions=self.original_image_size).ltrb
+            )
+            self.img_w = standard_crop.width * self.original_image_size[0]
+            self.img_h = standard_crop.height * self.original_image_size[1]
+            self.left_margin += self.crop_extras[0]
+            self.right_margin += self.crop_extras[2]
+            self.top_margin += self.crop_extras[1]
+            self.bottom_margin += self.crop_extras[3]
+        else:
+            self.crop_extras = [0.0] * 4
+            self.img_w, self.img_h = self.original_image_size
+
+        grid_w = self.num_cols * self.img_w + max(self.num_cols - 1, 0) * self.params.padding
+        grid_h = self.num_rows * self.img_h + max(self.num_rows - 1, 0) * self.params.padding
+
+        self.canvas_w = int(self.left_margin + grid_w + self.right_margin)
+        # Total legend height considers it can appear after multiple rows
+        self.canvas_h = int(
+            self.top_margin
+            + grid_h
+            + self.bottom_margin
+            + self.row_legend_h * len(self.legend_items_dict)  # Total height of all legends
         )
 
-    legend_y += legend_padding
+    def _load_and_process_images(self) -> None:
+        self.processed_images = []
+        standard_crop = self.params.crop_params.standard_crop.box.to_unit("fraction")
+        edge_crop = self.params.crop_params.edge_crop.box.to_unit("fraction")
 
-    # ── basic layout figures ───────────────────────────────────────────────
-    num_items = len(legend_items)
-    actual_rows = min(legend_params.rows, num_items)
-    items_per_row = ceil(num_items / actual_rows)
-    row_height = (legend_h - legend_params.legend_padding - legend_params.border_width) / actual_rows
+        first_image_loaded = False
+        for i, row_images_paths in enumerate(self.images_paths_grid):
+            self.processed_images.append([])
+            row_images_list = self.processed_images[-1]
+            for j, img_path in enumerate(row_images_paths):
+                if img_path is None:
+                    row_images_list.append(None)
+                    continue
+                with Image.open(img_path) as im:
+                    im = resize_image(im)
+                    if not first_image_loaded:
+                        self.original_image_size = im.size  # Update with actual first image
+                        first_image_loaded = True
+                        # Recalculate dimensions if first image size was a placeholder or differs
+                        # This is a simplified approach; a more robust one might recalculate everything
+                        # or ensure all images are pre-checked for size if strict sizing is needed.
+                        if self.params.crop_params.enable_crop:  # Re-calc img_w, img_h based on actual first image
+                            self.crop_extras = list(
+                                edge_crop.gap(standard_crop)
+                                .to_unit(to_unit_type="absolute", dimensions=self.original_image_size)
+                                .ltrb
+                            )
+                            self.img_w = standard_crop.width * self.original_image_size[0]
+                            self.img_h = standard_crop.height * self.original_image_size[1]
+                        else:
+                            self.img_w, self.img_h = self.original_image_size
 
-    sample_width = legend_params.width
-    sample_to_text = 10  # gap sample→text
-    inter_item_spacing = legend_params.horizontal_spacing  # gap item→item
+                    elif not self.params.allow_different_image_sizes:
+                        assert im.size == self.original_image_size, (
+                            f"Image {img_path} has a different size {im.size}"
+                            f" than the first image {self.original_image_size}"
+                        )
 
-    item_index = 0
-    for row_idx in range(actual_rows):
-        # Items that belong to this row
-        row_items = legend_items[item_index : item_index + items_per_row]
-        item_index += items_per_row
+                    if self.params.crop_params.enable_crop:
+                        crop_box = standard_crop.set_by_mask(
+                            edge_crop,
+                            {
+                                "left": j == 0,
+                                "right": j == self.num_cols - 1,
+                                "top": i == 0,
+                                "bottom": i == self.num_rows - 1,
+                            },
+                        ).to_unit(to_unit_type="absolute", dimensions=im.size)
+                        im = im.crop(crop_box.ltrb)
+                    row_images_list.append(im)
+        # After all images processed and final original_image_size is known,
+        # ensure dependent dimensions are final.
+        # This is important if the first image path check in _calculate_dimensions
+        # used a placeholder or if allow_different_image_sizes is true and original_image_size may change.
+        self._calculate_dimensions()  # Re-run with potentially updated self.original_image_size
 
-        # Compute per‑item widths (sample + gap + text)
-        per_item_widths: list[float] = []
-        for item in row_items:
-            bb = draw.textbbox((0, 0), item.label, font=font_legend)
-            txt_w = bb[2] - bb[0]
-            per_item_widths.append(sample_width + sample_to_text + txt_w)
+    def _create_canvas(self) -> None:
+        assert self.canvas_w > 0 and self.canvas_h > 0, "Canvas dimensions must be positive."
+        assert self.canvas_w + self.canvas_h < 2e4, (
+            f"Canvas size is too large: {self.canvas_w} + {self.canvas_h} = {self.canvas_w + self.canvas_h}"
+        )  # Increased limit slightly
+        self.canvas = Image.new("RGBA", (self.canvas_w, self.canvas_h), "white")
+        self.draw = ImageDraw.Draw(self.canvas)
 
-        if not per_item_widths:
-            continue
+    def _draw_title(self) -> None:
+        if self.params.title and self.draw and self.canvas:
+            bb = self.draw.textbbox((0, 0), self.params.title, font=self.font_title)
+            txt_w, txt_h = bb[2] - bb[0], bb[3] - bb[1]
 
-        # Centre the entire row of items
-        row_total_w = sum(per_item_widths) + inter_item_spacing * (len(per_item_widths) - 1)
-        cur_x = (canvas_w - row_total_w) / 2
-        y_row_offset = row_idx * row_height
-
-        # ── draw each legend item ──────────────────────────────────────────
-        for item, item_w in zip(row_items, per_item_widths):
-            sample_h = row_height * legend_params.height
-            sample_y = legend_y + y_row_offset + (row_height - sample_h) / 2
-
-            # Draw the line sample
-            if item.linestyle in ("--", ":"):
-                dash_len, gap_len = (6, 3) if item.linestyle == "--" else (2, 6)
-                pos, end_x = cur_x, cur_x + sample_width
-                while pos < end_x:
-                    draw.line(
-                        [
-                            (pos, sample_y + sample_h / 2),
-                            (min(pos + dash_len, end_x), sample_y + sample_h / 2),
-                        ],
-                        fill=item.color,
-                        width=int(sample_h * 0.2),
-                    )
-                    pos += dash_len + gap_len
-            else:
-                draw.line(
-                    [
-                        (cur_x, sample_y + sample_h / 2),
-                        (cur_x + sample_width, sample_y + sample_h / 2),
-                    ],
-                    fill=item.color,
-                    width=int(sample_h * 0.4),
-                )
-
-            # Draw the label text
-            text_x = cur_x + sample_width + sample_to_text
-            text_y = legend_y + y_row_offset + row_height / 2
-            draw.text(
-                (text_x, text_y),
-                item.label,
+            self.draw.text(
+                ((self.canvas_w - txt_w) // 2, (self.params.title_height - txt_h) // 2),
+                self.params.title,
                 fill="black",
-                font=font_legend,
-                anchor=legend_params.anchor,
+                font=self.font_title,
             )
 
-            # Move cursor to start of next item
-            cur_x += item_w + inter_item_spacing
+    def _draw_row_labels_and_images(self) -> None:
+        if not self.draw or not self.canvas:
+            return
 
+        if self.params.show_row_labels:
+            assert len(self.row_labels) == self.num_rows, "Number of row labels must match number of rows."
 
-TRANSPARENT_WHITE = (255, 255, 255, 0)
+        cum_y_top = self.top_margin
+
+        for row_idx, row_images_list in enumerate(self.processed_images):
+            current_row_start_y = cum_y_top  # Y where this entire row's content block begins
+            y_offset_in_row = 0.0  # Accumulated height within this row (e.g., for a top legend)
+
+            # Draw legend for this row if it's positioned at the top AND IS MULTI-ROW
+            if row_idx in self.legend_items_dict and self.params.legend_params.position == "top":
+                self._draw_one_legend_set(
+                    legend_items_list=self.legend_items_dict[row_idx],
+                    legend_y_start=current_row_start_y,  # Multi-row top legend starts at current row's top
+                    current_row_idx=row_idx,
+                )
+                y_offset_in_row += self.row_legend_h
+
+            y_for_images_in_row = current_row_start_y + y_offset_in_row
+
+            # Row label (once per row)
+            if self.params.show_row_labels:
+                label_text = self.row_labels[row_idx]
+                if label_text in self.params.rows_labels_override:
+                    label_text = self.params.rows_labels_override[label_text]
+
+                prefix = generate_prefix(row_idx, self.params.row_prefix_style)
+                if prefix:
+                    label_text = f"{prefix} {label_text}"
+
+                actual_img_h_for_label = self.img_h
+                for img in row_images_list:
+                    if img:
+                        actual_img_h_for_label = img.height
+                        break
+
+                label_canvas_w = actual_img_h_for_label
+                label_text_h = _get_text_height(label_text, self.font_label)
+                label_img = Image.new("RGBA", (int(label_canvas_w), int(label_text_h)), TRANSPARENT_WHITE)
+                label_draw_obj = ImageDraw.Draw(label_img)
+                bb = label_draw_obj.textbbox((0, 0), label_text, font=self.font_label)
+                txt_w_for_label = bb[2] - bb[0]
+                label_draw_obj.text(
+                    ((label_canvas_w - txt_w_for_label) / 2, 0),
+                    label_text,
+                    fill="black",
+                    font=self.font_label,
+                )
+                label_img = label_img.rotate(90, expand=True)
+                self.canvas.paste(label_img, (0, int(y_for_images_in_row)), label_img)
+
+            # Images
+            current_max_img_h_in_row = 0
+            for col_idx, img in enumerate(row_images_list):
+                x_left = self.left_margin + col_idx * (self.img_w + self.params.padding)
+                if col_idx == 0:
+                    x_left -= self.crop_extras[0]
+                if img is None:
+                    continue
+                self.canvas.paste(img, (int(x_left), int(y_for_images_in_row)))
+                current_max_img_h_in_row = max(current_max_img_h_in_row, img.height)
+
+            effective_row_height = current_max_img_h_in_row if current_max_img_h_in_row > 0 else self.img_h
+
+            cum_y_top = current_row_start_y + y_offset_in_row + effective_row_height + self.params.padding
+
+            if row_idx in self.legend_items_dict and self.params.legend_params.position == "bottom":
+                effective_row_idx_for_divider_bottom = row_idx
+                if not self.is_multi_row_legend:
+                    if row_idx == (self.num_rows - 1) or self.num_rows == 1:
+                        effective_row_idx_for_divider_bottom = self.num_rows - 1
+                self._draw_one_legend_set(
+                    legend_items_list=self.legend_items_dict[row_idx],
+                    legend_y_start=cum_y_top,
+                    current_row_idx=effective_row_idx_for_divider_bottom,
+                )
+                cum_y_top += self.row_legend_h
+
+    def _draw_col_labels(self) -> None:
+        if not self.params.show_col_labels or not self.draw or not self.canvas:
+            return
+
+        assert len(self.col_labels) == self.num_cols, "Number of col labels must match number of columns."
+
+        col_labels_y_start = 0.0
+        if self.params.title:
+            col_labels_y_start += self.params.title_height
+
+        col_label_text_h = _get_text_height("TEST", self.font_label)
+        for col_idx in range(self.num_cols):
+            prefix = generate_prefix(col_idx, self.params.column_prefix_style)
+            label_text = self.col_labels[col_idx]
+            if label_text in self.params.columns_labels_override:
+                label_text = self.params.columns_labels_override[label_text]
+            if prefix:
+                label_text = f"{prefix} {label_text}"
+
+            label_img_w = self.img_w
+            label_img_h = col_label_text_h
+            label_img = Image.new("RGBA", (int(label_img_w), int(label_img_h)), TRANSPARENT_WHITE)
+            label_draw_obj = ImageDraw.Draw(label_img)
+            bb = label_draw_obj.textbbox((0, 0), label_text, font=self.font_label)
+            txt_w_for_label = bb[2] - bb[0]
+            text_y_on_label_canvas = 0
+            label_draw_obj.text(
+                ((label_img_w - txt_w_for_label) / 2, text_y_on_label_canvas),
+                label_text,
+                fill="black",
+                font=self.font_label,
+            )
+            paste_x = self.left_margin + col_idx * (self.img_w + self.params.padding)
+            paste_y = col_labels_y_start
+            if self.params.column_header_padding >= 0:
+                paste_y += self.params.column_header_padding
+            self.canvas.paste(label_img, (int(paste_x), int(paste_y)), label_img)
+
+    def _draw_one_legend_set(
+        self, legend_items_list: list[LegendItem], legend_y_start: float, current_row_idx: int
+    ) -> None:
+        if not legend_items_list or not self.draw or not self.canvas:
+            return
+
+        legend_padding_half = self.params.legend_params.legend_padding / 2
+        divider_h = self.params.legend_params.divider_width
+
+        show_this_divider = self.params.legend_params.show_divider
+        if self.is_multi_row_legend:
+            if self.params.legend_params.position == "top" and current_row_idx == 0:
+                show_this_divider = False
+            elif self.params.legend_params.position == "bottom" and current_row_idx == self.num_rows - 1:
+                show_this_divider = False
+        # If params.legend_params.show_divider is False initially, show_this_divider remains False.
+
+        # Determine the physical placement of the divider (top or bottom of its block)
+        if self.is_multi_row_legend:
+            divider_is_physically_at_top_of_block = self.params.legend_params.position == "top"
+        else:  # Global legend
+            divider_is_physically_at_top_of_block = self.params.legend_params.position == "bottom"
+
+        # y_base_for_legend_content is where drawing starts after the block's overall top padding
+        y_base_for_legend_content = legend_y_start + legend_padding_half
+        items_loop_start_y = (
+            y_base_for_legend_content  # This is where items rendering begins, possibly adjusted by a top divider
+        )
+
+        if divider_is_physically_at_top_of_block:
+            if show_this_divider:
+                # Draw divider at the top of the content area (after top padding, before items)
+                divider_y_top = y_base_for_legend_content
+                self.draw.line(
+                    [(0, divider_y_top), (self.canvas_w, divider_y_top)],
+                    fill="black",
+                    width=divider_h,
+                )
+                items_loop_start_y += divider_h  # Items start below this divider
+        # else: Divider is at bottom or not shown; items_loop_start_y is already set after top padding.
+
+        num_items = len(legend_items_list)
+        actual_rows = min(self.params.legend_params.rows, num_items)
+        items_per_row = ceil(num_items / actual_rows)
+
+        available_legend_content_h = (
+            self.row_legend_h - self.params.legend_params.legend_padding  # Total padding (top+bottom)
+        )
+        if show_this_divider:  # If a divider is actually shown (either top or bottom), it consumes space
+            available_legend_content_h -= divider_h
+
+        row_content_height = available_legend_content_h / actual_rows if actual_rows > 0 else 0
+
+        sample_width = self.params.legend_params.width
+        sample_to_text_gap = 10
+        inter_item_spacing = self.params.legend_params.horizontal_spacing
+
+        item_index = 0
+        for legend_row_idx in range(actual_rows):  # Renamed row_idx to legend_row_idx to avoid clash
+            row_items = legend_items_list[item_index : item_index + items_per_row]
+            if not row_items:
+                continue
+            item_index += items_per_row
+
+            per_item_widths: list[float] = []
+            for item in row_items:
+                bb = self.draw.textbbox((0, 0), item.label, font=self.font_legend)
+                txt_w = bb[2] - bb[0]
+                per_item_widths.append(sample_width + sample_to_text_gap + txt_w)
+
+            if not per_item_widths:
+                continue
+
+            row_total_w = sum(per_item_widths) + inter_item_spacing * (len(per_item_widths) - 1)
+            cur_x = (self.canvas_w - row_total_w) / 2
+
+            # Y position for the content of this specific legend row, relative to items_loop_start_y
+            y_row_content_start = items_loop_start_y + (legend_row_idx * row_content_height)
+
+            for item, item_w in zip(row_items, per_item_widths):
+                sample_h_ratio = self.params.legend_params.height
+                actual_sample_h = row_content_height * sample_h_ratio
+                sample_y_center = y_row_content_start + (row_content_height / 2)
+                line_y = sample_y_center
+
+                if item.linestyle in ("--", ":"):
+                    dash_len, gap_len = (6, 3) if item.linestyle == "--" else (2, 6)
+                    pos, end_x = cur_x, cur_x + sample_width
+                    while pos < end_x:
+                        self.draw.line(
+                            [(pos, line_y), (min(pos + dash_len, end_x), line_y)],
+                            fill=item.color,
+                            width=int(actual_sample_h * 0.2),
+                        )
+                        pos += dash_len + gap_len
+                else:
+                    self.draw.line(
+                        [(cur_x, line_y), (cur_x + sample_width, line_y)],
+                        fill=item.color,
+                        width=int(actual_sample_h * 0.4),
+                    )
+
+                text_x = cur_x + sample_width + sample_to_text_gap
+                text_y_anchor_point = y_row_content_start + row_content_height / 2
+                self.draw.text(
+                    (text_x, text_y_anchor_point),
+                    item.label,
+                    fill="black",
+                    font=self.font_legend,
+                    anchor=self.params.legend_params.anchor,
+                )
+                cur_x += item_w + inter_item_spacing
+
+        # Draw divider at the bottom if needed
+        if not divider_is_physically_at_top_of_block and show_this_divider:
+            # Divider is at the bottom of the content area, just above the overall bottom padding of the legend block.
+            divider_y_bottom = legend_y_start + self.row_legend_h - legend_padding_half - divider_h
+            self.draw.line(
+                [(0, divider_y_bottom), (self.canvas_w, divider_y_bottom)],
+                fill="black",
+                width=divider_h,
+            )
+
+    def generate(self) -> Image.Image:
+        if not self.images_paths_grid or not self.images_paths_grid[0]:
+            # Handle empty grid case: return a small blank image or raise error
+            print("Warning: Empty image grid provided.")
+            empty_canvas = Image.new("RGBA", (100, 50), "white")
+            draw_empty = ImageDraw.Draw(empty_canvas)
+            draw_empty.text((10, 10), "Empty Grid", fill="black")
+            return empty_canvas
+
+        self._initialize_fonts()
+        # Initial dimension calculation (may be refined after first image load)
+        self._calculate_dimensions()
+        # Load images and finalize dimensions based on actual image sizes
+        # _load_and_process_images now calls _calculate_dimensions() at its end.
+        self._load_and_process_images()
+        # Create canvas with final dimensions
+        self._create_canvas()
+
+        if not self.canvas or not self.draw:
+            raise RuntimeError("Canvas or Draw context not initialized.")
+
+        # --- Start Drawing ---
+        y_cursor = 0.0  # Keeps track of vertical position for drawing top elements
+
+        if self.params.title:
+            self._draw_title()  # Draws title near y=0 within its allocated title_height
+            y_cursor = float(self.params.title_height)
+
+        if self.params.show_col_labels:
+            # _draw_col_labels internally calculates its y based on title_height.
+            # It effectively starts drawing from the current y_cursor.
+            self._draw_col_labels()
+            # Update y_cursor to be after column labels region
+            col_label_text_h = _get_text_height("TEST", self.font_label)
+            # This is the space reserved by _calculate_dimensions for column labels region
+            actual_col_label_region_h = max(0, col_label_text_h + self.params.column_header_padding)
+            y_cursor += actual_col_label_region_h
+
+        self._draw_row_labels_and_images()
+
+        return self.canvas
 
 
 def combine_image_grid(
     images_paths_grid: List[List[Path]],
     params: ImageGridParams,
-    legend_items: list[LegendItem],
+    legend_items: list[LegendItem] | dict[int, list[LegendItem]],
     row_labels: list[str],
     col_labels: list[str],
 ) -> Image.Image:
-    # Fonts
-    font_title = _safe_font(bold_dejavu_path, params.font_size)
-    font_label = _safe_font(dejavu_path, params.label_font_size)
-    font_legend = _safe_font(dejavu_path, params.legend_params.font_size)
-
-    num_rows = len(images_paths_grid)
-    num_cols = len(images_paths_grid[0])
-
-    # --------------------------------------------------------------------- #
-    #  Calculate canvas size                                                #
-    # --------------------------------------------------------------------- #
-    #  Title row (optional) + column-label row (optional)
-    title_h = params.title_height if params.title else 0
-
-    col_label_h = _get_text_height("TEST", font_label) if params.show_col_labels else 0
-    # Ensure column header height is at least 1 if column labels are shown
-    padded_col_label_h = max(0, col_label_h + params.column_header_padding)
-
-    # Calculate legend height based on single row height multiplied by number of rows
-    single_row_legend_h = _get_text_height("TEST", font_legend) if legend_items else 0
-
-    # Calculate total legend height with rows
-    legend_h = 0
-    if legend_items:
-        # Adjust for actual number of rows needed (minimum of specified rows or number of items)
-        actual_rows = min(params.legend_params.rows, len(legend_items))
-        legend_h = single_row_legend_h * actual_rows + params.legend_params.legend_padding
-
-        # Add border width to legend height if border is enabled
-        if params.legend_params.show_border:
-            legend_h += params.legend_params.border_width
-
-    row_label_h = _get_text_height("TEST", font_label) if params.show_row_labels else 0
-
-    top_margin = title_h + padded_col_label_h
-    bottom_margin = legend_h
-
-    standard_crop = params.crop_params.standard_crop.box.to_unit("fraction")
-    edge_crop = params.crop_params.edge_crop.box.to_unit("fraction")
-
-    left_margin = row_label_h
-    right_margin = 0
-    # Load images
-    original_image_size = (0, 0)
-    images: list[list[Optional[Image.Image]]] = []
-    for i, row_images_paths in enumerate(images_paths_grid):
-        images.append([])
-        row_images = images[-1]
-        for j, img_path in enumerate(row_images_paths):
-            if img_path is None:
-                # Leave blank
-                row_images.append(None)
-                continue
-            with Image.open(img_path) as im:
-                im = resize_image(im)
-                if i == 0 and j == 0:
-                    original_image_size = im.size
-                else:
-                    if not params.allow_different_image_sizes:
-                        assert im.size == original_image_size, (
-                            f"Image {img_path} has a different size than the first image"
-                        )
-                if params.crop_params.enable_crop:
-                    # Calculate and apply crop
-                    crop_box = standard_crop.set_by_mask(
-                        edge_crop,
-                        {
-                            "left": j == 0,
-                            "right": j == num_cols - 1,
-                            "top": i == 0,
-                            "bottom": i == num_rows - 1,
-                        },
-                    ).to_unit(to_unit_type="absolute", dimensions=im.size)
-                    im = im.crop(crop_box.ltrb)
-                row_images.append(im)
-
-    if params.crop_params.enable_crop:
-        extras = edge_crop.gap(standard_crop).to_unit(to_unit_type="absolute", dimensions=original_image_size).ltrb
-        img_w = standard_crop.width * original_image_size[0]
-        img_h = standard_crop.height * original_image_size[1]
-        left_margin += extras[0]
-        right_margin += extras[2]
-        top_margin += extras[1]
-        bottom_margin += extras[3]
-    else:
-        extras = [0] * 4
-        img_w, img_h = original_image_size
-
-    grid_w = num_cols * img_w + max(num_cols - 1, 0) * params.padding
-    grid_h = num_rows * img_h + max(num_rows - 1, 0) * params.padding
-    canvas_w = int(left_margin + grid_w + right_margin)
-    canvas_h = int(top_margin + grid_h + bottom_margin)
-
-    # --------------------------------------------------------------------- #
-    #  Prepare drawing context                                              #
-    # --------------------------------------------------------------------- #
-    assert canvas_w + canvas_h < 1e4, f"Canvas size is too large: {canvas_w} + {canvas_h} = {canvas_w + canvas_h}"
-    canvas = Image.new("RGBA", (canvas_w, canvas_h), "white")
-    draw = ImageDraw.Draw(canvas)
-
-    # --------------------------------------------------------------------- #
-    #  Draw title                                                           #
-    # --------------------------------------------------------------------- #
-    if params.title:
-        bb = draw.textbbox((0, 0), params.title, font=font_title)
-        txt_w, txt_h = bb[2] - bb[0], bb[3] - bb[1]
-        draw.text(
-            ((canvas_w - txt_w) // 2, (params.title_height - txt_h) // 2),
-            params.title,
-            fill="black",
-            font=font_title,
-        )
-
-    # --------------------------------------------------------------------- #
-    #  Paint each tile & row labels                                         #
-    # --------------------------------------------------------------------- #
-    if params.show_row_labels:
-        assert len(row_labels) == num_rows
-    for row_idx, row_images in enumerate(images):
-        y_top = top_margin + row_idx * (img_h + params.padding)
-        # Row label (once per row)
-        if row_idx == 0:
-            y_top -= extras[1]
-        if params.show_row_labels:
-            label = row_labels[row_idx]
-            if label in params.rows_labels_override:
-                label = params.rows_labels_override[label]
-
-            # Generate prefix based on style
-            prefix = generate_prefix(row_idx, params.row_prefix_style)
-
-            # Combine prefix with label if there is a prefix
-            if prefix:
-                label = f"{prefix} {label}"
-
-            w, h = img_h, row_label_h  # width is the image height (after rotation), height is the label height
-            # Draw label on its own small canvas, then rotate 90°
-            label_img = Image.new("RGBA", (int(w), h), TRANSPARENT_WHITE)
-            label_draw = ImageDraw.Draw(label_img)
-
-            bb = label_draw.textbbox((0, 0), label, font=font_label)
-            txt_w, txt_h = bb[2] - bb[0], bb[3] - bb[1]
-
-            label_draw.text(
-                ((w - txt_w) // 2, 0),
-                label,
-                fill="black",
-                font=font_label,
-            )
-            label_img = label_img.rotate(90, expand=True)
-            # Paste preserving alpha (row labels overlay the white canvas)
-            canvas.paste(label_img, (0, int(y_top)), label_img)
-
-        # Images
-        for col_idx, img in enumerate(row_images):
-            x_left = left_margin + col_idx * (img_w + params.padding)
-            if col_idx == 0:
-                x_left -= extras[0]
-            if img is None:
-                continue  # leave blank
-
-            canvas.paste(
-                img,
-                (int(x_left), int(y_top)),
-            )
-
-    # --------------------------------------------------------------------- #
-    #  Draw column labels                                                   #
-    # --------------------------------------------------------------------- #
-    if params.show_col_labels:
-        assert len(col_labels) == num_cols
-
-        for col_idx in range(num_cols):
-            prefix = generate_prefix(col_idx, params.column_prefix_style)
-
-            label = col_labels[col_idx]
-            if label in params.columns_labels_override:
-                label = params.columns_labels_override[label]
-            if prefix:
-                label = f"{prefix} {label}"
-            w, h = img_w, col_label_h  # no rotation
-            label_img = Image.new("RGBA", (int(w), h), TRANSPARENT_WHITE)
-            label_draw = ImageDraw.Draw(label_img)
-
-            bb = label_draw.textbbox((0, 0), label, font=font_label)
-            txt_w, txt_h = bb[2] - bb[0], bb[3] - bb[1]
-
-            # Calculate text position, ensuring it's visible even with negative padding
-            text_y_pos = max(0, params.column_header_padding)
-            if params.column_header_padding < 0:
-                text_y_pos = 0
-
-            label_draw.text(((w - txt_w) // 2, text_y_pos), label, fill="black", font=font_label)
-            canvas.paste(label_img, (int(left_margin + col_idx * (img_w + params.padding)), title_h), label_img)
-
-    # --------------------------------------------------------------------- #
-    #  Draw legend at the bottom                                            #
-    # --------------------------------------------------------------------- #
-    if legend_items:
-        legend_y = int(top_margin + grid_h + extras[3])
-        _draw_legend(draw, canvas_w, legend_y, legend_h, legend_items, font_legend, params.legend_params)
-
-    return canvas
+    generator = ImageGridGenerator(
+        images_paths_grid=images_paths_grid,
+        params=params,
+        legend_items=legend_items,
+        row_labels=row_labels,
+        col_labels=col_labels,
+    )
+    return generator.generate()

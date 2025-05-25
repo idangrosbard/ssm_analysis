@@ -101,6 +101,42 @@ class GridLayout:
 
         return row_labels, col_labels
 
+    def _get_legend_items_per_row(self) -> dict[Any, list[LegendItem]]:
+        """Get legend items for each row separately."""
+        legend_per_row: dict[Any, list[LegendItem]] = {}
+
+        for row_value in self.row_values:
+            # Collect all DataReqs for cells in this row
+            row_data_reqs = []
+            for col_value in self.col_values:
+                cell = self.get_cell_at(row_value, col_value)
+                if cell and cell in self.data_reqs_per_cell:
+                    row_data_reqs.append(self.data_reqs_per_cell[cell])
+
+            # Get legend items for this row
+            if row_data_reqs:
+                legend_per_row[row_value] = self.plot_generator._get_legend_items(relevant_data_reqs_list=row_data_reqs)
+            else:
+                legend_per_row[row_value] = []
+
+        return legend_per_row
+
+    def _legend_items_to_comparable(self, items: list[LegendItem]) -> frozenset[tuple[str, str, str]]:
+        """Convert legend items to a comparable format for equality checking."""
+        return frozenset((item.label, item.color, item.linestyle) for item in items)
+
+    def _legend_items_differ_by_row(self) -> bool:
+        """Check if legend items differ between rows."""
+        legend_per_row = self._get_legend_items_per_row()
+        if len(legend_per_row) <= 1:
+            return False
+
+        # Convert all to comparable format
+        comparable_legends = [self._legend_items_to_comparable(items) for items in legend_per_row.values()]
+
+        # Check if all are the same (if set has more than 1 element, they differ)
+        return len(set(comparable_legends)) > 1
+
     def render_combined(self, recreate_plots: bool, grid_params: ImageGridParams):
         """Render all plots combined into a single image."""
         image_grid: list[list[Optional[Path]]] = []
@@ -133,14 +169,29 @@ class GridLayout:
             self.data_reqs_per_cell[cell] for cell in self.cells if cell in self.data_reqs_per_cell
         ]
 
-        # Combine images into a grid
+        # Check if legend items differ by row
+        if self._legend_items_differ_by_row():
+            # Use row-specific legends
+            legend_per_row = self._get_legend_items_per_row()
+            # Convert row values to row indices for combine_image_grid
+            legend_items = {
+                row_idx: legend_per_row[row_value]
+                for row_idx, row_value in enumerate(self.row_values)
+                if row_value in legend_per_row
+            }
+
+        else:
+            # Use single legend for entire grid
+            legend_items = self.plot_generator._get_legend_items(relevant_data_reqs_list=grid_specific_data_reqs)
+
         combined_image = combine_image_grid(
             filtered_grid,
             grid_params,
-            legend_items=self.plot_generator._get_legend_items(relevant_data_reqs_list=grid_specific_data_reqs),
+            legend_items=legend_items,
             col_labels=col_labels,
             row_labels=row_labels,
         )
+
         if combined_image:
             st.image(combined_image, width=combined_image.width)
 
