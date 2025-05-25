@@ -24,7 +24,9 @@ from PIL import Image
 from pydantic import BaseModel
 
 from src.analysis.experiment_results.helpers import get_model_evaluations
+from src.analysis.experiment_results.hyper_param_definition import FilterationFactoryHPD
 from src.analysis.experiment_results.plot_plan import Cell, PlotPlan
+from src.analysis.experiment_results.prompt_filteration_factory import PromptFilterationFactory
 from src.analysis.plots.heatmaps import HeatmapPlotConfig, simple_diff_fixed
 from src.analysis.plots.image_combiner import ImageGridParams, LegendItem, combine_image_grid
 from src.analysis.plots.info_flow_confidence import (
@@ -424,7 +426,12 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
         for i, runner_instance in enumerate(runners):
             assert isinstance(runner_instance, InfoFlowRunner), f"Expected InfoFlowRunner, got {type(runner_instance)}"
 
-            line_id_str = original_lines_hpd.get_line_id_from_runner(runner_instance.variant_params)
+            if isinstance(original_lines_hpd, FilterationFactoryHPD):
+                cur_prompt_filteration = lines_param_config.values[i]
+                assert isinstance(cur_prompt_filteration, PromptFilterationFactory)
+                line_id_str = original_lines_hpd.get_display_name(cur_prompt_filteration)
+            else:
+                line_id_str = original_lines_hpd.get_line_id_from_runner(runner_instance.variant_params)
             data[line_id_str] = runner_instance.get_outputs()
 
         fig = create_confidence_plot(
