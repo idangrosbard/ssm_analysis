@@ -9,6 +9,7 @@
 # Outline Compatibility Issues:
 # - New file, outline will be implemented
 
+from dataclasses import dataclass
 from typing import Any, List, Literal, Optional, Tuple, TypedDict, Union, cast
 
 import streamlit as st
@@ -36,7 +37,7 @@ from src.core.names import (
     ToClassifyNames,
 )
 from src.core.types import TPlotID
-from src.data_ingestion.data_defs.data_defs import PlotPlans, ResultBank
+from src.data_ingestion.data_defs.data_defs import PlotPlans
 from src.utils.streamlit.helpers.component import StreamlitComponent
 from src.utils.streamlit.helpers.session_keys import SessionKey
 from src.utils.types_utils import get_enum_or_literal_options, str_enum_values
@@ -102,13 +103,12 @@ class PlotPlanSelector(StreamlitComponent[None]):
         )
 
 
+@dataclass
 class PlotPlanDetailsSummary(StreamlitComponent[None]):
     """Component for displaying the details of a selected plot plan."""
 
-    def __init__(self, plot_plans: PlotPlans, selected_plan_id: Optional[TPlotID], result_bank: ResultBank):
-        self.plot_plans = plot_plans
-        self.selected_plan_id = selected_plan_id
-        self.result_bank = result_bank
+    plot_plans: PlotPlans
+    selected_plan_id: Optional[TPlotID]
 
     def render(self) -> None:
         if not self.selected_plan_id:
@@ -204,13 +204,12 @@ class PlotPlanDetailsSummary(StreamlitComponent[None]):
             )
 
 
+@dataclass
 class PlotPlanEditor(StreamlitComponent[Optional[PlotPlan]]):
     """Component for editing or creating a plot plan."""
 
-    def __init__(self, plot_plans: PlotPlans, result_bank: ResultBank, plan_id: Optional[TPlotID] = None):
-        self.plot_plans = plot_plans
-        self.plan_id = plan_id
-        self.result_bank = result_bank
+    plot_plans: PlotPlans
+    plan_id: Optional[TPlotID]
 
     @property
     def is_new(self) -> bool:

@@ -562,7 +562,7 @@ class PlotGenerator(StreamlitComponent[Optional[str]]):
         else:
             recreate_plots = tab == Tabs.PLOT_INDIVIDUAL and st.button("Recreate all plots")
             show_recreate_button = tab == Tabs.PLOT_INDIVIDUAL and st.checkbox("Show recreate buttons", value=False)
-            save_combined_plot = tab == Tabs.PLOT_COMBINED and st.button("Save Combined Plot")
+            save_combined_plot = tab == Tabs.PLOT_COMBINED and st.checkbox("Save Combined Plot", value=True)
             save_configuration = tab == Tabs.PLOT_COMBINED and st.button("Save Configuration")
             grid_progress_bar = st.progress(0, text="Generating Grids...")
 

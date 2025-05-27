@@ -48,12 +48,7 @@
             },
             {
                 "param": "filteration_factory",
-                "orientation": "grids",
                 "values": [
-                    {
-                        "type": "current_model",
-                        "correctness": "correct"
-                    },
                     {
                         "type": "preset",
                         "preset_id": "all_correct"
@@ -159,8 +154,8 @@
                 "param": "filteration_factory",
                 "values": [
                     {
-                        "type": "current_model",
-                        "correctness": "correct"
+                        "type": "preset",
+                        "preset_id": "all_correct"
                     }
                 ]
             },
@@ -267,8 +262,8 @@
                 "param": "filteration_factory",
                 "values": [
                     {
-                        "type": "current_model",
-                        "correctness": "correct"
+                        "type": "preset",
+                        "preset_id": "all_correct"
                     }
                 ]
             }
@@ -326,24 +321,12 @@
                         "130M"
                     ],
                     [
-                        "mamba2",
-                        "130M"
-                    ],
-                    [
                         "mamba1",
                         "1.4B"
                     ],
                     [
-                        "mamba2",
-                        "1.3B"
-                    ],
-                    [
                         "mamba1",
                         "2.8B"
-                    ],
-                    [
-                        "mamba2",
-                        "2.7B"
                     ]
                 ]
             },
@@ -373,13 +356,20 @@
                 "param": "filteration_factory",
                 "values": [
                     {
-                        "type": "current_model",
-                        "correctness": "correct"
+                        "type": "preset",
+                        "preset_id": "all_correct"
                     }
                 ]
             }
         ],
         "cell_plot_config": {
+            "diff_plot_meta_data": {
+                "title": "Probability Difference",
+                "ylabel": "Probability Diff. (%)",
+                "axhline_value": 0.0,
+                "ylim_min": -100.0,
+                "ylim_max": 20.0
+            },
             "custom_colors": {
                 "1": "#bce6ff",
                 "3": "#88c7e8",
@@ -390,8 +380,8 @@
             }
         }
     },
-    "figure14": {
-        "plot_id": "figure14",
+    "ds_ablation": {
+        "plot_id": "ds_ablation",
         "title": "Figure 14: Relative change in correct-token probability after knocking out connection from each token to the last token.",
         "description": "on all the samples each model of $$enumerate(model_arch_and_size)$$ was correct on. X-axis indicates the relative depth of the layer we perform knockout on. Y-axis indicates the relative change in correct-token probability. Different colors indicate the source token.",
         "order": 140,
@@ -477,9 +467,11 @@
         "combine_plot_config": {
             "show_row_labels": true,
             "rows_labels_override": {
-                "current model - correct": "  Each Model Correct"
+                "current model - correct": "  Each Model Correct",
+                "Preset: all_correct": "      All Models Correct"
             },
-            "label_font_size": 55
+            "label_font_size": 55,
+            "crop_params": {}
         }
     },
     "figure3+": {
@@ -588,12 +580,7 @@
             },
             {
                 "param": "filteration_factory",
-                "orientation": "grids",
                 "values": [
-                    {
-                        "type": "current_model",
-                        "correctness": "correct"
-                    },
                     {
                         "type": "preset",
                         "preset_id": "all_correct"
@@ -704,12 +691,7 @@
             },
             {
                 "param": "filteration_factory",
-                "orientation": "grids",
                 "values": [
-                    {
-                        "type": "current_model",
-                        "correctness": "correct"
-                    },
                     {
                         "type": "preset",
                         "preset_id": "all_correct"
@@ -822,10 +804,6 @@
                     ],
                     [
                         "llama3.2",
-                        "1B"
-                    ],
-                    [
-                        "llama3.2",
                         "3B"
                     ],
                     [
@@ -846,158 +824,7 @@
                 "param": "model_family",
                 "orientation": "grids",
                 "values": [
-                    "mamba",
-                    "transformer"
-                ]
-            },
-            {
-                "param": "source",
-                "orientation": "cols",
-                "values": [
-                    "subject",
-                    "relation",
-                    "last",
-                    "first"
-                ]
-            },
-            {
-                "param": "feature_category",
-                "values": [
-                    "ALL"
-                ]
-            },
-            {
-                "param": "target",
-                "values": [
-                    "last"
-                ]
-            },
-            {
-                "param": "filteration_factory",
-                "values": [
-                    {
-                        "type": "current_model",
-                        "correctness": "correct"
-                    }
-                ]
-            }
-        ],
-        "cell_plot_config": {
-            "diff_plot_meta_data": {
-                "title": "Probability Difference",
-                "ylabel": "Probability Diff. (%)",
-                "axhline_value": 0.0,
-                "ylim_min": -100.0,
-                "ylim_max": 20.0
-            },
-            "custom_colors": {
-                "1": "#afcff3",
-                "3": "#9ecae1",
-                "5": "#6baed6",
-                "9": "#4292c6",
-                "12": "#2171b5",
-                "15": "#084594"
-            }
-        },
-        "combine_plot_config": {
-            "show_row_labels": true
-        }
-    },
-    "figure8+_context_correct": {
-        "plot_id": "figure8+_context_correct",
-        "title": "Figure 8",
-        "description": "Figure 8",
-        "order": 81,
-        "is_appendix": true,
-        "experiment_name": "info_flow",
-        "params": [
-            {
-                "param": "window_size",
-                "orientation": "lines",
-                "values": [
-                    1,
-                    3,
-                    5,
-                    9,
-                    12,
-                    15
-                ]
-            },
-            {
-                "param": "model_arch_and_size",
-                "orientation": "rows",
-                "values": [
-                    [
-                        "mamba1",
-                        "130M"
-                    ],
-                    [
-                        "mamba2",
-                        "130M"
-                    ],
-                    [
-                        "mamba2",
-                        "1.3B"
-                    ],
-                    [
-                        "mamba1",
-                        "1.4B"
-                    ],
-                    [
-                        "mamba1",
-                        "2.8B"
-                    ],
-                    [
-                        "mamba2",
-                        "2.7B"
-                    ],
-                    [
-                        "mamba1",
-                        "7B"
-                    ],
-                    [
-                        "mamba1",
-                        "7B-falcon"
-                    ],
-                    [
-                        "gpt2",
-                        "355M"
-                    ],
-                    [
-                        "gpt2",
-                        "774M"
-                    ],
-                    [
-                        "gpt2",
-                        "1.5B"
-                    ],
-                    [
-                        "llama3.2",
-                        "1B"
-                    ],
-                    [
-                        "llama3.2",
-                        "3B"
-                    ],
-                    [
-                        "mistral0.1",
-                        "7B"
-                    ],
-                    [
-                        "mistral0.3",
-                        "7B"
-                    ],
-                    [
-                        "llama3",
-                        "8B"
-                    ]
-                ]
-            },
-            {
-                "param": "model_family",
-                "orientation": "grids",
-                "values": [
-                    "mamba",
+                    "mamba2",
                     "transformer"
                 ]
             },
@@ -1282,8 +1109,8 @@
             }
         }
     },
-    "heatmaps_per_window_size": {
-        "plot_id": "heatmaps_per_window_size",
+    "heatmaps_per_ws": {
+        "plot_id": "heatmaps_per_ws",
         "title": "Heatmaps Per Window Size",
         "description": "Relative change in correct-token probability\nafter knocking out connection from each token to the last\ntoken.",
         "order": 12,
@@ -1303,32 +1130,8 @@
                         "2.7B"
                     ],
                     [
-                        "mamba1",
-                        "7B"
-                    ],
-                    [
-                        "mamba1",
-                        "7B-falcon"
-                    ],
-                    [
                         "gpt2",
                         "1.5B"
-                    ],
-                    [
-                        "llama3.2",
-                        "3B"
-                    ],
-                    [
-                        "mistral0.1",
-                        "7B"
-                    ],
-                    [
-                        "mistral0.3",
-                        "7B"
-                    ],
-                    [
-                        "llama3",
-                        "8B"
                     ]
                 ]
             },

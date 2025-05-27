@@ -10,6 +10,8 @@
 # Outline Compatibility Issues:
 # - New file, outline will be implemented
 
+from dataclasses import dataclass
+
 import streamlit as st
 
 from src.analysis.experiment_results.plot_plan import PlotPlan
@@ -23,9 +25,10 @@ from src.app.components.plot_plans import (
 from src.app.data_store import load_results_bank
 from src.app.texts import FINAL_PLOTS_TEXTS
 from src.core.types import TPlotID
-from src.data_ingestion.data_defs.data_defs import PlotPlans, ResultBank
+from src.data_ingestion.data_defs.data_defs import PlotPlans
 from src.utils.streamlit.components.aagrid import SelectionMode
 from src.utils.streamlit.helpers.allow_nested_expanders import allow_nested_st_elements
+from src.utils.streamlit.helpers.cache import CacheWithDependencies
 from src.utils.streamlit.helpers.component import StreamlitComponent, StreamlitPage
 from src.utils.streamlit.helpers.session_keys import SessionKeyDescriptor, SessionKeysBase
 
@@ -45,6 +48,17 @@ class _FinalPlotsSessionKeys(SessionKeysBase["_FinalPlotsSessionKeys"]):
 
 
 FinalPlotsSessionKeys = _FinalPlotsSessionKeys()
+
+
+def _plot_plan_hash_func(plot_plan: PlotPlan):
+    return plot_plan.plot_id
+
+
+@CacheWithDependencies(max_entries=1, hash_funcs={PlotPlan: _plot_plan_hash_func})
+def _load_plot_plan_fulfilled_reqs(plot_plan: PlotPlan):
+    result_bank = load_results_bank()
+
+    return plot_plan.get_data_requirements(result_bank).to_fulfilled_reqs(result_bank).summarize()
 
 
 def save_plot_plans(plot_plans: PlotPlans) -> None:
@@ -97,21 +111,16 @@ class ManagePlotPlans(StreamlitComponent[None]):
                 st.rerun()
 
 
+@dataclass
 class PlotPlanRequirements(StreamlitComponent[None]):
     """Component for displaying and managing data requirements for a plot plan."""
 
-    def __init__(self, plot_plan: PlotPlan, result_bank: ResultBank):
-        self.plot_plan = plot_plan
-        self.result_bank = result_bank
+    plot_plan: PlotPlan
 
     def render(self):
         # Get data requirements for the plot plan
-        data_reqs = self.plot_plan.get_data_requirements(self.result_bank)
-        fulfilled_reqs = data_reqs.to_fulfilled_reqs(self.result_bank).summarize()
-
-        if not data_reqs:
-            st.warning("No data requirements found for this plot plan.")
-            return
+        with st.sidebar:
+            fulfilled_reqs = _load_plot_plan_fulfilled_reqs.call_and_render(self.plot_plan)
 
         with st.expander(
             f"Data Requirements (Missing: {fulfilled_reqs.amount_missing()})",
@@ -133,23 +142,17 @@ class PlotPlanRequirements(StreamlitComponent[None]):
 
 class FinalPlotsPage(StreamlitPage):
     def render(self):
-        # Check if plot plans file exists, if not, create it with default plans
-        with st.sidebar:
-            load_results_bank.render()
-
         plot_plans: PlotPlans = PlotPlans.load()
-        result_bank = load_results_bank()
-
         with st.sidebar:
             st.subheader(FINAL_PLOTS_TEXTS.plot_management)
             ManagePlotPlans(plot_plans).render()
+            result_bank = load_results_bank()
 
         # Main area
         if FinalPlotsSessionKeys.EDIT_MODE_KEY.value or FinalPlotsSessionKeys.is_new_plot_plan():
             # Edit mode
             plot_plan: PlotPlan | None = PlotPlanEditor(
                 plot_plans,
-                result_bank,
                 None if FinalPlotsSessionKeys.is_new_plot_plan() else FinalPlotsSessionKeys.SELECTED_PLOT_PLAN_ID.value,
             ).render()
 
@@ -169,12 +172,10 @@ class FinalPlotsPage(StreamlitPage):
             assert selected_plan is not None
             # Display plan details
             with st.expander("Details"):
-                PlotPlanDetailsSummary(
-                    plot_plans, FinalPlotsSessionKeys.SELECTED_PLOT_PLAN_ID.value, result_bank
-                ).render()
+                PlotPlanDetailsSummary(plot_plans, FinalPlotsSessionKeys.SELECTED_PLOT_PLAN_ID.value).render()
 
             # Display data requirements
-            PlotPlanRequirements(selected_plan, result_bank).render()
+            PlotPlanRequirements(selected_plan).render()
 
             # Plot generation button
             plot_path = PlotGenerator(selected_plan, result_bank).render()

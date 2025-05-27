@@ -317,6 +317,7 @@ class PromptFilterationsPresets(IndexableDataObject[TPresetID, BasePromptFiltera
         return new_presets
 
     @classmethod
+    @lru_cache(maxsize=1)
     def load(cls) -> PromptFilterationsPresets:
         if not cls.get_json_path().exists():
             presets = cls.get_default_presets()
