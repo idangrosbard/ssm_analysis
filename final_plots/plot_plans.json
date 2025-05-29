@@ -70,10 +70,10 @@
         ],
         "cell_plot_config": {
             "custom_colors": {
-                "mamba1-7B-falcon": "#deaa46",
-                "mamba1-2.8B": "#2b9661",
-                "mamba2-2.7B": "#612392",
-                "gpt2-1.5B": "#257285"
+                "mamba1-2.8B": "#0202da",
+                "mamba2-2.7B": "#0f710f",
+                "gpt2-1.5B": "#a41908",
+                "mamba1-7B-falcon": "#deaa46"
             }
         }
     },
@@ -187,16 +187,16 @@
                 "ylim_max": 40.0
             },
             "custom_colors": {
-                "mamba1-130M": "#bbdec7",
-                "mamba1-1.4B": "#52b183",
-                "mamba1-2.8B": "#327553",
-                "mamba1-7B-falcon": "#184129",
-                "mamba2-130M": "#e3bdff",
-                "mamba2-1.3B": "#9542c1",
-                "mamba2-2.7B": "#53176d",
-                "gpt2-355M": "#77dbfb",
-                "gpt2-774M": "#0b80ad",
-                "gpt2-1.5B": "#064052"
+                "mamba1-130M": "#0202da",
+                "mamba1-1.4B": "#0f710f",
+                "mamba1-2.8B": "#a41908",
+                "mamba1-7B-falcon": "#deaa46",
+                "mamba2-130M": "#0202da",
+                "mamba2-1.3B": "#0f710f",
+                "mamba2-2.7B": "#a41908",
+                "gpt2-355M": "#0202da",
+                "gpt2-774M": "#0f710f",
+                "gpt2-1.5B": "#a41908"
             }
         }
     },
@@ -273,7 +273,7 @@
                 "title": "Probability Difference",
                 "ylabel": "Probability Diff. (%)",
                 "axhline_value": 0.0,
-                "ylim_min": -35.0,
+                "ylim_min": -40.0,
                 "ylim_max": 10.0
             },
             "custom_colors": {
@@ -458,10 +458,10 @@
             "show_number_of_points": "auto",
             "add_number_of_points_in_box": true,
             "custom_colors": {
-                "subject": "#af7404",
-                "relation": "#3e7316",
-                "last": "#1b00dc",
-                "first": "#0a9c8a"
+                "subject": "#0202da",
+                "relation": "#0f710f",
+                "last": "#a41908",
+                "first": "#deaa46"
             }
         },
         "combine_plot_config": {
@@ -603,20 +603,20 @@
                 "ylim_max": 40.0
             },
             "custom_colors": {
-                "mamba1-130M": "#bbdec7",
-                "mamba1-1.4B": "#52b183",
-                "mamba1-2.8B": "#327553",
-                "mamba2-130M": "#e3bdff",
-                "mamba2-1.3B": "#9542c1",
-                "mamba2-2.7B": "#53176d",
-                "gpt2-355M": "#77dbfb",
-                "gpt2-774M": "#0b80ad",
-                "gpt2-1.5B": "#064052",
-                "llama3.2-1B": "#f5d89c",
-                "llama3.2-3B": "#eaac53",
-                "llama3-8B": "#ad6d07",
-                "mistral0.1-7B": "#b39ddb",
-                "mistral0.3-7B": "#1b00dc"
+                "mamba1-130M": "#0202da",
+                "mamba1-1.4B": "#0f710f",
+                "mamba1-2.8B": "#a41908",
+                "mamba2-130M": "#0202da",
+                "mamba2-1.3B": "#0f710f",
+                "mamba2-2.7B": "#a41908",
+                "gpt2-355M": "#0202da",
+                "gpt2-774M": "#0f710f",
+                "gpt2-1.5B": "#a41908",
+                "llama3.2-1B": "#0202da",
+                "llama3.2-3B": "#0f710f",
+                "llama3-8B": "#a41908",
+                "mistral0.1-7B": "#0202da",
+                "mistral0.3-7B": "#0f710f"
             }
         },
         "combine_plot_config": {
