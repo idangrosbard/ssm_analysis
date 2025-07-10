@@ -45,7 +45,7 @@ The script will automatically:
 
 If you prefer manual installation or need to customize the setup:
 
-> **Note**: You can use either UV (recommended) or pip directly. The commands are the same, just replace `uv pip` with `pip`.
+> **Note**: You can use either UV (recommended) or pip directly. The commands are the same, just replace `uv add` with `pip install`.
 
 #### Using UV (Recommended)
 
@@ -73,15 +73,15 @@ If you prefer manual installation or need to customize the setup:
 
    ```bash
    # Install PyTorch with the correct CUDA version (replace *** with the correct CUDA version)
-   uv pip install "torch==2.5.1" --index-url https://download.pytorch.org/whl/cu***
+   uv add "torch==2.5.1" --index-url https://download.pytorch.org/whl/cu***
    # or without the cuda
-   # uv pip install "torch==2.5.1"
+   # uv add "torch==2.5.1"
 
    # Install mamba-ssm with causal-conv1d
-   uv pip install "mamba-ssm[causal-conv1d]==2.2.4" --no-build-isolation
+   uv add "mamba-ssm[causal-conv1d]==2.2.4" --no-build-isolation
 
    # Install the project in editable mode
-   uv pip install -e .
+   uv add -e .
    ```
 
    **Install additional optional dependencies as needed**:
@@ -90,11 +90,11 @@ If you prefer manual installation or need to customize the setup:
 
    ```bash
    # - For type checking and development:
-   uv pip install -e .[typing]
+   uv add -e .[typing]
    # - For Streamlit web interface:
-   uv pip install -e .[streamlit]
+   uv add -e .[streamlit]
    # - For development tools:
-   uv pip install -e .[dev]
+   uv add -e .[dev]
    ```
 
 3. **Apply required patches** (see [Known Issues and Workarounds](#known-issues-and-workarounds))
@@ -113,22 +113,6 @@ This project includes several optional dependency groups that you can install ba
 - **Development**: Add `[typing]` and `[dev]` for type checking and testing
 - **Web interface**: Add `[streamlit]` for interactive visualizations
 - **Full setup**: Install all groups for complete functionality
-
-## Exact Environment Reproducibility
-
-For full reproducibility, this repository provides a `requirements.lock.txt` file, which lists the exact versions of all Python packages installed in the environment used for our experiments and paper results.
-
-- This file was generated with:
-  ```bash
-  uv pip freeze > requirements.lock.txt
-  ```
-- You can use it to recreate the exact environment by running:
-  ```bash
-  uv pip install -r requirements.lock.txt
-  ```
-- This is especially useful for debugging, reproducing results, or if you encounter dependency issues with the main installation instructions.
-
-If you report a bug or issue, please mention your environment and, if possible, attach your own `uv pip freeze` output for comparison.
 
 ## Project Structure
 
@@ -170,6 +154,34 @@ The `notebooks/` directory contains Jupyter notebooks for:
 ## Troubleshooting
 
 ### Known Issues and Workarounds
+
+#### Alternative Installation Methods (Advanced)
+
+The automatic `uv sync` approach is preferred as it handles all dependencies automatically.
+But if you encounter issues with the automatic installation, you can try alternative approaches:
+
+**Manual pip-based installation (not recommended):**
+
+```bash
+# Create virtual environment
+uv venv --python 3.12
+source .venv/bin/activate
+
+# Install PyTorch first (required for mamba-ssm)
+# Adjust the CUDA version in the URL based on your system:
+pip install torch==2.5.1 --index-url https://download.pytorch.org/whl/cu121
+
+# Install mamba-ssm
+pip install "mamba-ssm[causal-conv1d]==2.2.4" --no-build-isolation
+
+# Install the project
+pip install -e .
+
+# Install optional dependencies
+pip install -e .[typing]
+pip install -e .[streamlit]
+pip install -e .[dev]
+```
 
 #### CUDA Compatibility for `causal_conv1d`
 
@@ -241,30 +253,44 @@ Some models or datasets used in this project may require authentication with the
 
 No further setup is required in the code—just set the environment variable before running your scripts or notebooks.
 
-#### PyTorch Installation: CUDA-Optimized vs. Default
+### PyTorch Installation: Automatic Backend Detection
 
-This project automatically installs the CUDA-optimized version of PyTorch if a compatible NVIDIA GPU and CUDA version are detected. The installation script attempts to:
+This project uses `uv`'s automatic PyTorch backend detection to install the optimal version for your system. The installation script uses:
 
-1. Detect your CUDA version using `nvidia-smi`.
-2. Install the matching PyTorch wheel for your CUDA version (e.g., cu121 for CUDA 12.x, cu118 for CUDA 11.x).
-3. If detection fails or the optimized install fails, it falls back to the regular (CPU or default CUDA) PyTorch install.
+```bash
+UV_TORCH_BACKEND=auto uv sync
+```
 
-**You do not need to specify a CUDA version in `setup.py`**—the script handles this for you.
+This automatically:
+
+1. **Detects your CUDA version** using system queries
+2. **Selects the appropriate PyTorch backend** (CPU, CUDA, ROCm, etc.)
+3. **Installs all dependencies** in the correct order
+4. **Handles the PyTorch → mamba-ssm dependency chain** automatically
+
+**Why this approach is better:**
+
+- **Automatic detection**: No manual CUDA version detection needed
+- **Proper dependency resolution**: `uv` handles all dependencies together
+- **Cleaner installation**: No step-by-step workarounds required
+- **Cross-platform**: Works on Linux, macOS, and Windows
+
+**What you'll see:**
+
+- If you have CUDA: PyTorch will be installed with CUDA support (e.g., `+cu121`, `+cu118`)
+- If no CUDA: PyTorch will be installed as CPU-only
+- The exact version depends on your system's CUDA driver version
 
 ### Example on our systems:
 
-On a system with the following `nvidia-smi --version` output:
+On a system with CUDA 12.4, the script will automatically:
 
-```
-NVIDIA-SMI version  : 550.120
-NVML version        : 550.120
-DRIVER version      : 550.120
-CUDA Version        : 12.4
-```
+1. Detect CUDA 12.4
+2. Install PyTorch 2.5.1 with appropriate CUDA binaries
+3. Install mamba-ssm (which builds against the installed PyTorch)
+4. Install all project dependencies and optional extras
 
-The script will detect CUDA 12.4 and install PyTorch 2.5.1 with CUDA 12.1 wheels (`+cu121`).
-
-If the optimized install fails (e.g., due to a network or compatibility issue), the script will automatically fall back to installing the regular PyTorch version.
+The installation is now much simpler and more reliable than the previous step-by-step approach.
 
 ## Citation
 

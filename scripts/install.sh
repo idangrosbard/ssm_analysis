@@ -27,51 +27,13 @@ uv venv --python 3.12
 echo "🔧 Activating virtual environment..."
 source .venv/bin/activate
 
-# Install PyTorch first (optimized for CUDA)
-echo "📦 Installing PyTorch..."
-if command -v nvidia-smi &> /dev/null; then
-    CUDA_VERSION=$(nvidia-smi --version | grep -o "CUDA Version[ ]*:[ ]*[0-9]*\.[0-9]*" | cut -d':' -f2 | xargs)
-    if [[ -z "$CUDA_VERSION" ]]; then
-        CUDA_VERSION=$(nvidia-smi | head -n3 | grep -o "CUDA Version[ ]*:[ ]*[0-9]*\.[0-9]*" | head -1 | cut -d':' -f2 | xargs)
-    fi
-    if [[ -z "$CUDA_VERSION" ]]; then
-        echo "⚠️  Could not detect CUDA version. Debug info:"
-        echo "nvidia-smi --version output:"; nvidia-smi --version
-        echo "nvidia-smi table header:"; nvidia-smi | head -n3
-    fi
-    echo "🔍 Detected CUDA version: $CUDA_VERSION"
-    INDEX_URL=""
-    if [[ $CUDA_VERSION == 12* ]]; then
-        INDEX_URL="--index-url https://download.pytorch.org/whl/cu121"
-    elif [[ $CUDA_VERSION == 11* ]]; then
-        INDEX_URL="--index-url https://download.pytorch.org/whl/cu118"
-    fi
-    if [[ -n "$INDEX_URL" ]]; then
-        echo "📦 Attempting PyTorch 2.5.1 install optimized for CUDA $CUDA_VERSION..."
-        uv pip install torch==2.5.1 $INDEX_URL \
-            || (echo "❌ Optimized install failed, falling back to regular PyTorch..." && uv pip install torch==2.5.1)
-    else
-        echo "⚠️  CUDA version $CUDA_VERSION not explicitly supported, installing regular PyTorch..."
-        uv pip install torch==2.5.1
-    fi
-else
-    echo "⚠️  nvidia-smi not found, installing regular PyTorch..."
-    uv pip install torch==2.5.1
-fi
-
-# Install mamba-ssm with causal-conv1d
-echo "📦 Installing mamba-ssm with causal-conv1d..."
-uv pip install "mamba-ssm[causal-conv1d]==2.2.4" --no-build-isolation
-
-# Install the project
-echo "📦 Installing the project..."
-uv pip install -e .
+# Install the project with automatic PyTorch backend detection
+echo "📦 Installing the project with automatic PyTorch backend detection..."
+UV_TORCH_BACKEND=auto uv sync
 
 # Install optional dependencies
 echo "📦 Installing optional dependencies..."
-uv pip install -e .[typing]
-uv pip install -e .[streamlit]
-uv pip install -e .[dev]
+uv sync --extra typing --extra streamlit --extra dev
 
 # Apply patches
 echo "🔧 Applying required patches..."
