@@ -1,0 +1,9 @@
+---
+description: Update readme with changes
+globs: 
+alwaysApply: true
+---
+Purpose of this Repository
+This repository aims to provide a fully reproducible environment for our paper.
+To achieve this, we will refactor the project as needed.
+Please ensure that the README is continuously updated to reflect any changes, so it remains aligned with the project’s structure and usage.

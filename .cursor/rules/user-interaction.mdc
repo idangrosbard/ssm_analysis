@@ -1,0 +1,17 @@
+---
+alwaysApply: true
+---
+
+User Interaction (via MCP Tools)
+	•	Always use the designated MCP tools (ask_user_buttons, ask_user_text, ask_user_confirm) for any interaction, input, or confirmation steps in this project.
+	•	Before implementing any task or code change, and AFTER proposing a plan, you must:
+	•	Break down the plan into clear subsections (e.g., 1.2.1.3…) for reference.
+	•	Use server.tool("ask_user_confirm", ...) to obtain explicit approval from the user.
+	•	Do not mark any task as completed without:
+	•	Using server.tool("ask_user_confirm", ...) to get confirmation from the user that it was completed correctly.
+	•	Before summarizing or closing a task:
+	•	Use server.tool("ask_user_confirm", ...) to verify the summary with the user.
+	•	For major design decisions (e.g., changes to public interfaces or architecture refactors):
+	•	Use server.tool("ask_user_text", ...) or ask_user_buttons to gather input from the user and follow their direction.
+	•	Avoid unnecessary prompts:
+	•	Only use MCP tools to engage the user when their input is needed for important decisions or confirmations.

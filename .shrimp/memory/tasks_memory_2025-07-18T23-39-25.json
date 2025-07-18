@@ -1,0 +1,962 @@
+{
+  "tasks": [
+    {
+      "id": "ce2b8e47-fdf0-4f3d-8d94-e21a17780d93",
+      "name": "Create docs directory structure and documentation index",
+      "description": "Create the docs/ directory in the project root and establish the documentation architecture with a comprehensive index file that serves as navigation hub for all specialized documentation modules.",
+      "notes": "Establish foundation for modular documentation system. Ensure index provides clear navigation paths for developers seeking specific information.",
+      "status": "completed",
+      "dependencies": [],
+      "createdAt": "2025-07-18T21:48:16.013Z",
+      "updatedAt": "2025-07-18T22:25:04.346Z",
+      "relatedFiles": [
+        {
+          "path": "docs/",
+          "type": "CREATE",
+          "description": "Main documentation directory"
+        },
+        {
+          "path": "docs/README.md",
+          "type": "CREATE",
+          "description": "Documentation index and navigation hub"
+        },
+        {
+          "path": "README.md",
+          "type": "REFERENCE",
+          "description": "Reference for markdown structure and formatting patterns"
+        }
+      ],
+      "implementationGuide": "1. Create docs/ directory in project root\\n2. Create docs/README.md as documentation index with:\\n   - Brief overview of documentation structure\\n   - Links to all 8 specialized modules with descriptions\\n   - Navigation guidelines for different use cases\\n   - Quick reference section for common development scenarios\\n3. Follow existing README.md structure and markdown formatting patterns\\n4. Include table of contents with direct links to specific sections",
+      "verificationCriteria": "docs/ directory exists, docs/README.md provides comprehensive navigation with links to all 8 planned modules, follows project markdown conventions",
+      "analysisResult": "Refactor the monolithic shrimp-rules.md documentation (418 lines) into a modular structure by creating 8 specialized documentation modules in a docs/ directory that mirror the project's code architecture. Extract content from shrimp-rules.md based on component boundaries, create cross-references between modules, and transform shrimp-rules.md into a high-level overview. This will improve developer experience, maintainability, and align documentation structure with the sophisticated project architecture while preserving all critical project-specific rules and patterns.",
+      "summary": "Successfully created docs/ directory and comprehensive docs/README.md navigation hub. The documentation index provides clear navigation paths for all 8 planned specialized modules, follows project markdown conventions with proper formatting, includes use case-based navigation, and establishes the foundation for the modular documentation system. The index serves as a complete navigation hub with cross-references to all planned modules and maintains consistency with the project's sophisticated architecture.",
+      "completedAt": "2025-07-18T22:25:04.338Z"
+    },
+    {
+      "id": "cc528d3c-c641-4554-bd9e-4cf47fd9e9e4",
+      "name": "Extract and create infrastructure documentation",
+      "description": "Extract infrastructure-related content from shrimp-rules.md and create comprehensive docs/infrastructure.md covering BaseRunner, BasePromptFilteration, model interface patterns, and infrastructure coordination rules.",
+      "notes": "Critical foundation module - all experiment development depends on understanding these patterns. Must preserve all MUST/NEVER/ALWAYS rules.",
+      "status": "completed",
+      "dependencies": [
+        {
+          "taskId": "ce2b8e47-fdf0-4f3d-8d94-e21a17780d93"
+        }
+      ],
+      "createdAt": "2025-07-18T21:48:16.013Z",
+      "updatedAt": "2025-07-18T22:28:53.693Z",
+      "relatedFiles": [
+        {
+          "path": "docs/infrastructure.md",
+          "type": "CREATE",
+          "description": "Infrastructure patterns and base classes documentation"
+        },
+        {
+          "path": "shrimp-rules.md",
+          "type": "TO_MODIFY",
+          "description": "Source for infrastructure content extraction",
+          "lineStart": 10,
+          "lineEnd": 50
+        },
+        {
+          "path": "src/experiments/infrastructure/base_runner.py",
+          "type": "REFERENCE",
+          "description": "BaseRunner implementation for examples"
+        },
+        {
+          "path": "src/experiments/infrastructure/base_prompt_filteration.py",
+          "type": "REFERENCE",
+          "description": "BasePromptFilteration implementation for examples"
+        }
+      ],
+      "implementationGuide": "1. Extract from shrimp-rules.md lines covering:\\n   - Base Infrastructure Components section\\n   - Infrastructure Coordination Rules\\n   - BaseRunner implementation patterns\\n   - BasePromptFilteration logical operations\\n2. Create docs/infrastructure.md with:\\n   - BaseRunner inheritance requirements and abstract methods\\n   - BasePromptFilteration filtering logic and operations\\n   - Model interface usage patterns\\n   - Dependency management system rules\\n   - Infrastructure coordination guidelines\\n3. Add code examples for correct BaseRunner implementation\\n4. Include cross-references to experiment-runners.md and data-management.md",
+      "verificationCriteria": "docs/infrastructure.md contains all BaseRunner and BasePromptFilteration rules, includes implementation examples, provides clear guidelines for infrastructure usage",
+      "analysisResult": "Refactor the monolithic shrimp-rules.md documentation (418 lines) into a modular structure by creating 8 specialized documentation modules in a docs/ directory that mirror the project's code architecture. Extract content from shrimp-rules.md based on component boundaries, create cross-references between modules, and transform shrimp-rules.md into a high-level overview. This will improve developer experience, maintainability, and align documentation structure with the sophisticated project architecture while preserving all critical project-specific rules and patterns.",
+      "summary": "Successfully created comprehensive docs/infrastructure.md covering all BaseRunner and BasePromptFilteration rules, including implementation examples, model interface patterns, dependency management system, and infrastructure coordination guidelines. The documentation preserves all critical MUST/NEVER/ALWAYS rules from the original shrimp-rules.md and provides clear guidelines for infrastructure usage with practical code examples.",
+      "completedAt": "2025-07-18T22:28:53.686Z"
+    },
+    {
+      "id": "bae54018-c346-4203-a6ba-56b4cfa6dc34",
+      "name": "Extract and create experiment runners documentation",
+      "description": "Extract experiment runner content from shrimp-rules.md and create docs/experiment-runners.md documenting all 4 runner types, their purposes, dependencies, and implementation patterns.",
+      "notes": "Core experimental components - developers need clear understanding of each runner's purpose and usage patterns.",
+      "status": "completed",
+      "dependencies": [
+        {
+          "taskId": "cc528d3c-c641-4554-bd9e-4cf47fd9e9e4"
+        }
+      ],
+      "createdAt": "2025-07-18T21:48:16.013Z",
+      "updatedAt": "2025-07-18T22:33:35.041Z",
+      "relatedFiles": [
+        {
+          "path": "docs/experiment-runners.md",
+          "type": "CREATE",
+          "description": "Experiment runner types and implementation patterns"
+        },
+        {
+          "path": "shrimp-rules.md",
+          "type": "TO_MODIFY",
+          "description": "Source for runners content extraction",
+          "lineStart": 51,
+          "lineEnd": 90
+        },
+        {
+          "path": "src/experiments/runners/",
+          "type": "REFERENCE",
+          "description": "Runner implementations for examples"
+        },
+        {
+          "path": "src/experiments/runners/evaluate_model.py",
+          "type": "REFERENCE",
+          "description": "Foundation runner implementation"
+        },
+        {
+          "path": "src/experiments/runners/info_flow.py",
+          "type": "REFERENCE",
+          "description": "Information flow runner"
+        },
+        {
+          "path": "src/experiments/runners/heatmap.py",
+          "type": "REFERENCE",
+          "description": "Heatmap runner"
+        },
+        {
+          "path": "src/experiments/runners/full_pipeline.py",
+          "type": "REFERENCE",
+          "description": "Pipeline orchestration runner"
+        }
+      ],
+      "implementationGuide": "1. Extract from shrimp-rules.md:\\n   - Experiment Runners Architecture section\\n   - Runner Types and Purposes\\n   - Runner Implementation Rules\\n2. Create docs/experiment-runners.md with:\\n   - evaluate_model.py: foundation runner for model performance\\n   - info_flow.py: information flow analysis with dependencies\\n   - heatmap.py: layer-by-layer probability visualization\\n   - full_pipeline.py: orchestrated experimental workflows\\n3. Document runner dependencies and output formats\\n4. Include implementation guidelines and caching patterns\\n5. Add cross-references to infrastructure.md and data-management.md",
+      "verificationCriteria": "docs/experiment-runners.md documents all 4 runner types with purposes, dependencies, output formats, and implementation guidelines",
+      "analysisResult": "Refactor the monolithic shrimp-rules.md documentation (418 lines) into a modular structure by creating 8 specialized documentation modules in a docs/ directory that mirror the project's code architecture. Extract content from shrimp-rules.md based on component boundaries, create cross-references between modules, and transform shrimp-rules.md into a high-level overview. This will improve developer experience, maintainability, and align documentation structure with the sophisticated project architecture while preserving all critical project-specific rules and patterns.",
+      "summary": "Successfully created comprehensive docs/experiment-runners.md documenting all 4 runner types with purposes, dependencies, output formats, and implementation guidelines. The documentation covers EvaluateModelRunner (foundation), InfoFlowRunner (information flow analysis), HeatmapRunner (layer-by-layer visualization), and FullPipelineRunner (orchestrated workflows), including caching patterns, dependency management, and practical implementation examples.",
+      "completedAt": "2025-07-18T22:33:35.032Z"
+    },
+    {
+      "id": "c04a9704-634e-48a4-be7a-990fc22e0976",
+      "name": "Extract and create data interfaces and object-oriented entities documentation",
+      "description": "Extract data interface content from shrimp-rules.md and create docs/data-interfaces.md covering data_defs.py object-oriented entities, how experiment_results objects interact with data, and the interface patterns for data access across the application.",
+      "notes": "Critical for understanding how object-oriented entities interact with data - data_defs.py defines interfaces, not data management. Focus on experiment_results objects and data interaction patterns.",
+      "status": "completed",
+      "dependencies": [
+        {
+          "taskId": "bae54018-c346-4203-a6ba-56b4cfa6dc34"
+        }
+      ],
+      "createdAt": "2025-07-18T21:48:16.013Z",
+      "updatedAt": "2025-07-18T22:43:00.570Z",
+      "relatedFiles": [
+        {
+          "path": "docs/data-interfaces.md",
+          "type": "CREATE",
+          "description": "Object-oriented data interfaces and entity interaction patterns"
+        },
+        {
+          "path": "shrimp-rules.md",
+          "type": "TO_MODIFY",
+          "description": "Source for data interface content extraction",
+          "lineStart": 91,
+          "lineEnd": 150
+        },
+        {
+          "path": "src/data_ingestion/data_defs/data_defs.py",
+          "type": "REFERENCE",
+          "description": "Core object-oriented data interface definitions"
+        },
+        {
+          "path": "src/analysis/experiment_results/",
+          "type": "REFERENCE",
+          "description": "Experiment results object interaction examples"
+        },
+        {
+          "path": "src/data_ingestion/datasets/download_dataset.py",
+          "type": "REFERENCE",
+          "description": "Data loading interface utilities"
+        }
+      ],
+      "implementationGuide": "1. Extract from shrimp-rules.md:\\n   - Data Definitions and Object Management section\\n   - Data Object Coordination Rules\\n   - Object-oriented interface patterns\\n2. Create docs/data-interfaces.md with:\\n   - DataReqs and DataRequirementCollection interface patterns\\n   - FulfilledReqs and SummarizedDataFulfilledReqs data interaction\\n   - ResultBank central registry as data interface\\n   - PlotPlans and PromptFilterationsPresets object patterns\\n   - How experiment_results objects interface with data\\n   - Object-oriented entity interaction patterns\\n3. Document object relationships and interface compatibility\\n4. Include examples of correct data interface usage patterns\\n5. Add cross-references to experiment-runners.md and analysis-and-plotting.md",
+      "verificationCriteria": "docs/data-interfaces.md covers all object-oriented entities from data_defs.py, explains how experiment_results objects interact with data, documents interface patterns and object coordination requirements",
+      "analysisResult": "Refactor the monolithic shrimp-rules.md documentation (418 lines) into a modular structure by creating 8 specialized documentation modules in a docs/ directory that mirror the project's code architecture. Extract content from shrimp-rules.md based on component boundaries, create cross-references between modules, and transform shrimp-rules.md into a high-level overview. This will improve developer experience, maintainability, and align documentation structure with the sophisticated project architecture while preserving all critical project-specific rules and patterns.",
+      "summary": "Successfully created comprehensive docs/data-interfaces.md covering all object-oriented entities from data_defs.py, explaining how experiment_results objects interact with data, documenting interface patterns and object coordination requirements. The documentation includes detailed coverage of DataRequirementCollection, DataReqs, FulfilledReqs, SummarizedDataFulfilledReqs, ResultBank, PlotPlans, and PromptFilterationsPresets with practical usage examples, type safety patterns, inheritance hierarchy, and cross-references to related documentation modules.",
+      "completedAt": "2025-07-18T22:43:00.561Z"
+    },
+    {
+      "id": "cad64440-a875-4fc1-a92a-4f0ca1a05f77",
+      "name": "Extract and create core modules coordination documentation",
+      "description": "Extract core module coordination content from shrimp-rules.md and create docs/core-modules.md documenting the critical 3-file coordination pattern and multi-file update requirements.",
+      "notes": "Highest priority coordination rules - mistakes here break the entire project. Must be crystal clear and easily discoverable.",
+      "status": "completed",
+      "dependencies": [
+        {
+          "taskId": "c04a9704-634e-48a4-be7a-990fc22e0976"
+        }
+      ],
+      "createdAt": "2025-07-18T21:48:16.013Z",
+      "updatedAt": "2025-07-18T22:45:52.954Z",
+      "relatedFiles": [
+        {
+          "path": "docs/core-modules.md",
+          "type": "CREATE",
+          "description": "Core module 3-file coordination and update requirements"
+        },
+        {
+          "path": "shrimp-rules.md",
+          "type": "TO_MODIFY",
+          "description": "Source for core coordination content extraction",
+          "lineStart": 200,
+          "lineEnd": 240
+        },
+        {
+          "path": "src/core/consts.py",
+          "type": "REFERENCE",
+          "description": "Core constants file"
+        },
+        {
+          "path": "src/core/names.py",
+          "type": "REFERENCE",
+          "description": "Core names and enums file"
+        },
+        {
+          "path": "src/core/types.py",
+          "type": "REFERENCE",
+          "description": "Core type definitions file"
+        }
+      ],
+      "implementationGuide": "1. Extract from shrimp-rules.md:\\n   - Core Module Coordination section\\n   - Multi-File Update Requirements\\n   - Core Module Rules\\n2. Create docs/core-modules.md with:\\n   - 3-file coordination pattern (consts.py, names.py, types.py)\\n   - Multi-file update requirements and sequence\\n   - Centralized constant definitions\\n   - Enum and type definition patterns\\n3. Document step-by-step procedures for adding new constants\\n4. Include examples of correct and incorrect update patterns\\n5. Add cross-references to all other modules that depend on core coordination",
+      "verificationCriteria": "docs/core-modules.md clearly documents 3-file coordination pattern, provides step-by-step update procedures, includes correct/incorrect examples",
+      "analysisResult": "Refactor the monolithic shrimp-rules.md documentation (418 lines) into a modular structure by creating 8 specialized documentation modules in a docs/ directory that mirror the project's code architecture. Extract content from shrimp-rules.md based on component boundaries, create cross-references between modules, and transform shrimp-rules.md into a high-level overview. This will improve developer experience, maintainability, and align documentation structure with the sophisticated project architecture while preserving all critical project-specific rules and patterns.",
+      "summary": "Successfully created comprehensive docs/core-modules.md documenting the critical 3-file coordination pattern and multi-file update requirements. The documentation clearly explains the responsibilities of consts.py, names.py, and types.py, provides step-by-step procedures for adding new constants, includes correct/incorrect examples, and emphasizes the highest priority nature of these coordination rules. The documentation includes cross-references to all dependent modules and a verification checklist to ensure proper coordination.",
+      "completedAt": "2025-07-18T22:45:52.948Z"
+    },
+    {
+      "id": "83cab965-ed81-4139-903a-218115b678e1",
+      "name": "Extract and create analysis and plotting documentation",
+      "description": "Extract plotting and visualization content from shrimp-rules.md and create docs/analysis-and-plotting.md covering plot types, configuration management, and visualization coordination rules.",
+      "notes": "Publication-quality visualization requirements - important for research output and result presentation.",
+      "status": "completed",
+      "dependencies": [
+        {
+          "taskId": "cad64440-a875-4fc1-a92a-4f0ca1a05f77"
+        }
+      ],
+      "createdAt": "2025-07-18T21:48:16.013Z",
+      "updatedAt": "2025-07-18T22:48:23.871Z",
+      "relatedFiles": [
+        {
+          "path": "docs/analysis-and-plotting.md",
+          "type": "CREATE",
+          "description": "Visualization components, plot configurations, and analysis patterns"
+        },
+        {
+          "path": "shrimp-rules.md",
+          "type": "TO_MODIFY",
+          "description": "Source for plotting content extraction",
+          "lineStart": 151,
+          "lineEnd": 199
+        },
+        {
+          "path": "src/analysis/plots/",
+          "type": "REFERENCE",
+          "description": "Plotting utilities and visualization components"
+        },
+        {
+          "path": "src/analysis/plots/heatmaps.py",
+          "type": "REFERENCE",
+          "description": "Heatmap visualization implementation"
+        },
+        {
+          "path": "src/analysis/plots/info_flow_confidence.py",
+          "type": "REFERENCE",
+          "description": "Information flow plotting"
+        },
+        {
+          "path": "src/analysis/plots/image_combiner.py",
+          "type": "REFERENCE",
+          "description": "Multi-panel plot generation"
+        }
+      ],
+      "implementationGuide": "1. Extract from shrimp-rules.md:\\n   - Plotting and Visualization section\\n   - Plot Types and Usage\\n   - Plotting Coordination Rules\\n   - Plot Configuration Management\\n2. Create docs/analysis-and-plotting.md with:\\n   - heatmaps.py visualization patterns\\n   - info_flow_confidence.py statistical plots\\n   - image_combiner.py multi-panel generation\\n   - Configuration objects (*PlotConfig) usage\\n   - Color scheme and style definitions\\n3. Document plot caching and experiment coordination\\n4. Include examples of plot generation workflows\\n5. Add cross-references to data-management.md and core-modules.md",
+      "verificationCriteria": "docs/analysis-and-plotting.md documents all plot types, configuration management, coordination rules, and includes visualization workflow examples",
+      "analysisResult": "Refactor the monolithic shrimp-rules.md documentation (418 lines) into a modular structure by creating 8 specialized documentation modules in a docs/ directory that mirror the project's code architecture. Extract content from shrimp-rules.md based on component boundaries, create cross-references between modules, and transform shrimp-rules.md into a high-level overview. This will improve developer experience, maintainability, and align documentation structure with the sophisticated project architecture while preserving all critical project-specific rules and patterns.",
+      "summary": "Successfully created comprehensive docs/analysis-and-plotting.md documenting all plot types, configuration management, coordination rules, and including visualization workflow examples. The documentation covers heatmaps.py, info_flow_confidence.py, and image_combiner.py with detailed configuration options, practical usage examples, and proper cross-references to related documentation modules.",
+      "completedAt": "2025-07-18T22:48:23.864Z"
+    },
+    {
+      "id": "af62aecc-88d9-4e17-a32a-3b3bd62e38b0",
+      "name": "Extract and create setup and environment documentation",
+      "description": "Extract package management, configuration, and environment content from shrimp-rules.md and create docs/setup-and-environment.md covering UV usage, symlink patterns, and reproducibility requirements.",
+      "notes": "Critical for project reproducibility - ensures consistent environment setup across different development machines.",
+      "status": "completed",
+      "dependencies": [
+        {
+          "taskId": "83cab965-ed81-4139-903a-218115b678e1"
+        }
+      ],
+      "createdAt": "2025-07-18T21:48:16.013Z",
+      "updatedAt": "2025-07-18T22:50:39.009Z",
+      "relatedFiles": [
+        {
+          "path": "docs/setup-and-environment.md",
+          "type": "CREATE",
+          "description": "Package management, environment setup, and reproducibility requirements"
+        },
+        {
+          "path": "shrimp-rules.md",
+          "type": "TO_MODIFY",
+          "description": "Source for setup content extraction",
+          "lineStart": 241,
+          "lineEnd": 290
+        },
+        {
+          "path": "scripts/install.sh",
+          "type": "REFERENCE",
+          "description": "Automated installation script"
+        },
+        {
+          "path": "pyproject.toml",
+          "type": "REFERENCE",
+          "description": "Package configuration file"
+        },
+        {
+          "path": "README.md",
+          "type": "REFERENCE",
+          "description": "Installation instructions",
+          "lineStart": 23,
+          "lineEnd": 180
+        }
+      ],
+      "implementationGuide": "1. Extract from shrimp-rules.md:\\n   - Package Management Standards\\n   - Configuration and Environment Standards\\n   - Reproducibility Requirements\\n2. Create docs/setup-and-environment.md with:\\n   - UV package manager requirements and usage\\n   - Symlink configuration patterns\\n   - Environment setup rules and automated installation\\n   - Dependency management and version requirements\\n   - Reproducibility and documentation coordination\\n3. Document installation procedures and troubleshooting\\n4. Include examples of correct package management commands\\n5. Reference scripts/install.sh for automated setup",
+      "verificationCriteria": "docs/setup-and-environment.md covers UV usage requirements, symlink patterns, environment setup rules, and reproducibility standards",
+      "analysisResult": "Refactor the monolithic shrimp-rules.md documentation (418 lines) into a modular structure by creating 8 specialized documentation modules in a docs/ directory that mirror the project's code architecture. Extract content from shrimp-rules.md based on component boundaries, create cross-references between modules, and transform shrimp-rules.md into a high-level overview. This will improve developer experience, maintainability, and align documentation structure with the sophisticated project architecture while preserving all critical project-specific rules and patterns.",
+      "summary": "Successfully created comprehensive docs/setup-and-environment.md covering UV usage requirements, symlink patterns, environment setup rules, and reproducibility standards. The documentation includes detailed installation procedures, troubleshooting guides, best practices, and proper cross-references to related documentation modules.",
+      "completedAt": "2025-07-18T22:50:39.003Z"
+    },
+    {
+      "id": "535109ba-bec6-4c5f-a813-f88dc88f5627",
+      "name": "Extract and create utilities documentation",
+      "description": "Extract utility organization content from shrimp-rules.md and create docs/utilities-and-patterns.md documenting src/utils/ organization standards and common utility patterns.",
+      "notes": "Foundation for code reuse and organization - ensures utilities remain general-purpose and properly organized.",
+      "status": "completed",
+      "dependencies": [
+        {
+          "taskId": "af62aecc-88d9-4e17-a32a-3b3bd62e38b0"
+        }
+      ],
+      "createdAt": "2025-07-18T21:48:16.013Z",
+      "updatedAt": "2025-07-18T22:52:43.638Z",
+      "relatedFiles": [
+        {
+          "path": "docs/utilities-and-patterns.md",
+          "type": "CREATE",
+          "description": "Utility organization standards and common patterns"
+        },
+        {
+          "path": "shrimp-rules.md",
+          "type": "TO_MODIFY",
+          "description": "Source for utilities content extraction",
+          "lineStart": 240,
+          "lineEnd": 270
+        },
+        {
+          "path": "src/utils/",
+          "type": "REFERENCE",
+          "description": "Utility functions and helpers directory"
+        },
+        {
+          "path": "src/utils/infra/",
+          "type": "REFERENCE",
+          "description": "Infrastructure utility subdirectory"
+        },
+        {
+          "path": "src/utils/types_utils.py",
+          "type": "REFERENCE",
+          "description": "Type utility examples"
+        },
+        {
+          "path": "src/utils/file_system.py",
+          "type": "REFERENCE",
+          "description": "File operation utility examples"
+        }
+      ],
+      "implementationGuide": "1. Extract from shrimp-rules.md:\\n   - Utility Organization Standards\\n   - Utils Directory Structure\\n   - Utility Implementation Rules\\n2. Create docs/utilities-and-patterns.md with:\\n   - src/utils/ hierarchy and organization\\n   - General utilities vs infrastructure utilities\\n   - Specialized utility subdirectories\\n   - Utility implementation patterns and best practices\\n   - Common utility usage examples\\n3. Document file operations, type checking, and JSON handling patterns\\n4. Include guidelines for creating new utility functions\\n5. Add cross-references to core-modules.md for constant usage",
+      "verificationCriteria": "docs/utilities-and-patterns.md documents src/utils/ organization, utility implementation rules, and provides common pattern examples",
+      "analysisResult": "Refactor the monolithic shrimp-rules.md documentation (418 lines) into a modular structure by creating 8 specialized documentation modules in a docs/ directory that mirror the project's code architecture. Extract content from shrimp-rules.md based on component boundaries, create cross-references between modules, and transform shrimp-rules.md into a high-level overview. This will improve developer experience, maintainability, and align documentation structure with the sophisticated project architecture while preserving all critical project-specific rules and patterns.",
+      "summary": "Successfully created comprehensive docs/utilities-and-patterns.md documenting src/utils/ organization standards, utility implementation rules, and common patterns. The documentation covers the complete directory hierarchy, utility categories (general, infrastructure, Streamlit), implementation standards with type safety and generic patterns, file operation and JSON handling patterns, constant usage integration with core modules, and provides guidelines for creating new utilities. The documentation includes practical code examples, cross-references to related modules, and a verification checklist to ensure proper utility organization.",
+      "completedAt": "2025-07-18T22:52:43.632Z"
+    },
+    {
+      "id": "02a36e4e-e286-40ff-bc8c-27915f3af9d7",
+      "name": "Refactor main shrimp-rules.md file",
+      "description": "Transform the current monolithic shrimp-rules.md into a high-level overview document that references the specialized module documentation while preserving critical cross-cutting rules and project principles.",
+      "notes": "Critical transformation - must preserve all high-level coordination while making the file navigable and pointing to detailed modules.",
+      "status": "completed",
+      "dependencies": [
+        {
+          "taskId": "535109ba-bec6-4c5f-a813-f88dc88f5627"
+        }
+      ],
+      "createdAt": "2025-07-18T21:48:16.013Z",
+      "updatedAt": "2025-07-18T22:54:23.732Z",
+      "relatedFiles": [
+        {
+          "path": "shrimp-rules.md",
+          "type": "TO_MODIFY",
+          "description": "Main rules file to refactor into high-level overview"
+        },
+        {
+          "path": "docs/infrastructure.md",
+          "type": "REFERENCE",
+          "description": "Infrastructure details reference"
+        },
+        {
+          "path": "docs/experiment-runners.md",
+          "type": "REFERENCE",
+          "description": "Experiment runners details reference"
+        },
+        {
+          "path": "docs/data-management.md",
+          "type": "REFERENCE",
+          "description": "Data management details reference"
+        },
+        {
+          "path": "docs/core-modules.md",
+          "type": "REFERENCE",
+          "description": "Core coordination details reference"
+        },
+        {
+          "path": "docs/analysis-and-plotting.md",
+          "type": "REFERENCE",
+          "description": "Analysis details reference"
+        },
+        {
+          "path": "docs/setup-and-environment.md",
+          "type": "REFERENCE",
+          "description": "Setup details reference"
+        },
+        {
+          "path": "docs/utilities-and-patterns.md",
+          "type": "REFERENCE",
+          "description": "Utilities details reference"
+        }
+      ],
+      "implementationGuide": "1. Restructure shrimp-rules.md to contain:\\n   - Project Overview (preserve existing section)\\n   - High-level Architecture Summary\\n   - Priority Order for Implementation (preserve existing)\\n   - Cross-cutting Coordination Rules\\n   - References to specialized docs (\\\"For detailed information on X, see docs/X.md\\\")\\n   - Prohibited Actions (preserve critical NEVER rules)\\n   - Conflict Resolution Rules (preserve existing)\\n2. Maintain all AI Decision-Making Standards\\n3. Keep Examples section but make it more concise\\n4. Add navigation section linking to all 8 specialized modules\\n5. Preserve all project-specific patterns and reproducibility requirements",
+      "verificationCriteria": "shrimp-rules.md transformed to high-level overview with references to all 8 specialized modules, preserves critical coordination rules and project principles",
+      "analysisResult": "Refactor the monolithic shrimp-rules.md documentation (418 lines) into a modular structure by creating 8 specialized documentation modules in a docs/ directory that mirror the project's code architecture. Extract content from shrimp-rules.md based on component boundaries, create cross-references between modules, and transform shrimp-rules.md into a high-level overview. This will improve developer experience, maintainability, and align documentation structure with the sophisticated project architecture while preserving all critical project-specific rules and patterns.",
+      "summary": "Successfully transformed the monolithic shrimp-rules.md into a high-level overview document that references all 8 specialized documentation modules while preserving critical cross-cutting rules and project principles. The refactored document maintains the project overview, priority order for implementation, conflict resolution rules, prohibited actions, and quick reference examples while providing clear navigation to detailed documentation modules. The transformation preserves all critical coordination requirements and project-specific patterns while making the file navigable and pointing to detailed modules.",
+      "completedAt": "2025-07-18T22:54:23.727Z"
+    },
+    {
+      "id": "e0904f89-7d56-43f8-bcaf-c01c3a3f2531",
+      "name": "Update main README.md with documentation references",
+      "description": "Update the main README.md file to reference the new modular documentation structure, adding a documentation section that guides developers to the appropriate resources.",
+      "notes": "Ensures discoverability of new documentation structure while maintaining README.md focus on installation and basic usage.",
+      "status": "completed",
+      "dependencies": [
+        {
+          "taskId": "02a36e4e-e286-40ff-bc8c-27915f3af9d7"
+        }
+      ],
+      "createdAt": "2025-07-18T21:48:16.013Z",
+      "updatedAt": "2025-07-18T22:57:39.754Z",
+      "relatedFiles": [
+        {
+          "path": "README.md",
+          "type": "TO_MODIFY",
+          "description": "Main project README to update with documentation references",
+          "lineStart": 120,
+          "lineEnd": 140
+        },
+        {
+          "path": "docs/README.md",
+          "type": "REFERENCE",
+          "description": "Documentation index to reference"
+        },
+        {
+          "path": "shrimp-rules.md",
+          "type": "REFERENCE",
+          "description": "High-level rules to reference"
+        }
+      ],
+      "implementationGuide": "1. Add new \\\"Documentation\\\" section to README.md after Project Structure section:\\n   - Brief description of documentation organization\\n   - Link to docs/README.md as comprehensive documentation index\\n   - Quick links to most commonly needed docs (infrastructure, core-modules)\\n   - Reference to shrimp-rules.md for high-level development guidelines\\n2. Update existing Project Structure section to mention docs/ directory\\n3. Maintain existing installation and usage sections\\n4. Ensure documentation section integrates naturally with existing content\\n5. Add note about reproducibility requirements alignment",
+      "verificationCriteria": "README.md includes documentation section with clear references to modular documentation structure and guides developers to appropriate resources",
+      "analysisResult": "Refactor the monolithic shrimp-rules.md documentation (418 lines) into a modular structure by creating 8 specialized documentation modules in a docs/ directory that mirror the project's code architecture. Extract content from shrimp-rules.md based on component boundaries, create cross-references between modules, and transform shrimp-rules.md into a high-level overview. This will improve developer experience, maintainability, and align documentation structure with the sophisticated project architecture while preserving all critical project-specific rules and patterns.",
+      "summary": "Successfully updated the main README.md file with comprehensive documentation references that guide developers to the appropriate resources. The update includes a new Documentation section with organized links to all 8 specialized documentation modules, a quick start guide for different development scenarios, and proper integration with the existing project structure. The documentation section maintains focus on installation and basic usage while ensuring discoverability of the new modular documentation structure.",
+      "completedAt": "2025-07-18T22:57:39.748Z"
+    },
+    {
+      "id": "cd74812c-77fa-42cd-9cf9-137cbdfc96f7",
+      "name": "Validate documentation completeness and cross-references",
+      "description": "Comprehensive validation to ensure all content from original shrimp-rules.md is preserved across the modular structure, all cross-references work correctly, and documentation provides complete coverage of project requirements.",
+      "notes": "Final quality assurance step - ensures the modular documentation system is complete, accurate, and provides better developer experience than the original monolithic file.",
+      "status": "completed",
+      "dependencies": [
+        {
+          "taskId": "e0904f89-7d56-43f8-bcaf-c01c3a3f2531"
+        }
+      ],
+      "createdAt": "2025-07-18T21:48:16.013Z",
+      "updatedAt": "2025-07-18T23:00:22.037Z",
+      "relatedFiles": [
+        {
+          "path": "docs/",
+          "type": "REFERENCE",
+          "description": "All documentation modules for validation"
+        },
+        {
+          "path": "docs/README.md",
+          "type": "TO_MODIFY",
+          "description": "Documentation index for navigation testing"
+        },
+        {
+          "path": "shrimp-rules.md",
+          "type": "REFERENCE",
+          "description": "Refactored overview for cross-reference validation"
+        },
+        {
+          "path": "README.md",
+          "type": "REFERENCE",
+          "description": "Main README for integration validation"
+        }
+      ],
+      "implementationGuide": "1. Content completeness check:\\n   - Verify all 418 lines of original shrimp-rules.md content preserved\\n   - Ensure all MUST/NEVER/ALWAYS rules maintained\\n   - Check all examples and code patterns included\\n2. Cross-reference validation:\\n   - Test all links between documentation modules\\n   - Verify bidirectional references where appropriate\\n   - Ensure no broken internal links\\n3. Navigation flow testing:\\n   - Test common developer scenarios (new experiment, core change, plotting)\\n   - Verify docs/README.md provides clear navigation paths\\n   - Check that specialized modules link back to overview appropriately\\n4. Consistency verification:\\n   - Ensure terminology consistent across all modules\\n   - Verify formatting and structure consistency\\n   - Check that all critical project patterns preserved",
+      "verificationCriteria": "All original content preserved across modular structure, all cross-references functional, navigation flows work for common developer scenarios, documentation provides complete project coverage",
+      "analysisResult": "Refactor the monolithic shrimp-rules.md documentation (418 lines) into a modular structure by creating 8 specialized documentation modules in a docs/ directory that mirror the project's code architecture. Extract content from shrimp-rules.md based on component boundaries, create cross-references between modules, and transform shrimp-rules.md into a high-level overview. This will improve developer experience, maintainability, and align documentation structure with the sophisticated project architecture while preserving all critical project-specific rules and patterns.",
+      "summary": "Successfully completed comprehensive validation of the modular documentation system. All critical content from the original 418-line shrimp-rules.md has been preserved across the modular structure, including all MUST/NEVER/ALWAYS rules, core coordination patterns, infrastructure requirements, and project-specific patterns. Fixed all broken cross-references by updating links to non-existent modules and ensuring all existing modules have proper bidirectional references. The documentation now provides complete project coverage with clear navigation paths for common developer scenarios while maintaining consistency in terminology and formatting across all modules.",
+      "completedAt": "2025-07-18T23:00:22.031Z"
+    },
+    {
+      "id": "33705a87-6276-48a1-bbe0-aa7542d2ad64",
+      "name": "Create knockout mechanisms documentation",
+      "description": "Create comprehensive docs/knockout-mechanisms.md documenting the knockout directory structure, how knockout is used in model_interface.py, and explaining the hook-based implementations across different model architectures (GPT2, Llama, Mamba).",
+      "notes": "Critical for understanding model intervention mechanisms - developers need to understand both the high-level usage in model_interface.py and the low-level hook implementations. Include references to Hugging Face and library sources.",
+      "status": "completed",
+      "dependencies": [
+        {
+          "taskId": "cc528d3c-c641-4554-bd9e-4cf47fd9e9e4"
+        }
+      ],
+      "createdAt": "2025-07-18T22:09:24.456Z",
+      "updatedAt": "2025-07-18T23:03:46.738Z",
+      "relatedFiles": [
+        {
+          "path": "docs/knockout-mechanisms.md",
+          "type": "CREATE",
+          "description": "Knockout mechanisms and hook implementation documentation"
+        },
+        {
+          "path": "src/experiments/knockout/",
+          "type": "REFERENCE",
+          "description": "Knockout implementation directory structure"
+        },
+        {
+          "path": "src/experiments/infrastructure/model_interface.py",
+          "type": "REFERENCE",
+          "description": "High-level knockout usage in model interfaces"
+        },
+        {
+          "path": "src/experiments/knockout/gpt/gpt2/gpt2_knockout_utils.py",
+          "type": "REFERENCE",
+          "description": "GPT2 knockout implementation"
+        },
+        {
+          "path": "src/experiments/knockout/llama/llama_attn.py",
+          "type": "REFERENCE",
+          "description": "Llama attention knockout implementation"
+        },
+        {
+          "path": "src/experiments/knockout/mamba/mamba1/helpers/ssm_interfere.py",
+          "type": "REFERENCE",
+          "description": "Mamba SSM interference hook implementation"
+        }
+      ],
+      "implementationGuide": "1. Create docs/knockout-mechanisms.md with:\n   - Overview of knockout mechanism purpose and usage\n   - How knockout is integrated in model_interface.py classes\n   - Directory structure explanation (gpt/, llama/, mamba/)\n   - GPT2 hook implementation using attention masking\n   - Llama attention knockout using custom attention modules\n   - Mamba SSM interference using forward hooks\n2. Document hook-based architecture patterns:\n   - Forward hook registration and management\n   - Attention masking techniques\n   - SSM state manipulation methods\n3. Include references to external sources:\n   - Hugging Face transformers library documentation\n   - PyTorch hooks documentation\n   - Model-specific architecture papers\n4. Provide code examples for each knockout type\n5. Add cross-references to infrastructure.md for ModelInterface usage",
+      "verificationCriteria": "docs/knockout-mechanisms.md explains knockout directory structure, documents usage in model_interface.py, covers all three model types (GPT2, Llama, Mamba), includes external library references, and provides implementation examples",
+      "analysisResult": "Refactor the monolithic shrimp-rules.md documentation (418 lines) into a modular structure by creating 8 specialized documentation modules in a docs/ directory that mirror the project's code architecture. Extract content from shrimp-rules.md based on component boundaries, create cross-references between modules, and transform shrimp-rules.md into a high-level overview. This will improve developer experience, maintainability, and align documentation structure with the sophisticated project architecture while preserving all critical project-specific rules and patterns.",
+      "summary": "Successfully created comprehensive docs/knockout-mechanisms.md that documents the knockout directory structure, explains usage in model_interface.py, covers all three model types (GPT2, Llama, Mamba), includes external library references, and provides implementation examples. The documentation includes detailed explanations of hook-based implementations, architecture patterns, code examples, and cross-references to other documentation modules.",
+      "completedAt": "2025-07-18T23:03:46.730Z"
+    },
+    {
+      "id": "6d662059-5df1-46de-aca5-e8c22889221d",
+      "name": "Create Streamlit infrastructure base classes documentation",
+      "description": "Document the foundational StreamlitComponent and StreamlitPage base classes that form the core of the component-based architecture. This includes the abstract render() method pattern, typing system with OutputType generics, and profiling capabilities.",
+      "notes": "Foundation documentation - all other Streamlit documentation builds on these base patterns. Must emphasize the abstract nature and composition principles.",
+      "status": "completed",
+      "dependencies": [
+        {
+          "taskId": "535109ba-bec6-4c5f-a813-f88dc88f5627"
+        }
+      ],
+      "createdAt": "2025-07-18T22:21:17.231Z",
+      "updatedAt": "2025-07-18T23:10:11.395Z",
+      "relatedFiles": [
+        {
+          "path": "docs/streamlit-infrastructure.md",
+          "type": "CREATE",
+          "description": "Main Streamlit infrastructure documentation file"
+        },
+        {
+          "path": "src/utils/streamlit/helpers/component.py",
+          "type": "REFERENCE",
+          "description": "Base component classes implementation"
+        },
+        {
+          "path": "src/app/page/p01_home.py",
+          "type": "REFERENCE",
+          "description": "Example StreamlitPage implementation"
+        },
+        {
+          "path": "src/app/components/plot_plans.py",
+          "type": "REFERENCE",
+          "description": "Example StreamlitComponent implementation"
+        }
+      ],
+      "implementationGuide": "1. Create docs/streamlit-infrastructure.md as the main documentation file\\n2. Document StreamlitComponent[OutputType] abstract base class:\\n   - Abstract render() method pattern and return type handling\\n   - Generic OutputType typing system for type safety\\n   - profile_render() method for performance analysis\\n3. Document StreamlitPage specialized class:\\n   - Inheritance from StreamlitComponent[None]\\n   - Usage pattern for full-page components\\n4. Include code examples from src/app/page/ implementations\\n5. Explain component composition patterns and reusability principles\\n6. Add cross-references to utilities documentation for supporting infrastructure",
+      "verificationCriteria": "Documentation clearly explains the abstract base class pattern, includes working code examples, and establishes the foundation for component-based architecture understanding",
+      "analysisResult": "Create comprehensive documentation for the Streamlit application infrastructure and utilities, focusing on the component-based architecture, reusable design patterns, and supporting utilities that enable modular development. The documentation should explain how the sophisticated scientific application UI is built on reusable, well-architected components while maintaining the project's high standards for modularity and type safety.",
+      "summary": "Successfully created comprehensive Streamlit infrastructure documentation that clearly explains the abstract base class pattern, includes working code examples, and establishes the foundation for component-based architecture understanding. The documentation covers StreamlitComponent[OutputType] generic patterns, StreamlitPage specialization, session state management with SessionKey[TSessionKey], component composition patterns, profiling capabilities, and real-world examples from the codebase.",
+      "completedAt": "2025-07-18T23:10:11.389Z"
+    },
+    {
+      "id": "8fe723ca-d62e-47ac-a1b4-f080072f656e",
+      "name": "Document Streamlit session state and cache management",
+      "description": "Document the sophisticated session state management system using SessionKey[T] and SessionKeyDescriptor, along with the dependency-aware caching system with CacheWithDependencies.",
+      "notes": "Critical for understanding stateful component development. Session state and caching are fundamental to the app's functionality.",
+      "status": "completed",
+      "dependencies": [
+        {
+          "taskId": "6d662059-5df1-46de-aca5-e8c22889221d"
+        }
+      ],
+      "createdAt": "2025-07-18T22:21:17.231Z",
+      "updatedAt": "2025-07-18T23:15:52.428Z",
+      "relatedFiles": [
+        {
+          "path": "src/utils/streamlit/helpers/session_keys.py",
+          "type": "REFERENCE",
+          "description": "Session state management implementation"
+        },
+        {
+          "path": "src/utils/streamlit/helpers/cache.py",
+          "type": "REFERENCE",
+          "description": "Caching infrastructure implementation"
+        },
+        {
+          "path": "src/utils/streamlit/helpers/global_store.py",
+          "type": "REFERENCE",
+          "description": "Global state coordination"
+        },
+        {
+          "path": "src/app/app_consts.py",
+          "type": "REFERENCE",
+          "description": "Session keys usage examples",
+          "lineStart": 53,
+          "lineEnd": 83
+        },
+        {
+          "path": "src/app/data_store.py",
+          "type": "REFERENCE",
+          "description": "Caching usage examples"
+        }
+      ],
+      "implementationGuide": "1. Add session state management section to docs/streamlit-infrastructure.md:\\n   - SessionKey[T] strongly typed session state wrapper\\n   - SessionKeyDescriptor for automatic key generation with class prefixes\\n   - SessionKeysBase pattern for organized session key containers\\n   - External update mechanisms and change detection\\n2. Document caching infrastructure:\\n   - CacheWithDependencies decorator with dependency tracking\\n   - CachedFunction wrapper with UI rendering capabilities\\n   - Global store coordination for cache dependency management\\n   - Cache clearing and dependency visualization\\n3. Include practical examples from src/app/app_consts.py and src/app/data_store.py\\n4. Explain type safety benefits and usage patterns\\n5. Document integration between session state and caching systems",
+      "verificationCriteria": "Documentation explains both session state and caching systems with type safety emphasis, includes practical usage examples, and shows integration patterns",
+      "analysisResult": "Create comprehensive documentation for the Streamlit application infrastructure and utilities, focusing on the component-based architecture, reusable design patterns, and supporting utilities that enable modular development. The documentation should explain how the sophisticated scientific application UI is built on reusable, well-architected components while maintaining the project's high standards for modularity and type safety.",
+      "summary": "Successfully documented the comprehensive Streamlit session state management system including SessionKey[T] wrapper with type safety, SessionKeyDescriptor pattern for class-based state management, and SessionKeysBase pattern for organized containers. Also documented the sophisticated caching infrastructure with CacheWithDependencies decorator, CachedFunction wrapper, and StreamlitUtilsGlobalStore for dependency coordination. All documentation includes detailed implementation examples and usage patterns from the actual codebase.",
+      "completedAt": "2025-07-18T23:15:52.420Z"
+    },
+    {
+      "id": "44c196b4-72a7-4166-aa9d-6deb5540ed8e",
+      "name": "Document Streamlit extended UI components and utilities",
+      "description": "Document the extended UI components including background task management, AgGrid integration, Pydantic form rendering, and other specialized utilities that enhance the Streamlit experience.",
+      "notes": "These utilities enable the sophisticated scientific application interface. Important to show how they work together to create rich interactions.",
+      "status": "completed",
+      "dependencies": [
+        {
+          "taskId": "8fe723ca-d62e-47ac-a1b4-f080072f656e"
+        }
+      ],
+      "createdAt": "2025-07-18T22:21:17.231Z",
+      "updatedAt": "2025-07-18T23:18:59.914Z",
+      "relatedFiles": [
+        {
+          "path": "src/utils/streamlit/helpers/background_task.py",
+          "type": "REFERENCE",
+          "description": "Background task management implementation"
+        },
+        {
+          "path": "src/utils/streamlit/components/aagrid.py",
+          "type": "REFERENCE",
+          "description": "AgGrid integration utilities"
+        },
+        {
+          "path": "src/utils/streamlit/components/extended_streamlit_pydantic.py",
+          "type": "REFERENCE",
+          "description": "Extended Pydantic form components"
+        },
+        {
+          "path": "src/utils/streamlit/st_pydantic_v2/",
+          "type": "REFERENCE",
+          "description": "Enhanced Pydantic integration system"
+        },
+        {
+          "path": "src/app/components/tokenization.py",
+          "type": "REFERENCE",
+          "description": "Background task usage example"
+        }
+      ],
+      "implementationGuide": "1. Add extended components section to docs/streamlit-infrastructure.md:\\n   - Background task management with TasksManager and TaskStatus\\n   - AgGrid integration with selection modes and filtering\\n   - Extended Pydantic form rendering with custom type support\\n   - Output redirection utilities and nested element support\\n2. Document utils/streamlit directory structure:\\n   - helpers/ subdirectory for core utilities\\n   - components/ subdirectory for enhanced UI components\\n   - st_pydantic_v2/ subdirectory for Pydantic integration\\n3. Include examples from src/app/components/ showing practical usage\\n4. Document backend abstraction pattern for testability\\n5. Explain extension mechanisms for custom components\\n6. Add guidelines for when to use each utility",
+      "verificationCriteria": "Documentation covers all major utility categories, explains integration patterns, and provides guidance for selecting appropriate utilities for different use cases",
+      "analysisResult": "Create comprehensive documentation for the Streamlit application infrastructure and utilities, focusing on the component-based architecture, reusable design patterns, and supporting utilities that enable modular development. The documentation should explain how the sophisticated scientific application UI is built on reusable, well-architected components while maintaining the project's high standards for modularity and type safety.",
+      "summary": "Successfully documented all extended UI components including background task management with TasksManager and TaskStatus, AgGrid integration with selection modes and filtering, extended Pydantic form rendering with custom type support, and Pydantic v2 integration. Added comprehensive directory structure documentation, component selection guidelines, integration patterns, and extension mechanisms. The documentation covers all major utility categories, explains integration patterns, and provides clear guidance for selecting appropriate utilities for different use cases.",
+      "completedAt": "2025-07-18T23:18:59.907Z"
+    },
+    {
+      "id": "ff6281b1-e264-48c7-8037-c5db3fb0e910",
+      "name": "Document Streamlit architectural patterns and best practices",
+      "description": "Document the design patterns, best practices, and architectural principles that guide Streamlit component development in the project, emphasizing code reusability and maintainability.",
+      "notes": "Critical for maintaining architectural consistency as the application grows. Should emphasize the principles that make this a robust scientific application framework.",
+      "status": "completed",
+      "dependencies": [
+        {
+          "taskId": "44c196b4-72a7-4166-aa9d-6deb5540ed8e"
+        }
+      ],
+      "createdAt": "2025-07-18T22:21:17.231Z",
+      "updatedAt": "2025-07-18T23:22:37.261Z",
+      "relatedFiles": [
+        {
+          "path": "src/app/entry_point.py",
+          "type": "REFERENCE",
+          "description": "Application entry point showing page factory pattern"
+        },
+        {
+          "path": "src/app/page/",
+          "type": "REFERENCE",
+          "description": "Page implementations showing component composition"
+        },
+        {
+          "path": "src/app/components/",
+          "type": "REFERENCE",
+          "description": "Component implementations showing reusability patterns"
+        },
+        {
+          "path": "docs/utilities-and-patterns.md",
+          "type": "REFERENCE",
+          "description": "General utility patterns for cross-reference"
+        }
+      ],
+      "implementationGuide": "1. Add architectural patterns section to docs/streamlit-infrastructure.md:\\n   - Component composition over inheritance principle\\n   - Single responsibility pattern for components\\n   - Type-safe interface design with generics\\n   - Separation of concerns between pages and components\\n2. Document best practices:\\n   - Component reusability guidelines\\n   - State management best practices\\n   - Naming conventions for components and keys\\n   - Error handling patterns\\n3. Include anti-patterns and what to avoid:\\n   - Direct session state manipulation\\n   - Bypassing component patterns\\n   - Hardcoded configurations\\n4. Reference examples from src/app/ showing good patterns\\n5. Explain how these patterns support the project's scientific computing needs\\n6. Add guidelines for extending the architecture",
+      "verificationCriteria": "Documentation establishes clear architectural principles, provides actionable best practices, and explains how the patterns support scientific computing requirements",
+      "analysisResult": "Create comprehensive documentation for the Streamlit application infrastructure and utilities, focusing on the component-based architecture, reusable design patterns, and supporting utilities that enable modular development. The documentation should explain how the sophisticated scientific application UI is built on reusable, well-architected components while maintaining the project's high standards for modularity and type safety.",
+      "summary": "Successfully documented comprehensive architectural patterns and best practices for Streamlit component development. Covered core principles including component composition over inheritance, single responsibility pattern, type-safe interface design, and separation of concerns. Added detailed best practices for component design, state management, naming conventions, and error handling. Documented anti-patterns to avoid with clear examples. Explained how patterns support scientific computing requirements including data flow management, experiment coordination, configuration management, and result visualization. Provided extension guidelines for adding new components, pages, and utilities. The documentation establishes clear architectural principles and provides actionable guidance for maintaining code quality and consistency.",
+      "completedAt": "2025-07-18T23:22:37.255Z"
+    },
+    {
+      "id": "92e03f7c-d280-4f8b-8c3b-bc0d701a7542",
+      "name": "Document Streamlit app navigation and page architecture",
+      "description": "Document the overall navigation system, page factory pattern, and how the 9 pages (p01-p09) are organized to provide different interfaces to the scientific computing infrastructure. Explain the relationship between pages, the navigation system, and global configuration.",
+      "notes": "Foundation for understanding how the UI organizes access to the complex scientific computing functionality. Critical for users to understand the application workflow.",
+      "status": "completed",
+      "dependencies": [
+        {
+          "taskId": "ff6281b1-e264-48c7-8037-c5db3fb0e910"
+        }
+      ],
+      "createdAt": "2025-07-18T22:22:08.582Z",
+      "updatedAt": "2025-07-18T23:24:48.380Z",
+      "relatedFiles": [
+        {
+          "path": "docs/streamlit-app-pages.md",
+          "type": "CREATE",
+          "description": "Main Streamlit app pages documentation file"
+        },
+        {
+          "path": "src/app/entry_point.py",
+          "type": "REFERENCE",
+          "description": "Application entry point and navigation system"
+        },
+        {
+          "path": "src/app/app_consts.py",
+          "type": "REFERENCE",
+          "description": "Page order and global constants",
+          "lineStart": 90,
+          "lineEnd": 131
+        },
+        {
+          "path": "docs/streamlit-infrastructure.md",
+          "type": "REFERENCE",
+          "description": "Infrastructure patterns reference"
+        }
+      ],
+      "implementationGuide": "1. Create docs/streamlit-app-pages.md as the main documentation file\\n2. Document the navigation architecture:\\n   - PAGE_ORDER enum and page factory pattern in entry_point.py\\n   - How pages are instantiated and managed\\n   - Global configuration and session state coordination\\n3. Document the page categorization:\\n   - Configuration and control pages (Home, Data Requirements)\\n   - Analysis and visualization pages (Heatmap, Info Flow, Final Plots)\\n   - Data exploration pages (Results Bank, Prompts Comparison)\\n   - Specialized analysis pages (Mamba Analysis)\\n   - Management pages (Prompt Filteration Presets)\\n4. Explain how pages serve as interfaces to the rest of the project\\n5. Reference streamlit-infrastructure.md for base patterns\\n6. Include navigation flow diagrams and usage scenarios",
+      "verificationCriteria": "Documentation explains the navigation architecture, categorizes pages by function, and shows how they interface with the broader project architecture",
+      "analysisResult": "Create comprehensive documentation for the Streamlit application pages and components, explaining how each page serves as an interface to different aspects of the project and how they coordinate with the experiment infrastructure, data management, and analysis systems. This documentation should reference the infrastructure patterns and show how the component-based architecture enables sophisticated scientific workflows.",
+      "summary": "Successfully created comprehensive documentation for Streamlit app navigation and page architecture. Documented the page factory pattern, PAGE_ORDER enum, and global configuration management. Categorized all 9 pages into logical groups: Configuration and Control (Home, Data Requirements), Analysis and Visualization (Heatmap, Info Flow, Final Plots), Data Exploration (Results Bank, Prompts Comparison), Specialized Analysis (Mamba Analysis), and Management (Prompt Filteration Presets). Explained page relationships, data flow architecture, and cross-page dependencies. Detailed how pages interface with the scientific computing infrastructure including experiment infrastructure, data management, and analysis pipelines. Provided navigation flow patterns and user experience guidance. The documentation explains the navigation architecture, categorizes pages by function, and shows how they interface with the broader project architecture.",
+      "completedAt": "2025-07-18T23:24:48.372Z"
+    },
+    {
+      "id": "97953c88-e90b-4abc-bdb5-14fa713015da",
+      "name": "Document data exploration and management pages",
+      "description": "Document the pages that provide interfaces for data exploration and management: Results Bank (p02), Data Requirements (p03), and Prompt Filteration Presets (p09). Explain how these pages coordinate with the experiment infrastructure and data management systems.",
+      "notes": "These pages are critical interfaces to the data layer. Must show how UI components abstract complex data operations while maintaining type safety.",
+      "status": "completed",
+      "dependencies": [
+        {
+          "taskId": "92e03f7c-d280-4f8b-8c3b-bc0d701a7542"
+        }
+      ],
+      "createdAt": "2025-07-18T22:22:08.582Z",
+      "updatedAt": "2025-07-18T23:31:39.064Z",
+      "relatedFiles": [
+        {
+          "path": "src/app/page/p02_results_bank.py",
+          "type": "REFERENCE",
+          "description": "Results bank page implementation"
+        },
+        {
+          "path": "src/app/page/p03_data_requirements.py",
+          "type": "REFERENCE",
+          "description": "Data requirements page implementation"
+        },
+        {
+          "path": "src/app/page/p09_prompt_filteration_presets.py",
+          "type": "REFERENCE",
+          "description": "Prompt filteration presets page implementation"
+        },
+        {
+          "path": "src/app/components/data_requirements.py",
+          "type": "REFERENCE",
+          "description": "Data requirements components"
+        },
+        {
+          "path": "src/app/components/result_bank.py",
+          "type": "REFERENCE",
+          "description": "Result bank components"
+        },
+        {
+          "path": "docs/data-interfaces.md",
+          "type": "REFERENCE",
+          "description": "Data objects reference"
+        }
+      ],
+      "implementationGuide": "1. Add data exploration section to docs/streamlit-app-pages.md:\\n   - Results Bank page: interface to ResultBank data objects and experiment results\\n   - Data Requirements page: interface to DataReqs and requirement execution\\n   - Prompt Filteration Presets page: management of reusable prompt filters\\n2. Document how these pages interface with core systems:\\n   - Integration with data_defs.py objects (ResultBank, DataReqs, PromptFilterationsPresets)\\n   - Connection to experiment infrastructure via base_runner.py\\n   - Coordination with SLURM job execution\\n3. Explain component reusability patterns:\\n   - RequirementsDisplay and RequirementExecution components\\n   - ShowResultsBank component patterns\\n   - FilterPromptsComponent and related utilities\\n4. Reference infrastructure documentation and data management patterns\\n5. Include workflow examples showing typical user interactions",
+      "verificationCriteria": "Documentation explains how data exploration pages interface with core data systems, shows component reusability, and includes practical workflow examples",
+      "analysisResult": "Create comprehensive documentation for the Streamlit application pages and components, explaining how each page serves as an interface to different aspects of the project and how they coordinate with the experiment infrastructure, data management, and analysis systems. This documentation should reference the infrastructure patterns and show how the component-based architecture enables sophisticated scientific workflows.",
+      "summary": "Successfully documented the data exploration and management pages (Results Bank, Data Requirements, and Prompt Filteration Presets) with comprehensive coverage of their interfaces to core data systems. Explained how these pages coordinate with experiment infrastructure and data management systems through ResultBank, DataReqs, and PromptFilterationsPresets objects. Documented component reusability patterns including ShowResultsBank, RequirementsDisplay, and FilterPromptsComponent. Provided detailed integration examples with core systems including data objects, experiment infrastructure, and SLURM job management. Included practical workflow examples showing complete analysis workflows and data management processes. The documentation explains how UI components abstract complex data operations while maintaining type safety.",
+      "completedAt": "2025-07-18T23:31:39.057Z"
+    },
+    {
+      "id": "cbf3d935-ba61-4974-80e4-5642abb5e18d",
+      "name": "Document analysis and visualization pages",
+      "description": "Document the pages that provide interfaces for analysis and visualization: Heatmap Creation (p04), Info Flow Analysis (p05), Final Plots (p06), and Prompts Comparison (p07). Explain how these pages coordinate with analysis infrastructure and plotting systems.",
+      "notes": "These pages represent the core scientific functionality interfaces. Must emphasize how UI abstracts complex experiment coordination while maintaining scientific rigor.",
+      "status": "completed",
+      "dependencies": [
+        {
+          "taskId": "97953c88-e90b-4abc-bdb5-14fa713015da"
+        }
+      ],
+      "createdAt": "2025-07-18T22:22:08.582Z",
+      "updatedAt": "2025-07-18T23:36:55.644Z",
+      "relatedFiles": [
+        {
+          "path": "src/app/page/p04_heatmap_creation.py",
+          "type": "REFERENCE",
+          "description": "Heatmap creation page implementation"
+        },
+        {
+          "path": "src/app/page/p05_info_flow_analysis.py",
+          "type": "REFERENCE",
+          "description": "Info flow analysis page implementation"
+        },
+        {
+          "path": "src/app/page/p06_final_plots.py",
+          "type": "REFERENCE",
+          "description": "Final plots page implementation"
+        },
+        {
+          "path": "src/app/page/p07_prompts_comparison.py",
+          "type": "REFERENCE",
+          "description": "Prompts comparison page implementation"
+        },
+        {
+          "path": "src/app/components/info_flow.py",
+          "type": "REFERENCE",
+          "description": "Info flow analysis components"
+        },
+        {
+          "path": "src/app/components/plot_generation.py",
+          "type": "REFERENCE",
+          "description": "Plot generation components"
+        },
+        {
+          "path": "docs/experiment-runners.md",
+          "type": "REFERENCE",
+          "description": "Experiment runners reference"
+        },
+        {
+          "path": "docs/analysis-and-plotting.md",
+          "type": "REFERENCE",
+          "description": "Analysis and plotting reference"
+        }
+      ],
+      "implementationGuide": "1. Add analysis section to docs/streamlit-app-pages.md:\\n   - Heatmap Creation page: interface to heatmap generation and model analysis\\n   - Info Flow Analysis page: interface to information flow experiments\\n   - Final Plots page: interface to publication-quality plot generation\\n   - Prompts Comparison page: interface to tokenization analysis\\n2. Document integration with analysis systems:\\n   - Connection to experiment runners (HeatmapRunner, InfoFlowRunner)\\n   - Integration with plotting infrastructure (src/analysis/plots/)\\n   - Coordination with plot plans and configuration management\\n3. Explain analysis workflow patterns:\\n   - Model selection and configuration\\n   - Prompt filtering and sampling\\n   - Real-time analysis and visualization\\n   - Export and publication workflows\\n4. Document component specialization for scientific computing\\n5. Reference experiment-runners.md and analysis-and-plotting.md\\n6. Include examples of typical analysis workflows",
+      "verificationCriteria": "Documentation explains scientific analysis interfaces, shows integration with experiment infrastructure, and demonstrates how UI enables complex scientific workflows",
+      "analysisResult": "Create comprehensive documentation for the Streamlit application pages and components, explaining how each page serves as an interface to different aspects of the project and how they coordinate with the experiment infrastructure, data management, and analysis systems. This documentation should reference the infrastructure patterns and show how the component-based architecture enables sophisticated scientific workflows.",
+      "summary": "Successfully documented the analysis and visualization pages (Heatmap Creation, Info Flow Analysis, Final Plots, and Prompts Comparison) with comprehensive coverage of their interfaces to analysis infrastructure and plotting systems. The documentation explains how each page serves as a sophisticated interface to complex experiment coordination while maintaining scientific rigor, including detailed workflow patterns, infrastructure integration, and scientific computing specialization.",
+      "completedAt": "2025-07-18T23:36:55.637Z"
+    },
+    {
+      "id": "1998e210-5742-42b7-bec8-22b5cf974856",
+      "name": "Document component reusability and interface patterns",
+      "description": "Document the reusable component patterns that enable high code reusability across pages, including how components serve as interfaces between the UI and the rest of the project infrastructure. Provide guidelines for extending the component system.",
+      "notes": "Critical for understanding how the architecture enables both current functionality and future extensions. Must emphasize the interface role between UI and scientific computing.",
+      "status": "completed",
+      "dependencies": [
+        {
+          "taskId": "cbf3d935-ba61-4974-80e4-5642abb5e18d"
+        }
+      ],
+      "createdAt": "2025-07-18T22:22:08.582Z",
+      "updatedAt": "2025-07-18T23:38:57.158Z",
+      "relatedFiles": [
+        {
+          "path": "src/app/components/",
+          "type": "REFERENCE",
+          "description": "All reusable components directory"
+        },
+        {
+          "path": "src/app/components/inputs.py",
+          "type": "REFERENCE",
+          "description": "Input components examples"
+        },
+        {
+          "path": "src/app/components/prompt_filter.py",
+          "type": "REFERENCE",
+          "description": "Filter components examples"
+        },
+        {
+          "path": "docs/streamlit-infrastructure.md",
+          "type": "REFERENCE",
+          "description": "Infrastructure patterns reference"
+        },
+        {
+          "path": "docs/infrastructure.md",
+          "type": "REFERENCE",
+          "description": "Core infrastructure reference"
+        },
+        {
+          "path": "docs/core-modules.md",
+          "type": "REFERENCE",
+          "description": "Core modules coordination reference"
+        }
+      ],
+      "implementationGuide": "1. Add component patterns section to docs/streamlit-app-pages.md:\\n   - Component composition patterns across pages\\n   - Interface abstraction between UI and scientific computing layers\\n   - Reusable component categories (inputs, filters, displays, execution)\\n   - Configuration and state management patterns\\n2. Document key reusable components:\\n   - Input components (select_enum, select_gpu_type, etc.)\\n   - Filter components (FilterPromptsComponent, ShowModelCombinations)\\n   - Display components (ShowResultsBank, InfoFlowAnalysisComponent)\\n   - Execution components (RequirementExecution, PlotGenerator)\\n3. Explain interface design principles:\\n   - How components abstract complex scientific operations\\n   - Type safety and error handling patterns\\n   - Configuration externalization and customization\\n4. Document extension guidelines:\\n   - Creating new reusable components\\n   - Extending existing component functionality\\n   - Maintaining architectural consistency\\n5. Reference all related infrastructure documentation\\n6. Provide practical examples of component reuse across pages",
+      "verificationCriteria": "Documentation shows component reusability patterns, explains interface design principles, provides extension guidelines, and demonstrates how components bridge UI and scientific computing",
+      "analysisResult": "Create comprehensive documentation for the Streamlit application pages and components, explaining how each page serves as an interface to different aspects of the project and how they coordinate with the experiment infrastructure, data management, and analysis systems. This documentation should reference the infrastructure patterns and show how the component-based architecture enables sophisticated scientific workflows.",
+      "summary": "Successfully documented the component reusability and interface patterns with comprehensive coverage of the component-based architecture. The documentation explains how components serve as interfaces between UI and scientific computing, provides detailed extension guidelines, and demonstrates practical examples of component reuse across pages. The documentation shows the sophisticated type-safe component system that enables high code reusability while maintaining scientific rigor.",
+      "completedAt": "2025-07-18T23:38:57.151Z"
+    }
+  ]
+}

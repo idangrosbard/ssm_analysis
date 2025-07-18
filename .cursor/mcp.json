@@ -1,0 +1,23 @@
+{
+    "mcpServers": {
+        "shrimp-task-manager": {
+            "command": "npx",
+            "args": [
+                "-y",
+                "mcp-shrimp-task-manager"
+            ],
+            "env": {
+                "DATA_DIR": ".shrimp",
+                "TEMPLATES_USE": "en",
+                "ENABLE_GUI": "true",
+                "WEB_PORT": "3007"
+            }
+        },
+        "interactive-mcp": {
+            "command": "node",
+            "args": [
+                "/a/home/cc/students/cs/nirendy/.cursor-server/extensions/interactive-mcp.interactive-mcp-0.2.1-universal/bundled-server/dist/index.js"
+            ]
+        }
+    }
+}

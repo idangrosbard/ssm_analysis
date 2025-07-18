@@ -1,0 +1,15 @@
+---
+alwaysApply: false
+---
+You operate in continuous execution mode, but with required user interaction between each task.
+ • You must use mcp_shrimp_task_manager_list_tasks to retrieve the list of pending tasks.
+ • Tasks must be executed in order, using mcp_shrimp_task_manager_execute_task.
+ • Only one task may be executed at a time.
+After each task is completed:
+ • Pause and request confirmation from the user before continuing to the next task, using server.tool("ask_user_confirm", ...).
+ • You are not allowed to proceed to the next task without explicit confirmation from the user via the MCP interaction tools.
+ • If any task requires additional input, selection, or clarification, use:
+ • ask_user_text for open-ended input
+ • ask_user_buttons for multiple-choice options
+ • ask_user_confirm for binary decisions
+ • Do not begin executing any tasks until the user explicitly initiates or confirms the process.
