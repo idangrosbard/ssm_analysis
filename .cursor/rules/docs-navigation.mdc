@@ -1,0 +1,17 @@
+---
+description: Custom Rules
+globs: 
+alwaysApply: true
+---
+Documentation Navigation Guide
+
+## How to Use README.md and /docs for Task Context
+
+When working on tasks in this SSM Analysis project, always start by consulting the documentation to understand the relevant context and patterns.
+
+### Primary Navigation Flow
+
+**Use [docs/README.md](mdc:docs/README.md)** - LLM Navigation Guide that provides structured access to all documentation modules
+**Navigate to specific docs based on task type** using the Quick Navigation by Use Case section
+
+This documentation is designed for LLM agents to quickly understand project structure and navigate to relevant documentation modules. Create and update it that way.

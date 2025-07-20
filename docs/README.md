@@ -1,126 +1,178 @@
-# SSM Analysis Project Documentation
+# SSM Analysis Project - LLM Navigation Guide
 
-Welcome to the comprehensive documentation for the **Mamba Knockout for Unraveling Factual Information Flow** research project. This documentation is organized into specialized modules that mirror the project's sophisticated architecture.
+## Project Context
 
-## 📚 Documentation Structure
+**Purpose**: Research project for analyzing Mamba State-Space Models using knockout methodology
+**Technology**: Python 3.12, PyTorch, Mamba-SSM, UV package manager
+**Core Functionality**: Factual information flow analysis in language models
+**Repository Goal**: Fully reproducible research environment
 
-This documentation is designed to provide clear navigation paths for different development scenarios. Each module focuses on specific aspects of the project while maintaining cross-references for comprehensive understanding.
+## Architecture Overview
 
-### 🏗️ Core Infrastructure
+- **Infrastructure Layer**: BaseRunner, BasePromptFilteration, ModelInterface
+- **Experiment Layer**: 4 specialized runners (evaluate_model, info_flow, heatmap, full_pipeline)
+- **Data Layer**: Object-oriented interfaces (DataReqs, ResultBank, FulfilledReqs)
+- **Core Coordination**: 3-file coordination pattern (consts.py, names.py, types.py)
+- **Analysis Layer**: Plotting with configuration management
+- **UI Layer**: Streamlit component-based architecture
 
-- **[Infrastructure Patterns](infrastructure.md)** - Base classes, model interfaces, and infrastructure coordination
-- **[Core Modules Coordination](core-modules.md)** - Critical 3-file coordination pattern and update requirements
+## Documentation Structure and Editing Guidelines
 
-### 🔬 Experimental Framework
+### Documentation Purpose and Style
 
-- **[Experiment Runners](experiment-runners.md)** - All 4 runner types, purposes, and implementation patterns
-- **[Data Interfaces](data-interfaces.md)** - Object-oriented entities and data interaction patterns
-- **[Analysis and Plotting](analysis-and-plotting.md)** - Visualization components and publication-quality plots
+**Target Audience**: LLM agents and developers working on the SSM Analysis project
+**Style**: Concise, rule-based content with clear file references instead of verbose explanations
+**Length**: Each document should be under 200 lines with bullet-based organization
+**Focus**: What LLMs need to know to understand and work with the codebase
 
-### 🛠️ Development and Setup
+### Documentation Categories
 
-- **[Setup and Environment](setup-and-environment.md)** - Package management, UV usage, and reproducibility
-- **[Utilities and Patterns](utilities-and-patterns.md)** - Code organization standards and common patterns
+#### Core Infrastructure (Critical - Start Here)
+- **[Core Modules Coordination](core-modules.md)** - Critical 3-file coordination pattern
+  - **File**: `src/core/consts.py`, `src/core/names.py`, `src/core/types.py`
+  - **Purpose**: Centralized constants, names, and types with strict coordination
+  - **Expected Content**: Rules for 3-file coordination, step-by-step procedures, correct/incorrect patterns
+  - **Editing Guidelines**: Focus on coordination rules, avoid verbose explanations, emphasize critical warnings
 
-### 📋 Additional Modules (Coming Soon)
+- **[Infrastructure Patterns](infrastructure.md)** - Base classes and dependency management
+  - **File**: `src/experiments/infrastructure/base_runner.py`, `src/experiments/infrastructure/base_prompt_filteration.py`
+  - **Purpose**: BaseRunner, BasePromptFilteration, ModelInterface patterns
+  - **Expected Content**: Base class implementation rules, inheritance patterns, dependency management
+  - **Editing Guidelines**: Focus on base class patterns, show implementation examples, emphasize critical rules
 
-- **Knockout Mechanisms** - Model intervention and hook-based implementations
-- **Streamlit Infrastructure** - Component-based architecture and base classes
-- **Streamlit App Pages** - Navigation system and page interfaces
+#### Experimental Framework
+- **[Experiment Runners](experiment-runners.md)** - All 4 runner types and implementation patterns
+  - **Files**: `src/experiments/runners/evaluate_model.py`, `src/experiments/runners/info_flow.py`, `src/experiments/runners/heatmap.py`, `src/experiments/runners/full_pipeline.py`
+  - **Purpose**: Runner types, dependencies, and file locations
+  - **Expected Content**: Runner types and purposes, implementation rules, output file patterns
+  - **Editing Guidelines**: Focus on runner architecture, dependency patterns, file organization
 
-## 🎯 Quick Navigation by Use Case
+- **[Data Relationships Interface](data-relationships-interface.md)** - Object-oriented interfaces for files, dataframes, and data model transitions
+  - **File**: `src/data_ingestion/data_defs/data_defs.py`
+  - **Purpose**: All data interface classes and their relationships
+  - **Expected Content**: Data object hierarchy, interface patterns, transition methods
+  - **Editing Guidelines**: Focus on object relationships, interface patterns, data flow
 
-### For New Developers
+- **[Dataset Processing Flow](dataset-processing-flow.md)** - Raw data processing flow from loading to experiment usage
+  - **Files**: `src/data_ingestion/datasets/download_dataset.py`, `src/data_ingestion/datasets/splitting.py`
+  - **Purpose**: Data flow from raw datasets through processing to experiments
+  - **Expected Content**: Data flow overview, key components, critical rules
+  - **Editing Guidelines**: Focus on data flow patterns, processing steps, consistency rules
 
-1. Start with **[Setup and Environment](setup-and-environment.md)** for installation
-2. Review **[Core Modules Coordination](core-modules.md)** for critical patterns
-3. Explore **[Infrastructure Patterns](infrastructure.md)** for base understanding
+- **[Analysis and Plotting](analysis-and-plotting.md)** - Visualization components and configuration
+  - **Files**: `src/analysis/plots/`, `src/analysis/experiment_results/`
+  - **Purpose**: Plot types, configuration objects, and coordination rules
+  - **Expected Content**: Plot types and configurations, coordination patterns
+  - **Editing Guidelines**: Focus on plot types, configuration management, coordination rules
+
+#### Development and Setup
+- **[Setup and Environment](setup-and-environment.md)** - Package management and reproducibility
+  - **Files**: `scripts/`, requirements files
+  - **Purpose**: UV package manager usage and configuration patterns
+  - **Expected Content**: Package management rules, environment setup, reproducibility requirements
+  - **Editing Guidelines**: Focus on setup procedures, package management rules, environment standards
+
+- **[Utilities and Patterns](utilities-and-patterns.md)** - Code organization standards
+  - **File**: `src/utils/`
+  - **Purpose**: Utility organization rules and common patterns
+  - **Expected Content**: Directory structure, utility placement rules, common patterns
+  - **Editing Guidelines**: Focus on organization rules, utility patterns, best practices
+
+#### Model Analysis
+- **[Knockout Mechanisms](knockout-mechanisms.md)** - Model intervention and hook-based implementations
+  - **Files**: `src/experiments/knockout/`, `src/experiments/infrastructure/model_interface.py`
+  - **Purpose**: Knockout patterns and model intervention
+  - **Expected Content**: Knockout implementation methods, model interface patterns, usage examples
+  - **Editing Guidelines**: Focus on implementation methods, interface patterns, usage examples
+
+#### UI Development
+- **[Streamlit Infrastructure](streamlit-infrastructure.md)** - Component-based architecture
+  - **File**: `src/app/`
+  - **Purpose**: UI component patterns and base classes
+  - **Expected Content**: Base classes, component architecture, session state management
+  - **Editing Guidelines**: Focus on component architecture, base classes, session state patterns
+
+- **[Streamlit App Pages](streamlit-app-pages.md)** - Navigation system and page interfaces
+  - **Purpose**: Page architecture and navigation patterns
+  - **Expected Content**: Page structure, navigation patterns, component integration
+  - **Editing Guidelines**: Focus on page architecture, navigation patterns, component integration
+
+- **[Streamlit App Components](streamlit-app-components.md)** - Component implementations
+  - **Purpose**: Reusable UI components for scientific computing interface
+  - **Expected Content**: Component categories, implementation patterns, integration guidelines
+  - **Editing Guidelines**: Focus on component patterns, integration guidelines, best practices
+
+## Quick Navigation by Use Case
+
+### For New Development
+1. **[Core Modules Coordination](core-modules.md)** - Critical coordination patterns
+2. **[Infrastructure Patterns](infrastructure.md)** - Base class understanding
+3. **[Setup and Environment](setup-and-environment.md)** - Environment setup
 
 ### For Experiment Development
-
-1. Study **[Experiment Runners](experiment-runners.md)** for runner patterns
-2. Review **[Data Interfaces](data-interfaces.md)** for object interactions
-3. Check **[Analysis and Plotting](analysis-and-plotting.md)** for visualization
-
-### For UI Development
-
-1. Begin with **[Infrastructure Patterns](infrastructure.md)** for base patterns
-2. Review **[Utilities and Patterns](utilities-and-patterns.md)** for common utilities
-3. *Streamlit-specific documentation coming soon*
+1. **[Experiment Runners](experiment-runners.md)** - Runner patterns and dependencies
+2. **[Data Relationships Interface](data-relationships-interface.md)** - Data object interactions
+3. **[Dataset Processing Flow](dataset-processing-flow.md)** - Data processing and flow patterns
+4. **[Analysis and Plotting](analysis-and-plotting.md)** - Visualization coordination
 
 ### For Model Analysis
+1. **[Infrastructure Patterns](infrastructure.md)** - ModelInterface patterns
+2. **[Knockout Mechanisms](knockout-mechanisms.md)** - Model intervention patterns
+3. **[Experiment Runners](experiment-runners.md)** - Analysis workflows
+4. **[Dataset Processing Flow](dataset-processing-flow.md)** - Data processing for model analysis
 
-1. Start with **[Infrastructure Patterns](infrastructure.md)** for model interfaces
-2. Explore **[Experiment Runners](experiment-runners.md)** for analysis workflows
-3. *Knockout mechanisms documentation coming soon*
+### For UI Development
+1. **[Infrastructure Patterns](infrastructure.md)** - Base patterns
+2. **[Streamlit Infrastructure](streamlit-infrastructure.md)** - UI component architecture
+3. **[Streamlit App Pages](streamlit-app-pages.md)** - Navigation patterns
 
-## 🔗 Cross-Reference System
+## Documentation Editing Standards
 
-Each documentation module includes:
+### Content Requirements
+- **Concise**: Each document should be under 200 lines
+- **Rule-based**: Focus on rules and patterns rather than verbose explanations
+- **File-focused**: Include specific file references and line numbers where appropriate
+- **Cross-referenced**: Each document should have comprehensive cross-references to related modules
 
-- **Internal links** to related sections within the same module
-- **Cross-references** to other modules for comprehensive understanding
-- **Code examples** from actual project files
-- **Implementation guidelines** for practical application
+### Structure Requirements
+- **Clear headings**: Use descriptive headings that indicate content purpose
+- **Bullet organization**: Use bullet points for rules, patterns, and procedures
+- **Code examples**: Include relevant code examples with file references
+- **Critical warnings**: Highlight important rules and potential pitfalls
 
-## 📋 Documentation Standards
+### Cross-Reference Requirements
+- **Comprehensive**: Each document should reference all related documentation modules
+- **Consistent format**: Use "See [docs/filename.md](filename.md) for description" format
+- **Descriptive**: Each cross-reference should explain what the referenced document contains
+- **Logical grouping**: Group cross-references by category (Core, Infrastructure, Development, etc.)
 
-### Content Organization
+### File Reference Standards
+- **Specific**: Reference specific files and line ranges when possible
+- **Consistent**: Use consistent file reference patterns throughout
+- **Descriptive**: Explain what each file contains and its purpose
+- **Updated**: Keep file references current with actual codebase structure
 
-- **Hierarchical structure** with clear section headers
-- **Code examples** from actual project files
-- **Cross-references** between related modules
-- **Practical guidelines** for implementation
+## Critical Rules
 
-### Markdown Conventions
+- **ALWAYS use UV package manager** instead of pip
+- **NEVER hardcode constants** outside `src/core/` module
+- **ALWAYS follow 3-file coordination** pattern for core modules
+- **NEVER create direct dependencies** between runners - use dependency system
+- **ALWAYS inherit from BaseRunner** for experiment implementations
+- **NEVER access experiment outputs directly** - use ResultBank objects
 
-- **Consistent formatting** following project README.md patterns
-- **Clear navigation** with table of contents
-- **Code blocks** with appropriate language highlighting
-- **Emphasis** on critical rules and patterns
+## File Reference Pattern
 
-### Quality Assurance
+- **Code Examples**: Replace with file references like `See: src/core/consts.py:45-67`
+- **Implementation Details**: Reference specific files and line ranges
+- **Cross-References**: Link to related documentation modules
 
-- **Complete coverage** of all project components
-- **Accurate cross-references** between modules
-- **Practical examples** from actual codebase
-- **Maintainable structure** for future updates
-
-## 🚀 Getting Started
-
-### For First-Time Users
-
-1. **Installation**: Follow [Setup and Environment](setup-and-environment.md)
-2. **Core Concepts**: Review [Infrastructure Patterns](infrastructure.md)
-3. **Quick Start**: Use [Experiment Runners](experiment-runners.md) for basic experiments
-
-### For Contributors
-
-1. **Architecture**: Understand [Core Modules Coordination](core-modules.md)
-2. **Development**: Follow [Utilities and Patterns](utilities-and-patterns.md)
-3. **Infrastructure**: Review [Infrastructure Patterns](infrastructure.md) for base classes
-
-### For Researchers
-
-1. **Methodology**: Study [Infrastructure Patterns](infrastructure.md) for model interfaces
-2. **Analysis**: Use [Analysis and Plotting](analysis-and-plotting.md)
-3. **Data**: Review [Data Interfaces](data-interfaces.md) for result management
-
-## 📖 Related Resources
+## Related Resources
 
 - **[Main README](../README.md)** - Project overview and installation
 - **[shrimp-rules.md](../shrimp-rules.md)** - High-level development guidelines
 - **[Project Structure](../src/)** - Source code organization
 
-## 🔄 Documentation Maintenance
-
-This modular documentation system is designed to:
-
-- **Preserve all critical rules** from the original shrimp-rules.md
-- **Improve discoverability** through specialized modules
-- **Maintain consistency** with project architecture
-- **Support future development** with clear extension guidelines
-
 ---
 
-*This documentation is part of the SSM Analysis Project - a fully reproducible research environment for analyzing factual information flow in Mamba State-Space Models.*
+*This documentation is designed for LLM agents to quickly understand project structure and navigate to relevant documentation modules. Each document focuses on rules, patterns, and file references rather than verbose explanations.*

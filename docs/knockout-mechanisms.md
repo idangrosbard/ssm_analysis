@@ -5,6 +5,7 @@
 Knockout mechanisms provide a sophisticated system for selectively disabling or modifying specific components within language models to analyze their behavior and understand information flow. This system supports three major model architectures: GPT2, Llama (including Mistral and Qwen2 variants), and Mamba (both Mamba1 and Mamba2).
 
 The knockout system operates through hook-based interventions that can:
+
 - Block attention connections between specific tokens
 - Disable specific SSM (State Space Model) features in Mamba architectures
 - Provide fine-grained control over model information flow for analysis
@@ -15,36 +16,27 @@ The knockout system operates through hook-based interventions that can:
 src/experiments/knockout/
 ├── __init__.py
 ├── gpt/
-│   ├── __init__.py
 │   └── gpt2/
-│       ├── __init__.py
-│       └── gpt2_knockout_utils.py
+│       └── gpt2_knockout_utils.py      # GPT2 attention masking
 ├── llama/
-│   ├── __init__.py
-│   ├── llama_attn.py
-│   ├── llama_attention_forward.py
-│   ├── scaled_dot_product_attention.py
-│   ├── sdpa_attention.py
-│   ├── interfere_hook.py
-│   └── ___init__.py
+│   ├── llama_attn.py                   # Llama attention knockout
+│   ├── llama_attention_forward.py      # Llama attention forward
+│   ├── scaled_dot_product_attention.py # SDPA attention patterns
+│   ├── sdpa_attention.py               # SDPA implementation
+│   └── interfere_hook.py               # Llama interference hooks
 └── mamba/
-    ├── __init__.py
     ├── mamba1/
-    │   ├── __init__.py
     │   ├── helpers/
-    │   │   └── ssm_interfere.py
-    │   ├── original_variant.py
-    │   └── falcon_variant.py
+    │   │   └── ssm_interfere.py        # SSM state interference
+    │   ├── original_variant.py         # Original Mamba knockout
+    │   └── falcon_variant.py           # Falcon-Mamba knockout
     └── mamba2/
-        ├── __init__.py
-        └── minimal_mamba2.py
+        └── minimal_mamba2.py           # Mamba2 knockout (copied implementation with modifications)
 ```
 
 ## Model Interface Integration
 
-The knockout system is integrated through the `ModelInterface` abstract base class and its concrete implementations in `src/experiments/infrastructure/model_interface.py`. Each model type has a specialized interface that handles knockout operations:
-
-### Base ModelInterface
+Knockout system integrates through `ModelInterface` in `src/experiments/infrastructure/model_interface.py`:
 
 ```python
 class ModelInterface(ABC):
@@ -59,299 +51,26 @@ class ModelInterface(ABC):
         pass
 ```
 
-The `num_to_masks` parameter is a dictionary mapping layer numbers to lists of (source_index, target_index) tuples, where the source index won't receive information from the target index.
+## num_to_masks Parameter
 
-## GPT2 Knockout Implementation
-
-### Architecture: Attention Masking
-
-GPT2 knockout uses attention masking to block specific attention connections. The implementation is in `src/experiments/knockout/gpt/gpt2/gpt2_knockout_utils.py`.
-
-### Key Components
-
-1. **Hook Registration**: Uses `set_block_attn_hooks()` to register forward hooks on attention layers
-2. **Attention Mask Creation**: Creates binary attention masks to block specific token-to-token connections
-3. **Mask Application**: Applies masks during the forward pass to prevent information flow
-
-### Implementation Details
-
-Based on the actual Hugging Face transformers implementation in `.venv/lib/python3.12/site-packages/transformers/models/gpt2/modeling_gpt2.py`, the GPT2 attention mechanism works as follows:
-
-**GPT2Attention Class Structure:**
-```python
-class GPT2Attention(nn.Module):
-    def __init__(self, config, is_cross_attention=False, layer_idx=None):
-        # Register causal bias buffer
-        self.register_buffer(
-            "bias",
-            torch.tril(torch.ones((max_positions, max_positions), dtype=torch.bool)).view(
-                1, 1, max_positions, max_positions
-            ),
-            persistent=False,
-        )
-        self.register_buffer("masked_bias", torch.tensor(-1e4), persistent=False)
-```
-
-**Attention Forward Function:**
-```python
-def eager_attention_forward(module, query, key, value, attention_mask, head_mask=None, **kwargs):
-    attn_weights = torch.matmul(query, key.transpose(-1, -2))
-    
-    # Apply causal mask
-    if not module.is_cross_attention:
-        causal_mask = module.bias[:, :, key_length - query_length : key_length, :key_length]
-        mask_value = torch.finfo(attn_weights.dtype).min
-        attn_weights = torch.where(causal_mask, attn_weights, mask_value)
-    
-    # Apply custom attention mask (knockout)
-    if attention_mask is not None:
-        attn_weights = attn_weights + attention_mask
-    
-    attn_weights = nn.functional.softmax(attn_weights, dim=-1)
-```
-
-**Knockout Implementation:**
-```python
-def set_block_attn_hooks(model, from_to_index_per_layer, opposite=False):
-    """Register hooks to block attention connections in GPT2"""
-    
-    def wrap_attn_forward(forward_fn, model_, from_to_index_, opposite_):
-        @functools.wraps(forward_fn)
-        def wrapper_fn(*args, **kwargs):
-            # Create attention mask based on from_to_index pairs
-            attn_mask = torch.tril(torch.ones((num_tokens, num_tokens), dtype=torch.uint8))
-            for s, t in from_to_index_:
-                attn_mask[s, t] = 0  # Block connection from source to target
-            
-            # Convert to float mask with large negative values
-            attn_mask = (1.0 - attn_mask) * torch.finfo(model_.dtype).min
-            new_kwargs["attention_mask"] = attn_mask
-            return forward_fn(*new_args, **new_kwargs)
-        
-        return wrapper_fn
-```
-
-### Usage in ModelInterface
-
-The `GPT2Interface` class uses the knockout utilities through the `_trace_with_attn_block()` method:
+The `num_to_masks` parameter is a dictionary that maps layer numbers to lists of (source_index, target_index) tuples.
 
 ```python
-def _trace_with_attn_block(self, model, inp, from_to_index_per_layer):
-    """Apply attention blocking to GPT2 model"""
-    hooks = gpt2_knockout_utils.set_block_attn_hooks(
-        model, from_to_index_per_layer
-    )
-    # ... process with hooks
-    gpt2_knockout_utils.remove_wrapper(model, hooks)
+num_to_masks = {
+    0: [(1, 0), (2, 1)],  # Layer 0: block 1←0, 2←1
+    1: [(3, 2)],           # Layer 1: block 3←2
+    2: [(4, 3)]            # Layer 2: block 4←3
+}
 ```
 
-## Llama Knockout Implementation
+**Semantics**: `(source_index, target_index)` means that `source_index` won't receive information from `target_index`. This blocks the attention connection from target to source token.
 
-### Architecture: Custom Attention Modules
+## Implementation Methods
 
-Llama knockout uses custom attention modules that wrap the original attention layers. The implementation is in `src/experiments/knockout/llama/llama_attn.py`.
+### PyTorch Forward Hooks (GPT2, Llama, Mamba1)
 
-### Key Components
+Most knockout implementations use PyTorch's `register_forward_hook()` to intercept and modify the forward pass:
 
-1. **LlamaAttentionKnockout**: Custom attention module that wraps original attention layers
-2. **Knockout Mask Application**: Applies boolean masks to attention patterns
-3. **Multi-Model Support**: Supports Llama, Mistral, and Qwen2 attention variants
-
-### Implementation Details
-
-Based on the actual Hugging Face transformers implementation in `.venv/lib/python3.12/site-packages/transformers/models/llama/modeling_llama.py`, the Llama attention mechanism works as follows:
-
-**LlamaAttention Class Structure:**
-```python
-class LlamaAttention(nn.Module):
-    def __init__(self, config: LlamaConfig, layer_idx: int):
-        self.head_dim = getattr(config, "head_dim", config.hidden_size // config.num_attention_heads)
-        self.num_key_value_groups = config.num_attention_heads // config.num_key_value_heads
-        self.scaling = self.head_dim**-0.5
-        self.is_causal = True
-        
-        # Linear projections for Q, K, V
-        self.q_proj = nn.Linear(config.hidden_size, config.num_attention_heads * self.head_dim)
-        self.k_proj = nn.Linear(config.hidden_size, config.num_key_value_heads * self.head_dim)
-        self.v_proj = nn.Linear(config.hidden_size, config.num_key_value_heads * self.head_dim)
-        self.o_proj = nn.Linear(config.num_attention_heads * self.head_dim, config.hidden_size)
-```
-
-**Attention Computation:**
-```python
-def forward(self, hidden_states: torch.Tensor, position_embeddings: Tuple[torch.Tensor, torch.Tensor], attention_mask: Optional[torch.Tensor], ...):
-    # Project to Q, K, V
-    query_states = self.q_proj(hidden_states).view(hidden_shape).transpose(1, 2)
-    key_states = self.k_proj(hidden_states).view(hidden_shape).transpose(1, 2)
-    value_states = self.v_proj(hidden_states).view(hidden_shape).transpose(1, 2)
-    
-    # Compute attention weights
-    attn_weights = torch.matmul(query, key_states.transpose(2, 3)) * scaling
-    
-    # Apply attention mask (knockout)
-    if attention_mask is not None:
-        causal_mask = attention_mask[:, :, :, : key_states.shape[-2]]
-        attn_weights = attn_weights + causal_mask
-    
-    attn_weights = nn.functional.softmax(attn_weights, dim=-1, dtype=torch.float32)
-```
-
-**Knockout Implementation:**
-```python
-class LlamaAttentionKnockout(nn.Module):
-    def __init__(self, inner: T_LLAMA_ATTN, knockout_mask: Optional[Iterable[tuple[int, int]]] = None):
-        super().__init__()
-        self.inner = inner
-        self.knockout_mask = knockout_mask
-
-    def forward(self, hidden_states: Tensor, position_embeddings: Tuple[Tensor, Tensor], ...):
-        t = hidden_states.shape[1]
-        knockout_mask = torch.ones([1, 1, t, t], dtype=torch.bool, device=hidden_states.device)
-        
-        if self.knockout_mask is not None:
-            for q, k in self.knockout_mask:
-                knockout_mask[:, :, q, k] = False  # Block connection
-        
-        # Apply mask to attention computation
-        if attention_mask is not None:
-            attention_mask = attention_mask.logical_and(knockout_mask)
-        else:
-            attention_mask = knockout_mask
-            
-        return self.inner(hidden_states=hidden_states, attention_mask=attention_mask, ...)
-```
-
-### Usage in ModelInterface
-
-The `LlamaInterface` class replaces attention modules with knockout versions:
-
-```python
-def setup(self, layers: Optional[Iterable[TLayerIndex]] = None):
-    # Replace attention modules with knockout versions
-    for layer_idx in layers:
-        original_attn = self.model.model.layers[layer_idx].self_attn
-        knockout_attn = LlamaAttentionKnockout(original_attn, knockout_mask)
-        self.model.model.layers[layer_idx].self_attn = knockout_attn
-```
-
-## Mamba Knockout Implementation
-
-### Architecture: SSM State Interference
-
-Mamba knockout uses forward hooks to interfere with the State Space Model (SSM) computation. The implementation is in `src/experiments/knockout/mamba/mamba1/helpers/ssm_interfere.py`.
-
-### Key Components
-
-1. **SSMInterfereHook**: Forward hook that intercepts SSM computation
-2. **Feature Masking**: Selective disabling of SSM features based on decay characteristics
-3. **Multiple Variants**: Support for both original Mamba and Falcon-Mamba variants
-
-### Implementation Details
-
-Based on the actual Hugging Face transformers implementation in `.venv/lib/python3.12/site-packages/transformers/models/mamba/modeling_mamba.py`, the Mamba SSM mechanism works as follows:
-
-**MambaMixer Class Structure:**
-```python
-class MambaMixer(nn.Module):
-    def __init__(self, config: MambaConfig, layer_idx: int):
-        self.hidden_size = config.hidden_size
-        self.ssm_state_size = config.state_size
-        self.conv_kernel_size = config.conv_kernel
-        self.intermediate_size = config.intermediate_size
-        self.time_step_rank = int(config.time_step_rank)
-        
-        # SSM parameters (A, B, C, D)
-        A = torch.arange(1, self.ssm_state_size + 1, dtype=torch.float32)[None, :]
-        A = A.expand(self.intermediate_size, -1).contiguous()
-        self.A_log = nn.Parameter(torch.log(A))  # State transition matrix
-        self.D = nn.Parameter(torch.ones(self.intermediate_size))  # Output projection
-        
-        # Linear projections
-        self.in_proj = nn.Linear(self.hidden_size, self.intermediate_size * 2)
-        self.x_proj = nn.Linear(self.intermediate_size, self.time_step_rank + self.ssm_state_size * 2)
-        self.dt_proj = nn.Linear(self.time_step_rank, self.intermediate_size)
-        self.out_proj = nn.Linear(self.intermediate_size, self.hidden_size)
-```
-
-**SSM Forward Function:**
-```python
-def forward(self, hidden_states, cache_params: Optional[MambaCache] = None, cache_position: Optional[torch.LongTensor] = None, attention_mask: Optional[torch.LongTensor] = None):
-    if is_fast_path_available and "cuda" in self.x_proj.weight.device.type:
-        return self.cuda_kernels_forward(hidden_states, cache_params, cache_position, attention_mask)
-    return self.slow_forward(hidden_states, cache_params, cache_position, attention_mask)
-```
-
-**Knockout Implementation:**
-```python
-class SSMInterfereHook:
-    def __init__(self, layer: int | str | nn.Module, knockout_type: KnockoutMode, is_falcon: bool, feature_mask: Optional[FloatTensor | Tensor] = None):
-        self.layer = layer
-        self.knockout_type = knockout_type
-        self.knockout_indices: Iterable[int] = []
-        self.affected_outputs: Iterable[int] = []
-        self.feature_mask = feature_mask
-
-    def hook(self, module: nn.Module, inp: Tensor, out: Tensor) -> Optional[Tensor]:
-        """Intercept SSM computation and apply knockout modifications"""
-        slow_forward = (
-            slow_forward_for_ssm_materializing_knockout_falcon
-            if self.is_falcon
-            else slow_forward_for_ssm_materializing_knockout
-        )
-        
-        return slow_forward(
-            module,
-            inp[0],
-            knockout_indices=self.knockout_indices,
-            affected_outputs=self.affected_outputs,
-            knockout_mode=self.knockout_type,
-            knockout_feature_mask=self.feature_mask,
-        )
-```
-
-### Feature Masking System
-
-Mamba interfaces implement sophisticated feature masking based on SSM decay characteristics:
-
-```python
-def _get_feature_mask(self, layer: torch.nn.Module, feature_category: FeatureCategory) -> Tensor:
-    decay_matrices = torch.exp(-torch.exp(layer.A_log))
-    n_ssms = decay_matrices.shape[0]
-    
-    # Calculate norms to determine feature importance
-    norms = torch.norm(decay_matrices, p=1, dim=1)
-    sorted_indices = torch.argsort(norms, descending=(feature_category == FeatureCategory.SLOW_DECAY))
-    
-    # Select top/bottom third based on feature category
-    mask = torch.zeros_like(norms, dtype=torch.bool)
-    mask[sorted_indices[: n_ssms // 3]] = True
-    return mask
-```
-
-### Usage in ModelInterface
-
-The `Mamba1Interface` and `Mamba2Interface` classes register SSM interference hooks:
-
-```python
-def setup(self, layers: Optional[Iterable[TLayerIndex]] = None):
-    # Register SSM interference hooks
-    for i in range(len(self.model.backbone.layers)):
-        if i in layers:
-            self.hooks.append(SSMInterfereHook(i, self.knockout_mode, is_falcon=self.is_falcon))
-            self.handles.append(self.get_layer_moi(i).register_forward_hook(self.hooks[-1]))
-```
-
-## Hook-Based Architecture Patterns
-
-### Forward Hook Registration
-
-All knockout implementations use PyTorch's forward hook system based on the actual implementation in `.venv/lib/python3.12/site-packages/torch/utils/hooks.py`:
-
-1. **Registration**: Hooks are registered on specific modules using `register_forward_hook()`
-2. **Interception**: Hooks intercept the forward pass and can modify inputs/outputs
-3. **Cleanup**: Hooks must be properly removed to prevent memory leaks
-
-**Hook Registration Pattern:**
 ```python
 # Register hook on specific module
 handle = module.register_forward_hook(hook_function)
@@ -365,57 +84,151 @@ def hook_function(module, input, output):
 handle.remove()
 ```
 
-**Hook Storage in PyTorch:**
-- Hooks are stored in `module._forward_hooks` dictionary
-- Each hook gets a unique ID via `RemovableHandle.next_id`
-- Weak references prevent memory leaks when modules are deleted
+### Direct Implementation (Mamba2)
 
-### Attention Masking Techniques
+Mamba2 uses a copied implementation approach where the entire model code is copied and modified directly in `src/experiments/knockout/mamba/mamba2/minimal_mamba2.py`.
 
-1. **Binary Masks**: Boolean tensors that block specific attention connections
-2. **Causal Masking**: Maintains causal structure while allowing selective blocking
-3. **Device Compatibility**: Masks are moved to the correct device and dtype
+## Submodule Knockout Implementations
 
-### SSM State Manipulation
+### GPT2 Attention Masking
 
-1. **State Interference**: Direct modification of SSM state during computation
-2. **Feature Selection**: Selective disabling of SSM features based on characteristics
-3. **Variant Support**: Different implementations for different Mamba variants
+**File**: `src/experiments/knockout/gpt/gpt2/gpt2_knockout_utils.py`
 
-## External Library References
+**Method**: PyTorch forward hooks on attention layers
+
+**Original Flow** (from `.venv/lib/python3.12/site-packages/transformers/models/gpt2/modeling_gpt2.py`):
+1. GPT2 attention computes query, key, value matrices
+2. Calculates attention weights via `torch.matmul(query, key.transpose(-1, -2))`
+3. Applies causal mask to enforce autoregressive structure
+4. Applies softmax to get attention probabilities
+5. Computes weighted sum of values
+
+**Hook Modification**:
+- **Interception Point**: Hooks are registered on `model.transformer.h[i].attn.forward`
+- **Modification**: Creates binary attention masks that block specific token-to-token connections
+- **Implementation**: Converts blocking patterns to large negative values in attention weights
+- **Result**: Selected attention connections are effectively zeroed out, preventing information flow
+
+**Key Changes**:
+- Wraps the original forward function with a custom wrapper
+- Injects attention masks with large negative values for blocked connections
+- Maintains causal structure while allowing selective blocking
+
+### Llama Attention Knockout
+
+**File**: `src/experiments/knockout/llama/llama_attn.py`
+
+**Method**: Custom attention module wrapper
+
+**Original Flow** (from `.venv/lib/python3.12/site-packages/transformers/models/llama/modeling_llama.py`):
+1. Llama attention projects input to Q, K, V matrices
+2. Computes attention weights with scaling factor
+3. Applies causal attention mask
+4. Applies softmax to get attention probabilities
+5. Computes weighted sum of values
+
+**Hook Modification**:
+- **Interception Point**: Replaces original attention modules with `LlamaAttentionKnockout` wrapper
+- **Modification**: Creates boolean masks that block specific attention connections
+- **Implementation**: Applies logical AND between original attention mask and knockout mask
+- **Result**: Selected attention connections are blocked while preserving causal structure
+
+**Key Changes**:
+- Wraps the entire attention module instead of just the forward function
+- Creates boolean masks for cleaner blocking semantics
+- Supports multiple attention variants (Llama, Mistral, Qwen2)
+
+### Mamba1 SSM Interference
+
+**File**: `src/experiments/knockout/mamba/mamba1/helpers/ssm_interfere.py`
+
+**Method**: PyTorch forward hooks on SSM layers
+
+**Original Flow** (from `.venv/lib/python3.12/site-packages/transformers/models/mamba/modeling_mamba.py`):
+1. Mamba SSM processes input through linear projections
+2. Applies convolution operation for local interactions
+3. Computes SSM state updates using A, B, C, D parameters
+4. Generates output through state-to-output mapping
+5. Applies residual connections and normalization
+
+**Hook Modification**:
+- **Interception Point**: Hooks are registered on SSM mixer layers
+- **Modification**: Intercepts SSM computation and applies feature masking
+- **Implementation**: Uses custom forward functions that modify SSM state computation
+- **Result**: Selected SSM features are disabled, affecting information processing
+
+**Key Changes**:
+- Intercepts the entire SSM forward pass
+- Applies feature masks to disable specific SSM components
+- Supports both original Mamba and Falcon-Mamba variants
+
+### Mamba2 Direct Implementation
+
+**File**: `src/experiments/knockout/mamba/mamba2/minimal_mamba2.py`
+
+**Method**: Copied and modified implementation
+
+**Original Flow** (from minimal Mamba2 implementation):
+1. Mamba2 uses Structured State Space Duality (SSD)
+2. Computes attention matrix from B and C projections
+3. Applies exponential decay for state transitions
+4. Combines intra-chunk and inter-chunk computations
+5. Generates output through state-to-output mapping
+
+**Hook Modification**:
+- **Interception Point**: Direct modification of `ssd()` function
+- **Modification**: Applies knockout masks directly to attention matrix computation
+- **Implementation**: Zeroes out specific attention matrix entries
+- **Result**: Selected attention connections are blocked at the SSD level
+
+**Key Changes**:
+- No hooks - direct code modification approach
+- Modifies the core SSD algorithm directly
+- Applies masks during attention matrix computation
+
+## Mamba1 Feature Knockout
+
+Mamba1 implements sophisticated feature masking based on SSM decay characteristics:
+
+**File**: `src/experiments/infrastructure/model_interface.py` (Mamba1Interface._get_feature_mask)
+
+**Original Flow**:
+1. SSM uses decay matrices to control state transitions
+2. Each feature has different decay characteristics
+3. Fast-decay features process local information
+4. Slow-decay features maintain long-range dependencies
+
+**Hook Modification**:
+- **Analysis**: Analyzes SSM decay matrices to determine feature importance
+- **Classification**: Identifies fast/slow decay features based on norm calculations
+- **Selection**: Creates feature masks based on `FeatureCategory` (SLOW_DECAY, FAST_DECAY, ALL)
+- **Result**: Selectively disables features based on their temporal characteristics
+
+**Key Changes**:
+- Calculates feature importance using decay matrix norms
+- Sorts features by decay characteristics
+- Selects top/bottom third based on feature category
+- Applies masks to disable selected features
+
+## Third-Party Library Access
+
+To understand or modify knockout implementations, you need to access the third-party library implementations in the virtual environment:
 
 ### Hugging Face Transformers
-- **GPT2**: Uses `transformers.models.gpt2.modeling_gpt2.GPT2Attention`
-- **Llama**: Uses `transformers.models.llama.modeling_llama.LlamaAttention`
-- **Mistral**: Uses `transformers.models.mistral.modeling_mistral.MistralAttention`
-- **Qwen2**: Uses `transformers.models.qwen2.modeling_qwen2.Qwen2Attention`
-- **Mamba**: Uses `transformers.models.mamba.modeling_mamba.MambaMixer`
+- **GPT2**: `.venv/lib/python3.12/site-packages/transformers/models/gpt2/modeling_gpt2.py`
+- **Llama**: `.venv/lib/python3.12/site-packages/transformers/models/llama/modeling_llama.py`
+- **Mistral**: `.venv/lib/python3.12/site-packages/transformers/models/mistral/modeling_mistral.py`
+- **Qwen2**: `.venv/lib/python3.12/site-packages/transformers/models/qwen2/modeling_qwen2.py`
+- **Mamba**: `.venv/lib/python3.12/site-packages/transformers/models/mamba/modeling_mamba.py`
 
 ### PyTorch Hooks
-- **Forward Hooks**: `torch.nn.Module.register_forward_hook()` - Registers a forward hook that is called every time after `forward()` has computed an output
-- **Hook Management**: `torch.utils.hooks.RemovableHandle` - Provides capability to remove hooks with automatic cleanup
+- **Forward Hooks**: `torch.nn.Module.register_forward_hook()` - Registers forward hook called after `forward()`
+- **Hook Management**: `torch.utils.hooks.RemovableHandle` - Provides capability to remove hooks with cleanup
 - **Hook Cleanup**: Proper removal to prevent memory leaks using `RemovableHandle.remove()`
 
-**RemovableHandle Implementation:**
-```python
-class RemovableHandle:
-    def __init__(self, hooks_dict: Any, *, extra_dict: Any = None) -> None:
-        self.hooks_dict_ref = weakref.ref(hooks_dict)
-        self.id = RemovableHandle.next_id
-        RemovableHandle.next_id += 1
+**Important**: When making changes or understanding implementations, always reference the third-party library code in `.venv/` to understand the original architecture and ensure compatibility.
 
-    def remove(self) -> None:
-        hooks_dict = self.hooks_dict_ref()
-        if hooks_dict is not None and self.id in hooks_dict:
-            del hooks_dict[self.id]
-```
-
-### Model-Specific Architecture Papers
-- **GPT2**: "Language Models are Unsupervised Multitask Learners" (Radford et al., 2019)
-- **Llama**: "LLaMA: Open and Efficient Foundation Language Models" (Touvron et al., 2023)
-- **Mamba**: "Mamba: Linear-Time Sequence Modeling with Selective State Spaces" (Gu & Dao, 2023)
-
-## Code Examples
+## Usage Patterns
 
 ### Basic Knockout Usage
 
@@ -463,6 +276,9 @@ logits = interface.generate_logits(input_ids, num_to_masks=num_to_masks)
 - **Infrastructure Documentation**: See [docs/infrastructure.md](infrastructure.md) for ModelInterface usage patterns
 - **Core Types**: See `src/core/types.py` for `KnockoutMode` and `FeatureCategory` definitions
 - **Experiment Runners**: See [docs/experiment-runners.md](experiment-runners.md) for how knockout is used in experiments
+- **Core Modules**: See [docs/core-modules.md](core-modules.md) for type definitions and constants
+- **Data Interfaces**: See [docs/data-relationships-interface.md](data-relationships-interface.md) for data object patterns
+- **Setup and Environment**: See [docs/setup-and-environment.md](setup-and-environment.md) for model setup
 
 ## Best Practices
 
@@ -486,4 +302,4 @@ logits = interface.generate_logits(input_ids, num_to_masks=num_to_masks)
 1. **Hook Verification**: Check that hooks are properly registered/removed
 2. **Mask Inspection**: Print attention masks to verify blocking patterns
 3. **Feature Analysis**: Use feature masks to understand SSM behavior
-4. **Gradient Flow**: Verify that gradients flow correctly through knockout layers 
+4. **Gradient Flow**: Verify that gradients flow correctly through knockout layers

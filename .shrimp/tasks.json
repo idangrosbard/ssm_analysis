@@ -1,3 +1,564 @@
 {
-  "tasks": []
+  "tasks": [
+    {
+      "id": "5142d9f3-01c8-4208-8e5a-8f0010d76467",
+      "name": "Analyze and Refine README.md Gateway",
+      "description": "Convert README.md from verbose navigation guide to efficient LLM gateway. Reduce from 179 lines to ~80 lines, focus on task-based navigation, condense project context to essential facts, streamline navigation by use case, and remove verbose explanations while maintaining all critical navigation information.",
+      "notes": "This is the most critical file as it serves as the gateway for LLM navigation. Must maintain all essential navigation information while dramatically reducing length.",
+      "status": "pending",
+      "dependencies": [],
+      "createdAt": "2025-07-20T23:48:18.967Z",
+      "updatedAt": "2025-07-20T23:48:18.967Z",
+      "relatedFiles": [
+        {
+          "path": "docs/README.md",
+          "type": "TO_MODIFY",
+          "description": "Main navigation gateway file to be refined",
+          "lineStart": 1,
+          "lineEnd": 179
+        }
+      ],
+      "implementationGuide": "1. Read current README.md content (179 lines)\\n2. Identify verbose sections that can be condensed\\n3. Focus on task-based navigation patterns\\n4. Condense project context to essential facts only\\n5. Streamline navigation by use case sections\\n6. Remove verbose explanations while keeping critical rules\\n7. Optimize cross-references for efficiency\\n8. Target: 80 lines maximum",
+      "verificationCriteria": "README.md is reduced to 80 lines or less, maintains all essential navigation information, provides efficient task-based navigation, and serves as effective LLM gateway.",
+      "analysisResult": "Refine the entire docs/ folder to create efficient LLM reference guides by converting verbose documentation into concise, rule-based content with file references instead of code snippets, optimized for token efficiency and LLM consumption. The goal is to reduce documentation length by 50-70% while maintaining all critical information and improving LLM scanning efficiency."
+    },
+    {
+      "id": "af457978-17d4-4db3-bf17-84f1b88a1ec5",
+      "name": "Refine Core Modules Documentation",
+      "description": "Optimize core-modules.md (191 lines) by replacing code snippets with file references, maintaining critical coordination rules, and optimizing cross-references. Focus on 3-file coordination pattern rules and step-by-step procedures.",
+      "notes": "This file is critical for project coordination. Must maintain all coordination rules while improving efficiency.",
+      "status": "pending",
+      "dependencies": [],
+      "createdAt": "2025-07-20T23:48:18.967Z",
+      "updatedAt": "2025-07-20T23:48:18.967Z",
+      "relatedFiles": [
+        {
+          "path": "docs/core-modules.md",
+          "type": "TO_MODIFY",
+          "description": "Core modules coordination documentation",
+          "lineStart": 1,
+          "lineEnd": 191
+        },
+        {
+          "path": "src/core/consts.py",
+          "type": "REFERENCE",
+          "description": "Core constants file for verification",
+          "lineStart": 1,
+          "lineEnd": 445
+        },
+        {
+          "path": "src/core/names.py",
+          "type": "REFERENCE",
+          "description": "Core names file for verification",
+          "lineStart": 1,
+          "lineEnd": 183
+        },
+        {
+          "path": "src/core/types.py",
+          "type": "REFERENCE",
+          "description": "Core types file for verification",
+          "lineStart": 1,
+          "lineEnd": 188
+        }
+      ],
+      "implementationGuide": "1. Read current core-modules.md content\\n2. Identify all code snippets that should be file references\\n3. Replace code examples with file:line references\\n4. Maintain critical 3-file coordination rules\\n5. Optimize cross-references for efficiency\\n6. Keep step-by-step procedures but make them more concise\\n7. Ensure file references are accurate",
+      "verificationCriteria": "All code snippets replaced with accurate file references, critical coordination rules maintained, cross-references optimized, and file length remains efficient for LLM consumption.",
+      "analysisResult": "Refine the entire docs/ folder to create efficient LLM reference guides by converting verbose documentation into concise, rule-based content with file references instead of code snippets, optimized for token efficiency and LLM consumption. The goal is to reduce documentation length by 50-70% while maintaining all critical information and improving LLM scanning efficiency."
+    },
+    {
+      "id": "c8555a97-4462-4b20-8c1e-ea99a7c0c05b",
+      "name": "Optimize Infrastructure Documentation",
+      "description": "Refine infrastructure.md (183 lines) by replacing code snippets with file references, condensing verbose explanations, and maintaining critical base class patterns. Focus on BaseRunner, BasePromptFilteration, and ModelInterface patterns.",
+      "notes": "This file covers critical base classes. Must maintain all implementation patterns while improving efficiency.",
+      "status": "pending",
+      "dependencies": [],
+      "createdAt": "2025-07-20T23:48:18.967Z",
+      "updatedAt": "2025-07-20T23:48:18.967Z",
+      "relatedFiles": [
+        {
+          "path": "docs/infrastructure.md",
+          "type": "TO_MODIFY",
+          "description": "Infrastructure patterns documentation",
+          "lineStart": 1,
+          "lineEnd": 183
+        },
+        {
+          "path": "src/experiments/infrastructure/base_runner.py",
+          "type": "REFERENCE",
+          "description": "BaseRunner implementation for verification",
+          "lineStart": 1,
+          "lineEnd": 200
+        },
+        {
+          "path": "src/experiments/infrastructure/base_prompt_filteration.py",
+          "type": "REFERENCE",
+          "description": "BasePromptFilteration implementation for verification",
+          "lineStart": 1,
+          "lineEnd": 150
+        },
+        {
+          "path": "src/experiments/infrastructure/model_interface.py",
+          "type": "REFERENCE",
+          "description": "ModelInterface implementation for verification",
+          "lineStart": 1,
+          "lineEnd": 100
+        }
+      ],
+      "implementationGuide": "1. Read current infrastructure.md content\\n2. Replace code snippets with file references\\n3. Condense verbose explanations to rule-based format\\n4. Maintain critical base class patterns\\n5. Optimize cross-references\\n6. Focus on inheritance and dependency patterns\\n7. Keep critical warnings and rules",
+      "verificationCriteria": "Code snippets replaced with file references, verbose explanations condensed, critical patterns maintained, and file optimized for LLM consumption.",
+      "analysisResult": "Refine the entire docs/ folder to create efficient LLM reference guides by converting verbose documentation into concise, rule-based content with file references instead of code snippets, optimized for token efficiency and LLM consumption. The goal is to reduce documentation length by 50-70% while maintaining all critical information and improving LLM scanning efficiency."
+    },
+    {
+      "id": "42cb485c-2ea3-4769-8b03-c51bf24fad8f",
+      "name": "Optimize Knockout Mechanisms Documentation",
+      "description": "Refine knockout-mechanisms.md (306 lines) by replacing code snippets with file references, condensing verbose explanations, and focusing on patterns and rules while maintaining all critical implementation information. Keep file at appropriate length for complex interactions.",
+      "notes": "This file describes very specific interactions and can remain longer. Focus on replacing code snippets with file references and optimizing content structure.",
+      "status": "pending",
+      "dependencies": [],
+      "createdAt": "2025-07-20T23:48:18.967Z",
+      "updatedAt": "2025-07-20T23:48:18.967Z",
+      "relatedFiles": [
+        {
+          "path": "docs/knockout-mechanisms.md",
+          "type": "TO_MODIFY",
+          "description": "Knockout mechanisms documentation",
+          "lineStart": 1,
+          "lineEnd": 306
+        },
+        {
+          "path": "src/experiments/knockout/",
+          "type": "REFERENCE",
+          "description": "Knockout implementation directory for verification",
+          "lineStart": 1,
+          "lineEnd": 50
+        },
+        {
+          "path": "src/experiments/infrastructure/model_interface.py",
+          "type": "REFERENCE",
+          "description": "ModelInterface for verification",
+          "lineStart": 1,
+          "lineEnd": 100
+        }
+      ],
+      "implementationGuide": "1. Read current knockout-mechanisms.md content (306 lines)\\n2. Replace code snippets with file references\\n3. Condense verbose explanations to rule-based format\\n4. Focus on patterns and rules rather than detailed explanations\\n5. Maintain critical implementation information\\n6. Optimize cross-references\\n7. Keep file at appropriate length for complex interactions",
+      "verificationCriteria": "Code snippets replaced with file references, verbose explanations condensed, critical implementation patterns maintained, and file optimized for LLM consumption while preserving complex interaction details.",
+      "analysisResult": "Refine the entire docs/ folder to create efficient LLM reference guides by converting verbose documentation into concise, rule-based content with file references instead of code snippets, optimized for token efficiency and LLM consumption. The goal is to reduce documentation length by 50-70% while maintaining all critical information and improving LLM scanning efficiency."
+    },
+    {
+      "id": "4772da1c-49f5-4a51-b209-1aa3a93e45de",
+      "name": "Refine Experiment Runners Documentation",
+      "description": "Optimize experiment-runners.md (112 lines) by replacing code snippets with file references, condensing explanations, and focusing on runner types and dependencies. Maintain critical runner implementation rules.",
+      "notes": "This file covers critical experiment infrastructure. Must maintain all runner patterns while improving efficiency.",
+      "status": "pending",
+      "dependencies": [],
+      "createdAt": "2025-07-20T23:48:18.967Z",
+      "updatedAt": "2025-07-20T23:48:18.967Z",
+      "relatedFiles": [
+        {
+          "path": "docs/experiment-runners.md",
+          "type": "TO_MODIFY",
+          "description": "Experiment runners documentation",
+          "lineStart": 1,
+          "lineEnd": 112
+        },
+        {
+          "path": "src/experiments/runners/",
+          "type": "REFERENCE",
+          "description": "Runner implementations for verification",
+          "lineStart": 1,
+          "lineEnd": 50
+        }
+      ],
+      "implementationGuide": "1. Read current experiment-runners.md content\\n2. Replace code snippets with file references\\n3. Condense verbose explanations\\n4. Focus on runner types and dependencies\\n5. Maintain critical implementation rules\\n6. Optimize cross-references\\n7. Keep file at efficient length",
+      "verificationCriteria": "Code snippets replaced with file references, explanations condensed, critical runner patterns maintained, and file optimized for LLM consumption.",
+      "analysisResult": "Refine the entire docs/ folder to create efficient LLM reference guides by converting verbose documentation into concise, rule-based content with file references instead of code snippets, optimized for token efficiency and LLM consumption. The goal is to reduce documentation length by 50-70% while maintaining all critical information and improving LLM scanning efficiency."
+    },
+    {
+      "id": "20549184-5f8c-4df6-9973-ea2199535550",
+      "name": "Optimize Data Relationships Interface Documentation",
+      "description": "Refine data-relationships-interface.md (178 lines) by replacing code snippets with file references, condensing verbose explanations, and focusing on object relationships and interface patterns. Maintain critical data object hierarchy information.",
+      "notes": "This file covers critical data interfaces. Must maintain all object relationship patterns while improving efficiency.",
+      "status": "pending",
+      "dependencies": [],
+      "createdAt": "2025-07-20T23:48:18.967Z",
+      "updatedAt": "2025-07-20T23:48:18.967Z",
+      "relatedFiles": [
+        {
+          "path": "docs/data-relationships-interface.md",
+          "type": "TO_MODIFY",
+          "description": "Data relationships interface documentation",
+          "lineStart": 1,
+          "lineEnd": 178
+        },
+        {
+          "path": "src/data_ingestion/data_defs/data_defs.py",
+          "type": "REFERENCE",
+          "description": "Data definitions for verification",
+          "lineStart": 1,
+          "lineEnd": 200
+        },
+        {
+          "path": "src/utils/infra/data_object.py",
+          "type": "REFERENCE",
+          "description": "Data object base classes for verification",
+          "lineStart": 1,
+          "lineEnd": 100
+        }
+      ],
+      "implementationGuide": "1. Read current data-relationships-interface.md content\\n2. Replace code snippets with file references\\n3. Condense verbose explanations\\n4. Focus on object relationships and interface patterns\\n5. Maintain critical data object hierarchy\\n6. Optimize cross-references\\n7. Keep file at efficient length",
+      "verificationCriteria": "Code snippets replaced with file references, explanations condensed, critical data object patterns maintained, and file optimized for LLM consumption.",
+      "analysisResult": "Refine the entire docs/ folder to create efficient LLM reference guides by converting verbose documentation into concise, rule-based content with file references instead of code snippets, optimized for token efficiency and LLM consumption. The goal is to reduce documentation length by 50-70% while maintaining all critical information and improving LLM scanning efficiency."
+    },
+    {
+      "id": "9ec1bbbb-e7f1-4d26-a447-02acea0ebae1",
+      "name": "Refine Streamlit Infrastructure Documentation",
+      "description": "Optimize streamlit-infrastructure.md (214 lines) by replacing code snippets with file references, condensing verbose explanations, and focusing on component architecture patterns. Maintain critical UI base class information.",
+      "notes": "This file covers critical UI infrastructure. Must maintain all component patterns while improving efficiency.",
+      "status": "pending",
+      "dependencies": [],
+      "createdAt": "2025-07-20T23:48:18.967Z",
+      "updatedAt": "2025-07-20T23:48:18.967Z",
+      "relatedFiles": [
+        {
+          "path": "docs/streamlit-infrastructure.md",
+          "type": "TO_MODIFY",
+          "description": "Streamlit infrastructure documentation",
+          "lineStart": 1,
+          "lineEnd": 214
+        },
+        {
+          "path": "src/utils/streamlit/helpers/component.py",
+          "type": "REFERENCE",
+          "description": "Component base classes for verification",
+          "lineStart": 1,
+          "lineEnd": 100
+        },
+        {
+          "path": "src/app/",
+          "type": "REFERENCE",
+          "description": "App structure for verification",
+          "lineStart": 1,
+          "lineEnd": 50
+        }
+      ],
+      "implementationGuide": "1. Read current streamlit-infrastructure.md content\\n2. Replace code snippets with file references\\n3. Condense verbose explanations\\n4. Focus on component architecture patterns\\n5. Maintain critical UI base class information\\n6. Optimize cross-references\\n7. Keep file at efficient length",
+      "verificationCriteria": "Code snippets replaced with file references, explanations condensed, critical UI patterns maintained, and file optimized for LLM consumption.",
+      "analysisResult": "Refine the entire docs/ folder to create efficient LLM reference guides by converting verbose documentation into concise, rule-based content with file references instead of code snippets, optimized for token efficiency and LLM consumption. The goal is to reduce documentation length by 50-70% while maintaining all critical information and improving LLM scanning efficiency."
+    },
+    {
+      "id": "dbe3a96f-c921-4fee-8f60-f7334a0d621c",
+      "name": "Optimize Dataset Processing Flow Documentation",
+      "description": "Refine dataset-processing-flow.md (67 lines) by replacing code snippets with file references, condensing verbose explanations, and focusing on data flow patterns. Maintain critical data processing information.",
+      "notes": "This file covers data processing flow. Must maintain all data flow patterns while improving efficiency.",
+      "status": "pending",
+      "dependencies": [],
+      "createdAt": "2025-07-20T23:48:18.967Z",
+      "updatedAt": "2025-07-20T23:48:18.967Z",
+      "relatedFiles": [
+        {
+          "path": "docs/dataset-processing-flow.md",
+          "type": "TO_MODIFY",
+          "description": "Dataset processing flow documentation",
+          "lineStart": 1,
+          "lineEnd": 67
+        },
+        {
+          "path": "src/data_ingestion/datasets/download_dataset.py",
+          "type": "REFERENCE",
+          "description": "Dataset download implementation for verification",
+          "lineStart": 1,
+          "lineEnd": 100
+        },
+        {
+          "path": "src/data_ingestion/datasets/splitting.py",
+          "type": "REFERENCE",
+          "description": "Dataset splitting implementation for verification",
+          "lineStart": 1,
+          "lineEnd": 100
+        }
+      ],
+      "implementationGuide": "1. Read current dataset-processing-flow.md content\\n2. Replace code snippets with file references\\n3. Condense verbose explanations\\n4. Focus on data flow patterns\\n5. Maintain critical data processing information\\n6. Optimize cross-references\\n7. Keep file at efficient length",
+      "verificationCriteria": "Code snippets replaced with file references, explanations condensed, critical data flow patterns maintained, and file optimized for LLM consumption.",
+      "analysisResult": "Refine the entire docs/ folder to create efficient LLM reference guides by converting verbose documentation into concise, rule-based content with file references instead of code snippets, optimized for token efficiency and LLM consumption. The goal is to reduce documentation length by 50-70% while maintaining all critical information and improving LLM scanning efficiency."
+    },
+    {
+      "id": "a9c5b221-1353-465c-88c8-7c18ba90c765",
+      "name": "Optimize Analysis and Plotting Documentation",
+      "description": "Refine analysis-and-plotting.md (81 lines) by replacing code snippets with file references, condensing verbose explanations, and focusing on plot configuration patterns. Maintain critical visualization information.",
+      "notes": "This file covers analysis and plotting. Must maintain all visualization patterns while improving efficiency.",
+      "status": "pending",
+      "dependencies": [],
+      "createdAt": "2025-07-20T23:48:18.967Z",
+      "updatedAt": "2025-07-20T23:48:18.967Z",
+      "relatedFiles": [
+        {
+          "path": "docs/analysis-and-plotting.md",
+          "type": "TO_MODIFY",
+          "description": "Analysis and plotting documentation",
+          "lineStart": 1,
+          "lineEnd": 81
+        },
+        {
+          "path": "src/analysis/plots/",
+          "type": "REFERENCE",
+          "description": "Plot implementations for verification",
+          "lineStart": 1,
+          "lineEnd": 50
+        },
+        {
+          "path": "src/analysis/experiment_results/",
+          "type": "REFERENCE",
+          "description": "Experiment results for verification",
+          "lineStart": 1,
+          "lineEnd": 50
+        }
+      ],
+      "implementationGuide": "1. Read current analysis-and-plotting.md content\\n2. Replace code snippets with file references\\n3. Condense verbose explanations\\n4. Focus on plot configuration patterns\\n5. Maintain critical visualization information\\n6. Optimize cross-references\\n7. Keep file at efficient length",
+      "verificationCriteria": "Code snippets replaced with file references, explanations condensed, critical visualization patterns maintained, and file optimized for LLM consumption.",
+      "analysisResult": "Refine the entire docs/ folder to create efficient LLM reference guides by converting verbose documentation into concise, rule-based content with file references instead of code snippets, optimized for token efficiency and LLM consumption. The goal is to reduce documentation length by 50-70% while maintaining all critical information and improving LLM scanning efficiency."
+    },
+    {
+      "id": "5323cef2-da4c-458d-92b5-45f84675d857",
+      "name": "Optimize Utilities and Patterns Documentation",
+      "description": "Refine utilities-and-patterns.md (97 lines) by replacing code snippets with file references, condensing verbose explanations, and focusing on utility organization patterns. Maintain critical utility information.",
+      "notes": "This file covers utilities and patterns. Must maintain all utility patterns while improving efficiency.",
+      "status": "pending",
+      "dependencies": [],
+      "createdAt": "2025-07-20T23:48:18.967Z",
+      "updatedAt": "2025-07-20T23:48:18.967Z",
+      "relatedFiles": [
+        {
+          "path": "docs/utilities-and-patterns.md",
+          "type": "TO_MODIFY",
+          "description": "Utilities and patterns documentation",
+          "lineStart": 1,
+          "lineEnd": 97
+        },
+        {
+          "path": "src/utils/",
+          "type": "REFERENCE",
+          "description": "Utils directory for verification",
+          "lineStart": 1,
+          "lineEnd": 50
+        }
+      ],
+      "implementationGuide": "1. Read current utilities-and-patterns.md content\\n2. Replace code snippets with file references\\n3. Condense verbose explanations\\n4. Focus on utility organization patterns\\n5. Maintain critical utility information\\n6. Optimize cross-references\\n7. Keep file at efficient length",
+      "verificationCriteria": "Code snippets replaced with file references, explanations condensed, critical utility patterns maintained, and file optimized for LLM consumption.",
+      "analysisResult": "Refine the entire docs/ folder to create efficient LLM reference guides by converting verbose documentation into concise, rule-based content with file references instead of code snippets, optimized for token efficiency and LLM consumption. The goal is to reduce documentation length by 50-70% while maintaining all critical information and improving LLM scanning efficiency."
+    },
+    {
+      "id": "6c6bf85b-49d9-40aa-8313-534c85817532",
+      "name": "Optimize Setup and Environment Documentation",
+      "description": "Refine setup-and-environment.md (193 lines) by replacing code snippets with file references, condensing verbose explanations, and focusing on environment setup patterns. Maintain critical setup information.",
+      "notes": "This file covers setup and environment. Must maintain all setup patterns while improving efficiency.",
+      "status": "pending",
+      "dependencies": [],
+      "createdAt": "2025-07-20T23:48:18.967Z",
+      "updatedAt": "2025-07-20T23:48:18.967Z",
+      "relatedFiles": [
+        {
+          "path": "docs/setup-and-environment.md",
+          "type": "TO_MODIFY",
+          "description": "Setup and environment documentation",
+          "lineStart": 1,
+          "lineEnd": 193
+        },
+        {
+          "path": "scripts/",
+          "type": "REFERENCE",
+          "description": "Scripts directory for verification",
+          "lineStart": 1,
+          "lineEnd": 50
+        }
+      ],
+      "implementationGuide": "1. Read current setup-and-environment.md content\\n2. Replace code snippets with file references\\n3. Condense verbose explanations\\n4. Focus on environment setup patterns\\n5. Maintain critical setup information\\n6. Optimize cross-references\\n7. Keep file at efficient length",
+      "verificationCriteria": "Code snippets replaced with file references, explanations condensed, critical setup patterns maintained, and file optimized for LLM consumption.",
+      "analysisResult": "Refine the entire docs/ folder to create efficient LLM reference guides by converting verbose documentation into concise, rule-based content with file references instead of code snippets, optimized for token efficiency and LLM consumption. The goal is to reduce documentation length by 50-70% while maintaining all critical information and improving LLM scanning efficiency."
+    },
+    {
+      "id": "62370fb4-b447-44fc-b950-96b0fed8ce39",
+      "name": "Optimize Streamlit App Pages Documentation",
+      "description": "Refine streamlit-app-pages.md (330 lines) by replacing code snippets with file references, condensing verbose explanations, and focusing on page architecture patterns. Maintain critical navigation information.",
+      "notes": "This file covers Streamlit app pages. Must maintain all navigation patterns while improving efficiency.",
+      "status": "pending",
+      "dependencies": [],
+      "createdAt": "2025-07-20T23:48:18.967Z",
+      "updatedAt": "2025-07-20T23:48:18.967Z",
+      "relatedFiles": [
+        {
+          "path": "docs/streamlit-app-pages.md",
+          "type": "TO_MODIFY",
+          "description": "Streamlit app pages documentation",
+          "lineStart": 1,
+          "lineEnd": 330
+        },
+        {
+          "path": "src/app/page/",
+          "type": "REFERENCE",
+          "description": "Page implementations for verification",
+          "lineStart": 1,
+          "lineEnd": 50
+        }
+      ],
+      "implementationGuide": "1. Read current streamlit-app-pages.md content\\n2. Replace code snippets with file references\\n3. Condense verbose explanations\\n4. Focus on page architecture patterns\\n5. Maintain critical navigation information\\n6. Optimize cross-references\\n7. Keep file at efficient length",
+      "verificationCriteria": "Code snippets replaced with file references, explanations condensed, critical navigation patterns maintained, and file optimized for LLM consumption.",
+      "analysisResult": "Refine the entire docs/ folder to create efficient LLM reference guides by converting verbose documentation into concise, rule-based content with file references instead of code snippets, optimized for token efficiency and LLM consumption. The goal is to reduce documentation length by 50-70% while maintaining all critical information and improving LLM scanning efficiency."
+    },
+    {
+      "id": "95f8ecf2-21d0-47a4-b9b0-f19ce4a6a498",
+      "name": "Optimize Streamlit App Components Documentation",
+      "description": "Refine streamlit-app-components.md (310 lines) by replacing code snippets with file references, condensing verbose explanations, and focusing on component architecture patterns. Maintain critical component information.",
+      "notes": "This file covers Streamlit app components. Must maintain all component patterns while improving efficiency.",
+      "status": "pending",
+      "dependencies": [],
+      "createdAt": "2025-07-20T23:48:18.967Z",
+      "updatedAt": "2025-07-20T23:48:18.967Z",
+      "relatedFiles": [
+        {
+          "path": "docs/streamlit-app-components.md",
+          "type": "TO_MODIFY",
+          "description": "Streamlit app components documentation",
+          "lineStart": 1,
+          "lineEnd": 310
+        },
+        {
+          "path": "src/app/components/",
+          "type": "REFERENCE",
+          "description": "Component implementations for verification",
+          "lineStart": 1,
+          "lineEnd": 50
+        }
+      ],
+      "implementationGuide": "1. Read current streamlit-app-components.md content\\n2. Replace code snippets with file references\\n3. Condense verbose explanations\\n4. Focus on component architecture patterns\\n5. Maintain critical component information\\n6. Optimize cross-references\\n7. Keep file at efficient length",
+      "verificationCriteria": "Code snippets replaced with file references, explanations condensed, critical component patterns maintained, and file optimized for LLM consumption.",
+      "analysisResult": "Refine the entire docs/ folder to create efficient LLM reference guides by converting verbose documentation into concise, rule-based content with file references instead of code snippets, optimized for token efficiency and LLM consumption. The goal is to reduce documentation length by 50-70% while maintaining all critical information and improving LLM scanning efficiency."
+    },
+    {
+      "id": "90c394ab-7b14-47c6-95cf-45ac80f133fd",
+      "name": "Update README.md Based on Refined Content",
+      "description": "Update README.md to reflect the refined documentation structure and content. Ensure navigation by use case is accurate, cross-references are updated, and the gateway provides efficient access to the optimized documentation.",
+      "notes": "This task ensures README.md accurately reflects the refined documentation structure and provides efficient navigation.",
+      "status": "pending",
+      "dependencies": [
+        {
+          "taskId": "5142d9f3-01c8-4208-8e5a-8f0010d76467"
+        },
+        {
+          "taskId": "af457978-17d4-4db3-bf17-84f1b88a1ec5"
+        },
+        {
+          "taskId": "c8555a97-4462-4b20-8c1e-ea99a7c0c05b"
+        },
+        {
+          "taskId": "42cb485c-2ea3-4769-8b03-c51bf24fad8f"
+        },
+        {
+          "taskId": "4772da1c-49f5-4a51-b209-1aa3a93e45de"
+        },
+        {
+          "taskId": "20549184-5f8c-4df6-9973-ea2199535550"
+        },
+        {
+          "taskId": "9ec1bbbb-e7f1-4d26-a447-02acea0ebae1"
+        },
+        {
+          "taskId": "dbe3a96f-c921-4fee-8f60-f7334a0d621c"
+        },
+        {
+          "taskId": "a9c5b221-1353-465c-88c8-7c18ba90c765"
+        },
+        {
+          "taskId": "5323cef2-da4c-458d-92b5-45f84675d857"
+        },
+        {
+          "taskId": "6c6bf85b-49d9-40aa-8313-534c85817532"
+        },
+        {
+          "taskId": "62370fb4-b447-44fc-b950-96b0fed8ce39"
+        },
+        {
+          "taskId": "95f8ecf2-21d0-47a4-b9b0-f19ce4a6a498"
+        }
+      ],
+      "createdAt": "2025-07-20T23:48:18.967Z",
+      "updatedAt": "2025-07-20T23:48:18.967Z",
+      "relatedFiles": [
+        {
+          "path": "docs/README.md",
+          "type": "TO_MODIFY",
+          "description": "Updated README.md to reflect refined documentation",
+          "lineStart": 1,
+          "lineEnd": 80
+        }
+      ],
+      "implementationGuide": "1. Review all refined documentation files\\n2. Update navigation by use case sections\\n3. Update cross-references to reflect new content\\n4. Ensure task-based navigation is accurate\\n5. Verify file references are current\\n6. Optimize gateway efficiency\\n7. Maintain critical navigation information",
+      "verificationCriteria": "README.md accurately reflects refined documentation structure, navigation by use case is updated, cross-references are current, and gateway provides efficient access to optimized documentation.",
+      "analysisResult": "Refine the entire docs/ folder to create efficient LLM reference guides by converting verbose documentation into concise, rule-based content with file references instead of code snippets, optimized for token efficiency and LLM consumption. The goal is to reduce documentation length by 50-70% while maintaining all critical information and improving LLM scanning efficiency."
+    },
+    {
+      "id": "9c099a64-5de8-4627-afda-df0241bb1e74",
+      "name": "Create Documentation Maintenance Manual",
+      "description": "Create a comprehensive manual that provides guidelines for maintaining efficient documentation in the future. Include standards for file references, rule-based content, cross-references, and length optimization. This manual should be available on request, not always applied.",
+      "notes": "This manual will ensure future documentation maintains the efficiency standards established in this task. Should be available on request, not always applied.",
+      "status": "pending",
+      "dependencies": [
+        {
+          "taskId": "5142d9f3-01c8-4208-8e5a-8f0010d76467"
+        },
+        {
+          "taskId": "af457978-17d4-4db3-bf17-84f1b88a1ec5"
+        },
+        {
+          "taskId": "c8555a97-4462-4b20-8c1e-ea99a7c0c05b"
+        },
+        {
+          "taskId": "42cb485c-2ea3-4769-8b03-c51bf24fad8f"
+        },
+        {
+          "taskId": "4772da1c-49f5-4a51-b209-1aa3a93e45de"
+        },
+        {
+          "taskId": "20549184-5f8c-4df6-9973-ea2199535550"
+        },
+        {
+          "taskId": "9ec1bbbb-e7f1-4d26-a447-02acea0ebae1"
+        },
+        {
+          "taskId": "dbe3a96f-c921-4fee-8f60-f7334a0d621c"
+        },
+        {
+          "taskId": "a9c5b221-1353-465c-88c8-7c18ba90c765"
+        },
+        {
+          "taskId": "5323cef2-da4c-458d-92b5-45f84675d857"
+        },
+        {
+          "taskId": "6c6bf85b-49d9-40aa-8313-534c85817532"
+        },
+        {
+          "taskId": "62370fb4-b447-44fc-b950-96b0fed8ce39"
+        },
+        {
+          "taskId": "95f8ecf2-21d0-47a4-b9b0-f19ce4a6a498"
+        },
+        {
+          "taskId": "90c394ab-7b14-47c6-95cf-45ac80f133fd"
+        }
+      ],
+      "createdAt": "2025-07-20T23:48:18.967Z",
+      "updatedAt": "2025-07-20T23:48:18.967Z",
+      "relatedFiles": [
+        {
+          "path": "docs/documentation-maintenance-manual.md",
+          "type": "CREATE",
+          "description": "Documentation maintenance manual for future reference",
+          "lineStart": 1,
+          "lineEnd": 200
+        }
+      ],
+      "implementationGuide": "1. Analyze the refined documentation patterns\\n2. Create standards for file reference format\\n3. Define rule-based content guidelines\\n4. Establish cross-reference standards\\n5. Set length optimization rules\\n6. Create editing guidelines for each documentation type\\n7. Include examples of good and bad documentation practices\\n8. Make manual available on request only",
+      "verificationCriteria": "Comprehensive documentation maintenance manual created with clear guidelines for maintaining efficient documentation, including file reference standards, rule-based content guidelines, cross-reference standards, and length optimization rules. Manual is available on request only.",
+      "analysisResult": "Refine the entire docs/ folder to create efficient LLM reference guides by converting verbose documentation into concise, rule-based content with file references instead of code snippets, optimized for token efficiency and LLM consumption. The goal is to reduce documentation length by 50-70% while maintaining all critical information and improving LLM scanning efficiency."
+    }
+  ]
 }
