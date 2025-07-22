@@ -34,7 +34,7 @@ dependencies = [
     "matplotlib==3.9.2",
     "pillow==10.4.0",
     "jsonpickle==4.0.5",
-    "mamba-ssm[causal-conv1d]==2.2.4",
+    # mamba-ssm moved to optional dependencies due to CUDA requirement
     "more-itertools==10.7.0",
     "frozendict==2.4.6",
     "devtools==0.12.2",
@@ -67,6 +67,46 @@ typing = [
     "beartype==0.19.0",
     "jaxtyping==0.2.36",
 ]
+
+# GPU optimization with CUDA kernels and mamba-ssm (Linux x86_64 only)
+gpu = [
+    "mamba-ssm[causal-conv1d]==2.2.4; sys_platform == 'linux' and platform_machine == 'x86_64'",
+]
+
+# CPU-only mode - analysis and visualization without mamba-ssm
+cpu = [
+    # CPU-only installation - mamba models will not be available
+    # This allows running analysis, plotting, and other components
+    # Use this for development on non-CUDA systems
+]
+
+[tool.uv]
+# Override dependencies to prevent CUDA-only packages on non-Linux systems
+override-dependencies = [
+    "mamba-ssm>=2.2.4; sys_platform == 'linux' and platform_machine == 'x86_64'",
+    "causal-conv1d>=1.2.0; sys_platform == 'linux' and platform_machine == 'x86_64'",
+]
+
+# Build configuration for problematic packages
+no-build-isolation-package = [
+    "mamba-ssm",     # Requires torch as build dependency
+    "causal-conv1d", # Requires CUDA toolkit at build time
+]
+
+# Build constraints to ensure proper build order
+build-constraint-dependencies = [
+    "torch>=2.5.1",      # Ensure torch is available for mamba-ssm build
+    "setuptools>=75.0.0", # Modern setuptools for better build support
+    "ninja",              # Build system for CUDA packages
+    "packaging",          # Required for version parsing in builds
+]
+
+# Additional configuration for CUDA builds
+config-settings = {
+    # CUDA build settings (only applied when building from source)
+    "TORCH_CUDA_ARCH_LIST" = "7.5;8.0;8.6;8.9;9.0",  # Support modern GPU architectures
+    "CMAKE_BUILD_PARALLEL_LEVEL" = "4",                # Parallel build for faster compilation
+}
 
 [tool.setuptools.packages.find]
 where = ["."]

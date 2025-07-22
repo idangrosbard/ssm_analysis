@@ -1,0 +1,27 @@
+---
+description: final_plots Streamlit app rules
+globs: src/app/*.py
+alwaysApply: false
+---
+- Pages ([StreamlitPage](mdc:ssm_analysis/src/utils/streamlit/helpers/component.py)): go to [app/pages](mdc:ssm_analysis/src/app/page/__init__.py) (for example: [p03_data_requirements.py](mdc:ssm_analysis/src/app/page/p03_data_requirements.py) , [p04_heatmap_creation.py](mdc:ssm_analysis/src/app/page/p04_heatmap_creation.py) , etc...).
+  - Pages supposed to manage the high-level logic of the page. It should call many components.
+  - Data can be passed through components return type, or using session keys.
+  - Pages should do the cached data loading at the beginning, and use @CachedFunction.render() functionallity to allow the user to clear the cache.
+- Components ([StreamlitComponent](mdc:ssm_analysis/src/utils/streamlit/helpers/component.py)) go to [app/components](mdc:ssm_analysis/src/app/components/__init__.py), the files that they are in supposed to be organized correctly.
+  - Component should be reletively small, defined in a generic, self-contained way, so they can be reused in other pages.
+  - Components that are very specific to a Page should be defined in the same page file.
+  - The components are constantly evolving and should be changed, expanded and genralied over time in order to fit more purposes and improve the code reusability
+  - The components should avoid loading data, and better receive it as an input in the constructor. It should load data only if it's paremetrized by the user.
+- There should be heavily use of [app_utils.py](mdc:ssm_analysis/src/app/app_utils.py) and [streamlit_utils.py](mdc:ssm_analysis/src/utils/streamlit/helpers/__init__.py)
+- Every page should import and constatly work with the following files:
+  - Pages should be very light in logic in it's render function. And mostly use (and reuse) components.
+  - Streamlit App related consts should go to [app_consts.py](mdc:ssm_analysis/src/app/app_consts.py) (More general project related constants should to [consts.py](mdc:ssm_analysis/src/core/consts.py) like the rest of the project)
+  - Texts should be defined in [texts.py](mdc:ssm_analysis/src/app/texts.py)
+  - data manipulations should go to [data_store.py](mdc:ssm_analysis/src/app/data_store.py) and use decorated [CacheWithDependencies](mdc:ssm_analysis/src/utils/streamlit/helpers/cache_with_dependencies.py)
+  - Session keys:
+    - Should be defined in the beginning of the page file. Using the [session_keys_base](mdc:ssm_analysis/src/utils/streamlit/helpers/session_keys_base.py) - This utility helps manage the state of the apps using SessionKey.
+    - Should defined using [SessionKeysBase](mdc:ssm_analysis/src/utils/streamlit/helpers/session_keys_base.py)
+    - Should use [SessionKeys](mdc:ssm_analysis/src/utils/streamlit/helpers/session_keys.py) to pass the keys to the components.
+  - generalized components should go to app/components dir
+- The streamlit app is for internal use, and it's convinient to see the raw errors on the screen. No need to handle errors that just wraps the error, only if there is a reason to handle this error (for example if we want it to prevent from stopping the app)
+- Long code sections should use regions to break down logical parts
