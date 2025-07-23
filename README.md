@@ -139,23 +139,28 @@ ssm_analysis_public/
 This project includes comprehensive modular documentation to support development and research reproducibility:
 
 ### 📚 Documentation Index
+
 - **[Documentation Overview](docs/README.md)** - Complete navigation hub for all documentation modules
 
 ### 🔧 Development Guidelines
+
 - **[High-Level Rules](shrimp-rules.md)** - Critical coordination rules and project principles
 - **[Core Modules Coordination](docs/core-modules.md)** - Critical 3-file coordination pattern (highest priority)
 - **[Infrastructure Documentation](docs/infrastructure.md)** - Base classes and dependency management
 - **[Utilities and Patterns](docs/utilities-and-patterns.md)** - Utility organization standards
 
 ### 🧪 Experimental Framework
+
 - **[Experiment Runners](docs/experiment-runners.md)** - Runner types and implementation patterns
 - **[Data Interfaces](docs/data-interfaces.md)** - Object-oriented data entities and interaction patterns
 - **[Analysis and Plotting](docs/analysis-and-plotting.md)** - Visualization components and configuration
 
 ### 🛠️ Environment and Setup
+
 - **[Setup and Environment](docs/setup-and-environment.md)** - Package management and reproducibility requirements
 
 ### 🎨 User Interface
+
 - **[Streamlit Infrastructure](docs/streamlit-infrastructure.md)** - UI component architecture and patterns (coming soon)
 - **[Streamlit App Pages](docs/streamlit-app-pages.md)** - Page organization and navigation system (coming soon)
 
@@ -286,7 +291,7 @@ Some models or datasets used in this project may require authentication with the
 
 - If `HUGGINGFACE_TOKEN` is set, the code will automatically use it to authenticate with the HuggingFace Hub when loading models or tokenizers.
 - If the variable is not set, the code will print a message and attempt to proceed without authentication (which may fail for private/gated models).
-- For more information on obtaining and using a HuggingFace token, see the official HuggingFace documentation: https://huggingface.co/docs/hub/security-tokens
+- For more information on obtaining and using a HuggingFace token, see the official HuggingFace documentation: <https://huggingface.co/docs/hub/security-tokens>
 
 No further setup is required in the code—just set the environment variable before running your scripts or notebooks.
 
@@ -318,16 +323,20 @@ This automatically:
 - If no CUDA: PyTorch will be installed as CPU-only
 - The exact version depends on your system's CUDA driver version
 
-### Example on our systems:
+### Reproducible Lock Files
 
-On a system with CUDA 12.4, the script will automatically:
+The project uses **dual lock files** for reproducible installations:
 
-1. Detect CUDA 12.4
-2. Install PyTorch 2.5.1 with appropriate CUDA binaries
-3. Install mamba-ssm (which builds against the installed PyTorch)
-4. Install all project dependencies and optional extras
+- **`uv.cuda.lock`**: Optimized for GPU systems with CUDA dependencies
+- **`uv.cpu.lock`**: Optimized for CPU-only systems
 
-The installation is now much simpler and more reliable than the previous step-by-step approach.
+The installation script automatically:
+
+1. **Detects your system capabilities** (CPU vs GPU/CUDA)
+2. **Copies the appropriate lock file** to `uv.lock` for exact dependency reproduction
+3. **Cleans up the temporary lock file** when finished
+
+This ensures faster, more reliable installations while maintaining reproducibility across different environments.
 
 ## Citation
 

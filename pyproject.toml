@@ -70,14 +70,12 @@ typing = [
 
 # GPU optimization with CUDA kernels and mamba-ssm (Linux x86_64 only)
 gpu = [
-    "mamba-ssm[causal-conv1d]==2.2.4; sys_platform == 'linux' and platform_machine == 'x86_64'",
+    "mamba-ssm[causal-conv1d]==2.2.4",
 ]
 
 # CPU-only mode - analysis and visualization without mamba-ssm
 cpu = [
-    # CPU-only installation - mamba models will not be available
-    # This allows running analysis, plotting, and other components
-    # Use this for development on non-CUDA systems
+    "mamba-ssm==2.2.4",
 ]
 
 [tool.uv]
@@ -100,13 +98,6 @@ build-constraint-dependencies = [
     "ninja",              # Build system for CUDA packages
     "packaging",          # Required for version parsing in builds
 ]
-
-# Additional configuration for CUDA builds
-config-settings = {
-    # CUDA build settings (only applied when building from source)
-    "TORCH_CUDA_ARCH_LIST" = "7.5;8.0;8.6;8.9;9.0",  # Support modern GPU architectures
-    "CMAKE_BUILD_PARALLEL_LEVEL" = "4",                # Parallel build for faster compilation
-}
 
 [tool.setuptools.packages.find]
 where = ["."]
