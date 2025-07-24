@@ -102,13 +102,19 @@ fi
 # Apply patches
 echo "🔧 Applying patches..."
 
-# Patch streamlit-pydantic
+echo "🔧 streamlit-pydantic patch"
 STREAMLIT_PYDANTIC_FILE=".venv/lib/python3.12/site-packages/streamlit_pydantic/settings.py"
 if [ -f "$STREAMLIT_PYDANTIC_FILE" ]; then
-    sed -i 's/from pydantic import BaseSettings/from pydantic_settings import BaseSettings/' "$STREAMLIT_PYDANTIC_FILE"
+    if [ "$OS_TYPE" = "darwin" ]; then
+        # macOS (BSD) sed
+        sed -i '' 's/from pydantic import BaseSettings/from pydantic_settings import BaseSettings/' "$STREAMLIT_PYDANTIC_FILE"
+    else
+        # Linux (GNU) sed
+        sed -i 's/from pydantic import BaseSettings/from pydantic_settings import BaseSettings/' "$STREAMLIT_PYDANTIC_FILE"
+    fi
 fi
 
-# Patch causal_conv1d
+echo "🔧 causal_conv1d patch"
 CAUSAL_CONV1D_FILE=".venv/lib/python3.12/site-packages/causal_conv1d/__init__.py"
 if [ -f "$CAUSAL_CONV1D_FILE" ]; then
     cat > "$CAUSAL_CONV1D_FILE" << 'EOF'
@@ -123,6 +129,8 @@ except (ImportError, RuntimeError):
     causal_conv1d_fn, causal_conv1d_update = None, None
 EOF
 fi
+
+echo "🔍 Verifying successful installation..."
 
 # Test installation
 python -c "

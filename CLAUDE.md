@@ -32,6 +32,7 @@ chmod +x scripts/install.sh
 ```
 
 **Features:**
+
 - ✅ **Auto-installs UV** if not present (no sudo required)
 - ✅ **Detects system capabilities** (OS, architecture, CUDA)
 - ✅ **Smart GPU/CPU detection** (5 different detection methods)
@@ -40,11 +41,13 @@ chmod +x scripts/install.sh
 - ✅ **Graceful fallback** from GPU to CPU mode if needed
 
 **Debug Mode:**
+
 ```bash
 DEBUG=1 ./scripts/install.sh
 ```
 
 **Manual Installation Options:**
+
 ```bash
 # CPU-only installation (analysis/visualization only - no mamba-ssm)
 uv sync --extra typing --extra streamlit --extra dev --extra cpu
@@ -171,15 +174,18 @@ When adding new experiment types, datasets, or model architectures:
 ## Environment Requirements
 
 ### Required for All Installations
+
 - **Python 3.12** (required - not compatible with other versions)
 - **UV package manager** (required - pip not supported)
 
 ### GPU Installation (Recommended for Performance)
+
 - **Linux** (required for causal-conv1d compilation)
 - **NVIDIA GPU** with CUDA 11.6+
 - **CUDA drivers and toolkit**
 
 ### CPU-Only Installation (Analysis/Visualization Mode)
+
 - **Any OS** (Linux, macOS, Windows)
 - **No GPU required**
 - **Limited functionality**: Analysis, plotting, and development tools only
@@ -205,6 +211,12 @@ When adding new experiment types, datasets, or model architectures:
 
 Comprehensive documentation in `docs/`:
 
-- Read `docs/README.md` for complete navigation
+- Read `docs/README.md` for complete navigation and context retrieval.
 - See `shrimp-rules.md` for high-level coordination rules
 - Check model-specific documentation for architecture details
+
+## Development Practices
+
+### Type Handling
+
+- From now on don't use Optional, use "| None" don't use List, use "list", don't use Dict, use "dict"

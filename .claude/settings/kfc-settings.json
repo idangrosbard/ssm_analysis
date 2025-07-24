@@ -1,0 +1,24 @@
+{
+  "paths": {
+    "specs": ".kiro/specs",
+    "steering": ".kiro/steering",
+    "settings": ".kiro/settings"
+  },
+  "views": {
+    "specs": {
+      "visible": true
+    },
+    "steering": {
+      "visible": true
+    },
+    "mcp": {
+      "visible": false
+    },
+    "hooks": {
+      "visible": false
+    },
+    "settings": {
+      "visible": false
+    }
+  }
+}
