@@ -130,50 +130,8 @@ ssm_analysis_public/
 ├── tests/                 # Test files
 ├── data/                  # Data directory
 ├── final_plots/           # Generated plots and figures
-├── docs/                  # Comprehensive documentation
 └── setup.py              # Package configuration
 ```
-
-## Documentation
-
-This project includes comprehensive modular documentation to support development and research reproducibility:
-
-### 📚 Documentation Index
-
-- **[Documentation Overview](docs/README.md)** - Complete navigation hub for all documentation modules
-
-### 🔧 Development Guidelines
-
-- **[High-Level Rules](shrimp-rules.md)** - Critical coordination rules and project principles
-- **[Core Modules Coordination](docs/core-modules.md)** - Critical 3-file coordination pattern (highest priority)
-- **[Infrastructure Documentation](docs/infrastructure.md)** - Base classes and dependency management
-- **[Utilities and Patterns](docs/utilities-and-patterns.md)** - Utility organization standards
-
-### 🧪 Experimental Framework
-
-- **[Experiment Runners](docs/experiment-runners.md)** - Runner types and implementation patterns
-- **[Data Interfaces](docs/data-interfaces.md)** - Object-oriented data entities and interaction patterns
-- **[Analysis and Plotting](docs/analysis-and-plotting.md)** - Visualization components and configuration
-
-### 🛠️ Environment and Setup
-
-- **[Setup and Environment](docs/setup-and-environment.md)** - Package management and reproducibility requirements
-
-### 🎨 User Interface
-
-- **[Streamlit Infrastructure](docs/streamlit-infrastructure.md)** - UI component architecture and patterns (coming soon)
-- **[Streamlit App Pages](docs/streamlit-app-pages.md)** - Page organization and navigation system (coming soon)
-
-### 📖 Quick Start for Developers
-
-1. **New to the project?** Start with [High-Level Rules](shrimp-rules.md) for critical coordination requirements
-2. **Adding new experiments?** See [Experiment Runners](docs/experiment-runners.md) and [Infrastructure Documentation](docs/infrastructure.md)
-3. **Modifying core constants?** See [Core Modules Coordination](docs/core-modules.md) (highest priority)
-4. **Working with data?** See [Data Interfaces](docs/data-interfaces.md) for object-oriented patterns
-5. **Creating utilities?** See [Utilities and Patterns](docs/utilities-and-patterns.md) for organization standards
-6. **Environment issues?** See [Setup and Environment](docs/setup-and-environment.md) for reproducibility requirements
-
-**Note**: All documentation follows the project's sophisticated architecture and emphasizes reproducibility requirements for research consistency.
 
 ## Usage
 
