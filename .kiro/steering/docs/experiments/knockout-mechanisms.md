@@ -1,3 +1,8 @@
+---
+description: Model Intervention and Knockout Implementations
+inclusion: manual
+---
+
 # Knockout Mechanisms Documentation
 
 ## Overview
@@ -273,12 +278,12 @@ logits = interface.generate_logits(input_ids, num_to_masks=num_to_masks)
 
 ## Cross-References
 
-- **Infrastructure Documentation**: See [docs/infrastructure.md](infrastructure.md) for ModelInterface usage patterns
+- **Infrastructure Documentation**: Use #infrastructure for ModelInterface usage patterns
 - **Core Types**: See `src/core/types.py` for `KnockoutMode` and `FeatureCategory` definitions
-- **Experiment Runners**: See [docs/experiment-runners.md](experiment-runners.md) for how knockout is used in experiments
-- **Core Modules**: See [docs/core-modules.md](core-modules.md) for type definitions and constants
-- **Data Interfaces**: See [docs/data-relationships-interface.md](data-relationships-interface.md) for data object patterns
-- **Setup and Environment**: See [docs/setup-and-environment.md](setup-and-environment.md) for model setup
+- **Experiment Runners**: Use #experiment-runners for how knockout is used in experiments
+- **Core Modules**: Use #core-modules for type definitions and constants
+- **Data Interfaces**: Use #data-relationships-interface for data object patterns
+- **Setup and Environment**: Use #setup-and-environment for model setup
 
 ## Best Practices
 

@@ -1,3 +1,8 @@
+---
+description: Code Organization Standards
+inclusion: manual
+---
+
 # Utilities and Patterns
 
 Utility organization standards and common patterns for `src/utils/` directory.
@@ -80,11 +85,11 @@ Use methods from `types_utils.py` for type safety and common datastructures oper
 
 ## Cross-References
 
-- **Core Modules**: See [docs/core-modules.md](core-modules.md) for constant definitions used in utilities
-- **Infrastructure**: See [docs/infrastructure.md](infrastructure.md) for base class patterns
-- **Setup and Environment**: See [docs/setup-and-environment.md](setup-and-environment.md) for environment setup
-- **Data Interfaces**: See [docs/data-relationships-interface.md](data-relationships-interface.md) for data object utilities
-- **Analysis and Plotting**: See [docs/analysis-and-plotting.md](analysis-and-plotting.md) for plotting utilities
+- **Core Modules**: Use #core-modules for constant definitions used in utilities
+- **Infrastructure**: Use #infrastructure for base class patterns
+- **Setup and Environment**: Use #setup-and-environment for environment setup
+- **Data Interfaces**: Use #data-relationships-interface for data object utilities
+- **Analysis and Plotting**: Use #analysis-and-plotting for plotting utilities
 
 ## Best Practices Summary
 

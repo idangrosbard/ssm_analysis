@@ -1,3 +1,8 @@
+---
+description: Data Processing Flow and Patterns
+inclusion: manual
+---
+
 # Dataset Processing Flow
 
 High-level data flow from raw datasets to experiment usage with persistent caching and consistency guarantees.
@@ -59,8 +64,8 @@ For counterfact dataset (can be adapted for other datasets):
 
 ## Cross-References
 
-- **Data Interfaces**: See [docs/data-relationships-interface.md](data-relationships-interface.md) for data object patterns
-- **Core Modules**: See [docs/core-modules.md](core-modules.md) for column definitions and constants
-- **Experiment Runners**: See [docs/experiment-runners.md](experiment-runners.md) for how data is used in experiments
-- **Setup and Environment**: See [docs/setup-and-environment.md](setup-and-environment.md) for file management
-- **Utilities**: See [docs/utilities-and-patterns.md](utilities-and-patterns.md) for data processing utilities 
+- **Data Interfaces**: Use #data-relationships-interface for data object patterns
+- **Core Modules**: Use #core-modules for column definitions and constants
+- **Experiment Runners**: Use #experiment-runners for how data is used in experiments
+- **Setup and Environment**: Use #setup-and-environment for file management
+- **Utilities**: Use #utilities-and-patterns for data processing utilities

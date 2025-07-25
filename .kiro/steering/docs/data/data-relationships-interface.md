@@ -1,3 +1,8 @@
+---
+description: Data Object Interfaces and Relationships
+inclusion: manual
+---
+
 # Data Relationships Interface
 
 Object-oriented interfaces for handling files, dataframes, and transitioning between different data models. All data access should go through interface objects rather than direct file access.
@@ -159,13 +164,13 @@ evaluate_results = result_bank.to_evaluate_model_results()
 
 ## Cross-References
 
-- **Dataset Flow**: See [docs/dataset-processing-flow.md](dataset-processing-flow.md) for raw data processing flow
-- **Experiment Runners**: See [docs/experiment-runners.md](experiment-runners.md) for how runners interact with data objects
-- **Analysis and Plotting**: See [docs/analysis-and-plotting.md](analysis-and-plotting.md) for plotting configuration management
-- **Infrastructure**: See [docs/infrastructure.md](infrastructure.md) for base runner patterns
-- **Core Modules**: See [docs/core-modules.md](core-modules.md) for type definitions and constants
-- **Setup and Environment**: See [docs/setup-and-environment.md](setup-and-environment.md) for data file management
-- **Utilities**: See [docs/utilities-and-patterns.md](utilities-and-patterns.md) for data object utilities
+- **Dataset Flow**: Use #dataset-processing-flow for raw data processing flow
+- **Experiment Runners**: Use #experiment-runners for how runners interact with data objects
+- **Analysis and Plotting**: Use #analysis-and-plotting for plotting configuration management
+- **Infrastructure**: Use #infrastructure for base runner patterns
+- **Core Modules**: Use #core-modules for type definitions and constants
+- **Setup and Environment**: Use #setup-and-environment for data file management
+- **Utilities**: Use #utilities-and-patterns for data object utilities
 
 ## Critical Warnings
 

@@ -1,3 +1,8 @@
+---
+description: Testing Patterns and Procedures
+inclusion: manual
+---
+
 # Experiment Testing Framework
 
 This document provides a comprehensive guide to the experiment testing infrastructure in the SSM Analysis project, covering test patterns, baseline generation, and validation workflows.

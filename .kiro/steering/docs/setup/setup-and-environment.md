@@ -1,3 +1,8 @@
+---
+description: Package Management and Environment Setup
+inclusion: manual
+---
+
 # Setup and Environment
 
 Environment setup rules and file references for reproducible package management and configuration.
@@ -178,11 +183,11 @@ uv pip install -r requirements.txt
 
 ### Related Documentation
 
-- **Core Modules**: See [docs/core-modules.md](core-modules.md) for constant definitions
-- **Utilities**: See [docs/utilities-and-patterns.md](utilities-and-patterns.md) for utility organization
-- **Infrastructure**: See [docs/infrastructure.md](infrastructure.md) for base class patterns
-- **Experiment Runners**: See [docs/experiment-runners.md](experiment-runners.md) for experiment setup
-- **Data Interfaces**: See [docs/data-relationships-interface.md](data-relationships-interface.md) for data file management
+- **Core Modules**: Use #core-modules for constant definitions
+- **Utilities**: Use #utilities-and-patterns for utility organization
+- **Infrastructure**: Use #infrastructure for base class patterns
+- **Experiment Runners**: Use #experiment-runners for experiment setup
+- **Data Interfaces**: Use #data-relationships-interface for data file management
 - **Main README**: See README.md for detailed installation instructions
 
 ### Dependencies

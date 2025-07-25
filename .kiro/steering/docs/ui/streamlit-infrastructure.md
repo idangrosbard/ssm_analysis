@@ -1,3 +1,8 @@
+---
+description: UI Component Architecture
+inclusion: manual
+---
+
 # Streamlit Infrastructure
 
 Base classes and patterns for Streamlit component architecture. Focus on what LLMs need to know about UI component design.
@@ -205,9 +210,9 @@ src/app/
 
 ## Cross-References
 
-- **Core Modules**: See [docs/core-modules.md](core-modules.md) for data object patterns
-- **Infrastructure**: See [docs/infrastructure.md](infrastructure.md) for base class patterns
-- **Utilities**: See [docs/utilities-and-patterns.md](utilities-and-patterns.md) for utility patterns
-- **Data Interfaces**: See [docs/data-relationships-interface.md](data-relationships-interface.md) for data object patterns
-- **Setup and Environment**: See [docs/setup-and-environment.md](setup-and-environment.md) for environment setup
-- **Analysis and Plotting**: See [docs/analysis-and-plotting.md](analysis-and-plotting.md) for plotting components
+- **Core Modules**: Use #core-modules for data object patterns
+- **Infrastructure**: Use #infrastructure for base class patterns
+- **Utilities**: Use #utilities-and-patterns for utility patterns
+- **Data Interfaces**: Use #data-relationships-interface for data object patterns
+- **Setup and Environment**: Use #setup-and-environment for environment setup
+- **Analysis and Plotting**: Use #analysis-and-plotting for plotting components

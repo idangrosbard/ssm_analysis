@@ -1,3 +1,8 @@
+---
+description: Analysis and Plotting Components
+inclusion: manual
+---
+
 # Analysis and Plotting
 
 Plotting and visualization components in `src/analysis/plots/` for publication-quality research output and result presentation.
@@ -62,12 +67,12 @@ class ImageGridParams(BaseModel): # src/analysis/plots/image_combiner.py
 
 ## Cross-References
 
-- **Data Interfaces**: See [docs/data-relationships-interface.md](data-relationships-interface.md) for how plot plans coordinate with data objects
-- **Core Modules**: See [docs/core-modules.md](core-modules.md) for color scheme and constant definitions
-- **Experiment Runners**: See [docs/experiment-runners.md](experiment-runners.md) for how runners provide data for plotting
-- **Infrastructure**: See [docs/infrastructure.md](infrastructure.md) for base class patterns
-- **Setup and Environment**: See [docs/setup-and-environment.md](setup-and-environment.md) for file management
-- **Utilities**: See [docs/utilities-and-patterns.md](utilities-and-patterns.md) for plotting utilities
+- **Data Interfaces**: Use #data-relationships-interface for how plot plans coordinate with data objects
+- **Core Modules**: Use #core-modules for color scheme and constant definitions
+- **Experiment Runners**: Use #experiment-runners for how runners provide data for plotting
+- **Infrastructure**: Use #infrastructure for base class patterns
+- **Setup and Environment**: Use #setup-and-environment for file management
+- **Utilities**: Use #utilities-and-patterns for plotting utilities
 
 ## Critical Warnings
 

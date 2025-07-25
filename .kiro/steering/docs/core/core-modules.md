@@ -1,3 +1,8 @@
+---
+description: Core Module Coordination Patterns
+inclusion: always
+---
+
 # Core Module Coordination
 
 Critical 3-file coordination pattern for `src/core/consts.py`, `src/core/names.py`, `src/core/types.py`. **Highest priority** - mistakes here break the entire project.
@@ -163,10 +168,10 @@ class LocalConfig:
 
 ### Modules That Depend on Core Coordination
 
-- **Experiment Runners**: See [docs/experiment-runners.md](experiment-runners.md) for how runners use core constants
-- **Data Interfaces**: See [docs/data-relationships-interface.md](data-relationships-interface.md) for how data objects use core types
-- **Infrastructure**: See [docs/infrastructure.md](infrastructure.md) for how base classes use core enums
-- **Analysis and Plotting**: See [docs/analysis-and-plotting.md](analysis-and-plotting.md) for how plotting uses core constants
+- **Experiment Runners**: Use #experiment-runners for how runners use core constants
+- **Data Interfaces**: Use #data-relationships-interface for how data objects use core types
+- **Infrastructure**: Use #infrastructure for how base classes use core enums
+- **Analysis and Plotting**: Use #analysis-and-plotting for how plotting uses core constants
 
 ## Verification Checklist
 
@@ -187,4 +192,4 @@ When making changes to core modules, verify:
 
 ⚠️ **When in doubt, follow the established patterns exactly - don't improvise**
 
-⚠️ **Core module changes require coordination with the entire development team** 
+⚠️ **Core module changes require coordination with the entire development team**

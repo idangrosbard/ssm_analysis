@@ -1,3 +1,8 @@
+---
+description: Experiment Runner Types and Implementation Patterns
+inclusion: manual
+---
+
 # Experiment Runners Architecture
 
 Critical runner types, dependencies, and file locations for the experimental framework.
@@ -95,10 +100,10 @@ output_path = self.variation_paths.outputs_path / "heatmaps.h5"
 
 ## Cross-References
 
-- **Infrastructure Patterns**: See [docs/infrastructure.md](infrastructure.md) for base classes and infrastructure coordination
-- **Data Interfaces**: See [docs/data-relationships-interface.md](data-relationships-interface.md) for object-oriented data interaction patterns
-- **Analysis and Plotting**: See [docs/analysis-and-plotting.md](analysis-and-plotting.md) for visualization and plotting coordination
-- **Core Modules**: See [docs/core-modules.md](core-modules.md) for critical 3-file coordination patterns
+- **Infrastructure Patterns**: Use #infrastructure for base classes and infrastructure coordination
+- **Data Interfaces**: Use #data-relationships-interface for object-oriented data interaction patterns
+- **Analysis and Plotting**: Use #analysis-and-plotting for visualization and plotting coordination
+- **Core Modules**: Use #core-modules for critical 3-file coordination patterns
 
 ## Critical Warnings
 
@@ -108,4 +113,4 @@ output_path = self.variation_paths.outputs_path / "heatmaps.h5"
 
 ⚠️ **When in doubt, follow the established patterns exactly - don't improvise**
 
-⚠️ **Runner changes require coordination with the entire development team** 
+⚠️ **Runner changes require coordination with the entire development team**

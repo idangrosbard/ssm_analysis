@@ -1,65 +1,88 @@
 ---
-description: Documentation Navigation Guide
+description: Steering Navigation Guide
 inclusion: always
 ---
 
-# Documentation Navigation Guide
+# Steering Navigation Guide
 
-## How to Use README.md and /docs for Task Context
+## How to Use Steering Files for Task Context
 
-When working on tasks in this SSM Analysis project, always start by consulting the documentation to understand the relevant context and patterns.
+When working on tasks in this SSM Analysis project, always start by reading this navigation guide to understand which additional steering files to include based on your specific task type.
 
 ### Primary Navigation Flow
 
-**Use [docs/README.md](docs/README.md)** - LLM Navigation Guide that provides structured access to all documentation modules
-**Navigate to specific docs based on task type** using the Quick Navigation by Use Case section
-
-This documentation is designed for LLM agents to quickly understand project structure and navigate to relevant documentation modules.
+This steering navigation guide provides structured access to all steering modules organized by task type. Use the task-based navigation sections below to identify which steering files to include using the `#steering-name` format for manual inclusion.
 
 ### Quick Task-Based Navigation
 
 #### For New Development
-1. **docs/core-modules.md** - Critical coordination patterns
-2. **docs/infrastructure.md** - Base class understanding
-3. **docs/setup-and-environment.md** - Environment setup
+
+1. **#core-modules** - Critical 3-file coordination patterns
+2. **#infrastructure** - Base class understanding and patterns
+3. **#setup-and-environment** - Environment setup and package management
 
 #### For Experiment Development
-1. **docs/experiment-runners.md** - Runner patterns and dependencies
-2. **docs/data-relationships-interface.md** - Data object interactions
-3. **docs/dataset-processing-flow.md** - Data processing patterns
-4. **docs/analysis-and-plotting.md** - Visualization coordination
+
+1. **#experiment-runners** - Runner patterns and dependencies
+2. **#data-relationships-interface** - Data object interactions
+3. **#dataset-processing-flow** - Data processing patterns
+4. **#analysis-and-plotting** - Visualization coordination
 
 #### For Model Analysis
-1. **docs/infrastructure.md** - ModelInterface patterns
-2. **docs/knockout-mechanisms.md** - Model intervention patterns
-3. **docs/experiment-runners.md** - Analysis workflows
+
+1. **#infrastructure** - ModelInterface patterns and base classes
+2. **#knockout-mechanisms** - Model intervention patterns
+3. **#experiment-runners** - Analysis workflows and dependencies
 
 #### For UI Development
-1. **docs/streamlit-infrastructure.md** - UI component architecture
-2. **docs/streamlit-app-pages.md** - Navigation patterns
-3. **docs/streamlit-app-components.md** - Component implementations
 
-### Critical Documentation Rules
+1. **#streamlit-infrastructure** - UI component architecture
+2. **#streamlit-app-pages** - Navigation patterns and page structure
+3. **#streamlit-app-components** - Component implementations
 
-- **ALWAYS start with docs/README.md** for project context
-- **Use task-based navigation** to find relevant documentation quickly
-- **Follow cross-references** between documentation modules
-- **Check file references** for specific implementation details
-- **Consult multiple docs** for complex tasks spanning multiple areas
+### Critical Steering Rules
 
-### Available Documentation Modules
+- **ALWAYS start with this navigation guide** for task context
+- **Use task-based navigation** to identify relevant steering files
+- **Include steering files using #steering-name format** for manual inclusion
+- **Follow cross-references** between steering files for complete guidance
+- **Consult multiple steerings** for complex tasks spanning multiple areas
 
-- **analysis-and-plotting.md** - Visualization components and configuration
-- **core-modules.md** - Critical 3-file coordination pattern
-- **data-relationships-interface.md** - Data object interfaces and relationships
-- **dataset-processing-flow.md** - Raw data processing flow
-- **experiment-runners.md** - All 4 runner types and patterns
-- **experiment-testing.md** - Testing patterns and procedures
-- **infrastructure.md** - Base classes and dependency management
-- **knockout-mechanisms.md** - Model intervention implementations
-- **prompt-filteration.md** - Prompt filtering logic and patterns
-- **setup-and-environment.md** - Package management and reproducibility
-- **streamlit-app-components.md** - UI component implementations
-- **streamlit-app-pages.md** - Page architecture and navigation
-- **streamlit-infrastructure.md** - Component-based UI architecture
-- **utilities-and-patterns.md** - Code organization standards
+### Available Steering Modules
+
+#### Core Infrastructure
+
+- **#core-modules** - Critical 3-file coordination pattern
+- **#infrastructure** - Base classes and dependency management
+- **#utilities-and-patterns** - Code organization standards
+
+#### Experiment Framework
+
+- **#experiment-runners** - All 4 runner types and patterns
+- **#knockout-mechanisms** - Model intervention implementations
+- **#experiment-testing** - Testing patterns and procedures
+- **#prompt-filteration** - Prompt filtering logic and patterns
+
+#### Data Management
+
+- **#data-relationships-interface** - Data object interfaces and relationships
+- **#dataset-processing-flow** - Raw data processing flow
+
+#### Analysis and Visualization
+
+- **#analysis-and-plotting** - Visualization components and configuration
+
+#### User Interface
+
+- **#streamlit-infrastructure** - Component-based UI architecture
+- **#streamlit-app-pages** - Page architecture and navigation
+- **#streamlit-app-components** - UI component implementations
+
+#### Environment and Setup
+
+- **#setup-and-environment** - Package management and reproducibility
+
+#### Meta-Documentation
+
+- **#steering-guidelines** - Steering creation and best practices
+- **#steering-refinement** - Steering maintenance and refinement procedures

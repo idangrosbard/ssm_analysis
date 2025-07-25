@@ -1,3 +1,8 @@
+---
+description: UI Component Implementations
+inclusion: manual
+---
+
 # Streamlit App Components
 
 Reusable UI components for scientific computing interface. Focus on what LLMs need to know about component architecture and patterns.
@@ -286,9 +291,6 @@ class AnalysisPage(StreamlitPage):
             PlotComponent(results=results).render()
 ```
 
-
-```
-
 ## Best Practices
 
 1. **Type Safety**: Always use generic types for component return values
@@ -301,9 +303,9 @@ class AnalysisPage(StreamlitPage):
 
 ## Cross-References
 
-- **Streamlit Infrastructure**: See [docs/streamlit-infrastructure.md](streamlit-infrastructure.md) for base classes
-- **Core Modules**: See [docs/core-modules.md](core-modules.md) for data object patterns
-- **Utilities**: See [docs/utilities-and-patterns.md](utilities-and-patterns.md) for utility patterns
-- **Data Interfaces**: See [docs/data-relationships-interface.md](data-relationships-interface.md) for data object patterns
-- **Infrastructure**: See [docs/infrastructure.md](infrastructure.md) for base class patterns
-- **Setup and Environment**: See [docs/setup-and-environment.md](setup-and-environment.md) for environment setup
+- **Streamlit Infrastructure**: Use #streamlit-infrastructure for base classes
+- **Core Modules**: Use #core-modules for data object patterns
+- **Utilities**: Use #utilities-and-patterns for utility patterns
+- **Data Interfaces**: Use #data-relationships-interface for data object patterns
+- **Infrastructure**: Use #infrastructure for base class patterns
+- **Setup and Environment**: Use #setup-and-environment for environment setup

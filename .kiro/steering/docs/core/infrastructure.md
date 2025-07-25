@@ -1,3 +1,8 @@
+---
+description: Infrastructure Base Classes and Patterns
+inclusion: manual
+---
+
 # Infrastructure Patterns and Base Classes
 
 Critical base class patterns and inheritance rules for experiment development.
@@ -166,10 +171,10 @@ def run(self, with_dependencies: bool) -> None:
 
 ## Cross-References
 
-- **Experiment Runners**: See [docs/experiment-runners.md](experiment-runners.md) for how runners use infrastructure
-- **Data Interfaces**: See [docs/data-relationships-interface.md](data-relationships-interface.md) for how data objects use infrastructure
-- **Core Modules**: See [docs/core-modules.md](core-modules.md) for how infrastructure uses core constants
-- **Analysis and Plotting**: See [docs/analysis-and-plotting.md](analysis-and-plotting.md) for how plotting uses infrastructure
+- **Experiment Runners**: Use #experiment-runners for how runners use infrastructure
+- **Data Interfaces**: Use #data-relationships-interface for how data objects use infrastructure
+- **Core Modules**: Use #core-modules for how infrastructure uses core constants
+- **Analysis and Plotting**: Use #analysis-and-plotting for how plotting uses infrastructure
 
 ## Critical Warnings
 
@@ -179,4 +184,4 @@ def run(self, with_dependencies: bool) -> None:
 
 ⚠️ **When in doubt, follow the established patterns exactly - don't improvise**
 
-⚠️ **Infrastructure changes require coordination with the entire development team** 
+⚠️ **Infrastructure changes require coordination with the entire development team**

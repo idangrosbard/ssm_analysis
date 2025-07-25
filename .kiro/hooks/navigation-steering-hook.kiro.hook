@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "name": "Navigation Steering Hook",
+  "description": "Monitors the navigation steering file and triggers context analysis for task creation and steering updates. When creating tasks, it will reference .kiro/steering/docs-navigation.md to find relevant context to add, and continuously update the navigation file as needed.",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      ".kiro/steering/docs-navigation.md",
+      ".kiro/steering/*.md"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "The navigation steering file has been modified or a new steering file has been created. Please:\n\n1. Review the current .kiro/steering/docs-navigation.md file to understand the navigation structure\n2. If this is the beginning of a conversation or task creation, identify which relevant steering contexts should be included based on the task type\n3. If steering files have been added/modified, update the navigation guide to reflect the changes\n4. Ensure the navigation guide accurately represents all available steering modules and their purposes\n5. Maintain the task-based navigation structure for easy reference\n\nFocus on keeping the navigation guide current and helping users find the right steering context for their tasks."
+  }
+}
