@@ -207,13 +207,17 @@ When adding new experiment types, datasets, or model architectures:
 - For CPU-only systems: Use `uv sync --extra cpu` to avoid CUDA dependencies
 - For GPU systems: Use `uv sync --extra gpu` to include causal-conv1d optimization
 
-## Documentation
+## Extra Context retrieval for problem solving
 
-Comprehensive documentation in `docs/`:
+Comprehensive guidance available through kiro steering system `.kiro/steering/`:
 
-- Read `docs/README.md` for complete navigation and context retrieval.
-- See `shrimp-rules.md` for high-level coordination rules
-- Check model-specific documentation for architecture details
+1. Review the current .kiro/steering/docs-navigation.md file to understand the navigation structure
+2. If this is the beginning of a conversation or task creation, identify which relevant steering contexts should be included based on the task type
+3. If steering files have been added/modified, update the navigation guide to reflect the changes
+4. Ensure the navigation guide accurately represents all available steering modules and their purposes
+5. Maintain the task-based navigation structure for easy reference
+
+Focus on keeping the navigation guide current and helping users find the right steering context for their tasks
 
 ## Development Practices
 
