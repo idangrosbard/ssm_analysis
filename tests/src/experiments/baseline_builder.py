@@ -1,4 +1,4 @@
-"""Tests for the full pipeline experiment."""
+"""Baseline builder for test pipeline experiments."""
 
 import shutil
 from dataclasses import dataclass
@@ -31,9 +31,21 @@ from src.experiments.infrastructure.base_prompt_filteration import SelectiveProm
 from src.experiments.infrastructure.base_runner import InputParams, MetadataParams
 from src.experiments.runners.full_pipeline import FullPipelineParams, FullPipelineRunner
 
-HEATMAP_SIZE = 5
+# Test configuration constants
 BASELINES_DIR = Path(__file__).parent / "baselines"
 TEST_BASE_PATH = BASELINES_DIR / "full_pipeline"
+
+# Test model configurations - only test with subset
+TEST_MODEL_CONFIGS = [
+    (MODEL_ARCH.MAMBA1, "130M"),
+    (MODEL_ARCH.MAMBA2, "130M"),
+    (MODEL_ARCH.GPT2, "355M"),
+    (MODEL_ARCH.LLAMA3_2, "1B"),
+    (MODEL_ARCH.QWEN2, "0.5B"),
+    (MODEL_ARCH.QWEN2_5, "0.5B"),
+]
+
+# Original IDs for filtering dataset to subset
 ORIGINAL_IDS = cast(
     dict[SPLIT, list[TPromptOriginalIndex]],
     {
@@ -55,7 +67,7 @@ ORIGINAL_IDS = cast(
     },
 )
 
-# HARDCODED CODE PATHS FOR TESTS
+# Hardcoded code paths for monkey patching
 PATHS_PROJECT_DIR_PATH = "src.core.consts.PATHS.PROJECT_DIR"
 INFO_FLOW_FORWARD_EVAL_PATH = "src.experiments.runners.info_flow.forward_eval"
 INFO_FLOW_PRINT_INTERVAL_PATH = "src.experiments.runners.info_flow.PRINT_INTERVAL"
@@ -66,6 +78,7 @@ CREATE_RUN_ID_PATH = "src.experiments.infrastructure.base_runner.create_run_id"
 def get_test_full_pipeline_config(
     code_version_name: str, model_arch: MODEL_ARCH, model_size: str, with_plotting: bool
 ) -> FullPipelineRunner:
+    """Get base test configuration for full pipeline."""
     return FullPipelineRunner(
         variant_params=FullPipelineParams(
             model_arch=model_arch,
@@ -96,7 +109,6 @@ def get_test_full_pipeline_config(
             enforce_no_missing_outputs=True,
             with_generation=True,
         ),
-        # prompt_filteration=AllPromptFilteration(DATASETS.COUNTER_FACT),
         input_params=InputParams(
             dataset_name=DatasetName.counter_fact,
             filteration=ModelCorrectPromptFilteration(
@@ -115,7 +127,8 @@ def get_test_full_pipeline_config(
 
 def get_test_full_pipeline_config_per_model_arch(
     code_version_name: str, model_arch: MODEL_ARCH, model_size: str, with_plotting: bool
-):
+) -> FullPipelineRunner:
+    """Get configuration for specific model architecture - shared by baseline and tests."""
     if model_arch in [
         MODEL_ARCH.MAMBA1,
         MODEL_ARCH.MAMBA2,
@@ -142,79 +155,92 @@ def get_test_full_pipeline_config_per_model_arch(
         raise ValueError(f"Model architecture {model_arch} is not supported")
 
 
-def clean_and_generate_base_test_data(test_base_path: Path):
-    test_paths = PathsConfig(PROJECT_DIR=test_base_path)
+class BaselineBuilder:
+    """Generates baseline test data exactly as the current script does."""
 
-    # clean test base path
-    if test_base_path.exists():
-        shutil.rmtree(test_base_path)
-    test_base_path.mkdir(parents=True, exist_ok=True)
+    def __init__(self, test_base_path: Path):
+        self.test_base_path = test_base_path
 
-    # get sample of real data
-    dataset = {
-        split: load_splitted_counter_fact(
-            ALL_SPLITS_LITERAL,
-            align_to_known=False,
-        ).filter(lambda x: x[COLS.ORIGINAL_IDX] in original_ids)
-        for split, original_ids in ORIGINAL_IDS.items()
-    }
+    def clean_and_generate_base_test_data(self) -> None:
+        """Clean test directory and generate base test data filtered by ORIGINAL_IDS."""
+        test_paths = PathsConfig(PROJECT_DIR=self.test_base_path)
 
-    # save dataset to disk
-    DatasetDict(dataset).save_to_disk(test_paths.dataset_dir(DatasetName.counter_fact) / "splitted")
+        # Clean test base path
+        if self.test_base_path.exists():
+            shutil.rmtree(self.test_base_path)
+        self.test_base_path.mkdir(parents=True, exist_ok=True)
 
+        # Get sample of real data - only load and filter by ORIGINAL_IDS subset
+        dataset = {
+            split: load_splitted_counter_fact(
+                ALL_SPLITS_LITERAL,
+                align_to_known=False,
+            ).filter(lambda x: x[COLS.ORIGINAL_IDX] in original_ids)
+            for split, original_ids in ORIGINAL_IDS.items()
+        }
 
-def run_test_experiment(test_base_path: Path, normalizing_outputs: bool, with_plotting: bool):
-    with pytest.MonkeyPatch().context() as mp:
-        mp.setattr(PATHS_PROJECT_DIR_PATH, test_base_path)
-        mp.setattr(INFO_FLOW_PRINT_INTERVAL_PATH, 1)
-        if normalizing_outputs:
-            mp.setattr(GET_COMMIT_HASH_PATH, lambda *args, **kwargs: "test_commit_hash")
-            mp.setattr(CREATE_RUN_ID_PATH, lambda *args, **kwargs: "test_run_id")
+        # Save filtered dataset to disk
+        DatasetDict(dataset).save_to_disk(test_paths.dataset_dir(DatasetName.counter_fact) / "splitted")
 
-        for model_arch, model_size in [
-            (MODEL_ARCH.MAMBA1, "130M"),
-            (MODEL_ARCH.MAMBA2, "130M"),
-            (MODEL_ARCH.GPT2, "355M"),
-            (MODEL_ARCH.LLAMA3_2, "1B"),
-            (MODEL_ARCH.QWEN2, "0.5B"),
-            (MODEL_ARCH.QWEN2_5, "0.5B"),
-        ]:
-            config = get_test_full_pipeline_config_per_model_arch(
-                code_version_name="test_baseline",
-                model_arch=model_arch,
-                model_size=model_size,
-                with_plotting=with_plotting,
-            )
+    def run_baseline_experiments(self, normalizing_outputs: bool = True, with_plotting: bool = True) -> None:
+        """Run all experiments using TEST_MODEL_CONFIGS to generate baseline results."""
+        with pytest.MonkeyPatch().context() as mp:
+            mp.setattr(PATHS_PROJECT_DIR_PATH, self.test_base_path)
+            mp.setattr(INFO_FLOW_PRINT_INTERVAL_PATH, 1)
+            if normalizing_outputs:
+                mp.setattr(GET_COMMIT_HASH_PATH, lambda *args, **kwargs: "test_commit_hash")
+                mp.setattr(CREATE_RUN_ID_PATH, lambda *args, **kwargs: "test_run_id")
 
-            config.compute_dependencies(rec_depth=-1)
-            config.run(with_dependencies=True)
+            # Run experiments for all test model configurations
+            for model_arch, model_size in TEST_MODEL_CONFIGS:
+                config = get_test_full_pipeline_config_per_model_arch(
+                    code_version_name="test_baseline",
+                    model_arch=model_arch,
+                    model_size=model_size,
+                    with_plotting=with_plotting,
+                )
 
-        if normalizing_outputs:
-            (test_base_path / "serialized_results.json").write_text(
-                serialize_result_bank(get_experiment_results_bank())
-            )
-        print(f"Baseline updated at: {test_base_path}")
+                config.compute_dependencies(rec_depth=-1)
+                config.run(with_dependencies=True)
+
+            if normalizing_outputs:
+                (self.test_base_path / "serialized_results.json").write_text(
+                    serialize_result_bank(get_experiment_results_bank())
+                )
+            print(f"Baseline updated at: {self.test_base_path}")
+
+    def build_baseline(self, params: "CreateBaselineParams") -> None:
+        """Main method to build complete baseline."""
+        if not params.resume:
+            self.clean_and_generate_base_test_data()
+        self.run_baseline_experiments(params.normalizing_outputs, params.with_plotting)
+
+    def get_config_for_model(
+        self, model_arch: MODEL_ARCH, model_size: str, with_plotting: bool = True
+    ) -> FullPipelineRunner:
+        """Get configuration for specific model - used by both baseline and tests."""
+        return get_test_full_pipeline_config_per_model_arch(
+            code_version_name="test_baseline",
+            model_arch=model_arch,
+            model_size=model_size,
+            with_plotting=with_plotting,
+        )
 
 
 @dataclass
 class CreateBaselineParams:
+    """Parameters for baseline creation."""
+
     resume: bool = False
     normalizing_outputs: bool = True
     with_plotting: bool = True
 
 
-def update_test_baseline_experiment(test_base_path: Path, params: CreateBaselineParams):
-    if not params.resume:
-        clean_and_generate_base_test_data(test_base_path)
-    # TODO: test why there was a change (in mamba1 in the "context" token)
-    # TODO:   at commit of 7f0fdded984bca60686dd8586c365534aeffa009
-    # TODO:   and also change again in this commit (update commit hash)
-    run_test_experiment(test_base_path, params.normalizing_outputs, params.with_plotting)
-
-
 @pyrallis.wrap()
 def main(params: CreateBaselineParams):
-    update_test_baseline_experiment(TEST_BASE_PATH, params)
+    """Generate baseline test data - maintains same CLI interface as original script."""
+    builder = BaselineBuilder(TEST_BASE_PATH)
+    builder.build_baseline(params)
 
 
 if __name__ == "__main__":

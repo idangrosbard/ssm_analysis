@@ -12,11 +12,11 @@ from src.core.types import (
 from src.experiments.runners.info_flow import forward_eval
 from src.utils.types_utils import first_dict_value
 
-from .test_full_pipeline import (
+from .baseline_builder import (
     INFO_FLOW_FORWARD_EVAL_PATH,
     INFO_FLOW_PRINT_INTERVAL_PATH,
     PATHS_PROJECT_DIR_PATH,
-    clean_and_generate_base_test_data,
+    BaselineBuilder,
     get_test_full_pipeline_config,
 )
 
@@ -26,7 +26,8 @@ INFO_FLOW_SAVE_INTERVAL_PATH = "src.experiments.runners.info_flow.SAVE_INTERVAL"
 def test_info_flow_recovery(tmp_path: Path):
     """Test that info flow can save and recover from intermediate results correctly."""
     # Setup test environment
-    clean_and_generate_base_test_data(tmp_path)
+    builder = BaselineBuilder(tmp_path)
+    builder.clean_and_generate_base_test_data()
 
     with pytest.MonkeyPatch().context() as mp:
         mp.setattr(PATHS_PROJECT_DIR_PATH, tmp_path)

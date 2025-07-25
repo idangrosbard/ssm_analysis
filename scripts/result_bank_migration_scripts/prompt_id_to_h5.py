@@ -67,7 +67,7 @@ class MigrateResults(StreamlitComponent):
         self.is_test_results = is_test_results
 
     def render(self):
-        from tests.src.experiments.test_full_pipeline import TEST_BASE_PATH
+        from tests.src.experiments.baseline_builder import TEST_BASE_PATH
 
         run = st.button("Run")
         st.write(len(self.results_bank))

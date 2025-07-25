@@ -259,3 +259,13 @@ executionEnvironments = [
 [tool.pytest.ini_options]
 # addopts = "-vv --rich"
 addopts = "-vv"
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+# Add custom markers
+markers = [
+    "baseline_required: marks tests as requiring baseline data",
+    "gpu_required: marks tests as requiring GPU",
+    "slow: marks tests as slow running",
+]

@@ -42,19 +42,19 @@ python tests/src/experiments/baseline_builder.py --models '["mamba1", "gpt2"]' -
 - **Validation Pipeline**: Automatic integrity checking
 - **Comparison Tools**: Diff between baseline versions
 
-#### 2. Granular Tests (`test_full_pipeline_granular.py`)
+#### 2. Granular Tests (Individual Runner Tests)
 
 **Purpose**: Fine-grained validation of experiment outputs
 
 ```bash
 # Run all granular tests
-pytest tests/src/experiments/test_full_pipeline_granular.py
+pytest tests/src/experiments/runners/
 
 # Test specific model
-pytest tests/src/experiments/test_full_pipeline_granular.py::TestEvaluateModel::test_evaluate_model_output[gpt2-355M]
+pytest tests/src/experiments/runners/test_evaluate_model.py::TestEvaluateModelRunner::test_evaluate_model[gpt2-355M]
 
 # Test specific experiment type
-pytest tests/src/experiments/test_full_pipeline_granular.py::TestHeatmap
+pytest tests/src/experiments/runners/test_heatmap.py::TestHeatmapRunner
 ```
 
 #### 3. Recovery Tests (`test_info_flow.py`)
