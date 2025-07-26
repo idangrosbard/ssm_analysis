@@ -236,7 +236,7 @@ class CreateBaselineParams:
     with_plotting: bool = True
 
 
-@pyrallis.wrap()
+@pyrallis.wrap()  # type: ignore
 def main(params: CreateBaselineParams):
     """Generate baseline test data - maintains same CLI interface as original script."""
     builder = BaselineBuilder(TEST_BASE_PATH)

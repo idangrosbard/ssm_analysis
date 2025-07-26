@@ -26,7 +26,7 @@ from src.core.names import COLS, ExperimentName
 from src.core.types import MODEL_ARCH, TPromptData, TPromptDataFlat
 from src.data_ingestion.datasets.download_dataset import (
     flat_to_indexed_prompt_data,
-    get_row_data,
+    get_raw_data,
 )
 from src.data_ingestion.helpers.logits_utils import (
     generate_next_tokens,
@@ -118,7 +118,7 @@ def run(args: EvaluateModelRunner):
         return
 
     args.create_experiment_dir()
-    df = get_row_data(args.input_params.dataset_name)
+    df = get_raw_data(args.input_params.dataset_name)
 
     model_interface = args.variant_params.get_model_interface()
 

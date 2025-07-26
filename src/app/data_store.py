@@ -30,7 +30,7 @@ from src.data_ingestion.data_defs.data_defs import (
     SummarizedDataFulfilledReqs,
     Tokenizers,
 )
-from src.data_ingestion.datasets.download_dataset import get_row_data
+from src.data_ingestion.datasets.download_dataset import get_raw_data
 from src.utils.streamlit.helpers.cache import CacheWithDependencies
 
 
@@ -82,7 +82,7 @@ def get_tokenizerults_bank() -> ResultBank:
 def load_prompts(
     dataset: DatasetName = DatasetName.counter_fact,
 ) -> Prompts:
-    df = get_row_data(dataset)
+    df = get_raw_data(dataset)
 
     return Prompts(
         {TPromptOriginalIndex(int(row[COLS.ORIGINAL_IDX])): PromptNew(dict(row)) for _, row in df.iterrows()},

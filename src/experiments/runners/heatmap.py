@@ -132,8 +132,8 @@ class HeatmapRunner(BaseRunner[HeatmapParams]):
     def get_plot_output_path(self, prompt_idx: TPromptOriginalIndex, plot_name: HEATMAP_PLOT_FUNCS) -> Path:
         return self.variation_paths.plots_path / f"idx={prompt_idx}{plot_name}.png"
 
-    def plot(self, plot_name: HEATMAP_PLOT_FUNCS) -> None:
-        plot(self, plot_name)
+    def plot(self, plot_name: HEATMAP_PLOT_FUNCS, show: bool = False) -> None:
+        plot(self, plot_name, show=show)
 
     def _compute_impl(self) -> None:
         run(self)
@@ -160,7 +160,7 @@ class HeatmapRunner(BaseRunner[HeatmapParams]):
         )
 
 
-def plot(args: HeatmapRunner, plot_name: HEATMAP_PLOT_FUNCS):
+def plot(args: HeatmapRunner, plot_name: HEATMAP_PLOT_FUNCS, show: bool = False) -> None:
     data = args.get_runner_dependencies()["evaluate_model"].get_prompt_data()
     tokenizer = args.variant_params.get_tokenizer
     model_id = args.variant_params.model_id
@@ -183,9 +183,12 @@ def plot(args: HeatmapRunner, plot_name: HEATMAP_PLOT_FUNCS):
             true_word=prompt.true_word,
             toks=toks,
         )
-        output_path = args.get_plot_output_path(prompt.original_idx, HEATMAP_PLOT_FUNCS._simple_diff_fixed_0_3)
-        plt.savefig(output_path, bbox_inches="tight")
-        plt.close(fig)
+        if show:
+            plt.show()
+        else:
+            output_path = args.get_plot_output_path(prompt.original_idx, HEATMAP_PLOT_FUNCS._simple_diff_fixed_0_3)
+            plt.savefig(output_path, bbox_inches="tight")
+            plt.close(fig)
 
 
 def run(args: HeatmapRunner):

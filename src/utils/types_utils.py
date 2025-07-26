@@ -126,7 +126,7 @@ def create_mutable_field(
     # This is a fix to make it work.
     return cast(
         _ATTRIBUTE_TYPE,
-        pyrallis.field(default_factory=default_factory, is_mutable=True),
+        pyrallis.field(default_factory=default_factory, is_mutable=True),  # type:ignore[return-value,valid-type]
     )
 
 

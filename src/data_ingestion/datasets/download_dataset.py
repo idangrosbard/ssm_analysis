@@ -74,7 +74,7 @@ def get_prompt_ids(dataset_name: DatasetName, split: TSplitChoise = ALL_SPLITS_L
     assert_never(dataset_name)
 
 
-def get_row_data(dataset_name: DatasetName) -> TPromptDataFlat:
+def get_raw_data(dataset_name: DatasetName) -> TPromptDataFlat:
     match dataset_name:
         case DatasetName.counter_fact:
             dataset = load_splitted_counter_fact(
@@ -85,7 +85,7 @@ def get_row_data(dataset_name: DatasetName) -> TPromptDataFlat:
 
 
 def get_indexed_raw_data(dataset_name: DatasetName) -> TPromptData:
-    df = get_row_data(dataset_name)
+    df = get_raw_data(dataset_name)
     return flat_to_indexed_prompt_data(df)
 
 

@@ -103,7 +103,7 @@ class MambaInterface(ModelInterface):
 
 
 class Mamba1Interface(MambaInterface):
-    model: TMamba1Model
+    model: TMamba1Model  # type:ignore[valid-type]
 
     def __init__(
         self,
@@ -283,7 +283,7 @@ class LlamaInterface(ModelInterface):
 
 
 class Mamba2Interface(MambaInterface):
-    model: TMamba2Model
+    model: TMamba2Model  # type:ignore[valid-type]
 
     def __init__(
         self,

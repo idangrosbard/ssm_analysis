@@ -18,4 +18,4 @@ def tensor_type_check(func: F) -> F:
     if not ENABLE_TYPE_CHECKING:
         return func
 
-    return jaxtyped(typechecker=typechecker)(func)
+    return jaxtyped(typechecker=typechecker)(func)  # type:ignore[return-value]
